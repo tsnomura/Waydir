@@ -18,13 +18,25 @@ class SftpFs implements FsBackend {
   @override
   bool handles(String path) => PlatformPaths.isSftpUri(path);
 
-  int _sessionFor(String path) {
+  /// Wykonuje `op` na sesji dla `path`. Gdy wynik oznacza błąd (`isFailure`)
+  /// i sesja okazuje się martwa, próbuje reconnectu (z reautentykacją w razie
+  /// potrzeby) i wykonuje `op` ponownie dokładnie raz na nowej sesji.
+  Future<T> _withReconnect<T>(
+    String path,
+    T Function(int sessionId) op,
+    bool Function(T result) isFailure,
+  ) async {
     final rec = SftpSessionManager.recordFor(path);
     if (rec == null) {
       throw FileSystemException(t.errors.sftpNoActiveSessionFor(path: path));
     }
+    final first = op(rec.sessionId);
+    if (!isFailure(first)) return first;
+    if (SftpSessionManager.isAlive(rec.sessionId)) return first;
+    final newSessionId = await SftpSessionManager.reconnect(rec);
+    if (newSessionId == null) return first;
 
-    return rec.sessionId;
+    return op(newSessionId);
   }
 
   String _remote(String path) => SftpSessionManager.remotePath(path);
@@ -45,9 +57,12 @@ class SftpFs implements FsBackend {
 
   @override
   Future<List<FileEntry>> listDirectory(String path) async {
-    final sessionId = _sessionFor(path);
     final remote = _remote(path);
-    final buf = WaydirCoreLoader.sftpList(sessionId, remote);
+    final buf = await _withReconnect(
+      path,
+      (sessionId) => WaydirCoreLoader.sftpList(sessionId, remote),
+      (r) => r == null,
+    );
     if (buf == null) {
       throw FileSystemException(t.errors.sftpListingFailed, path);
     }
@@ -68,9 +83,12 @@ class SftpFs implements FsBackend {
 
   @override
   Future<FileEntry?> stat(String path) async {
-    final sessionId = _sessionFor(path);
     final remote = _remote(path);
-    final s = WaydirCoreLoader.sftpStat(sessionId, remote);
+    final s = await _withReconnect(
+      path,
+      (sessionId) => WaydirCoreLoader.sftpStat(sessionId, remote),
+      (r) => r == null,
+    );
     if (s == null || !s.exists) return null;
     final name = PlatformPaths.fileName(path);
 
@@ -96,15 +114,18 @@ class SftpFs implements FsBackend {
     int? start,
     int? end,
   }) async {
-    final sessionId = _sessionFor(path);
     final remote = _remote(path);
     final s = start ?? -1;
     final length = (end != null && start != null) ? end - start : -1;
-    final bytes = WaydirCoreLoader.sftpRead(
-      sessionId,
-      remote,
-      start: s,
-      length: length,
+    final bytes = await _withReconnect(
+      path,
+      (sessionId) => WaydirCoreLoader.sftpRead(
+        sessionId,
+        remote,
+        start: s,
+        length: length,
+      ),
+      (r) => r == null,
     );
     if (bytes == null) {
       throw FileSystemException(t.errors.sftpReadFailed, path);
@@ -118,43 +139,47 @@ class SftpFs implements FsBackend {
 
   @override
   Future<void> writeBytes(String path, Uint8List bytes) async {
-    final sessionId = _sessionFor(path);
     final remote = _remote(path);
-    final ok = WaydirCoreLoader.sftpWrite(sessionId, remote, bytes);
+    final ok = await _withReconnect(
+      path,
+      (sessionId) => WaydirCoreLoader.sftpWrite(sessionId, remote, bytes),
+      (r) => !r,
+    );
     if (!ok) throw FileSystemException(t.errors.sftpWriteFailed, path);
   }
 
   @override
   Future<void> mkdir(String path, {bool recursive = false}) async {
-    final sessionId = _sessionFor(path);
     final remote = _remote(path);
-    final ok = WaydirCoreLoader.sftpMkdir(
-      sessionId,
-      remote,
-      recursive: recursive,
+    final ok = await _withReconnect(
+      path,
+      (sessionId) =>
+          WaydirCoreLoader.sftpMkdir(sessionId, remote, recursive: recursive),
+      (r) => !r,
     );
     if (!ok) throw FileSystemException(t.errors.sftpMkdirFailed, path);
   }
 
   @override
   Future<void> remove(String path, {bool recursive = false}) async {
-    final sessionId = _sessionFor(path);
     final remote = _remote(path);
-    final ok = WaydirCoreLoader.sftpRemove(
-      sessionId,
-      remote,
-      recursive: recursive,
+    final ok = await _withReconnect(
+      path,
+      (sessionId) =>
+          WaydirCoreLoader.sftpRemove(sessionId, remote, recursive: recursive),
+      (r) => !r,
     );
     if (!ok) throw FileSystemException(t.errors.sftpRemoveFailed, path);
   }
 
   @override
   Future<void> rename(String from, String to) async {
-    final sessionId = _sessionFor(from);
-    final ok = WaydirCoreLoader.sftpRename(
-      sessionId,
-      _remote(from),
-      _remote(to),
+    final toRemote = _remote(to);
+    final ok = await _withReconnect(
+      from,
+      (sessionId) =>
+          WaydirCoreLoader.sftpRename(sessionId, _remote(from), toRemote),
+      (r) => !r,
     );
     if (!ok) throw FileSystemException(t.errors.sftpRenameFailed, from);
   }

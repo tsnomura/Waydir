@@ -55,6 +55,11 @@ class SftpSessionManager {
 
   static final Map<String, SftpSessionRecord> _byRoot = {};
 
+  /// Ostatnio zarejestrowany handler proszący użytkownika o dane logowania,
+  /// używany przy reconnectcie po zerwanym połączeniu (np. z boku Sidebara).
+  static Future<SftpCredentials?> Function(String logical)?
+  credentialsRequester;
+
   static List<String> activeRoots() => _byRoot.keys.toList();
 
   static SftpSessionRecord? recordFor(String anyPath) {
@@ -237,6 +242,45 @@ class SftpSessionManager {
       status: SftpOpenStatus.error,
       message: result.errorMessage,
     );
+  }
+
+  /// Sprawdza, czy sesja wciąż odpowiada (lekki round-trip: canonicalize).
+  static bool isAlive(int sessionId) {
+    return WaydirCoreLoader.sftpRealPath(sessionId, '.') != null;
+  }
+
+  /// Zamyka martwą sesję i próbuje ją odtworzyć: najpierw bez danych
+  /// logowania (klucze auto), a gdy serwer zażąda auth — przez
+  /// [credentialsRequester]. Zwraca nowy `sessionId` lub `null`, gdy
+  /// reconnect się nie powiódł albo użytkownik anulował prompt.
+  static Future<int?> reconnect(SftpSessionRecord record) async {
+    closeRoot(record.root);
+    var outcome = await openSession(
+      host: record.host,
+      port: record.port,
+      username: record.user,
+    );
+    if (outcome.status == SftpOpenStatus.ok) {
+      return outcome.sessionId;
+    }
+    if (outcome.status != SftpOpenStatus.authRequired) {
+      return null;
+    }
+    final requester = credentialsRequester;
+    if (requester == null) return null;
+    final logical = logicalPathForRecord(record);
+    final credentials = await requester(logical);
+    if (credentials == null || credentials.username.trim().isEmpty) {
+      return null;
+    }
+    outcome = await openSession(
+      host: record.host,
+      port: record.port,
+      username: record.user,
+      credentials: credentials,
+    );
+
+    return outcome.status == SftpOpenStatus.ok ? outcome.sessionId : null;
   }
 
   static void closeRoot(String root) {

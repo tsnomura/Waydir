@@ -7,6 +7,7 @@ import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import '../../core/database/app_database.dart';
+import '../../core/fs/sftp_session_manager.dart';
 import '../../core/logging/app_logger.dart';
 import 'bookmark_store.dart';
 import 'navigation_store.dart';
@@ -206,6 +207,7 @@ class _SidebarState extends State<Sidebar> {
     _bookmarkStore.load();
     widget.store.requestSmbCredentials = _credentialsRequester;
     widget.store.requestSftpCredentials = _sftpCredentialsRequester;
+    SftpSessionManager.credentialsRequester = _sftpCredentialsRequester;
   }
 
   @override
@@ -220,6 +222,7 @@ class _SidebarState extends State<Sidebar> {
         oldWidget.store.requestSftpCredentials = null;
       }
       widget.store.requestSftpCredentials = _sftpCredentialsRequester;
+      SftpSessionManager.credentialsRequester = _sftpCredentialsRequester;
     }
   }
 
@@ -230,6 +233,9 @@ class _SidebarState extends State<Sidebar> {
     }
     if (widget.store.requestSftpCredentials == _sftpCredentialsRequester) {
       widget.store.requestSftpCredentials = null;
+    }
+    if (SftpSessionManager.credentialsRequester == _sftpCredentialsRequester) {
+      SftpSessionManager.credentialsRequester = null;
     }
     _scrollController.dispose();
     super.dispose();
