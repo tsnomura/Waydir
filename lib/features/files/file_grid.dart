@@ -89,6 +89,7 @@ class FileGrid extends StatefulWidget {
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPane;
+  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final ValueChanged<int>? onPageRows;
   final ValueChanged<int>? onGridColumns;
   final VoidCallback? onBackgroundTap;
@@ -115,6 +116,7 @@ class FileGrid extends StatefulWidget {
     this.onCloseSearch,
     this.onOpenInNewTab,
     this.onOpenInOtherPane,
+    this.onOpenInOtherPaneNewTab,
     this.onPageRows,
     this.onGridColumns,
     this.onBackgroundTap,
@@ -393,6 +395,8 @@ class _FileGridState extends State<FileGrid> {
                             onContextMenu: widget.onContextMenu,
                             onOpenInNewTab: widget.onOpenInNewTab,
                             onOpenInOtherPane: widget.onOpenInOtherPane,
+                            onOpenInOtherPaneNewTab:
+                                widget.onOpenInOtherPaneNewTab,
                           );
                         },
                       ),
@@ -457,6 +461,7 @@ class _GridTile extends StatefulWidget {
   final FileContextMenuCallback? onContextMenu;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPane;
+  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
 
   const _GridTile({
     required this.entry,
@@ -482,6 +487,7 @@ class _GridTile extends StatefulWidget {
     this.onContextMenu,
     this.onOpenInNewTab,
     this.onOpenInOtherPane,
+    this.onOpenInOtherPaneNewTab,
   });
 
   @override
@@ -569,8 +575,13 @@ class _GridTileState extends State<_GridTile> {
     if (_lastTap != null &&
         now.difference(_lastTap!).inMilliseconds < _kGridDoubleTapMs) {
       _lastTap = null;
+      final keys = HardwareKeyboard.instance;
       if (widget.entry.type == FileItemType.folder &&
-          HardwareKeyboard.instance.isControlPressed) {
+          keys.isControlPressed &&
+          keys.isShiftPressed) {
+        widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
+      } else if (widget.entry.type == FileItemType.folder &&
+          keys.isControlPressed) {
         widget.onOpenInOtherPane?.call(widget.entry.path);
       } else {
         widget.onOpen(widget.entry);

@@ -253,6 +253,7 @@ class FileList extends StatefulWidget {
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPane;
+  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final RubberBandSelectCallback? onRectSelect;
   final SortKey sortColumn;
   final bool sortAscending;
@@ -292,6 +293,7 @@ class FileList extends StatefulWidget {
     this.onCloseSearch,
     this.onOpenInNewTab,
     this.onOpenInOtherPane,
+    this.onOpenInOtherPaneNewTab,
     this.onRectSelect,
     this.onPageRows,
   });
@@ -320,6 +322,7 @@ class FileTree extends StatelessWidget {
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPane;
+  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final RubberBandSelectCallback? onRectSelect;
   final SortKey sortColumn;
   final bool sortAscending;
@@ -356,6 +359,7 @@ class FileTree extends StatelessWidget {
     this.onCloseSearch,
     this.onOpenInNewTab,
     this.onOpenInOtherPane,
+    this.onOpenInOtherPaneNewTab,
     this.onRectSelect,
     this.onPageRows,
   });
@@ -384,6 +388,7 @@ class FileTree extends StatelessWidget {
       onCloseSearch: onCloseSearch,
       onOpenInNewTab: onOpenInNewTab,
       onOpenInOtherPane: onOpenInOtherPane,
+      onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
       onRectSelect: onRectSelect,
       sortColumn: sortColumn,
       sortAscending: sortAscending,
@@ -956,6 +961,8 @@ class _FileListState extends State<FileList> {
                                                     widget.onOpenInNewTab,
                                                 onOpenInOtherPane:
                                                     widget.onOpenInOtherPane,
+                                                onOpenInOtherPaneNewTab: widget
+                                                    .onOpenInOtherPaneNewTab,
                                               ),
                                             ),
                                           ),
@@ -1436,6 +1443,7 @@ class _ListRow extends StatefulWidget {
   final String? location;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPane;
+  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final int? folderSize;
   final RowDecoration? rowDecoration;
   final bool treeMode;
@@ -1474,6 +1482,7 @@ class _ListRow extends StatefulWidget {
     this.location,
     this.onOpenInNewTab,
     this.onOpenInOtherPane,
+    this.onOpenInOtherPaneNewTab,
     this.treeMode = false,
     this.treeDepth = 0,
     this.treeExpanded = false,
@@ -1751,8 +1760,13 @@ class _ListRowState extends State<_ListRow> {
     if (_lastTap != null &&
         now.difference(_lastTap!).inMilliseconds < _kDoubleTapMs) {
       _lastTap = null;
+      final keys = HardwareKeyboard.instance;
       if (widget.entry.type == FileItemType.folder &&
-          HardwareKeyboard.instance.isControlPressed) {
+          keys.isControlPressed &&
+          keys.isShiftPressed) {
+        widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
+      } else if (widget.entry.type == FileItemType.folder &&
+          keys.isControlPressed) {
         widget.onOpenInOtherPane?.call(widget.entry.path);
       } else {
         widget.onOpen(widget.entry);

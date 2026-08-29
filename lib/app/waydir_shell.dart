@@ -42,6 +42,7 @@ import '../features/navigation/sidebar.dart';
 import '../features/navigation/status_bar.dart';
 import '../features/onboarding/full_disk_access_dialog.dart';
 import '../features/operations/operation_store.dart';
+import '../features/panes/pane_store.dart';
 import '../features/panes/pane_view.dart';
 import '../features/panes/pane_divider.dart';
 import '../features/panes/shell_store.dart';
@@ -262,6 +263,7 @@ class _WaydirShellState extends State<WaydirShell>
       onMenuAction: _handleMenuAction,
       onOpenInNewTab: _openInNewTab,
       onOpenInOtherPane: (path) => _openInOtherPane(slot, path),
+      onOpenInOtherPaneNewTab: (path) => _openInOtherPaneNewTab(slot, path),
       onPluginToolbarAction: (id) => _runPluginAction(id, background: true),
       onPluginBarEffects: (effects, target) =>
           _applyPluginEffects(effects, target, background: true),
