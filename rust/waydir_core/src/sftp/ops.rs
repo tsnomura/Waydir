@@ -159,6 +159,11 @@ pub unsafe extern "C" fn waydir_sftp_list(
         None => return std::ptr::null_mut(),
     };
     let path_owned = path_str.clone();
+    let base = path_with_trailing_slash(if path_owned.is_empty() {
+        "/"
+    } else {
+        path_owned.as_str()
+    });
     let result = session::block(async move {
         let client = match session::get(session_id).await {
             Some(c) => c,
@@ -170,12 +175,19 @@ pub unsafe extern "C" fn waydir_sftp_list(
             .read_dir(&path_owned)
             .await
             .map_err(|e| format!("read_dir: {e}"))?;
-        Ok::<Vec<(String, russh_sftp::protocol::FileAttributes)>, String>(
-            entries
-                .into_iter()
-                .map(|de| (de.file_name(), de.metadata()))
-                .collect(),
-        )
+        let mut resolved = Vec::new();
+        for de in entries {
+            let name = de.file_name();
+            let mut attr = de.metadata();
+            if name != "." && name != ".." && attr.file_type().is_symlink() {
+                let full_path = format!("{}{}", base, name);
+                if let Ok(target_attr) = client.sftp.metadata(&full_path).await {
+                    attr = target_attr;
+                }
+            }
+            resolved.push((name, attr));
+        }
+        Ok::<Vec<(String, russh_sftp::protocol::FileAttributes)>, String>(resolved)
     });
 
     let entries = match result {
