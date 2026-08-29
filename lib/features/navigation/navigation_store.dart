@@ -158,6 +158,43 @@ class NavigationStore {
   late final canGoForward = computed(
     () => historyIndex.value < history.value.length - 1,
   );
+
+  /// Base orders used to break ties when re-sorting by a new key, so
+  /// switching sort keys reads as "sort by the new key, then by whatever it
+  /// was sorted by before" instead of collapsing ties back to name order.
+  /// Kept separate for the normal browse list and search results so the two
+  /// don't bleed into each other.
+  List<FileEntry> _previousBrowseOrder = [];
+  List<FileEntry> _previousSearchOrder = [];
+
+  /// Reorders [current] to match [previous] where possible (matched by
+  /// path), so entries that tie under the new sort key keep the relative
+  /// order they had before this re-sort. Entries not seen before
+  /// (new/renamed) keep their relative position from [current], placed after
+  /// the previously-known ones.
+  List<FileEntry> _reconcileOrder(
+    List<FileEntry> current,
+    List<FileEntry> previous,
+  ) {
+    if (previous.isEmpty) return current;
+    final priorIndex = <String, int>{};
+    for (var i = 0; i < previous.length; i++) {
+      priorIndex[previous[i].path] = i;
+    }
+    final reordered = List<FileEntry>.of(current);
+    stableSort(reordered, (a, b) {
+      final ai = priorIndex[a.path];
+      final bi = priorIndex[b.path];
+      if (ai == null && bi == null) return 0;
+      if (ai == null) return 1;
+      if (bi == null) return -1;
+
+      return ai.compareTo(bi);
+    });
+
+    return reordered;
+  }
+
   late final visibleFiles = computed(() {
     final pending = pendingCreate.value;
     if (searchActive.value && (searchRecursive.value || searchContent.value)) {
@@ -173,7 +210,7 @@ class NavigationStore {
               );
       }
       final sorted = sortEntries(
-        results,
+        _reconcileOrder(results, _previousSearchOrder),
         key: sortKey.value,
         ascending: sortAscending.value,
         foldersFirst: foldersFirst.value,
@@ -181,6 +218,7 @@ class NavigationStore {
         sortFolders: SettingsStore.instance.sortFolders.value,
         folderSize: _folderSizeFor,
       );
+      _previousSearchOrder = sorted;
 
       return pending != null ? [pending, ...sorted] : sorted;
     }
@@ -213,7 +251,7 @@ class NavigationStore {
       }
     }
     list = sortEntries(
-      list,
+      _reconcileOrder(list, _previousBrowseOrder),
       key: sortKey.value,
       ascending: sortAscending.value,
       foldersFirst: foldersFirst.value,
@@ -221,6 +259,7 @@ class NavigationStore {
       sortFolders: SettingsStore.instance.sortFolders.value,
       folderSize: _folderSizeFor,
     );
+    _previousBrowseOrder = list;
 
     return pending != null ? [pending, ...list] : list;
   });

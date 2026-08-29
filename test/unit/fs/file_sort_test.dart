@@ -196,4 +196,38 @@ void main() {
       ]);
     });
   });
+
+  group('sortEntries stability', () {
+    test('ties fall back to input order, not name', () {
+      final entries = [_fileSize('z.bin', 100), _fileSize('a.bin', 100)];
+      final sorted = sortEntries(
+        entries,
+        key: SortKey.size,
+        ascending: true,
+        foldersFirst: false,
+      );
+      expect(sorted.map((e) => e.name).toList(), ['z.bin', 'a.bin']);
+    });
+
+    test(
+      're-sorting by a new key keeps the previous order within tied groups',
+      () {
+        // Simulates a list already sorted by "date modified", newest first.
+        final entries = [_file('b.txt'), _file('a.jpg'), _file('a.txt')];
+        final sorted = sortEntries(
+          entries,
+          key: SortKey.kind,
+          ascending: true,
+          foldersFirst: false,
+        );
+        // Within the .txt group, "b.txt" stays ahead of "a.txt" (the order
+        // it already had) instead of being re-sorted alphabetically.
+        final txtOrder = sorted
+            .where((e) => e.name.endsWith('.txt'))
+            .map((e) => e.name)
+            .toList();
+        expect(txtOrder, ['b.txt', 'a.txt']);
+      },
+    );
+  });
 }

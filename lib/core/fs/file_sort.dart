@@ -1,5 +1,21 @@
 import '../models/file_entry.dart';
 
+/// Sorts [list] in place, keeping the relative order of entries that
+/// [compare] treats as equal (unlike [List.sort], which makes no such
+/// guarantee).
+void stableSort<T>(List<T> list, int Function(T a, T b) compare) {
+  final indices = List<int>.generate(list.length, (i) => i);
+  indices.sort((i, j) {
+    final c = compare(list[i], list[j]);
+
+    return c != 0 ? c : i.compareTo(j);
+  });
+  final sorted = [for (final i in indices) list[i]];
+  for (var i = 0; i < list.length; i++) {
+    list[i] = sorted[i];
+  }
+}
+
 enum SortKey { name, size, date, kind, created, added, permissions, owner }
 
 SortKey sortKeyFromString(String v) {
@@ -30,8 +46,10 @@ String sortKeyToString(SortKey k) => k.name;
 /// When [foldersFirst] is true, folders are always grouped before files
 /// regardless of the sort key/direction. When [sortFolders] is false, folders
 /// keep their default name-ascending order and only files follow the chosen
-/// key/direction. Names use a case-insensitive comparison; ties always fall
-/// back to name so the order is stable.
+/// key/direction. Names use a case-insensitive comparison. The sort is
+/// stable: entries that tie under [key] keep their relative order from
+/// [entries], so re-sorting by a new key on top of an already-sorted list
+/// preserves the previous ordering within each group of ties.
 List<FileEntry> sortEntries(
   List<FileEntry> entries, {
   required SortKey key,
@@ -46,7 +64,7 @@ List<FileEntry> sortEntries(
       ? compareNatural(a.nameLower, b.nameLower)
       : a.nameLower.compareTo(b.nameLower);
 
-  out.sort((a, b) {
+  stableSort(out, (a, b) {
     if (foldersFirst && a.type != b.type) {
       return a.type == FileItemType.folder ? -1 : 1;
     }
@@ -83,7 +101,7 @@ List<FileEntry> sortEntries(
       case SortKey.owner:
         cmp = a.ownerName.toLowerCase().compareTo(b.ownerName.toLowerCase());
     }
-    if (cmp == 0) cmp = byName(a, b);
+    if (cmp == 0) return 0;
 
     return ascending ? cmp : -cmp;
   });
