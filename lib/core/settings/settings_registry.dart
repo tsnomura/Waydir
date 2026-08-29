@@ -658,7 +658,7 @@ class SettingsRegistry {
     final extra =
         current.isNotEmpty &&
             current != 'system' &&
-            !detected.any((s) => s.path == current)
+            !detected.any((s) => s.toSettingValue() == current)
         ? current
         : null;
     setting.choices = _shellChoices(detected, extra: extra);
@@ -717,7 +717,7 @@ List<SettingChoice<String>> _shellChoices(
     ),
     for (final shell in shells)
       SettingChoice(
-        value: shell.path,
+        value: shell.toSettingValue(),
         label: () => shell.label,
         icon: WaydirIconsRegular.terminal,
       ),

@@ -116,7 +116,7 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
         ContextMenuItem(
           icon: WaydirIconsRegular.terminal,
           label: shell.label,
-          action: 'shell:${shell.path}',
+          action: 'shell:${shell.toSettingValue()}',
         ),
     ];
     final distributions = containerStore.distributions.value;

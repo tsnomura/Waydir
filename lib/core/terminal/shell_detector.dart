@@ -1,16 +1,61 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../logging/app_logger.dart';
+import 'windows_terminal_profiles.dart';
 
-/// A shell available on the system that the built-in terminal can launch.
+/// A shell available on the host so the built-in terminal can launch it.
 class ShellOption {
-  /// Stored setting value: an absolute path to the shell executable.
+  /// Path to the shell executable.
   final String path;
+
+  /// Extra arguments to pass (e.g. `-d <distro>` for a WSL profile).
+  final List<String> args;
 
   /// Display name (e.g. `bash`, `PowerShell 7`).
   final String label;
 
-  const ShellOption({required this.path, required this.label});
+  const ShellOption({
+    required this.path,
+    required this.label,
+    this.args = const [],
+  });
+
+  /// The value stored in [SettingsStore.terminalShell] when this option is
+  /// picked. Plain when there are no args (backward compatible with settings
+  /// saved before args existed), JSON-encoded otherwise.
+  String toSettingValue() => ShellCommand(path, args).encode();
+}
+
+/// A resolved program + argv to launch as the terminal's shell, and its
+/// (de)serialization to/from a single setting string.
+class ShellCommand {
+  final String program;
+  final List<String> args;
+
+  const ShellCommand(this.program, [this.args = const []]);
+
+  String encode() =>
+      args.isEmpty ? program : jsonEncode({'program': program, 'args': args});
+
+  /// Decodes a value previously produced by [encode]. A plain path (no args,
+  /// or a value saved before args existed) decodes to itself unchanged.
+  static ShellCommand decode(String value) {
+    if (value.startsWith('{')) {
+      try {
+        final map = jsonDecode(value);
+        if (map is Map && map['program'] is String) {
+          final args = (map['args'] as List?)?.whereType<String>().toList();
+
+          return ShellCommand(map['program'] as String, args ?? const []);
+        }
+      } catch (_) {
+        // Fall through to treating the value as a plain path.
+      }
+    }
+
+    return ShellCommand(value);
+  }
 }
 
 /// Discovers shells installed on the host so the user can pick one for the
@@ -104,6 +149,12 @@ class ShellDetector {
     );
     add(env['ComSpec'] ?? '$sysRoot\\System32\\cmd.exe', 'Command Prompt');
     add('$programFiles\\Git\\bin\\bash.exe', 'Git Bash');
+
+    final labels = {for (final s in out) s.label.toLowerCase()};
+    for (final profile in WindowsTerminalProfiles.detect()) {
+      if (!labels.add(profile.label.toLowerCase())) continue;
+      out.add(profile);
+    }
 
     return out;
   }
