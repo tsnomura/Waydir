@@ -10,3 +10,9 @@ dcm:
     - prefer-correct-type-name
     - prefer-first
     - prefer-last
+analyzer:
+  exclude:
+    - build/**
+    - windows/**
+    - macos/**
+    - linux/**
