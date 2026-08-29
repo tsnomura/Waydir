@@ -292,18 +292,44 @@ class SftpSessionManager {
     )];
   }
 
+  /// In-flight connection attempts keyed by root (`sftp://[user@]host[:port]`),
+  /// so concurrent callers for the same target (e.g. several tabs open on the
+  /// same dropped session) share one reconnect/reauth instead of each
+  /// prompting for credentials independently.
+  static final Map<String, Future<SftpSessionRecord?>> _pendingConnects = {};
+
+  static Future<SftpSessionRecord?> _coalesce(
+    String key,
+    Future<SftpSessionRecord?> Function() start,
+  ) {
+    final pending = _pendingConnects[key];
+    if (pending != null) return pending;
+    final future = start();
+    _pendingConnects[key] = future;
+    future.whenComplete(() {
+      if (identical(_pendingConnects[key], future)) {
+        _pendingConnects.remove(key);
+      }
+    });
+
+    return future;
+  }
+
   /// Zamyka martwą sesję i próbuje ją odtworzyć (z reautentykacją w razie
   /// potrzeby). Zwraca nowy rekord albo `null`, gdy reconnect się nie
-  /// powiódł albo użytkownik anulował prompt.
-  static Future<SftpSessionRecord?> reconnect(SftpSessionRecord record) async {
-    closeRoot(record.root);
+  /// powiódł albo użytkownik anulował prompt. Współbieżne wywołania dla tego
+  /// samego roota dzielą jedną próbę (patrz [_coalesce]).
+  static Future<SftpSessionRecord?> reconnect(SftpSessionRecord record) {
+    return _coalesce(record.root, () async {
+      closeRoot(record.root);
 
-    return _openWithPrompt(
-      host: record.host,
-      port: record.port,
-      username: record.user,
-      logicalForPrompt: logicalPathForRecord(record),
-    );
+      return _openWithPrompt(
+        host: record.host,
+        port: record.port,
+        username: record.user,
+        logicalForPrompt: logicalPathForRecord(record),
+      );
+    });
   }
 
   /// Zapewnia działającą sesję dla dowolnej ścieżki `sftp://...`: reużywa
@@ -324,15 +350,15 @@ class SftpSessionManager {
     if (host.isEmpty) return null;
     final port = uri.port ?? 22;
     final username = uri.username ?? '';
+    final key = buildLogicalPath(host: host, port: port, user: username);
 
-    return _openWithPrompt(
-      host: host,
-      port: port,
-      username: username,
-      logicalForPrompt: buildLogicalPath(
+    return _coalesce(
+      key,
+      () => _openWithPrompt(
         host: host,
         port: port,
-        user: username,
+        username: username,
+        logicalForPrompt: key,
       ),
     );
   }
