@@ -252,6 +252,7 @@ class FileList extends StatefulWidget {
   final bool recursiveResults;
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
   final RubberBandSelectCallback? onRectSelect;
   final SortKey sortColumn;
   final bool sortAscending;
@@ -290,6 +291,7 @@ class FileList extends StatefulWidget {
     this.recursiveResults = false,
     this.onCloseSearch,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
     this.onRectSelect,
     this.onPageRows,
   });
@@ -317,6 +319,7 @@ class FileTree extends StatelessWidget {
   final RenameCancelCallback? onRenameCancel;
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
   final RubberBandSelectCallback? onRectSelect;
   final SortKey sortColumn;
   final bool sortAscending;
@@ -352,6 +355,7 @@ class FileTree extends StatelessWidget {
     this.onRenameCancel,
     this.onCloseSearch,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
     this.onRectSelect,
     this.onPageRows,
   });
@@ -379,6 +383,7 @@ class FileTree extends StatelessWidget {
       onRenameCancel: onRenameCancel,
       onCloseSearch: onCloseSearch,
       onOpenInNewTab: onOpenInNewTab,
+      onOpenInOtherPane: onOpenInOtherPane,
       onRectSelect: onRectSelect,
       sortColumn: sortColumn,
       sortAscending: sortAscending,
@@ -949,6 +954,8 @@ class _FileListState extends State<FileList> {
                                                     : null,
                                                 onOpenInNewTab:
                                                     widget.onOpenInNewTab,
+                                                onOpenInOtherPane:
+                                                    widget.onOpenInOtherPane,
                                               ),
                                             ),
                                           ),
@@ -1428,6 +1435,7 @@ class _ListRow extends StatefulWidget {
   final bool recentDatesRelative;
   final String? location;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
   final int? folderSize;
   final RowDecoration? rowDecoration;
   final bool treeMode;
@@ -1465,6 +1473,7 @@ class _ListRow extends StatefulWidget {
     this.recentDatesRelative = true,
     this.location,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
     this.treeMode = false,
     this.treeDepth = 0,
     this.treeExpanded = false,
@@ -1742,7 +1751,12 @@ class _ListRowState extends State<_ListRow> {
     if (_lastTap != null &&
         now.difference(_lastTap!).inMilliseconds < _kDoubleTapMs) {
       _lastTap = null;
-      widget.onOpen(widget.entry);
+      if (widget.entry.type == FileItemType.folder &&
+          HardwareKeyboard.instance.isControlPressed) {
+        widget.onOpenInOtherPane?.call(widget.entry.path);
+      } else {
+        widget.onOpen(widget.entry);
+      }
 
       return;
     }

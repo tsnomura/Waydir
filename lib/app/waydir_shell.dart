@@ -261,6 +261,7 @@ class _WaydirShellState extends State<WaydirShell>
       onContextMenu: _handleContextMenu,
       onMenuAction: _handleMenuAction,
       onOpenInNewTab: _openInNewTab,
+      onOpenInOtherPane: (path) => _openInOtherPane(slot, path),
       onPluginToolbarAction: (id) => _runPluginAction(id, background: true),
       onPluginBarEffects: (effects, target) =>
           _applyPluginEffects(effects, target, background: true),

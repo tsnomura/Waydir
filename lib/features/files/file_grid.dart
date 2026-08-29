@@ -88,6 +88,7 @@ class FileGrid extends StatefulWidget {
   final bool recursiveResults;
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
   final ValueChanged<int>? onPageRows;
   final ValueChanged<int>? onGridColumns;
   final VoidCallback? onBackgroundTap;
@@ -113,6 +114,7 @@ class FileGrid extends StatefulWidget {
     this.recursiveResults = false,
     this.onCloseSearch,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
     this.onPageRows,
     this.onGridColumns,
     this.onBackgroundTap,
@@ -390,6 +392,7 @@ class _FileGridState extends State<FileGrid> {
                             onOpen: widget.onOpen,
                             onContextMenu: widget.onContextMenu,
                             onOpenInNewTab: widget.onOpenInNewTab,
+                            onOpenInOtherPane: widget.onOpenInOtherPane,
                           );
                         },
                       ),
@@ -453,6 +456,7 @@ class _GridTile extends StatefulWidget {
   final FileOpenCallback onOpen;
   final FileContextMenuCallback? onContextMenu;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
 
   const _GridTile({
     required this.entry,
@@ -477,6 +481,7 @@ class _GridTile extends StatefulWidget {
     required this.onOpen,
     this.onContextMenu,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
   });
 
   @override
@@ -564,7 +569,12 @@ class _GridTileState extends State<_GridTile> {
     if (_lastTap != null &&
         now.difference(_lastTap!).inMilliseconds < _kGridDoubleTapMs) {
       _lastTap = null;
-      widget.onOpen(widget.entry);
+      if (widget.entry.type == FileItemType.folder &&
+          HardwareKeyboard.instance.isControlPressed) {
+        widget.onOpenInOtherPane?.call(widget.entry.path);
+      } else {
+        widget.onOpen(widget.entry);
+      }
 
       return;
     }

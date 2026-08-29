@@ -42,6 +42,7 @@ class PaneView extends StatelessWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
   final void Function(String fullActionId)? onPluginToolbarAction;
   final PluginBarEffectsHandler? onPluginBarEffects;
   final int terminalSlot;
@@ -70,6 +71,7 @@ class PaneView extends StatelessWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
     this.onPluginToolbarAction,
     this.onPluginBarEffects,
     required this.terminalSlot,
@@ -132,6 +134,7 @@ class PaneView extends StatelessWidget {
                             onContextMenu: onContextMenu,
                             onMenuAction: onMenuAction,
                             onOpenInNewTab: onOpenInNewTab,
+                            onOpenInOtherPane: onOpenInOtherPane,
                             onRectSelect: (paths, {additive = false}) => tab
                                 .store
                                 .onRectSelect(paths, additive: additive),
@@ -215,6 +218,7 @@ class _TabContent extends StatelessWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final OpenInNewTabCallback? onOpenInNewTab;
+  final OpenInNewTabCallback? onOpenInOtherPane;
   final RubberBandSelectCallback? onRectSelect;
 
   const _TabContent({
@@ -223,6 +227,7 @@ class _TabContent extends StatelessWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onOpenInNewTab,
+    this.onOpenInOtherPane,
     this.onRectSelect,
   });
 
@@ -289,6 +294,7 @@ class _TabContent extends StatelessWidget {
                 onRenameCancel: store.cancelRename,
                 onCloseSearch: store.closeSearch,
                 onOpenInNewTab: onOpenInNewTab,
+                onOpenInOtherPane: onOpenInOtherPane,
                 onPageRows: store.setPageRows,
                 onGridColumns: store.setGridColumns,
                 onRectSelect: onRectSelect,
@@ -317,6 +323,7 @@ class _TabContent extends StatelessWidget {
                 onRenameCancel: store.cancelRename,
                 onCloseSearch: store.closeSearch,
                 onOpenInNewTab: onOpenInNewTab,
+                onOpenInOtherPane: onOpenInOtherPane,
                 onRectSelect: onRectSelect,
                 sortColumn: store.sortKey.value,
                 sortAscending: store.sortAscending.value,
@@ -347,6 +354,7 @@ class _TabContent extends StatelessWidget {
               onRenameCancel: store.cancelRename,
               onCloseSearch: store.closeSearch,
               onOpenInNewTab: onOpenInNewTab,
+              onOpenInOtherPane: onOpenInOtherPane,
               onRectSelect: onRectSelect,
               sortColumn: store.sortKey.value,
               sortAscending: store.sortAscending.value,

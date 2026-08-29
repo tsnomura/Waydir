@@ -166,6 +166,16 @@ mixin _WaydirStateBase on State<WaydirShell> {
     _shell.activePane.value!.tabs.addTab(path);
   }
 
+  /// Navigates the pane opposite [fromSlot] to [path], entering dual-pane
+  /// mode first if needed so there is an "other" pane to open it in.
+  void _openInOtherPane(int fromSlot, String path) {
+    if (!_shell.isDual.value) _shell.enterDual();
+    final otherSlot = fromSlot == 0 ? 1 : 0;
+    final panes = _shell.panes.value;
+    if (otherSlot >= panes.length) return;
+    panes[otherSlot].tabs.activeTab.value.store.navigateTo(path);
+  }
+
   void _setShowHiddenGlobal(bool value) {
     SettingsStore.instance.showHiddenDefault.value = value;
     if (!_shell.ready.value) return;
