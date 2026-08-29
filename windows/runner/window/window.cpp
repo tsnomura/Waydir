@@ -21,7 +21,7 @@ BOOL g_visible_on_startup = TRUE;
 BOOL g_window_can_be_shown = FALSE;
 BOOL g_during_minimize = FALSE;
 SIZE g_min_size = {0, 0};
-constexpr int kResizeMargin = 1;
+constexpr int kResizeMargin = 6;
 
 LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wparam,
                                 LPARAM lparam, UINT_PTR subclass_id,

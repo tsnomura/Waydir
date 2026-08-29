@@ -590,6 +590,8 @@ class _SidebarResizeHandle extends StatefulWidget {
   final GestureDragUpdateCallback onDragUpdate;
   final VoidCallback onDragEnd;
 
+  static const double hitWidth = 16;
+
   const _SidebarResizeHandle({
     required this.onDragStart,
     required this.onDragUpdate,
@@ -616,7 +618,7 @@ class _SidebarResizeHandleState extends State<_SidebarResizeHandle> {
         onHorizontalDragEnd: (_) => widget.onDragEnd(),
         onHorizontalDragCancel: widget.onDragEnd,
         child: SizedBox(
-          width: 8,
+          width: _SidebarResizeHandle.hitWidth,
           child: Align(
             alignment: Alignment.centerRight,
             child: AnimatedContainer(

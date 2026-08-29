@@ -6,7 +6,7 @@ class PaneDivider extends StatefulWidget {
   final ShellStore shell;
   final double totalWidth;
 
-  static const double hitWidth = 10;
+  static const double hitWidth = 18;
 
   const PaneDivider({super.key, required this.shell, required this.totalWidth});
 
