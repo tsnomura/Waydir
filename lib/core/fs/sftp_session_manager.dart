@@ -249,38 +249,92 @@ class SftpSessionManager {
     return WaydirCoreLoader.sftpRealPath(sessionId, '.') != null;
   }
 
-  /// Zamyka martwą sesję i próbuje ją odtworzyć: najpierw bez danych
+  /// Próbuje otworzyć sesję dla `host`/`port`/`username`: najpierw bez danych
   /// logowania (klucze auto), a gdy serwer zażąda auth — przez
-  /// [credentialsRequester]. Zwraca nowy `sessionId` lub `null`, gdy
-  /// reconnect się nie powiódł albo użytkownik anulował prompt.
-  static Future<int?> reconnect(SftpSessionRecord record) async {
-    closeRoot(record.root);
-    var outcome = await openSession(
-      host: record.host,
-      port: record.port,
-      username: record.user,
-    );
+  /// [credentialsRequester]. Zwraca nowy rekord albo `null`, gdy się nie
+  /// powiodło albo użytkownik anulował prompt. Rekord jest odczytywany po
+  /// faktycznie użytym użytkowniku (może różnić się od `username`, gdy prompt
+  /// zwrócił inną nazwę), żeby uniknąć niedopasowania klucza roota.
+  static Future<SftpSessionRecord?> _openWithPrompt({
+    required String host,
+    required int port,
+    required String username,
+    required String logicalForPrompt,
+  }) async {
+    var outcome = await openSession(host: host, port: port, username: username);
     if (outcome.status == SftpOpenStatus.ok) {
-      return outcome.sessionId;
+      return _byRoot[buildLogicalPath(host: host, port: port, user: username)];
     }
     if (outcome.status != SftpOpenStatus.authRequired) {
       return null;
     }
     final requester = credentialsRequester;
     if (requester == null) return null;
-    final logical = logicalPathForRecord(record);
-    final credentials = await requester(logical);
+    final credentials = await requester(logicalForPrompt);
     if (credentials == null || credentials.username.trim().isEmpty) {
       return null;
     }
     outcome = await openSession(
+      host: host,
+      port: port,
+      username: username,
+      credentials: credentials,
+    );
+    if (outcome.status != SftpOpenStatus.ok) return null;
+    final resolvedUser = credentials.username.isNotEmpty
+        ? credentials.username
+        : username;
+
+    return _byRoot[buildLogicalPath(
+      host: host,
+      port: port,
+      user: resolvedUser,
+    )];
+  }
+
+  /// Zamyka martwą sesję i próbuje ją odtworzyć (z reautentykacją w razie
+  /// potrzeby). Zwraca nowy rekord albo `null`, gdy reconnect się nie
+  /// powiódł albo użytkownik anulował prompt.
+  static Future<SftpSessionRecord?> reconnect(SftpSessionRecord record) async {
+    closeRoot(record.root);
+
+    return _openWithPrompt(
       host: record.host,
       port: record.port,
       username: record.user,
-      credentials: credentials,
+      logicalForPrompt: logicalPathForRecord(record),
     );
+  }
 
-    return outcome.status == SftpOpenStatus.ok ? outcome.sessionId : null;
+  /// Zapewnia działającą sesję dla dowolnej ścieżki `sftp://...`: reużywa
+  /// żywą sesję, reconnectuje martwą, a gdy nie ma żadnego rekordu (np. po
+  /// wcześniejszym nieudanym reconnectcie, który usunął go z puli) — otwiera
+  /// nową sesję na podstawie host/port/user zakodowanych w samej ścieżce.
+  /// Zwraca działający rekord albo `null`, gdy nie udało się połączyć.
+  static Future<SftpSessionRecord?> ensureSession(String anyPath) async {
+    if (!anyPath.startsWith('sftp://')) return null;
+    final existing = recordFor(anyPath);
+    if (existing != null) {
+      if (isAlive(existing.sessionId)) return existing;
+
+      return reconnect(existing);
+    }
+    final uri = LocationUri.parse(anyPath);
+    final host = uri.host ?? '';
+    if (host.isEmpty) return null;
+    final port = uri.port ?? 22;
+    final username = uri.username ?? '';
+
+    return _openWithPrompt(
+      host: host,
+      port: port,
+      username: username,
+      logicalForPrompt: buildLogicalPath(
+        host: host,
+        port: port,
+        user: username,
+      ),
+    );
   }
 
   static void closeRoot(String root) {

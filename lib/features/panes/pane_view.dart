@@ -1040,18 +1040,43 @@ class _AccessDeniedPrompt extends StatelessWidget {
   }
 }
 
-class _LoadErrorNotice extends StatelessWidget {
+class _LoadErrorNotice extends StatefulWidget {
   final String message;
   final VoidCallback onRetry;
 
   const _LoadErrorNotice({required this.message, required this.onRetry});
 
   @override
+  State<_LoadErrorNotice> createState() => _LoadErrorNoticeState();
+}
+
+class _LoadErrorNoticeState extends State<_LoadErrorNotice>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) widget.onRetry();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _PermissionNotice(
       title: t.folderAccess.errorTitle,
-      body: message,
-      actions: [_PromptButton(label: t.folderAccess.retry, onTap: onRetry)],
+      body: widget.message,
+      actions: [
+        _PromptButton(label: t.folderAccess.retry, onTap: widget.onRetry),
+      ],
     );
   }
 }

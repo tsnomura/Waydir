@@ -18,25 +18,27 @@ class SftpFs implements FsBackend {
   @override
   bool handles(String path) => PlatformPaths.isSftpUri(path);
 
-  /// Wykonuje `op` na sesji dla `path`. Gdy wynik oznacza błąd (`isFailure`)
-  /// i sesja okazuje się martwa, próbuje reconnectu (z reautentykacją w razie
-  /// potrzeby) i wykonuje `op` ponownie dokładnie raz na nowej sesji.
+  /// Wykonuje `op` na sesji dla `path`. Gdy nie ma żadnej sesji, albo wynik
+  /// oznacza błąd (`isFailure`) i sesja okazuje się martwa, próbuje ją
+  /// zapewnić od nowa (reconnect + reautentykacja w razie potrzeby) i
+  /// wykonuje `op` ponownie dokładnie raz na nowej sesji.
   Future<T> _withReconnect<T>(
     String path,
     T Function(int sessionId) op,
     bool Function(T result) isFailure,
   ) async {
-    final rec = SftpSessionManager.recordFor(path);
+    var rec = SftpSessionManager.recordFor(path);
+    rec ??= await SftpSessionManager.ensureSession(path);
     if (rec == null) {
       throw FileSystemException(t.errors.sftpNoActiveSessionFor(path: path));
     }
     final first = op(rec.sessionId);
     if (!isFailure(first)) return first;
     if (SftpSessionManager.isAlive(rec.sessionId)) return first;
-    final newSessionId = await SftpSessionManager.reconnect(rec);
-    if (newSessionId == null) return first;
+    final reconnected = await SftpSessionManager.ensureSession(path);
+    if (reconnected == null) return first;
 
-    return op(newSessionId);
+    return op(reconnected.sessionId);
   }
 
   String _remote(String path) => SftpSessionManager.remotePath(path);
