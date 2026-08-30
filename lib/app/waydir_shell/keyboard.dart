@@ -92,8 +92,14 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
-    if (AppShortcuts.matches('compare', key) && _shell.isDual.value) {
-      _shell.compare.toggle();
+    if (AppShortcuts.matches('compare', key)) {
+      if (!_shell.isDual.value) {
+        showToast(context: context, message: t.compare.needsDualPane);
+      } else if (!_shell.compare.active.value && !_shell.compare.canStart) {
+        showToast(context: context, message: t.compare.needsLocalFolders);
+      } else {
+        _shell.compare.toggle();
+      }
 
       return KeyEventResult.handled;
     }

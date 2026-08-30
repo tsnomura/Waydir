@@ -136,7 +136,9 @@
     "recursive": "Recursive",
     "done": "Done",
     "running": "Comparing…",
-    "counts": "$identical identical · $differ different · $uniqueLeft left only · $uniqueRight right only"
+    "counts": "$identical identical · $differ different · $uniqueLeft left only · $uniqueRight right only",
+    "needsDualPane": "Compare needs two panes — press F9 for dual-pane mode first",
+    "needsLocalFolders": "Compare only works with local folders, not network/remote paths, trash, or tags"
   },
   "properties": {
     "title": "Properties",

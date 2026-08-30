@@ -492,6 +492,12 @@ class Translations$compare$en {
 
 	/// en: '$identical identical · $differ different · $uniqueLeft left only · $uniqueRight right only'
 	String counts({required Object identical, required Object differ, required Object uniqueLeft, required Object uniqueRight}) => '${identical} identical · ${differ} different · ${uniqueLeft} left only · ${uniqueRight} right only';
+
+	/// en: 'Compare needs two panes — press F9 for dual-pane mode first'
+	String get needsDualPane => 'Compare needs two panes — press F9 for dual-pane mode first';
+
+	/// en: 'Compare only works with local folders, not network/remote paths, trash, or tags'
+	String get needsLocalFolders => 'Compare only works with local folders, not network/remote paths, trash, or tags';
 }
 
 // Path: properties
@@ -4210,6 +4216,8 @@ extension on Translations {
 			'compare.done' => 'Done',
 			'compare.running' => 'Comparing…',
 			'compare.counts' => ({required Object identical, required Object differ, required Object uniqueLeft, required Object uniqueRight}) => '${identical} identical · ${differ} different · ${uniqueLeft} left only · ${uniqueRight} right only',
+			'compare.needsDualPane' => 'Compare needs two panes — press F9 for dual-pane mode first',
+			'compare.needsLocalFolders' => 'Compare only works with local folders, not network/remote paths, trash, or tags',
 			'properties.title' => 'Properties',
 			'properties.name' => 'Name',
 			'properties.type' => 'Type',
@@ -4603,10 +4611,10 @@ extension on Translations {
 			'keybindings.quickLookSave' => 'Save changes',
 			'keybindings.cursorUp' => 'Move up',
 			'keybindings.cursorDown' => 'Move down',
-			'keybindings.pageUp' => 'Move up one page',
-			'keybindings.pageDown' => 'Move down one page',
 			_ => null,
 		} ?? switch (path) {
+			'keybindings.pageUp' => 'Move up one page',
+			'keybindings.pageDown' => 'Move down one page',
 			'keybindings.home' => 'Jump to start',
 			'keybindings.end' => 'Jump to end',
 			'keybindings.newTab' => 'New tab',
