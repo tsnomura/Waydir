@@ -29,6 +29,7 @@ class _PaneDividerState extends State<PaneDivider> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onPanStart: (details) {
           _startX = details.globalPosition.dx;
           _startRatio = widget.shell.splitRatio.value;
