@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/terminal/shell_detector.dart';
 import 'package:waydir/core/terminal/windows_terminal_profiles.dart';
@@ -120,6 +122,33 @@ void main() {
 }
 ''');
       expect(options.single.label, 'http://example');
+    });
+
+    test('expands %VAR% references in commandline like WT does', () {
+      final entry = Platform.environment.entries.first;
+      final options = WindowsTerminalProfiles.parse('''
+{
+  "profiles": {
+    "list": [
+      {"name": "x", "commandline": "%${entry.key.toUpperCase()}%\\\\cmd.exe"}
+    ]
+  }
+}
+''');
+      expect(options.single.path, '${entry.value}\\cmd.exe');
+    });
+
+    test('leaves unresolvable %VAR% references untouched', () {
+      final options = WindowsTerminalProfiles.parse(r'''
+{
+  "profiles": {
+    "list": [
+      {"name": "x", "commandline": "%WAYDIR_TEST_NOT_A_REAL_VAR%\\cmd.exe"}
+    ]
+  }
+}
+''');
+      expect(options.single.path, r'%WAYDIR_TEST_NOT_A_REAL_VAR%\cmd.exe');
     });
   });
 }

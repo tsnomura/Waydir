@@ -58,7 +58,7 @@ class WindowsTerminalProfiles {
     if (source == 'Windows.Terminal.Azure') return null;
     final commandline = entry['commandline'];
     if (commandline is! String || commandline.trim().isEmpty) return null;
-    final tokens = _tokenize(commandline.trim());
+    final tokens = _tokenize(_expandEnvVars(commandline.trim()));
     if (tokens.isEmpty) return null;
 
     return ShellOption(
@@ -66,6 +66,23 @@ class WindowsTerminalProfiles {
       args: tokens.skip(1).toList(),
       label: name,
     );
+  }
+
+  /// Expands `%VAR%` references the way Windows Terminal does before it
+  /// spawns a profile's `commandline` (e.g. `%SystemRoot%`, `%USERPROFILE%`).
+  /// Lookups are case-insensitive, matching Windows env var semantics.
+  /// Unknown variables are left untouched.
+  static String _expandEnvVars(String value) {
+    final env = Platform.environment;
+
+    return value.replaceAllMapped(RegExp('%([^%]+)%'), (match) {
+      final name = match.group(1)!;
+      for (final entry in env.entries) {
+        if (entry.key.toLowerCase() == name.toLowerCase()) return entry.value;
+      }
+
+      return match.group(0)!;
+    });
   }
 
   static File? _findSettingsFile() {
