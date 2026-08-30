@@ -37,6 +37,7 @@ class _PaneDividerState extends State<PaneDivider> {
           final dx = details.globalPosition.dx - _startX;
           widget.shell.setSplitRatio(_startRatio + dx / widget.totalWidth);
         },
+        onDoubleTap: widget.shell.swapPanes,
         child: SizedBox(
           width: PaneDivider.hitWidth,
           child: Center(

@@ -320,6 +320,16 @@ class ShellStore {
     }
   }
 
+  /// Swaps the left and right panes' browsing content (tabs, history,
+  /// selection, everything each pane's [PaneStore] holds). Terminal panel
+  /// state stays tied to its slot, matching how it's already treated as
+  /// position-based when entering/exiting dual mode.
+  void swapPanes() {
+    if (!isDual.value || panes.value.length < 2) return;
+    final list = panes.value;
+    panes.value = [list[1], list[0]];
+  }
+
   void setSplitRatio(double ratio) {
     splitRatio.value = ratio.clamp(0.2, 0.8);
   }
