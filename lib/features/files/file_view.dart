@@ -1761,13 +1761,13 @@ class _ListRowState extends State<_ListRow> {
         now.difference(_lastTap!).inMilliseconds < _kDoubleTapMs) {
       _lastTap = null;
       final keys = HardwareKeyboard.instance;
-      if (widget.entry.type == FileItemType.folder &&
-          keys.isControlPressed &&
-          keys.isShiftPressed) {
+      final isFolder = widget.entry.type == FileItemType.folder;
+      if (isFolder && keys.isControlPressed && keys.isShiftPressed) {
         widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
-      } else if (widget.entry.type == FileItemType.folder &&
-          keys.isControlPressed) {
+      } else if (isFolder && keys.isControlPressed) {
         widget.onOpenInOtherPane?.call(widget.entry.path);
+      } else if (isFolder && keys.isShiftPressed) {
+        widget.onOpenInNewTab?.call(widget.entry.path);
       } else {
         widget.onOpen(widget.entry);
       }

@@ -2023,7 +2023,16 @@ class _ItemRowState extends State<_ItemRow> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
-          onTap: () => widget.onTap(widget.item.path),
+          onTap: () {
+            if (widget.isMounted &&
+                HardwareKeyboard.instance.isShiftPressed &&
+                widget.onMiddleTap != null) {
+              widget.onMiddleTap!();
+
+              return;
+            }
+            widget.onTap(widget.item.path);
+          },
           onTertiaryTapUp: (_) {
             if (widget.isMounted) {
               widget.onMiddleTap?.call();
