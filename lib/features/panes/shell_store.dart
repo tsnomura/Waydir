@@ -23,6 +23,7 @@ import '../../ui/overlays/notification_store.dart';
 import '../../i18n/strings.g.dart';
 import '../tabs/tabs_store.dart';
 import 'pane_store.dart';
+import 'terminal_cwd_signal.dart';
 import 'terminal_layout.dart';
 import 'terminal_tab.dart';
 
@@ -69,6 +70,7 @@ class ShellStore {
       operationStore: operationStore,
     );
     _restoreSession();
+    TerminalCwdSignal.start(openInNewTab);
   }
 
   void openInNewTab(String path) => activePane.value?.tabs.addTab(path);
@@ -510,6 +512,7 @@ class ShellStore {
   }
 
   void dispose() {
+    TerminalCwdSignal.stop();
     compare.dispose();
     _persistDisposer?.call();
     _persistDisposer = null;
