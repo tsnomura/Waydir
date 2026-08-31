@@ -964,7 +964,11 @@ Widget _split(
 }) {
   final scrollablePreview = scrollController == null
       ? preview
-      : PrimaryScrollController(controller: scrollController, child: preview);
+      : PrimaryScrollController(
+          controller: scrollController,
+          automaticallyInheritForPlatforms: TargetPlatform.values.toSet(),
+          child: preview,
+        );
   if (!showInfo) return scrollablePreview;
 
   return Row(
