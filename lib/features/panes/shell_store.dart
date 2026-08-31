@@ -61,6 +61,7 @@ class ShellStore {
   void Function()? _persistDisposer;
   Timer? _tabPersistDebounce;
   int _nextTerminalId = 1;
+  String? _cwdSignalDir;
 
   ShellStore({required this.operationStore, required this.notificationStore}) {
     current = this;
@@ -70,7 +71,23 @@ class ShellStore {
       operationStore: operationStore,
     );
     _restoreSession();
-    TerminalCwdSignal.start(openInNewTab);
+    TerminalCwdSignal.directory().then((dir) {
+      _cwdSignalDir = dir;
+      TerminalCwdSignal.start(_openFromTerminalSignal);
+    });
+  }
+
+  /// Opens [path] as a new tab in whichever pane owns terminal [terminalId],
+  /// per a `TerminalCwdSignal` write. Falls back to the active pane if the
+  /// terminal is no longer around (e.g. its tab was already closed).
+  void _openFromTerminalSignal(int terminalId, String path) {
+    final terminal = terminals.value.where((t) => t.id == terminalId);
+    final slot = terminal.isEmpty
+        ? activePaneIndex.value
+        : (isDual.value ? terminal.first.originPane : 0);
+    final list = panes.value;
+    if (slot < 0 || slot >= list.length) return;
+    list[slot].tabs.addTab(path);
   }
 
   void openInNewTab(String path) => activePane.value?.tabs.addTab(path);
@@ -360,10 +377,14 @@ class ShellStore {
       _setTerminalLabel(id, title);
     };
     final launch = spec ?? TerminalLaunch.resolve(cwd);
+    final signalDir = _cwdSignalDir;
     final started = session.start(
       cwd: launch.cwd,
       shell: launch.shell,
       args: launch.args,
+      env: signalDir == null
+          ? const {}
+          : {'WAYDIR_TERMINAL_ID': '$id', 'WAYDIR_CWD_DIR': signalDir},
       onExit: () => closeTerminalTab(id),
     );
     if (!started) {

@@ -65,6 +65,7 @@ class PtySession {
     required String cwd,
     String shell = '',
     List<String> args = const [],
+    Map<String, String> env = const {},
     void Function()? onExit,
   }) {
     if (_id != null) return true;
@@ -73,6 +74,7 @@ class PtySession {
       shell: shell,
       cwd: cwd,
       args: args,
+      env: env,
       cols: terminal.viewWidth,
       rows: terminal.viewHeight,
     );

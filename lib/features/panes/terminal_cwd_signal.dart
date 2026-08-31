@@ -1,56 +1,78 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/app_dirs.dart';
 
-/// Watches a single plain-text file for a directory path to open, as a
-/// no-protocol bridge from any shell into the active pane — like typing a
-/// command instead of `ls` that shows the result in a tab. Whatever writes
-/// the file last wins; there's no per-terminal identity, so it always opens
-/// in whichever pane is currently active.
+/// A file-per-terminal bridge from any shell into the pane that owns it —
+/// like typing a command instead of `ls` that shows the result in a tab, but
+/// (unlike a single shared file) it knows which terminal sent it, so it
+/// opens in the right pane regardless of which one currently has UI focus.
 ///
-/// One-time shell setup, substituting the path from [filePath]:
-///   PowerShell: `function wd { (Get-Location).Path | Set-Content -NoNewline PATH }`
-///   bash/zsh:   `wd() { printf '%s' "$PWD" > PATH; }`
+/// Each terminal Waydir spawns gets `WAYDIR_TERMINAL_ID` and `WAYDIR_CWD_DIR`
+/// in its environment. Writing the current directory to
+/// `$WAYDIR_CWD_DIR/$WAYDIR_TERMINAL_ID.txt` is picked up and routed to that
+/// terminal's pane; the file is deleted once handled.
+///
+/// One-time shell setup:
+///   PowerShell: `function wd { (Get-Location).Path | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$env:WAYDIR_TERMINAL_ID.txt" }`
+///   bash/zsh:   `wd() { printf '%s' "$PWD" > "$WAYDIR_CWD_DIR/$WAYDIR_TERMINAL_ID.txt"; }`
 class TerminalCwdSignal {
   TerminalCwdSignal._();
 
-  static StreamSubscription<FileSystemEvent>? _subscription;
-  static Timer? _debounce;
+  static final _fileNamePattern = RegExp(r'^(\d+)\.txt$');
 
-  static Future<String> filePath() async {
+  static StreamSubscription<FileSystemEvent>? _subscription;
+  static final Map<String, Timer> _debounce = {};
+
+  static Future<String> directory() async {
     final dir = await AppDirs.support();
 
-    return '$dir${Platform.pathSeparator}cwd_signal.txt';
+    return p.join(dir, 'cwd_signals');
   }
 
-  static Future<void> start(void Function(String path) onPath) async {
+  /// Starts watching [directory]'s signal directory. `onSignal` is called
+  /// with the terminal id and the directory path it reported.
+  static Future<void> start(
+    void Function(int terminalId, String path) onSignal,
+  ) async {
     await stop();
-    final path = await filePath();
-    final file = File(path);
+    final dirPath = await directory();
+    final dir = Directory(dirPath);
     try {
-      if (!file.existsSync()) file.createSync(recursive: true);
+      dir.createSync(recursive: true);
     } catch (e, st) {
       log.warn(
         'terminal',
-        'failed to create cwd signal file',
+        'failed to create cwd signal directory',
         error: e,
         stack: st,
       );
 
       return;
     }
-    _subscription = file.watch(events: FileSystemEvent.modify).listen((_) {
-      _debounce?.cancel();
-      _debounce = Timer(
-        const Duration(milliseconds: 150),
-        () => _handleChange(file, onPath),
-      );
-    });
+    _subscription = dir
+        .watch(events: FileSystemEvent.create | FileSystemEvent.modify)
+        .listen((event) {
+          final name = p.basename(event.path);
+          if (!_fileNamePattern.hasMatch(name)) return;
+          _debounce[name]?.cancel();
+          _debounce[name] = Timer(const Duration(milliseconds: 150), () {
+            _debounce.remove(name);
+            _handleFile(File(event.path), name, onSignal);
+          });
+        });
   }
 
-  static void _handleChange(File file, void Function(String path) onPath) {
+  static void _handleFile(
+    File file,
+    String name,
+    void Function(int terminalId, String path) onSignal,
+  ) {
+    final id = int.tryParse(_fileNamePattern.firstMatch(name)!.group(1)!);
+    if (id == null) return;
     final String content;
     try {
       content = file.readAsStringSync().trim();
@@ -64,13 +86,20 @@ class TerminalCwdSignal {
 
       return;
     }
+    try {
+      file.deleteSync();
+    } catch (_) {
+      // Best-effort cleanup; a leftover file just gets overwritten next time.
+    }
     if (content.isEmpty || !Directory(content).existsSync()) return;
-    onPath(content);
+    onSignal(id, content);
   }
 
   static Future<void> stop() async {
-    _debounce?.cancel();
-    _debounce = null;
+    for (final timer in _debounce.values) {
+      timer.cancel();
+    }
+    _debounce.clear();
     await _subscription?.cancel();
     _subscription = null;
   }

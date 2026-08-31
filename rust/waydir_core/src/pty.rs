@@ -42,15 +42,19 @@ fn default_shell() -> String {
 /// Returns a session id, or 0 on failure.
 ///
 /// `args` is an optional newline-separated argument list passed to `shell`;
-/// empty or null spawns the program with no arguments.
+/// empty or null spawns the program with no arguments. `env` is an optional
+/// newline-separated list of `KEY=VALUE` pairs added to the spawned
+/// process's environment (on top of whatever it inherits).
 ///
 /// # Safety
-/// `shell`, `cwd` and `args` must be valid NUL-terminated C strings or null.
+/// `shell`, `cwd`, `args` and `env` must be valid NUL-terminated C strings or
+/// null.
 #[no_mangle]
 pub unsafe extern "C" fn waydir_pty_open(
     shell: *const c_char,
     cwd: *const c_char,
     args: *const c_char,
+    env: *const c_char,
     cols: u16,
     rows: u16,
 ) -> u64 {
@@ -61,6 +65,21 @@ pub unsafe extern "C" fn waydir_pty_open(
     let args: Vec<String> = cstr(args)
         .filter(|s| !s.is_empty())
         .map(|s| s.split('\n').map(|a| a.to_owned()).collect())
+        .unwrap_or_default();
+    let env_pairs: Vec<(String, String)> = cstr(env)
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            s.split('\n')
+                .filter_map(|line| {
+                    let (k, v) = line.split_once('=')?;
+                    if k.is_empty() {
+                        None
+                    } else {
+                        Some((k.to_owned(), v.to_owned()))
+                    }
+                })
+                .collect()
+        })
         .unwrap_or_default();
 
     let pty_system = native_pty_system();
@@ -83,6 +102,9 @@ pub unsafe extern "C" fn waydir_pty_open(
         cmd.cwd(dir);
     }
     cmd.env("TERM", "xterm-256color");
+    for (k, v) in &env_pairs {
+        cmd.env(k, v);
+    }
 
     let child = match pair.slave.spawn_command(cmd) {
         Ok(c) => c,

@@ -104,11 +104,19 @@ typedef _PtyOpenNative =
       Pointer<Utf8>,
       Pointer<Utf8>,
       Pointer<Utf8>,
+      Pointer<Utf8>,
       Uint16,
       Uint16,
     );
 typedef _PtyOpenDart =
-    int Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, int, int);
+    int Function(
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      int,
+      int,
+    );
 
 typedef _PtyReadNative = Pointer<Uint8> Function(Uint64, Pointer<IntPtr>);
 typedef _PtyReadDart = Pointer<Uint8> Function(int, Pointer<IntPtr>);
@@ -1261,12 +1269,15 @@ class WaydirCoreLoader {
   }
 
   /// Spawns a shell on a pseudo-terminal. Returns the session id, or null.
+  /// `env` entries are added to the spawned process's environment on top of
+  /// whatever it inherits.
   static int? ptyOpen({
     required String shell,
     required String cwd,
     required int cols,
     required int rows,
     List<String> args = const [],
+    Map<String, String> env = const {},
   }) {
     final lib = requireLib();
     final fn = lib.lookupFunction<_PtyOpenNative, _PtyOpenDart>(
@@ -1275,8 +1286,12 @@ class WaydirCoreLoader {
     final shellPtr = shell.toNativeUtf8();
     final cwdPtr = cwd.toNativeUtf8();
     final argsPtr = args.join('\n').toNativeUtf8();
+    final envPtr = env.entries
+        .map((e) => '${e.key}=${e.value}')
+        .join('\n')
+        .toNativeUtf8();
     try {
-      final id = fn(shellPtr, cwdPtr, argsPtr, cols, rows);
+      final id = fn(shellPtr, cwdPtr, argsPtr, envPtr, cols, rows);
 
       return id == 0 ? null : id;
     } catch (e, st) {
@@ -1287,6 +1302,7 @@ class WaydirCoreLoader {
       calloc.free(shellPtr);
       calloc.free(cwdPtr);
       calloc.free(argsPtr);
+      calloc.free(envPtr);
     }
   }
 
