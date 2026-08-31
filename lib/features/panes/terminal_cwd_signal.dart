@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:ffi';
 import 'dart:io';
 
-import 'package:ffi/ffi.dart';
 import 'package:path/path.dart' as p;
-import 'package:win32/win32.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/app_dirs.dart';
@@ -21,8 +18,9 @@ import '../../core/platform/app_dirs.dart';
 /// reserved and never assigned to a real terminal, so it always falls back
 /// to whichever pane is currently active — the id an *external* shell
 /// (one Waydir didn't spawn) should use, since it has no
-/// `WAYDIR_TERMINAL_ID` of its own. On Windows, [persistCwdDirEnvVar] makes
-/// `WAYDIR_CWD_DIR` available there too, in newly-opened shells.
+/// `WAYDIR_TERMINAL_ID` of its own. On Windows, persisting `WAYDIR_CWD_DIR`
+/// as a user env var (see `WindowsEnvVars`) makes it available there too, in
+/// newly-opened shells.
 ///
 /// The written path must be a native path Windows can resolve directly —
 /// [Directory.existsSync] rejects anything else and the signal is dropped
@@ -47,129 +45,6 @@ class TerminalCwdSignal {
     final dir = await AppDirs.support();
 
     return p.join(dir, 'cwd_signals');
-  }
-
-  /// Persists `WAYDIR_CWD_DIR=[dir]` as a Windows user environment variable
-  /// (`HKCU\Environment`) and broadcasts the change, so shells opened after
-  /// this runs — including ones Waydir never spawned — see it without a
-  /// logout. A no-op on other platforms and if the value is already current.
-  static void persistCwdDirEnvVar(String dir) {
-    if (!Platform.isWindows) return;
-    const name = 'WAYDIR_CWD_DIR';
-    if (_readEnvVar(name) == dir) return;
-    final hKeyPtr = calloc<IntPtr>();
-    final subKeyPtr = 'Environment'.toNativeUtf16();
-    try {
-      final created = RegCreateKeyEx(
-        HKEY_CURRENT_USER,
-        subKeyPtr,
-        0,
-        nullptr,
-        0,
-        KEY_WRITE,
-        nullptr,
-        hKeyPtr,
-        nullptr,
-      );
-      if (created != ERROR_SUCCESS) return;
-      final valueNamePtr = name.toNativeUtf16();
-      final valuePtr = dir.toNativeUtf16();
-      try {
-        RegSetValueEx(
-          hKeyPtr.value,
-          valueNamePtr,
-          0,
-          REG_SZ,
-          valuePtr.cast<Uint8>(),
-          (dir.length + 1) * 2,
-        );
-      } finally {
-        calloc.free(valueNamePtr);
-        calloc.free(valuePtr);
-      }
-      RegCloseKey(hKeyPtr.value);
-    } catch (e, st) {
-      log.warn(
-        'terminal',
-        'failed to persist WAYDIR_CWD_DIR',
-        error: e,
-        stack: st,
-      );
-
-      return;
-    } finally {
-      calloc.free(subKeyPtr);
-      calloc.free(hKeyPtr);
-    }
-    final lParamPtr = 'Environment'.toNativeUtf16();
-    final resultPtr = calloc<IntPtr>();
-    try {
-      SendMessageTimeout(
-        HWND_BROADCAST,
-        WM_SETTINGCHANGE,
-        0,
-        lParamPtr.address,
-        SMTO_ABORTIFHUNG,
-        5000,
-        resultPtr,
-      );
-    } finally {
-      calloc.free(lParamPtr);
-      calloc.free(resultPtr);
-    }
-  }
-
-  static String? _readEnvVar(String name) {
-    final hKeyPtr = calloc<IntPtr>();
-    final subKeyPtr = 'Environment'.toNativeUtf16();
-    try {
-      final opened = RegOpenKeyEx(
-        HKEY_CURRENT_USER,
-        subKeyPtr,
-        0,
-        KEY_READ,
-        hKeyPtr,
-      );
-      if (opened != ERROR_SUCCESS) return null;
-      final valueNamePtr = name.toNativeUtf16();
-      final sizePtr = calloc<Uint32>();
-      try {
-        var status = RegQueryValueEx(
-          hKeyPtr.value,
-          valueNamePtr,
-          nullptr,
-          nullptr,
-          nullptr,
-          sizePtr,
-        );
-        if (status != ERROR_SUCCESS || sizePtr.value == 0) return null;
-        final dataPtr = calloc<Uint8>(sizePtr.value);
-        try {
-          status = RegQueryValueEx(
-            hKeyPtr.value,
-            valueNamePtr,
-            nullptr,
-            nullptr,
-            dataPtr,
-            sizePtr,
-          );
-          if (status != ERROR_SUCCESS) return null;
-
-          return dataPtr.cast<Utf16>().toDartString();
-        } finally {
-          calloc.free(dataPtr);
-        }
-      } finally {
-        calloc.free(valueNamePtr);
-        calloc.free(sizePtr);
-      }
-    } catch (_) {
-      return null;
-    } finally {
-      calloc.free(subKeyPtr);
-      RegCloseKey(hKeyPtr.value);
-      calloc.free(hKeyPtr);
-    }
   }
 
   /// Starts watching [directory]'s signal directory. `onSignal` is called

@@ -12,6 +12,7 @@ import '../../core/database/app_database.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/platform/trash_location.dart';
+import '../../core/platform/windows_env_vars.dart';
 import '../../core/settings/settings_store.dart';
 import '../../core/terminal/pty_session.dart';
 import '../../core/terminal/terminal_launch.dart';
@@ -22,6 +23,7 @@ import '../tags/tag_path.dart';
 import '../../ui/overlays/notification_store.dart';
 import '../../i18n/strings.g.dart';
 import '../tabs/tabs_store.dart';
+import 'pane_dir_publisher.dart';
 import 'pane_store.dart';
 import 'terminal_cwd_signal.dart';
 import 'terminal_layout.dart';
@@ -59,9 +61,11 @@ class ShellStore {
   });
 
   void Function()? _persistDisposer;
+  void Function()? _paneDirDisposer;
   Timer? _tabPersistDebounce;
   int _nextTerminalId = 1;
   String? _cwdSignalDir;
+  String? _paneDirRoot;
 
   ShellStore({required this.operationStore, required this.notificationStore}) {
     current = this;
@@ -71,10 +75,39 @@ class ShellStore {
       operationStore: operationStore,
     );
     _restoreSession();
-    TerminalCwdSignal.directory().then((dir) {
-      _cwdSignalDir = dir;
+    Future.wait([
+      TerminalCwdSignal.directory(),
+      PaneDirPublisher.directory(),
+    ]).then((dirs) {
+      final cwdSignalDir = dirs[0];
+      final paneDirRoot = dirs[1];
+      _cwdSignalDir = cwdSignalDir;
+      _paneDirRoot = paneDirRoot;
+      Directory(paneDirRoot).createSync(recursive: true);
       TerminalCwdSignal.start(_openFromTerminalSignal);
-      TerminalCwdSignal.persistCwdDirEnvVar(dir);
+      _setupPaneDirEffect();
+      WindowsEnvVars.persist({
+        'WAYDIR_CWD_DIR': cwdSignalDir,
+        'WAYDIR_PANE_DIR_ROOT': paneDirRoot,
+      });
+    });
+  }
+
+  /// Keeps `pane_dirs/<slot>.txt` and `pane_dirs/active.txt` in sync with
+  /// each pane's current directory, for [PaneDirPublisher].
+  void _setupPaneDirEffect() {
+    _paneDirDisposer = effect(() {
+      final dir = _paneDirRoot;
+      if (dir == null) return;
+      final list = panes.value;
+      final activeIdx = activePaneIndex.value;
+      for (var slot = 0; slot < list.length; slot++) {
+        final path = list[slot].tabs.activeTab.value.store.currentPath.value;
+        PaneDirPublisher.publish(dir, '$slot', path);
+        if (slot == activeIdx) {
+          PaneDirPublisher.publish(dir, 'active', path);
+        }
+      }
     });
   }
 
@@ -379,13 +412,21 @@ class ShellStore {
     };
     final launch = spec ?? TerminalLaunch.resolve(cwd);
     final signalDir = _cwdSignalDir;
+    final paneDirRoot = _paneDirRoot;
+    final originPane = isDual.value ? slot : 0;
+    final env = <String, String>{'WAYDIR_ORIGIN_PANE': '$originPane'};
+    if (signalDir != null) {
+      env['WAYDIR_TERMINAL_ID'] = '$id';
+      env['WAYDIR_CWD_DIR'] = signalDir;
+    }
+    if (paneDirRoot != null) {
+      env['WAYDIR_PANE_DIR_ROOT'] = paneDirRoot;
+    }
     final started = session.start(
       cwd: launch.cwd,
       shell: launch.shell,
       args: launch.args,
-      env: signalDir == null
-          ? const {}
-          : {'WAYDIR_TERMINAL_ID': '$id', 'WAYDIR_CWD_DIR': signalDir},
+      env: env,
       onExit: () => closeTerminalTab(id),
     );
     if (!started) {
@@ -395,7 +436,7 @@ class ShellStore {
     }
     final tab = TerminalTab(
       id: id,
-      originPane: isDual.value ? slot : 0,
+      originPane: originPane,
       session: session,
       focusNode: FocusNode(debugLabel: 'terminal-tab-$id'),
       cwd: cwd,
@@ -535,6 +576,8 @@ class ShellStore {
 
   void dispose() {
     TerminalCwdSignal.stop();
+    _paneDirDisposer?.call();
+    _paneDirDisposer = null;
     compare.dispose();
     _persistDisposer?.call();
     _persistDisposer = null;
