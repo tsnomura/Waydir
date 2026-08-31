@@ -74,6 +74,7 @@ class ShellStore {
     TerminalCwdSignal.directory().then((dir) {
       _cwdSignalDir = dir;
       TerminalCwdSignal.start(_openFromTerminalSignal);
+      TerminalCwdSignal.persistCwdDirEnvVar(dir);
     });
   }
 
