@@ -42,6 +42,7 @@ class CodeEditor extends StatefulWidget {
   final String initial;
   final Signal<bool> editorActive;
   final CodeEditorController? controller;
+  final ScrollController? verticalScrollController;
 
   const CodeEditor({
     super.key,
@@ -50,6 +51,7 @@ class CodeEditor extends StatefulWidget {
     required this.initial,
     required this.editorActive,
     this.controller,
+    this.verticalScrollController,
   });
 
   @override
@@ -59,7 +61,9 @@ class CodeEditor extends StatefulWidget {
 class _CodeEditorState extends State<CodeEditor> {
   late final re.CodeLineEditingController _ctrl;
   late final bool _highlight = widget.initial.length <= maxHighlightChars;
-  final _scroll = re.CodeScrollController();
+  late final _scroll = re.CodeScrollController(
+    verticalScroller: widget.verticalScrollController,
+  );
   final _focus = FocusNode();
 
   Object? _savedRevision;

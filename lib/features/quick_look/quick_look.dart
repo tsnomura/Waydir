@@ -1102,6 +1102,7 @@ class _ProbeLoader extends StatelessWidget {
                 initial: res.text,
                 editorActive: editorActive,
                 controller: editorController,
+                verticalScrollController: scrollController,
               ),
               entry,
               showInfo: showInfo,
