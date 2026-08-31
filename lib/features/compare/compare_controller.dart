@@ -97,6 +97,11 @@ class CompareController {
     final rightStore = pair.$2;
     final leftRoot = leftStore.currentPath.value;
     final rightRoot = rightStore.currentPath.value;
+    if (!active.value &&
+        (PlatformPaths.isNetworkPath(leftRoot) ||
+            PlatformPaths.isNetworkPath(rightRoot))) {
+      this.recursive.value = false;
+    }
     _leftRoot = leftRoot;
     _rightRoot = rightRoot;
     running.value = true;
