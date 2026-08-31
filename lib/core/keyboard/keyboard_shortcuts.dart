@@ -332,7 +332,6 @@ class AppShortcuts {
       label: () => '',
       group: ShortcutGroup.quickLook,
       key: LogicalKeyboardKey.arrowUp,
-      altKey: LogicalKeyboardKey.arrowLeft,
       editable: false,
     ),
     ShortcutDef(
@@ -340,7 +339,6 @@ class AppShortcuts {
       label: () => '',
       group: ShortcutGroup.quickLook,
       key: LogicalKeyboardKey.arrowDown,
-      altKey: LogicalKeyboardKey.arrowRight,
       editable: false,
     ),
     ShortcutDef(

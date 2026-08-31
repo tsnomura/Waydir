@@ -73,6 +73,7 @@ class _QuickLookState extends State<_QuickLook> {
   final _focus = FocusNode();
   final _editorActive = signal(false);
   final _editorController = CodeEditorController();
+  final _contentScroll = ScrollController();
   bool _compact = true;
   bool _showInfo = true;
   bool _markdownRendered = true;
@@ -219,6 +220,7 @@ class _QuickLookState extends State<_QuickLook> {
     _focus.dispose();
     _editorActive.dispose();
     _editorController.dispose();
+    _contentScroll.dispose();
     super.dispose();
   }
 
@@ -289,6 +291,29 @@ class _QuickLookState extends State<_QuickLook> {
     return KeyEventResult.handled;
   }
 
+  /// Scrolls the previewed file's content by roughly one page, for
+  /// PageUp/PageDown. A no-op when the current preview isn't scrollable
+  /// (e.g. an image) or nothing is attached yet.
+  KeyEventResult _scrollContent(int direction, bool isRepeat) {
+    if (isRepeat && !_acceptCursorRepeat()) return KeyEventResult.handled;
+    if (!isRepeat) _lastCursorRepeatAt = null;
+    if (_contentScroll.hasClients) {
+      final position = _contentScroll.position;
+      final page = position.viewportDimension * 0.9;
+      final target = (position.pixels + direction * page).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      _contentScroll.animateTo(
+        target,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    }
+
+    return KeyEventResult.handled;
+  }
+
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
     final isRepeat = event is KeyRepeatEvent;
     if (event is! KeyDownEvent && !isRepeat) return KeyEventResult.ignored;
@@ -318,6 +343,12 @@ class _QuickLookState extends State<_QuickLook> {
       _requestClose();
 
       return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.pageDown) {
+      return _scrollContent(1, isRepeat);
+    }
+    if (key == LogicalKeyboardKey.pageUp) {
+      return _scrollContent(-1, isRepeat);
     }
     final gridMode = SettingsStore.instance.fileViewMode.value == 'grid';
     if (gridMode &&
@@ -609,6 +640,7 @@ class _QuickLookState extends State<_QuickLook> {
                 showInfo: _showInfo,
                 onCompactChanged: _setCompact,
                 markdownRendered: _markdownRendered,
+                scrollController: _contentScroll,
               ),
             ),
           ],
@@ -924,17 +956,25 @@ class _CloseButtonState extends State<_CloseButton> {
   }
 }
 
-Widget _split(Widget preview, FileEntry entry, {required bool showInfo}) {
-  if (!showInfo) return preview;
+Widget _split(
+  Widget preview,
+  FileEntry entry, {
+  required bool showInfo,
+  ScrollController? scrollController,
+}) {
+  final scrollablePreview = scrollController == null
+      ? preview
+      : PrimaryScrollController(controller: scrollController, child: preview);
+  if (!showInfo) return scrollablePreview;
 
   return Row(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Expanded(child: preview),
+      Expanded(child: scrollablePreview),
       Container(width: 1, color: AppColors.bgDivider),
       SizedBox(
         width: panelWidth,
-        child: InfoPanel(entry: entry),
+        child: PrimaryScrollController.none(child: InfoPanel(entry: entry)),
       ),
     ],
   );
@@ -947,6 +987,7 @@ class _Body extends StatelessWidget {
   final bool showInfo;
   final ValueChanged<bool> onCompactChanged;
   final bool markdownRendered;
+  final ScrollController scrollController;
 
   const _Body({
     required this.entry,
@@ -955,6 +996,7 @@ class _Body extends StatelessWidget {
     required this.showInfo,
     required this.onCompactChanged,
     required this.markdownRendered,
+    required this.scrollController,
   });
 
   @override
@@ -980,13 +1022,23 @@ class _Body extends StatelessWidget {
       release();
       onCompactChanged(false);
 
-      return _split(PdfPreview(path: e.realPath), e, showInfo: showInfo);
+      return _split(
+        PdfPreview(path: e.realPath),
+        e,
+        showInfo: showInfo,
+        scrollController: scrollController,
+      );
     }
     if (markdownExts.contains(e.extension) && markdownRendered) {
       release();
       onCompactChanged(false);
 
-      return _split(MarkdownPreview(entry: e), e, showInfo: showInfo);
+      return _split(
+        MarkdownPreview(entry: e),
+        e,
+        showInfo: showInfo,
+        scrollController: scrollController,
+      );
     }
     if (binaryExts.contains(e.extension)) {
       release();
@@ -1001,6 +1053,7 @@ class _Body extends StatelessWidget {
       editorController: editorController,
       showInfo: showInfo,
       onCompactChanged: onCompactChanged,
+      scrollController: scrollController,
     );
   }
 }
@@ -1011,6 +1064,7 @@ class _ProbeLoader extends StatelessWidget {
   final CodeEditorController editorController;
   final bool showInfo;
   final ValueChanged<bool> onCompactChanged;
+  final ScrollController scrollController;
 
   const _ProbeLoader({
     required this.entry,
@@ -1018,6 +1072,7 @@ class _ProbeLoader extends StatelessWidget {
     required this.editorController,
     required this.showInfo,
     required this.onCompactChanged,
+    required this.scrollController,
   });
 
   @override
