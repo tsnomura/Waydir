@@ -102,6 +102,10 @@ class AppSettings extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get dragMovesByDefault =>
       boolean().withDefault(const Constant(false))();
+  RealColumn get windowWidth => real().withDefault(const Constant(1100.0))();
+  RealColumn get windowHeight => real().withDefault(const Constant(700.0))();
+  BoolColumn get windowMaximized =>
+      boolean().withDefault(const Constant(false))();
 }
 
 class SessionTabs extends Table {
@@ -248,7 +252,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 43;
+  int get schemaVersion => 44;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -450,6 +454,11 @@ class AppDatabase extends _$AppDatabase {
           DELETE FROM tags
           WHERE id NOT IN (SELECT MIN(id) FROM tags GROUP BY name, color);
         ''');
+      }
+      if (from < 44) {
+        await addSettingColumn(appSettings.windowWidth);
+        await addSettingColumn(appSettings.windowHeight);
+        await addSettingColumn(appSettings.windowMaximized);
       }
     },
   );

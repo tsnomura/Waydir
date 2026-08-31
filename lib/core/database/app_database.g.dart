@@ -792,6 +792,45 @@ class $AppSettingsTable extends AppSettings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _windowWidthMeta = const VerificationMeta(
+    'windowWidth',
+  );
+  @override
+  late final GeneratedColumn<double> windowWidth = GeneratedColumn<double>(
+    'window_width',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1100.0),
+  );
+  static const VerificationMeta _windowHeightMeta = const VerificationMeta(
+    'windowHeight',
+  );
+  @override
+  late final GeneratedColumn<double> windowHeight = GeneratedColumn<double>(
+    'window_height',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(700.0),
+  );
+  static const VerificationMeta _windowMaximizedMeta = const VerificationMeta(
+    'windowMaximized',
+  );
+  @override
+  late final GeneratedColumn<bool> windowMaximized = GeneratedColumn<bool>(
+    'window_maximized',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("window_maximized" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -852,6 +891,9 @@ class $AppSettingsTable extends AppSettings
     quickLookWrapLines,
     quickLookShowStatistics,
     dragMovesByDefault,
+    windowWidth,
+    windowHeight,
+    windowMaximized,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1357,6 +1399,33 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('window_width')) {
+      context.handle(
+        _windowWidthMeta,
+        windowWidth.isAcceptableOrUnknown(
+          data['window_width']!,
+          _windowWidthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('window_height')) {
+      context.handle(
+        _windowHeightMeta,
+        windowHeight.isAcceptableOrUnknown(
+          data['window_height']!,
+          _windowHeightMeta,
+        ),
+      );
+    }
+    if (data.containsKey('window_maximized')) {
+      context.handle(
+        _windowMaximizedMeta,
+        windowMaximized.isAcceptableOrUnknown(
+          data['window_maximized']!,
+          _windowMaximizedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1598,6 +1667,18 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}drag_moves_by_default'],
       )!,
+      windowWidth: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}window_width'],
+      )!,
+      windowHeight: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}window_height'],
+      )!,
+      windowMaximized: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}window_maximized'],
+      )!,
     );
   }
 
@@ -1666,6 +1747,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final bool quickLookWrapLines;
   final bool quickLookShowStatistics;
   final bool dragMovesByDefault;
+  final double windowWidth;
+  final double windowHeight;
+  final bool windowMaximized;
   const AppSetting({
     required this.id,
     required this.themeMode,
@@ -1725,6 +1809,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.quickLookWrapLines,
     required this.quickLookShowStatistics,
     required this.dragMovesByDefault,
+    required this.windowWidth,
+    required this.windowHeight,
+    required this.windowMaximized,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1793,6 +1880,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['quick_look_wrap_lines'] = Variable<bool>(quickLookWrapLines);
     map['quick_look_show_statistics'] = Variable<bool>(quickLookShowStatistics);
     map['drag_moves_by_default'] = Variable<bool>(dragMovesByDefault);
+    map['window_width'] = Variable<double>(windowWidth);
+    map['window_height'] = Variable<double>(windowHeight);
+    map['window_maximized'] = Variable<bool>(windowMaximized);
     return map;
   }
 
@@ -1856,6 +1946,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       quickLookWrapLines: Value(quickLookWrapLines),
       quickLookShowStatistics: Value(quickLookShowStatistics),
       dragMovesByDefault: Value(dragMovesByDefault),
+      windowWidth: Value(windowWidth),
+      windowHeight: Value(windowHeight),
+      windowMaximized: Value(windowMaximized),
     );
   }
 
@@ -1957,6 +2050,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         json['quickLookShowStatistics'],
       ),
       dragMovesByDefault: serializer.fromJson<bool>(json['dragMovesByDefault']),
+      windowWidth: serializer.fromJson<double>(json['windowWidth']),
+      windowHeight: serializer.fromJson<double>(json['windowHeight']),
+      windowMaximized: serializer.fromJson<bool>(json['windowMaximized']),
     );
   }
   @override
@@ -2031,6 +2127,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         quickLookShowStatistics,
       ),
       'dragMovesByDefault': serializer.toJson<bool>(dragMovesByDefault),
+      'windowWidth': serializer.toJson<double>(windowWidth),
+      'windowHeight': serializer.toJson<double>(windowHeight),
+      'windowMaximized': serializer.toJson<bool>(windowMaximized),
     };
   }
 
@@ -2093,6 +2192,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? quickLookWrapLines,
     bool? quickLookShowStatistics,
     bool? dragMovesByDefault,
+    double? windowWidth,
+    double? windowHeight,
+    bool? windowMaximized,
   }) => AppSetting(
     id: id ?? this.id,
     themeMode: themeMode ?? this.themeMode,
@@ -2158,6 +2260,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     quickLookShowStatistics:
         quickLookShowStatistics ?? this.quickLookShowStatistics,
     dragMovesByDefault: dragMovesByDefault ?? this.dragMovesByDefault,
+    windowWidth: windowWidth ?? this.windowWidth,
+    windowHeight: windowHeight ?? this.windowHeight,
+    windowMaximized: windowMaximized ?? this.windowMaximized,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -2325,6 +2430,15 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       dragMovesByDefault: data.dragMovesByDefault.present
           ? data.dragMovesByDefault.value
           : this.dragMovesByDefault,
+      windowWidth: data.windowWidth.present
+          ? data.windowWidth.value
+          : this.windowWidth,
+      windowHeight: data.windowHeight.present
+          ? data.windowHeight.value
+          : this.windowHeight,
+      windowMaximized: data.windowMaximized.present
+          ? data.windowMaximized.value
+          : this.windowMaximized,
     );
   }
 
@@ -2390,7 +2504,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('quickLookVimMode: $quickLookVimMode, ')
           ..write('quickLookWrapLines: $quickLookWrapLines, ')
           ..write('quickLookShowStatistics: $quickLookShowStatistics, ')
-          ..write('dragMovesByDefault: $dragMovesByDefault')
+          ..write('dragMovesByDefault: $dragMovesByDefault, ')
+          ..write('windowWidth: $windowWidth, ')
+          ..write('windowHeight: $windowHeight, ')
+          ..write('windowMaximized: $windowMaximized')
           ..write(')'))
         .toString();
   }
@@ -2455,6 +2572,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     quickLookWrapLines,
     quickLookShowStatistics,
     dragMovesByDefault,
+    windowWidth,
+    windowHeight,
+    windowMaximized,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2518,7 +2638,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.quickLookVimMode == this.quickLookVimMode &&
           other.quickLookWrapLines == this.quickLookWrapLines &&
           other.quickLookShowStatistics == this.quickLookShowStatistics &&
-          other.dragMovesByDefault == this.dragMovesByDefault);
+          other.dragMovesByDefault == this.dragMovesByDefault &&
+          other.windowWidth == this.windowWidth &&
+          other.windowHeight == this.windowHeight &&
+          other.windowMaximized == this.windowMaximized);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -2580,6 +2703,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> quickLookWrapLines;
   final Value<bool> quickLookShowStatistics;
   final Value<bool> dragMovesByDefault;
+  final Value<double> windowWidth;
+  final Value<double> windowHeight;
+  final Value<bool> windowMaximized;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
@@ -2639,6 +2765,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.quickLookWrapLines = const Value.absent(),
     this.quickLookShowStatistics = const Value.absent(),
     this.dragMovesByDefault = const Value.absent(),
+    this.windowWidth = const Value.absent(),
+    this.windowHeight = const Value.absent(),
+    this.windowMaximized = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2699,6 +2828,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.quickLookWrapLines = const Value.absent(),
     this.quickLookShowStatistics = const Value.absent(),
     this.dragMovesByDefault = const Value.absent(),
+    this.windowWidth = const Value.absent(),
+    this.windowHeight = const Value.absent(),
+    this.windowMaximized = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -2759,6 +2891,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? quickLookWrapLines,
     Expression<bool>? quickLookShowStatistics,
     Expression<bool>? dragMovesByDefault,
+    Expression<double>? windowWidth,
+    Expression<double>? windowHeight,
+    Expression<bool>? windowMaximized,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2839,6 +2974,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'quick_look_show_statistics': quickLookShowStatistics,
       if (dragMovesByDefault != null)
         'drag_moves_by_default': dragMovesByDefault,
+      if (windowWidth != null) 'window_width': windowWidth,
+      if (windowHeight != null) 'window_height': windowHeight,
+      if (windowMaximized != null) 'window_maximized': windowMaximized,
     });
   }
 
@@ -2901,6 +3039,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? quickLookWrapLines,
     Value<bool>? quickLookShowStatistics,
     Value<bool>? dragMovesByDefault,
+    Value<double>? windowWidth,
+    Value<double>? windowHeight,
+    Value<bool>? windowMaximized,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -2971,6 +3112,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       quickLookShowStatistics:
           quickLookShowStatistics ?? this.quickLookShowStatistics,
       dragMovesByDefault: dragMovesByDefault ?? this.dragMovesByDefault,
+      windowWidth: windowWidth ?? this.windowWidth,
+      windowHeight: windowHeight ?? this.windowHeight,
+      windowMaximized: windowMaximized ?? this.windowMaximized,
     );
   }
 
@@ -3177,6 +3321,15 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (dragMovesByDefault.present) {
       map['drag_moves_by_default'] = Variable<bool>(dragMovesByDefault.value);
     }
+    if (windowWidth.present) {
+      map['window_width'] = Variable<double>(windowWidth.value);
+    }
+    if (windowHeight.present) {
+      map['window_height'] = Variable<double>(windowHeight.value);
+    }
+    if (windowMaximized.present) {
+      map['window_maximized'] = Variable<bool>(windowMaximized.value);
+    }
     return map;
   }
 
@@ -3242,7 +3395,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('quickLookVimMode: $quickLookVimMode, ')
           ..write('quickLookWrapLines: $quickLookWrapLines, ')
           ..write('quickLookShowStatistics: $quickLookShowStatistics, ')
-          ..write('dragMovesByDefault: $dragMovesByDefault')
+          ..write('dragMovesByDefault: $dragMovesByDefault, ')
+          ..write('windowWidth: $windowWidth, ')
+          ..write('windowHeight: $windowHeight, ')
+          ..write('windowMaximized: $windowMaximized')
           ..write(')'))
         .toString();
   }
@@ -7063,6 +7219,9 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> quickLookWrapLines,
       Value<bool> quickLookShowStatistics,
       Value<bool> dragMovesByDefault,
+      Value<double> windowWidth,
+      Value<double> windowHeight,
+      Value<bool> windowMaximized,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -7124,6 +7283,9 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> quickLookWrapLines,
       Value<bool> quickLookShowStatistics,
       Value<bool> dragMovesByDefault,
+      Value<double> windowWidth,
+      Value<double> windowHeight,
+      Value<bool> windowMaximized,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -7422,6 +7584,21 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get dragMovesByDefault => $composableBuilder(
     column: $table.dragMovesByDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get windowWidth => $composableBuilder(
+    column: $table.windowWidth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get windowHeight => $composableBuilder(
+    column: $table.windowHeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get windowMaximized => $composableBuilder(
+    column: $table.windowMaximized,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7724,6 +7901,21 @@ class $$AppSettingsTableOrderingComposer
     column: $table.dragMovesByDefault,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get windowWidth => $composableBuilder(
+    column: $table.windowWidth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get windowHeight => $composableBuilder(
+    column: $table.windowHeight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get windowMaximized => $composableBuilder(
+    column: $table.windowMaximized,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -8014,6 +8206,21 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.dragMovesByDefault,
     builder: (column) => column,
   );
+
+  GeneratedColumn<double> get windowWidth => $composableBuilder(
+    column: $table.windowWidth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get windowHeight => $composableBuilder(
+    column: $table.windowHeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get windowMaximized => $composableBuilder(
+    column: $table.windowMaximized,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -8105,6 +8312,9 @@ class $$AppSettingsTableTableManager
                 Value<bool> quickLookWrapLines = const Value.absent(),
                 Value<bool> quickLookShowStatistics = const Value.absent(),
                 Value<bool> dragMovesByDefault = const Value.absent(),
+                Value<double> windowWidth = const Value.absent(),
+                Value<double> windowHeight = const Value.absent(),
+                Value<bool> windowMaximized = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 themeMode: themeMode,
@@ -8164,6 +8374,9 @@ class $$AppSettingsTableTableManager
                 quickLookWrapLines: quickLookWrapLines,
                 quickLookShowStatistics: quickLookShowStatistics,
                 dragMovesByDefault: dragMovesByDefault,
+                windowWidth: windowWidth,
+                windowHeight: windowHeight,
+                windowMaximized: windowMaximized,
               ),
           createCompanionCallback:
               ({
@@ -8225,6 +8438,9 @@ class $$AppSettingsTableTableManager
                 Value<bool> quickLookWrapLines = const Value.absent(),
                 Value<bool> quickLookShowStatistics = const Value.absent(),
                 Value<bool> dragMovesByDefault = const Value.absent(),
+                Value<double> windowWidth = const Value.absent(),
+                Value<double> windowHeight = const Value.absent(),
+                Value<bool> windowMaximized = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 themeMode: themeMode,
@@ -8284,6 +8500,9 @@ class $$AppSettingsTableTableManager
                 quickLookWrapLines: quickLookWrapLines,
                 quickLookShowStatistics: quickLookShowStatistics,
                 dragMovesByDefault: dragMovesByDefault,
+                windowWidth: windowWidth,
+                windowHeight: windowHeight,
+                windowMaximized: windowMaximized,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

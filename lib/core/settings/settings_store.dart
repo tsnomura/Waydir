@@ -74,6 +74,9 @@ class SettingsStore {
   final quickLookWrapLines = signal<bool>(true);
   final quickLookShowStatistics = signal<bool>(true);
   final shortcutBindings = signal<Map<String, KeyChord>>({});
+  final windowWidth = signal<double>(1100.0);
+  final windowHeight = signal<double>(700.0);
+  final windowMaximized = signal<bool>(false);
 
   late final AppDatabase _db;
   bool _loaded = false;
@@ -159,6 +162,9 @@ class SettingsStore {
     quickLookVimMode.value = row.quickLookVimMode;
     quickLookWrapLines.value = row.quickLookWrapLines;
     quickLookShowStatistics.value = row.quickLookShowStatistics;
+    windowWidth.value = row.windowWidth;
+    windowHeight.value = row.windowHeight;
+    windowMaximized.value = row.windowMaximized;
     final shortcutRows = await _db.getShortcutBindings();
     final bindings = <String, KeyChord>{};
     for (final row in shortcutRows) {
@@ -274,6 +280,9 @@ class SettingsStore {
         quickLookVimMode.value;
         quickLookWrapLines.value;
         quickLookShowStatistics.value;
+        windowWidth.value;
+        windowHeight.value;
+        windowMaximized.value;
         if (!_loaded) return;
         _scheduleSave();
       }),
@@ -348,6 +357,9 @@ class SettingsStore {
           quickLookVimMode: Value(quickLookVimMode.value),
           quickLookWrapLines: Value(quickLookWrapLines.value),
           quickLookShowStatistics: Value(quickLookShowStatistics.value),
+          windowWidth: Value(windowWidth.value),
+          windowHeight: Value(windowHeight.value),
+          windowMaximized: Value(windowMaximized.value),
         ),
       );
     } catch (e, st) {

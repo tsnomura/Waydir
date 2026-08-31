@@ -80,11 +80,17 @@ void main(List<String> args) async {
       runApp(TranslationProvider(child: const WaydirApp()));
 
       if (isWindowChromeSupported) {
-        appWindow.minSize = const Size(700, 450);
-        appWindow.size = const Size(1100, 700);
+        const minSize = Size(700, 450);
+        appWindow.minSize = minSize;
+        final settings = SettingsStore.instance;
+        appWindow.size = Size(
+          settings.windowWidth.value.clamp(minSize.width, double.infinity),
+          settings.windowHeight.value.clamp(minSize.height, double.infinity),
+        );
         appWindow.alignment = Alignment.center;
         appWindow.title = t.app.title;
         appWindow.show();
+        if (settings.windowMaximized.value) appWindow.maximize();
       }
     },
     (error, stack) {
