@@ -47,6 +47,31 @@ class ShellStore {
   late final CompareController compare;
   final ready = signal(false);
 
+  /// Set by the shell widget to the on-screen rect of the combined pane
+  /// area (both panes plus the divider), so [inactivePaneRect] can work out
+  /// screen coordinates without this store needing any widget references.
+  Rect? Function()? paneAreaRectResolver;
+
+  /// The on-screen area of the pane that is *not* currently active, in
+  /// dual-pane mode — e.g. for Quick Look to open there instead of covering
+  /// the pane the user is actively working in. Null in single-pane mode, or
+  /// if the pane area hasn't been laid out yet.
+  Rect? inactivePaneRect() {
+    if (!isDual.value) return null;
+    final area = paneAreaRectResolver?.call();
+    if (area == null) return null;
+    final leftWidth = area.width * splitRatio.value;
+
+    return activePaneIndex.value == 0
+        ? Rect.fromLTWH(
+            area.left + leftWidth,
+            area.top,
+            area.width - leftWidth,
+            area.height,
+          )
+        : Rect.fromLTWH(area.left, area.top, leftWidth, area.height);
+  }
+
   late final activePane = computed(() {
     final list = panes.value;
     if (list.isEmpty) return null;

@@ -101,6 +101,7 @@ class _WaydirShellState extends State<WaydirShell>
   void initState() {
     super.initState();
     _operationStore.confirmTransfer = _confirmTransfer;
+    _shell.paneAreaRectResolver = _paneAreaRect;
     _effectDisposers.add(
       effect(() {
         if (!_shell.ready.value) return;
@@ -287,65 +288,68 @@ class _WaydirShellState extends State<WaydirShell>
   }
 
   Widget _buildPaneArea() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SignalBuilder(
-          builder: (_) {
-            final dual = _shell.isDual.value;
-            final activeIdx = _shell.activePaneIndex.value;
+    return KeyedSubtree(
+      key: _paneAreaKey,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SignalBuilder(
+            builder: (_) {
+              final dual = _shell.isDual.value;
+              final activeIdx = _shell.activePaneIndex.value;
 
-            if (!dual) {
-              return _buildPane(
-                0,
-                isActive: true,
-                onActivate: _restoreFocus,
-                isSingleMode: true,
+              if (!dual) {
+                return _buildPane(
+                  0,
+                  isActive: true,
+                  onActivate: _restoreFocus,
+                  isSingleMode: true,
+                );
+              }
+
+              final ratio = _shell.splitRatio.value;
+              final leftWidth = constraints.maxWidth * ratio;
+
+              return Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: leftWidth,
+                    child: _buildPane(
+                      0,
+                      isActive: activeIdx == 0,
+                      onActivate: _activatePane(0),
+                      isSingleMode: false,
+                    ),
+                  ),
+                  Positioned(
+                    left: leftWidth,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _buildPane(
+                      1,
+                      isActive: activeIdx == 1,
+                      onActivate: _activatePane(1),
+                      isSingleMode: false,
+                    ),
+                  ),
+                  Positioned(
+                    left: leftWidth - PaneDivider.hitWidth / 2,
+                    top: 0,
+                    bottom: 0,
+                    child: PaneDivider(
+                      shell: _shell,
+                      totalWidth: constraints.maxWidth,
+                    ),
+                  ),
+                ],
               );
-            }
-
-            final ratio = _shell.splitRatio.value;
-            final leftWidth = constraints.maxWidth * ratio;
-
-            return Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: leftWidth,
-                  child: _buildPane(
-                    0,
-                    isActive: activeIdx == 0,
-                    onActivate: _activatePane(0),
-                    isSingleMode: false,
-                  ),
-                ),
-                Positioned(
-                  left: leftWidth,
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: _buildPane(
-                    1,
-                    isActive: activeIdx == 1,
-                    onActivate: _activatePane(1),
-                    isSingleMode: false,
-                  ),
-                ),
-                Positioned(
-                  left: leftWidth - PaneDivider.hitWidth / 2,
-                  top: 0,
-                  bottom: 0,
-                  child: PaneDivider(
-                    shell: _shell,
-                    totalWidth: constraints.maxWidth,
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+            },
+          );
+        },
+      ),
     );
   }
 

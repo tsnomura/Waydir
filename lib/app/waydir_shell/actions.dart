@@ -112,11 +112,16 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
         context: context,
         store: store,
         explicitEntry: entries.first,
+        anchorArea: _shell.inactivePaneRect(),
       ).then((_) => _restoreFocus());
 
       return;
     }
-    showQuickLook(context: context, store: store).then((_) => _restoreFocus());
+    showQuickLook(
+      context: context,
+      store: store,
+      anchorArea: _shell.inactivePaneRect(),
+    ).then((_) => _restoreFocus());
   }
 
   void _openFolderProperties(String path) {
@@ -137,6 +142,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       context: context,
       store: _active,
       explicitEntry: entry,
+      anchorArea: _shell.inactivePaneRect(),
     ).then((_) => _restoreFocus());
   }
 
@@ -373,6 +379,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     showQuickLook(
       context: context,
       store: _active,
+      anchorArea: _shell.inactivePaneRect(),
     ).then((_) => _restoreFocus());
   }
 

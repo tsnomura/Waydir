@@ -13,6 +13,7 @@ import 'bookmark_store.dart';
 import 'navigation_store.dart';
 import 'sidebar_store.dart';
 import '../drives/drive_store.dart';
+import '../panes/shell_store.dart';
 import '../drives/drive_model.dart';
 import '../containers/container_store.dart';
 import '../containers/wsl_distribution.dart';
@@ -340,6 +341,7 @@ class _SidebarState extends State<Sidebar> {
         context: context,
         store: widget.store,
         explicitEntry: entry,
+        anchorArea: ShellStore.current?.inactivePaneRect(),
       ),
     );
   }

@@ -24,6 +24,7 @@ Future<void> showQuickLook({
   required BuildContext context,
   required NavigationStore store,
   FileEntry? explicitEntry,
+  Rect? anchorArea,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -32,7 +33,11 @@ Future<void> showQuickLook({
     barrierColor: Colors.black.withValues(alpha: 0.5),
     transitionDuration: const Duration(milliseconds: 110),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return _QuickLook(store: store, explicitEntry: explicitEntry);
+      return _QuickLook(
+        store: store,
+        explicitEntry: explicitEntry,
+        anchorArea: anchorArea,
+      );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
@@ -51,12 +56,18 @@ Future<void> showQuickLook({
 class _QuickLook extends StatefulWidget {
   final NavigationStore store;
   final FileEntry? explicitEntry;
+  final Rect? anchorArea;
 
-  const _QuickLook({required this.store, this.explicitEntry});
+  const _QuickLook({required this.store, this.explicitEntry, this.anchorArea});
 
   @override
   State<_QuickLook> createState() => _QuickLookState();
 }
+
+enum _ResizeEdge { n, s, e, w, ne, nw, se, sw }
+
+const double _kMinWindowWidth = 420;
+const double _kMinWindowHeight = 320;
 
 class _QuickLookState extends State<_QuickLook> {
   final _focus = FocusNode();
@@ -67,8 +78,130 @@ class _QuickLookState extends State<_QuickLook> {
   bool _markdownRendered = true;
   String? _presentationKey;
   DateTime? _lastCursorRepeatAt;
+  Rect? _rect;
+  Offset? _dragAnchor;
+  Rect? _dragStartRect;
 
   static const _cursorRepeatInterval = Duration(milliseconds: 70);
+
+  /// Centers the window in [screen] by default, or within [anchor] when
+  /// given (e.g. the inactive pane's area in dual-pane mode).
+  Rect _initialRect(Size screen) {
+    final anchor = widget.anchorArea;
+    final maxWidth = anchor != null ? anchor.width : screen.width;
+    final maxHeight = anchor != null ? anchor.height : screen.height;
+    final width = _clampSize(
+      anchor != null ? maxWidth * 0.86 : maxWidth * 0.7,
+      _kMinWindowWidth,
+      anchor != null ? maxWidth : 1100.0,
+    );
+    final height = _clampSize(
+      anchor != null ? maxHeight * 0.86 : maxHeight * 0.78,
+      _kMinWindowHeight,
+      anchor != null ? maxHeight : 900.0,
+    );
+    final originX = (anchor?.left ?? 0) + (maxWidth - width) / 2;
+    final originY = (anchor?.top ?? 0) + (maxHeight - height) / 2;
+
+    return _clampToScreen(
+      Rect.fromLTWH(originX, originY, width, height),
+      screen,
+    );
+  }
+
+  static double _clampSize(double value, double min, double max) {
+    if (max < min) return min;
+
+    return value.clamp(min, max);
+  }
+
+  Rect _clampToScreen(Rect rect, Size screen) {
+    final width = rect.width.clamp(
+      _kMinWindowWidth,
+      screen.width.clamp(_kMinWindowWidth, double.infinity),
+    );
+    final height = rect.height.clamp(
+      _kMinWindowHeight,
+      screen.height.clamp(_kMinWindowHeight, double.infinity),
+    );
+    final left = rect.left.clamp(
+      0.0,
+      (screen.width - width).clamp(0.0, screen.width),
+    );
+    final top = rect.top.clamp(
+      0.0,
+      (screen.height - height).clamp(0.0, screen.height),
+    );
+
+    return Rect.fromLTWH(left, top, width, height);
+  }
+
+  void _handleDragStart(DragStartDetails details) {
+    _dragAnchor = details.globalPosition;
+    _dragStartRect = _rect;
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    final anchor = _dragAnchor;
+    final startRect = _dragStartRect;
+    if (anchor == null || startRect == null) return;
+    final delta = details.globalPosition - anchor;
+    final screen = MediaQuery.of(context).size;
+    setState(() {
+      _rect = _clampToScreen(startRect.shift(delta), screen);
+    });
+  }
+
+  void _handleResizeStart(DragStartDetails details) {
+    _dragAnchor = details.globalPosition;
+    _dragStartRect = _rect;
+  }
+
+  void _handleResizeUpdate(_ResizeEdge edge, DragUpdateDetails details) {
+    final anchor = _dragAnchor;
+    final startRect = _dragStartRect;
+    if (anchor == null || startRect == null) return;
+    final delta = details.globalPosition - anchor;
+    final screen = MediaQuery.of(context).size;
+    setState(() {
+      _rect = _resize(startRect, edge, delta, screen);
+    });
+  }
+
+  static Rect _resize(Rect start, _ResizeEdge edge, Offset delta, Size screen) {
+    var left = start.left;
+    var top = start.top;
+    var right = start.right;
+    var bottom = start.bottom;
+    const west = {_ResizeEdge.w, _ResizeEdge.nw, _ResizeEdge.sw};
+    const east = {_ResizeEdge.e, _ResizeEdge.ne, _ResizeEdge.se};
+    const north = {_ResizeEdge.n, _ResizeEdge.nw, _ResizeEdge.ne};
+    const south = {_ResizeEdge.s, _ResizeEdge.sw, _ResizeEdge.se};
+    if (west.contains(edge)) left += delta.dx;
+    if (east.contains(edge)) right += delta.dx;
+    if (north.contains(edge)) top += delta.dy;
+    if (south.contains(edge)) bottom += delta.dy;
+    if (right - left < _kMinWindowWidth) {
+      if (west.contains(edge)) {
+        left = right - _kMinWindowWidth;
+      } else {
+        right = left + _kMinWindowWidth;
+      }
+    }
+    if (bottom - top < _kMinWindowHeight) {
+      if (north.contains(edge)) {
+        top = bottom - _kMinWindowHeight;
+      } else {
+        bottom = top + _kMinWindowHeight;
+      }
+    }
+    left = left.clamp(0.0, screen.width - _kMinWindowWidth);
+    top = top.clamp(0.0, screen.height - _kMinWindowHeight);
+    right = right.clamp(left + _kMinWindowWidth, screen.width);
+    bottom = bottom.clamp(top + _kMinWindowHeight, screen.height);
+
+    return Rect.fromLTRB(left, top, right, bottom);
+  }
 
   @override
   void initState() {
@@ -241,41 +374,127 @@ class _QuickLookState extends State<_QuickLook> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final width = (size.width * 0.7).clamp(480.0, 1100.0);
-    final height = (size.height * 0.78).clamp(360.0, 900.0);
+    final screen = MediaQuery.of(context).size;
+    final rect = _rect ??= _initialRect(screen);
 
     return Focus(
       focusNode: _focus,
       autofocus: true,
       onKeyEvent: _handleKey,
-      child: Center(
-        child: Material(
-          color: Colors.transparent,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 130),
-            curve: Curves.easeOut,
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              color: AppColors.bgSurface,
-              border: Border.all(color: AppColors.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  blurRadius: 32,
-                  offset: const Offset(0, 16),
+      child: Stack(
+        children: [
+          Positioned.fromRect(
+            rect: rect,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.bgSurface,
+                  border: Border.all(color: AppColors.borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      blurRadius: 32,
+                      offset: const Offset(0, 16),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Expanded(child: _buildContent()),
-                Container(height: 1, color: AppColors.bgDivider),
-                _ShortcutBar(editorActive: _editorActive),
-              ],
+                child: Column(
+                  children: [
+                    Expanded(child: _buildContent()),
+                    Container(height: 1, color: AppColors.bgDivider),
+                    _ShortcutBar(editorActive: _editorActive),
+                  ],
+                ),
+              ),
             ),
           ),
+          for (final edge in _ResizeEdge.values) _resizeHandle(edge, rect),
+        ],
+      ),
+    );
+  }
+
+  Widget _resizeHandle(_ResizeEdge edge, Rect rect) {
+    const thickness = 8.0;
+    const corner = 12.0;
+    late Rect handleRect;
+    late MouseCursor cursor;
+    switch (edge) {
+      case _ResizeEdge.n:
+        handleRect = Rect.fromLTWH(
+          rect.left + corner,
+          rect.top - thickness / 2,
+          rect.width - corner * 2,
+          thickness,
+        );
+        cursor = SystemMouseCursors.resizeUpDown;
+      case _ResizeEdge.s:
+        handleRect = Rect.fromLTWH(
+          rect.left + corner,
+          rect.bottom - thickness / 2,
+          rect.width - corner * 2,
+          thickness,
+        );
+        cursor = SystemMouseCursors.resizeUpDown;
+      case _ResizeEdge.w:
+        handleRect = Rect.fromLTWH(
+          rect.left - thickness / 2,
+          rect.top + corner,
+          thickness,
+          rect.height - corner * 2,
+        );
+        cursor = SystemMouseCursors.resizeLeftRight;
+      case _ResizeEdge.e:
+        handleRect = Rect.fromLTWH(
+          rect.right - thickness / 2,
+          rect.top + corner,
+          thickness,
+          rect.height - corner * 2,
+        );
+        cursor = SystemMouseCursors.resizeLeftRight;
+      case _ResizeEdge.nw:
+        handleRect = Rect.fromLTWH(
+          rect.left - thickness / 2,
+          rect.top - thickness / 2,
+          corner,
+          corner,
+        );
+        cursor = SystemMouseCursors.resizeUpLeftDownRight;
+      case _ResizeEdge.se:
+        handleRect = Rect.fromLTWH(
+          rect.right - corner + thickness / 2,
+          rect.bottom - corner + thickness / 2,
+          corner,
+          corner,
+        );
+        cursor = SystemMouseCursors.resizeUpLeftDownRight;
+      case _ResizeEdge.ne:
+        handleRect = Rect.fromLTWH(
+          rect.right - corner + thickness / 2,
+          rect.top - thickness / 2,
+          corner,
+          corner,
+        );
+        cursor = SystemMouseCursors.resizeUpRightDownLeft;
+      case _ResizeEdge.sw:
+        handleRect = Rect.fromLTWH(
+          rect.left - thickness / 2,
+          rect.bottom - corner + thickness / 2,
+          corner,
+          corner,
+        );
+        cursor = SystemMouseCursors.resizeUpRightDownLeft;
+    }
+
+    return Positioned.fromRect(
+      rect: handleRect,
+      child: MouseRegion(
+        cursor: cursor,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onPanStart: _handleResizeStart,
+          onPanUpdate: (details) => _handleResizeUpdate(edge, details),
         ),
       ),
     );
@@ -295,6 +514,8 @@ class _QuickLookState extends State<_QuickLook> {
                 onToggleInfo: () {},
                 onClose: _requestClose,
                 editorController: _editorController,
+                onHeaderPanStart: _handleDragStart,
+                onHeaderPanUpdate: _handleDragUpdate,
               ),
               Container(height: 1, color: AppColors.bgDivider),
               Expanded(
@@ -319,6 +540,8 @@ class _QuickLookState extends State<_QuickLook> {
                 onToggleInfo: () {},
                 onClose: _requestClose,
                 editorController: _editorController,
+                onHeaderPanStart: _handleDragStart,
+                onHeaderPanUpdate: _handleDragUpdate,
               ),
               Container(height: 1, color: AppColors.bgDivider),
               Expanded(
@@ -346,6 +569,8 @@ class _QuickLookState extends State<_QuickLook> {
                   onToggleInfo: () {},
                   onClose: _requestClose,
                   editorController: _editorController,
+                  onHeaderPanStart: _handleDragStart,
+                  onHeaderPanUpdate: _handleDragUpdate,
                 ),
                 Container(height: 1, color: AppColors.bgDivider),
                 Expanded(
@@ -372,6 +597,8 @@ class _QuickLookState extends State<_QuickLook> {
               editorController: _editorController,
               markdownRendered: _markdownRendered,
               onToggleMarkdownView: _toggleMarkdownRendered,
+              onHeaderPanStart: _handleDragStart,
+              onHeaderPanUpdate: _handleDragUpdate,
             ),
             Container(height: 1, color: AppColors.bgDivider),
             Expanded(
@@ -491,6 +718,8 @@ class _Header extends StatelessWidget {
   final CodeEditorController editorController;
   final bool markdownRendered;
   final VoidCallback? onToggleMarkdownView;
+  final GestureDragStartCallback? onHeaderPanStart;
+  final GestureDragUpdateCallback? onHeaderPanUpdate;
 
   const _Header({
     required this.entry,
@@ -502,6 +731,8 @@ class _Header extends StatelessWidget {
     this.multiCount,
     this.markdownRendered = true,
     this.onToggleMarkdownView,
+    this.onHeaderPanStart,
+    this.onHeaderPanUpdate,
   });
 
   @override
@@ -518,66 +749,71 @@ class _Header extends StatelessWidget {
         markdownExts.contains(e.extension) &&
         onToggleMarkdownView != null;
 
-    return Container(
-      height: 46,
-      color: AppColors.bgSidebar,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        children: [
-          if (multi)
-            Icon(WaydirIconsRegular.copy, size: 18, color: AppColors.accent)
-          else if (e == null)
-            Icon(WaydirIconsRegular.file, size: 18, color: AppColors.fgMuted)
-          else
-            buildFileIcon(
-              name: e.name,
-              ext: e.extension,
-              isFolder: e.type == FileItemType.folder,
-              size: 18,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onPanStart: onHeaderPanStart,
+      onPanUpdate: onHeaderPanUpdate,
+      child: Container(
+        height: 46,
+        color: AppColors.bgSidebar,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          children: [
+            if (multi)
+              Icon(WaydirIconsRegular.copy, size: 18, color: AppColors.accent)
+            else if (e == null)
+              Icon(WaydirIconsRegular.file, size: 18, color: AppColors.fgMuted)
+            else
+              buildFileIcon(
+                name: e.name,
+                ext: e.extension,
+                isFolder: e.type == FileItemType.folder,
+                size: 18,
+              ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                name,
+                style: context.txt.bodyEmphasis,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              name,
-              style: context.txt.bodyEmphasis,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (isMarkdown) ...[
-            SignalBuilder(
-              builder: (context) {
-                final blocked =
-                    !markdownRendered && editorController.dirty.value;
+            const SizedBox(width: 8),
+            if (isMarkdown) ...[
+              SignalBuilder(
+                builder: (context) {
+                  final blocked =
+                      !markdownRendered && editorController.dirty.value;
 
-                return _HeaderButton(
-                  icon: markdownRendered
-                      ? WaydirIconsRegular.code
-                      : WaydirIconsRegular.eye,
-                  active: false,
-                  enabled: !blocked,
-                  tooltip: blocked
-                      ? t.quickLook.saveBeforePreview
-                      : markdownRendered
-                      ? t.quickLook.viewSource
-                      : t.quickLook.viewRendered,
-                  onTap: onToggleMarkdownView!,
-                );
-              },
-            ),
-            const SizedBox(width: 4),
+                  return _HeaderButton(
+                    icon: markdownRendered
+                        ? WaydirIconsRegular.code
+                        : WaydirIconsRegular.eye,
+                    active: false,
+                    enabled: !blocked,
+                    tooltip: blocked
+                        ? t.quickLook.saveBeforePreview
+                        : markdownRendered
+                        ? t.quickLook.viewSource
+                        : t.quickLook.viewRendered,
+                    onTap: onToggleMarkdownView!,
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+            ],
+            if (hasPreview) ...[
+              _HeaderButton(
+                icon: WaydirIconsRegular.info,
+                active: showInfo,
+                tooltip: t.menu.properties,
+                onTap: onToggleInfo,
+              ),
+              const SizedBox(width: 4),
+            ],
+            _CloseButton(onTap: onClose),
           ],
-          if (hasPreview) ...[
-            _HeaderButton(
-              icon: WaydirIconsRegular.info,
-              active: showInfo,
-              tooltip: t.menu.properties,
-              onTap: onToggleInfo,
-            ),
-            const SizedBox(width: 4),
-          ],
-          _CloseButton(onTap: onClose),
-        ],
+        ),
       ),
     );
   }

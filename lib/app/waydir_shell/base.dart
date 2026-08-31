@@ -14,6 +14,7 @@ mixin _WaydirStateBase on State<WaydirShell> {
   );
   final _focusNode = FocusNode(debugLabel: 'shell-keys');
   final _effectDisposers = <void Function()>[];
+  final _paneAreaKey = GlobalKey();
 
   /// The file the "Open With…" chooser was opened on.
   FileEntry? _openWithEntry;
@@ -164,6 +165,15 @@ mixin _WaydirStateBase on State<WaydirShell> {
 
   void _openInNewTab(String path) {
     _shell.activePane.value!.tabs.addTab(path);
+  }
+
+  /// The combined pane area's on-screen rect, read off [_paneAreaKey]'s
+  /// render box. Registered as `_shell.paneAreaRectResolver`.
+  Rect? _paneAreaRect() {
+    final box = _paneAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+
+    return box.localToGlobal(Offset.zero) & box.size;
   }
 
   /// The pane opposite [fromSlot], entering dual-pane mode first if needed
