@@ -76,8 +76,8 @@ class CompareController {
     final pair = _activeStores();
     if (pair == null) return false;
 
-    return _isLocalFolder(pair.$1.currentPath.value) &&
-        _isLocalFolder(pair.$2.currentPath.value);
+    return _isComparablePath(pair.$1.currentPath.value) &&
+        _isComparablePath(pair.$2.currentPath.value);
   }
 
   Future<void> toggle() async {
@@ -181,11 +181,9 @@ class CompareController {
     );
   }
 
-  bool _isLocalFolder(String path) {
+  bool _isComparablePath(String path) {
     if (path.isEmpty) return false;
-    if (PlatformPaths.isRemoteUri(path) || PlatformPaths.isNetworkPath(path)) {
-      return false;
-    }
+    if (PlatformPaths.isRemoteUri(path)) return false;
     try {
       return Directory(path).existsSync();
     } catch (_) {

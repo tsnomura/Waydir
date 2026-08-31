@@ -58,17 +58,27 @@ class CompareModeBar extends StatelessWidget {
                           label: t.compare.differ,
                         ),
                         const SizedBox(width: 16),
-                        Text(
-                          running
-                              ? t.compare.running
-                              : t.compare.counts(
-                                  identical: counts.identical,
-                                  differ: counts.differ,
-                                  uniqueLeft: counts.uniqueLeft,
-                                  uniqueRight: counts.uniqueRight,
-                                ),
-                          style: context.txt.captionSmall,
-                        ),
+                        if (running) ...[
+                          Text(
+                            t.compare.running,
+                            style: context.txt.captionSmall,
+                          ),
+                          const SizedBox(width: 8),
+                          _CompareButton(
+                            label: t.compare.cancel,
+                            shortcutId: 'compare_exit',
+                            onTap: controller.stop,
+                          ),
+                        ] else
+                          Text(
+                            t.compare.counts(
+                              identical: counts.identical,
+                              differ: counts.differ,
+                              uniqueLeft: counts.uniqueLeft,
+                              uniqueRight: counts.uniqueRight,
+                            ),
+                            style: context.txt.captionSmall,
+                          ),
                       ],
                     ),
                   ),
@@ -93,7 +103,7 @@ class CompareModeBar extends StatelessWidget {
                 onTap: controller.syncRightToLeft,
               ),
               const SizedBox(width: 6),
-              _CompareCloseButton(onTap: controller.stop),
+              _CompareCloseButton(onTap: controller.stop, running: running),
             ],
           ),
         );
@@ -104,8 +114,9 @@ class CompareModeBar extends StatelessWidget {
 
 class _CompareCloseButton extends StatefulWidget {
   final VoidCallback onTap;
+  final bool running;
 
-  const _CompareCloseButton({required this.onTap});
+  const _CompareCloseButton({required this.onTap, required this.running});
 
   @override
   State<_CompareCloseButton> createState() => _CompareCloseButtonState();
@@ -117,7 +128,7 @@ class _CompareCloseButtonState extends State<_CompareCloseButton> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: t.compare.done,
+      message: widget.running ? t.compare.cancel : t.compare.done,
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
@@ -133,7 +144,7 @@ class _CompareCloseButtonState extends State<_CompareCloseButton> {
             child: Icon(
               WaydirIconsRegular.x,
               size: 14,
-              color: AppColors.fgMuted,
+              color: widget.running ? AppColors.warning : AppColors.fgMuted,
             ),
           ),
         ),

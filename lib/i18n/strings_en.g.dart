@@ -487,6 +487,9 @@ class Translations$compare$en {
 	/// en: 'Done'
 	String get done => 'Done';
 
+	/// en: 'Cancel'
+	String get cancel => 'Cancel';
+
 	/// en: 'Comparing…'
 	String get running => 'Comparing…';
 
@@ -496,8 +499,8 @@ class Translations$compare$en {
 	/// en: 'Compare needs two panes — press F9 for dual-pane mode first'
 	String get needsDualPane => 'Compare needs two panes — press F9 for dual-pane mode first';
 
-	/// en: 'Compare only works with local folders, not network/remote paths, trash, or tags'
-	String get needsLocalFolders => 'Compare only works with local folders, not network/remote paths, trash, or tags';
+	/// en: 'Compare doesn't work with sftp/smb paths, trash, or tags'
+	String get needsLocalFolders => 'Compare doesn\'t work with sftp/smb paths, trash, or tags';
 }
 
 // Path: properties
@@ -4214,10 +4217,11 @@ extension on Translations {
 			'compare.syncLeft' => '← Sync',
 			'compare.recursive' => 'Recursive',
 			'compare.done' => 'Done',
+			'compare.cancel' => 'Cancel',
 			'compare.running' => 'Comparing…',
 			'compare.counts' => ({required Object identical, required Object differ, required Object uniqueLeft, required Object uniqueRight}) => '${identical} identical · ${differ} different · ${uniqueLeft} left only · ${uniqueRight} right only',
 			'compare.needsDualPane' => 'Compare needs two panes — press F9 for dual-pane mode first',
-			'compare.needsLocalFolders' => 'Compare only works with local folders, not network/remote paths, trash, or tags',
+			'compare.needsLocalFolders' => 'Compare doesn\'t work with sftp/smb paths, trash, or tags',
 			'properties.title' => 'Properties',
 			'properties.name' => 'Name',
 			'properties.type' => 'Type',
@@ -4610,9 +4614,9 @@ extension on Translations {
 			'keybindings.quickLookNextFileEdit' => 'Next file while editing',
 			'keybindings.quickLookSave' => 'Save changes',
 			'keybindings.cursorUp' => 'Move up',
-			'keybindings.cursorDown' => 'Move down',
 			_ => null,
 		} ?? switch (path) {
+			'keybindings.cursorDown' => 'Move down',
 			'keybindings.pageUp' => 'Move up one page',
 			'keybindings.pageDown' => 'Move down one page',
 			'keybindings.home' => 'Jump to start',
