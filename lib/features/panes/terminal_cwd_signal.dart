@@ -16,9 +16,16 @@ import '../../core/platform/app_dirs.dart';
 /// `$WAYDIR_CWD_DIR/$WAYDIR_TERMINAL_ID.txt` is picked up and routed to that
 /// terminal's pane; the file is deleted once handled.
 ///
+/// The written path must be a native path Windows can resolve directly —
+/// [Directory.existsSync] rejects anything else and the signal is dropped
+/// silently. This matters for Git Bash / MSYS, where `$PWD` is a POSIX-style
+/// path (e.g. `/c/Users/...`) that doesn't resolve; use `pwd -W` there
+/// instead, which prints the Windows form.
+///
 /// One-time shell setup:
-///   PowerShell: `function wd { (Get-Location).Path | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$env:WAYDIR_TERMINAL_ID.txt" }`
-///   bash/zsh:   `wd() { printf '%s' "$PWD" > "$WAYDIR_CWD_DIR/$WAYDIR_TERMINAL_ID.txt"; }`
+///   PowerShell:      `function wd { (Get-Location).Path | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$env:WAYDIR_TERMINAL_ID.txt" }`
+///   Git Bash (MSYS): `wd() { pwd -W > "$WAYDIR_CWD_DIR/$WAYDIR_TERMINAL_ID.txt"; }`
+///   bash/zsh (Unix): `wd() { printf '%s' "$PWD" > "$WAYDIR_CWD_DIR/$WAYDIR_TERMINAL_ID.txt"; }`
 class TerminalCwdSignal {
   TerminalCwdSignal._();
 
