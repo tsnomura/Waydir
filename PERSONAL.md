@@ -56,6 +56,33 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
 
 Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`.
 
+## Quick Look preview generators
+
+Config-driven preview generators let Quick Look show a raster preview for
+file types Waydir has no built-in renderer for, by delegating the conversion
+to an external command instead of writing a native renderer. Full details,
+config schema and the trust model are in [`docs/generators.md`](docs/generators.md).
+
+- One `.json` file per generator in the `generators` support directory maps
+  a set of extensions to a command template (`%INPUT%`/`%OUTPUT%`/`%CACHE%`
+  placeholders), e.g. extracting a video thumbnail via `ffmpeg`.
+- Generators only fill gaps — they never override Waydir's built-in image/
+  PDF/Markdown previews.
+- Results are cached by a hash of the file's path/size/mtime plus the
+  generator's own command, so edits and command changes both invalidate the
+  cache automatically. Failures (bad exit code, timeout, missing binary)
+  always fall back to the default file icon.
+- A generator can declare `pageCount` + `probeCmd` to page through evenly-
+  spaced points across a timed source (e.g. 10 video frames sampled every
+  10% of its duration, 0% up to but excluding 100%). Quick Look shows prev/
+  next controls and a page indicator, and `PageUp`/`PageDown` page through it
+  too when a multi-page generator is active (otherwise they scroll content
+  as usual).
+- Intentionally stops at paging through still frames — a scrubber or
+  playback controls are a job for an embedded video player, not Quick Look.
+
+Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`.
+
 ## Window state persistence
 
 Window size and maximized/restored state are remembered across restarts
@@ -80,6 +107,22 @@ Relevant commit: `6ee9177`.
 
 Relevant commits: `4bc5295`, `cf9dbdd`, `540a503`, `2504f49`, `63ba23b`,
 `194a146`, `bf84058`, `e3b8a68`.
+
+## Compare directories on network drives
+
+`F8` compare now works against mapped/UNC network drives, not just local
+disks — the restriction only ever needed to exclude Waydir's own virtual
+`smb://`/`sftp://` filesystems, not real (if slow) OS-level network paths.
+
+- Comparing a network path defaults `Recursive` to off on activation, since a
+  full recursive walk over a slow share can take a long time — the user
+  opts in explicitly rather than triggering it by accident.
+- While a comparison is running, a dedicated Cancel control (with the `Esc`
+  shortcut shown) sits next to the "Comparing…" label, and the close button's
+  tooltip/color reflect that it cancels an in-progress scan rather than just
+  closing a finished one.
+
+Relevant commits: `dec6776`, `bb6ef7f`.
 
 ## Windows Terminal integration
 
