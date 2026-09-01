@@ -14,6 +14,8 @@ class AppDirs {
   static Future<String>? _logs;
   static Future<String>? _themes;
   static Future<String>? _plugins;
+  static Future<String>? _generators;
+  static Future<String>? _generatorCache;
 
   /// Base app-support dir. Matches the location the database has always used,
   /// so existing user data is never relocated.
@@ -47,6 +49,14 @@ class AppDirs {
 
   static Future<String> plugins() {
     return _plugins ??= _resolveChild('plugins');
+  }
+
+  static Future<String> generators() {
+    return _generators ??= _resolveChild('generators');
+  }
+
+  static Future<String> generatorCache() {
+    return _generatorCache ??= _resolveChild('generator_cache');
   }
 
   static Future<String> _resolveChild(String name) async {

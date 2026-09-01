@@ -13,6 +13,8 @@ import '../../ui/dialogs/dialog.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'code_editor.dart';
+import 'generators/generator_preview.dart';
+import 'generators/generator_registry.dart';
 import 'image_preview.dart';
 import 'info_panel.dart';
 import 'markdown_preview.dart';
@@ -1043,6 +1045,13 @@ class _Body extends StatelessWidget {
         showInfo: showInfo,
         scrollController: scrollController,
       );
+    }
+    final generator = GeneratorRegistry.instance.forExtension(e.extension);
+    if (generator != null) {
+      release();
+      onCompactChanged(false);
+
+      return _split(GeneratorPreview(entry: e), e, showInfo: showInfo);
     }
     if (binaryExts.contains(e.extension)) {
       release();
