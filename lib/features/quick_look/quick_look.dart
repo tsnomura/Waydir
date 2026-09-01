@@ -13,6 +13,9 @@ import '../../ui/dialogs/dialog.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'code_editor.dart';
+import 'generators/generator_page_controller.dart';
+import 'generators/generator_preview.dart';
+import 'generators/generator_registry.dart';
 import 'image_preview.dart';
 import 'info_panel.dart';
 import 'markdown_preview.dart';
@@ -74,6 +77,7 @@ class _QuickLookState extends State<_QuickLook> {
   final _editorActive = signal(false);
   final _editorController = CodeEditorController();
   final _contentScroll = ScrollController();
+  final _generatorPage = GeneratorPageController();
   bool _compact = true;
   bool _showInfo = true;
   bool _markdownRendered = true;
@@ -221,6 +225,7 @@ class _QuickLookState extends State<_QuickLook> {
     _editorActive.dispose();
     _editorController.dispose();
     _contentScroll.dispose();
+    _generatorPage.dispose();
     super.dispose();
   }
 
@@ -314,6 +319,21 @@ class _QuickLookState extends State<_QuickLook> {
     return KeyEventResult.handled;
   }
 
+  /// Steps the currently shown generator preview to the next/previous page,
+  /// for PageUp/PageDown. Only called while a multi-page generator preview
+  /// is active — see [_generatorPage].
+  KeyEventResult _stepGeneratorPage(int direction, bool isRepeat) {
+    if (isRepeat && !_acceptCursorRepeat()) return KeyEventResult.handled;
+    if (!isRepeat) _lastCursorRepeatAt = null;
+    if (direction > 0) {
+      _generatorPage.next();
+    } else {
+      _generatorPage.prev();
+    }
+
+    return KeyEventResult.handled;
+  }
+
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
     final isRepeat = event is KeyRepeatEvent;
     if (event is! KeyDownEvent && !isRepeat) return KeyEventResult.ignored;
@@ -345,10 +365,14 @@ class _QuickLookState extends State<_QuickLook> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.pageDown) {
-      return _scrollContent(1, isRepeat);
+      return _generatorPage.pageCount > 1
+          ? _stepGeneratorPage(1, isRepeat)
+          : _scrollContent(1, isRepeat);
     }
     if (key == LogicalKeyboardKey.pageUp) {
-      return _scrollContent(-1, isRepeat);
+      return _generatorPage.pageCount > 1
+          ? _stepGeneratorPage(-1, isRepeat)
+          : _scrollContent(-1, isRepeat);
     }
     final gridMode = SettingsStore.instance.fileViewMode.value == 'grid';
     if (gridMode &&
@@ -400,6 +424,7 @@ class _QuickLookState extends State<_QuickLook> {
     if (_presentationKey == key) return;
     _presentationKey = key;
     _markdownRendered = true;
+    _generatorPage.reset();
     _setCompact(_defaultCompact(entry));
   }
 
@@ -641,6 +666,7 @@ class _QuickLookState extends State<_QuickLook> {
                 onCompactChanged: _setCompact,
                 markdownRendered: _markdownRendered,
                 scrollController: _contentScroll,
+                generatorPage: _generatorPage,
               ),
             ),
           ],
@@ -992,6 +1018,7 @@ class _Body extends StatelessWidget {
   final ValueChanged<bool> onCompactChanged;
   final bool markdownRendered;
   final ScrollController scrollController;
+  final GeneratorPageController generatorPage;
 
   const _Body({
     required this.entry,
@@ -1001,6 +1028,7 @@ class _Body extends StatelessWidget {
     required this.onCompactChanged,
     required this.markdownRendered,
     required this.scrollController,
+    required this.generatorPage,
   });
 
   @override
@@ -1042,6 +1070,17 @@ class _Body extends StatelessWidget {
         e,
         showInfo: showInfo,
         scrollController: scrollController,
+      );
+    }
+    final generator = GeneratorRegistry.instance.forExtension(e.extension);
+    if (generator != null) {
+      release();
+      onCompactChanged(false);
+
+      return _split(
+        GeneratorPreview(entry: e, page: generatorPage),
+        e,
+        showInfo: showInfo,
       );
     }
     if (binaryExts.contains(e.extension)) {
