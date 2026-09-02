@@ -2,7 +2,7 @@
 
 Preview generators let Quick Look show a raster preview for file types Waydir has no built-in renderer for, by delegating the conversion to an external command you configure. Waydir never needs to understand the file format itself — it just runs your command and shows whatever image comes out.
 
-Generators only fill gaps. They never take priority over Waydir's built-in previews (images, PDF, Markdown) — they only apply to extensions those don't already handle.
+A configured generator always takes priority over Waydir's built-in previews (images, PDF, Markdown) for the extensions it claims — adding one is a deliberate, explicit choice to handle that extension your own way, so it wins even where a built-in would otherwise apply.
 
 ## Where Config Lives
 
@@ -35,8 +35,10 @@ One file per generator, any filename, `.json` extension. Reloaded on startup.
 | `args` | yes | Argument list passed directly to the process — no shell involved, so no quoting or injection concerns. |
 | `timeoutSeconds` | no | Default 8, clamped to a maximum of 60. The process is killed if it runs longer. Also applies to `probeCmd`. |
 | `outputExt` | no | Extension of the generated image file. Default `png`. |
-| `pageCount` | no | Number of pages Quick Look can step through for this file, for a timed source (e.g. video). Default 1 (single preview, no page controls shown). Requires `probeCmd`. |
-| `probeCmd` / `probeArgs` | required if `pageCount` > 1 | A command that prints the source's duration in seconds (a plain number) to stdout — see [Paging](#paging). |
+| `paging` | no | `"time"` or `"discrete"` — see [Paging](#paging). Omit for a single, fixed preview. |
+| `pageCount` | required for `paging: "time"` | Fixed number of evenly-spaced samples across the file. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
+| `probeCmd` / `probeArgs` | required whenever `paging` is set | A command that prints a plain number to stdout — a duration in seconds for `"time"`, a page/unit count for `"discrete"`. |
+| `probePattern` | no | Regex to pull that number out of `probeCmd`'s output when it isn't already a bare number (first capture group, or the whole match if the pattern has none). |
 
 ## Placeholders
 
@@ -45,16 +47,17 @@ Substituted in every element of `args`:
 - `%INPUT%` — the source file's real path.
 - `%OUTPUT%` — where to write the resulting image. Must end up with an extension matching `outputExt` — some tools (ffmpeg included) infer the output format from the filename extension, so a mismatched or missing extension makes the command fail even though nothing else is wrong.
 - `%CACHE%` — the generator cache directory, if a command needs a scratch/working directory.
-- `%SEEK%` — only meaningful when `pageCount` > 1: the timestamp for the current page, as `HH:MM:SS.mmm`.
-- `%POSITION%` — only meaningful when `pageCount` > 1: the current page as a 0-based integer.
+- `%SEEK%` — only meaningful for `paging: "time"`: the timestamp for the current page, as `HH:MM:SS.mmm`.
+- `%POSITION%` — the current page as a 0-based integer (`0` when not paging).
+- `%PAGE%` — the current page as a 1-based integer, for tools that count pages starting at 1 (e.g. `mutool draw`, `pdftoppm -f`/`-l`).
 
 `%INPUT%` is also substituted in `probeArgs` (nothing else is — a probe only needs to read the file).
 
 ## Paging
 
-A generator with `pageCount` > 1 samples `pageCount` evenly-spaced points across the file's duration, from 0% up to but excluding 100% (decoders can't extract a frame at the exact end of a file). Quick Look shows prev/next controls and a page indicator over the preview; each page is generated and cached independently, on demand, the first time it's viewed.
+Quick Look shows prev/next controls and a page indicator over a paged preview; each page is generated and cached independently, on demand, the first time it's viewed. `PageUp`/`PageDown` step through pages too, whenever a paged generator is the active preview (otherwise they scroll content as usual). There are two paging modes, depending on whether "page" means a point in time or a real per-file unit:
 
-To compute `%SEEK%`, Waydir first runs `probeCmd`/`probeArgs` once per file (memoized for the app's lifetime) and parses its stdout as a number of seconds. Example using `ffprobe`:
+**`"time"`** — a fixed `pageCount` of evenly-spaced samples across the file's duration, from 0% up to but excluding 100% (decoders can't extract a frame at the exact end of a file). `probeCmd` reports the duration in seconds, used to compute `%SEEK%`:
 
 ```json
 {
@@ -62,6 +65,7 @@ To compute `%SEEK%`, Waydir first runs `probeCmd`/`probeArgs` once per file (mem
   "extensions": ["mp4", "mkv", "mov", "avi", "webm", "m4v"],
   "cmd": "ffmpeg",
   "args": ["-y", "-ss", "%SEEK%", "-i", "%INPUT%", "-frames:v", "1", "-vf", "scale=640:-1", "%OUTPUT%"],
+  "paging": "time",
   "pageCount": 10,
   "probeCmd": "ffprobe",
   "probeArgs": ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "%INPUT%"],
@@ -69,7 +73,23 @@ To compute `%SEEK%`, Waydir first runs `probeCmd`/`probeArgs` once per file (mem
 }
 ```
 
-A discretely-paginated source like a PDF or a slide deck doesn't need this at all — that's `%POSITION%` used directly as a page/slide index, with no `probeCmd` needed, since the page count is already known ahead of time (pass it as `pageCount` directly). `%SEEK%` only exists for sources where a page maps to a point in time rather than a fixed unit.
+**`"discrete"`** — a source with a real, file-specific unit count, like a PDF's page count. There's no fixed `pageCount` in config since it varies per file; `probeCmd` reports the file's own count instead, and `%PAGE%`/`%POSITION%` select which one to render:
+
+```json
+{
+  "id": "pdf-page",
+  "extensions": ["pdf"],
+  "cmd": "mutool",
+  "args": ["draw", "-o", "%OUTPUT%", "%INPUT%", "%PAGE%"],
+  "paging": "discrete",
+  "probeCmd": "mutool",
+  "probeArgs": ["info", "%INPUT%"],
+  "probePattern": "Pages:\\s*(\\d+)",
+  "timeoutSeconds": 8
+}
+```
+
+(`mutool info` prints several lines of metadata, including `Pages: N` — `probePattern` pulls just the number out of it. `mutool draw -o <exact-path> file.pdf <page>` renders straight to the given filename with no page-number suffix, matching `%OUTPUT%`'s contract; poppler's `pdftoppm` always appends its own suffix to the output prefix, which doesn't fit that contract without extra handling, so `mutool` is the simpler fit here despite `pdftoppm`/`pdfinfo` also being common.)
 
 Waydir intentionally stops at paging through still frames — a scrubber or playback controls are a job for an embedded video player, not Quick Look.
 
