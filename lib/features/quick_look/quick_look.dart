@@ -1044,6 +1044,21 @@ class _Body extends StatelessWidget {
 
       return PropertiesOnly(entry: e);
     }
+    // Checked first, ahead of every built-in preview: a configured generator
+    // is an explicit, deliberate choice to handle this extension a specific
+    // way, so it wins even over a built-in that would otherwise apply (e.g.
+    // pdf).
+    final generator = GeneratorRegistry.instance.forExtension(e.extension);
+    if (generator != null) {
+      release();
+      onCompactChanged(false);
+
+      return _split(
+        GeneratorPreview(entry: e, page: generatorPage),
+        e,
+        showInfo: showInfo,
+      );
+    }
     if (imageExts.contains(e.extension)) {
       release();
       onCompactChanged(false);
@@ -1070,17 +1085,6 @@ class _Body extends StatelessWidget {
         e,
         showInfo: showInfo,
         scrollController: scrollController,
-      );
-    }
-    final generator = GeneratorRegistry.instance.forExtension(e.extension);
-    if (generator != null) {
-      release();
-      onCompactChanged(false);
-
-      return _split(
-        GeneratorPreview(entry: e, page: generatorPage),
-        e,
-        showInfo: showInfo,
       );
     }
     if (binaryExts.contains(e.extension)) {

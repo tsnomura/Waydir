@@ -19,18 +19,33 @@ class GeneratorRunner {
 
   static const _stderrTailLimit = 4096;
 
-  // Duration probes are cheap but not free; memoize per file+generator for
-  // the lifetime of the app so paging back and forth doesn't re-probe.
-  static final _durationCache = <String, Future<double?>>{};
+  // Probes are cheap but not free; memoize per file+generator for the
+  // lifetime of the app so paging back and forth doesn't re-probe.
+  static final _probeCache = <String, Future<double?>>{};
+
+  /// The number of pages [entry]'s matched generator offers: the fixed
+  /// [GeneratorDef.pageCount] for [PagingMode.time], the file's own probed
+  /// count for [PagingMode.discrete], or 1 for anything else (including no
+  /// matching generator at all).
+  static Future<int> resolvePageCount(FileEntry entry) async {
+    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    if (def == null) return 1;
+    if (def.pagingMode != PagingMode.discrete) return def.pageCount;
+    final count = await _probeNumber(entry, def);
+    if (count == null) return 1;
+
+    return count.round().clamp(1, 100000);
+  }
 
   static Future<String?> preview(FileEntry entry, {int position = 0}) async {
     final def = GeneratorRegistry.instance.forExtension(entry.extension);
     if (def == null) return null;
-    final page = position.clamp(0, def.pageCount - 1);
 
+    var page = position < 0 ? 0 : position;
     var seek = '00:00:00.000';
-    if (def.pageCount > 1) {
-      final duration = await _probeDuration(entry, def);
+    if (def.pagingMode == PagingMode.time) {
+      page = page.clamp(0, def.pageCount - 1);
+      final duration = await _probeNumber(entry, def);
       if (duration == null) return null;
       // Never seek to the exact end of the file — ffmpeg (and most decoders)
       // can't extract a frame past the last one, so pageCount samples split
@@ -93,16 +108,20 @@ class GeneratorRunner {
     }
   }
 
-  static Future<double?> _probeDuration(FileEntry entry, GeneratorDef def) {
+  /// Runs [def.probeCmd] and returns a duration in seconds ([PagingMode.time])
+  /// or a page/unit count ([PagingMode.discrete]) — [def.probePattern]
+  /// extracts it from the output when it isn't already a bare number.
+  static Future<double?> _probeNumber(FileEntry entry, GeneratorDef def) {
     final key = [
       entry.realPath,
       entry.modifiedMs,
       entry.size,
       def.probeCmd,
       def.probeArgs.join(' '),
+      def.probePattern,
     ].join('|');
 
-    return _durationCache.putIfAbsent(key, () => _runProbe(entry, def));
+    return _probeCache.putIfAbsent(key, () => _runProbe(entry, def));
   }
 
   static Future<double?> _runProbe(FileEntry entry, GeneratorDef def) async {
@@ -114,25 +133,42 @@ class GeneratorRunner {
       if (result.timedOut || result.exitCode != 0) {
         log.warn(
           'quick-look',
-          'generator "${def.id}" duration probe failed (exit '
+          'generator "${def.id}" probe failed (exit '
               '${result.exitCode}${result.timedOut ? ', timed out' : ''}) for '
               '${entry.realPath}: ${result.stderrTail}',
         );
 
         return null;
       }
+      final number = _extractNumber(result.stdout, def.probePattern);
+      if (number == null) {
+        log.warn(
+          'quick-look',
+          'generator "${def.id}" probe output didn\'t contain a number for '
+              '${entry.realPath}: ${result.stdout}',
+        );
+      }
 
-      return double.tryParse(result.stdout.trim());
+      return number;
     } catch (error, stack) {
       log.warn(
         'quick-look',
-        'generator "${def.id}" duration probe errored for ${entry.realPath}',
+        'generator "${def.id}" probe errored for ${entry.realPath}',
         error: error,
         stack: stack,
       );
 
       return null;
     }
+  }
+
+  static double? _extractNumber(String text, String? pattern) {
+    if (pattern == null) return double.tryParse(text.trim());
+    final match = RegExp(pattern).firstMatch(text);
+    if (match == null) return null;
+    final group = match.groupCount >= 1 ? match.group(1) : match.group(0);
+
+    return group == null ? null : double.tryParse(group.trim());
   }
 
   static List<String> _substitute(
@@ -150,7 +186,8 @@ class GeneratorRunner {
               .replaceAll('%OUTPUT%', output)
               .replaceAll('%CACHE%', cacheDir)
               .replaceAll('%SEEK%', seek)
-              .replaceAll('%POSITION%', position.toString()),
+              .replaceAll('%POSITION%', position.toString())
+              .replaceAll('%PAGE%', (position + 1).toString()),
         )
         .toList();
   }

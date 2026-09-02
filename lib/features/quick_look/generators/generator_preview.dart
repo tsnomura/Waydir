@@ -9,7 +9,6 @@ import '../../../ui/theme/app_theme.dart';
 import '../../../ui/icons/waydir_icons.dart';
 import '../quick_look_common.dart';
 import 'generator_page_controller.dart';
-import 'generator_registry.dart';
 import 'generator_runner.dart';
 
 class GeneratorPreview extends StatelessWidget {
@@ -20,8 +19,29 @@ class GeneratorPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
-    final pageCount = def?.pageCount ?? 1;
+    return AsyncRetain<int>(
+      cacheKey: '${entry.realPath}|${entry.modifiedMs}|${entry.size}',
+      loader: () => GeneratorRunner.resolvePageCount(entry),
+      loading: const QlCentered.spinner(),
+      builder: (pageCount) =>
+          _GeneratorPreviewBody(entry: entry, page: page, pageCount: pageCount),
+    );
+  }
+}
+
+class _GeneratorPreviewBody extends StatelessWidget {
+  final FileEntry entry;
+  final GeneratorPageController page;
+  final int pageCount;
+
+  const _GeneratorPreviewBody({
+    required this.entry,
+    required this.page,
+    required this.pageCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     page.pageCount = pageCount;
 
     return SignalBuilder(
