@@ -66,22 +66,31 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 - One `.json` file per generator in the `generators` support directory maps
   a set of extensions to a command template (`%INPUT%`/`%OUTPUT%`/`%CACHE%`
   placeholders), e.g. extracting a video thumbnail via `ffmpeg`.
-- Generators only fill gaps — they never override Waydir's built-in image/
-  PDF/Markdown previews.
+- A configured generator always takes priority over Waydir's built-in image/
+  PDF/Markdown previews for the extensions it claims — this is what lets a
+  `pdf` generator replace the native pdfium-backed preview, which doesn't
+  actually work in this build.
 - Results are cached by a hash of the file's path/size/mtime plus the
   generator's own command, so edits and command changes both invalidate the
   cache automatically. Failures (bad exit code, timeout, missing binary)
   always fall back to the default file icon.
-- A generator can declare `pageCount` + `probeCmd` to page through evenly-
-  spaced points across a timed source (e.g. 10 video frames sampled every
-  10% of its duration, 0% up to but excluding 100%). Quick Look shows prev/
-  next controls and a page indicator, and `PageUp`/`PageDown` page through it
-  too when a multi-page generator is active (otherwise they scroll content
-  as usual).
+- Two paging modes, both driven by `probeCmd`: `"time"` samples a fixed
+  `pageCount` of evenly-spaced points across a timed source's duration (e.g.
+  10 video frames every 10% of its length, 0% up to but excluding 100%);
+  `"discrete"` probes the file's own real page/unit count instead (e.g. a
+  PDF's actual page count via `mutool info`), since that varies per file.
+  Quick Look shows prev/next controls and a page indicator either way, and
+  `PageUp`/`PageDown` page through it too when a paged generator is active
+  (otherwise they scroll content as usual).
 - Intentionally stops at paging through still frames — a scrubber or
   playback controls are a job for an embedded video player, not Quick Look.
+- Installed locally: `video-thumbnail` (`ffmpeg`/`ffprobe`, `"time"` paging)
+  and `pdf-page` (`mutool`, `"discrete"` paging) in the `generators` support
+  directory — not committed, since generator config is local/personal by
+  design (see the trust model in `docs/generators.md`).
 
-Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`.
+Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`,
+`32b9119`, `7abfac6`.
 
 ## Window state persistence
 
