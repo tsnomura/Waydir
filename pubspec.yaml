@@ -44,6 +44,8 @@ dependencies:
   crypto: ^3.0.7
   http: ^1.6.0
   flutter_markdown_plus: ^1.0.7
+  flutter_math_fork: ^0.7.4
+  markdown: ^7.3.1
   file_picker: ^11.0.2
   re_editor: ^0.9.0
   re_highlight: ^0.0.3

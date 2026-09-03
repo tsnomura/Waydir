@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
@@ -14,6 +15,7 @@ import '../../core/platform/platform_paths.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import 'markdown_math.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 
@@ -437,6 +439,8 @@ class _MarkdownBody extends StatelessWidget {
     MarkdownStyleSheet styleSheet, {
     required bool centered,
   }) {
+    final mathTextStyle = styleSheet.p ?? const TextStyle();
+
     return SizedBox(
       width: double.infinity,
       child: MarkdownBody(
@@ -446,6 +450,18 @@ class _MarkdownBody extends StatelessWidget {
         onTapLink: (_, href, _) => _openLink(href),
         imageBuilder: _buildImage,
         styleSheet: styleSheet,
+        inlineSyntaxes: [MathInlineSyntax()],
+        blockSyntaxes: const [MathBlockSyntax()],
+        builders: {
+          'math_inline': MathElementBuilder(
+            textStyle: mathTextStyle,
+            mathStyle: MathStyle.text,
+          ),
+          'math_block': MathElementBuilder(
+            textStyle: mathTextStyle,
+            mathStyle: MathStyle.display,
+          ),
+        },
       ),
     );
   }
