@@ -199,6 +199,9 @@ class Translations$menu$en {
 	/// en: 'Open in New Tab'
 	String get openInNewTab => 'Open in New Tab';
 
+	/// en: 'Move Tab to Other Pane'
+	String get moveTabToOtherPane => 'Move Tab to Other Pane';
+
 	/// en: 'Remove Bookmark'
 	String get removeBookmark => 'Remove Bookmark';
 
@@ -929,6 +932,9 @@ class Translations$keybindings$en {
 
 	/// en: 'Switch to tab'
 	String get switchTab => 'Switch to tab';
+
+	/// en: 'Move tab to other pane'
+	String get moveTabOtherPane => 'Move tab to other pane';
 
 	/// en: 'Jump to bookmark'
 	String get jumpBookmark => 'Jump to bookmark';
@@ -3730,8 +3736,8 @@ class Translations$help$groups$tabsPanes$tabs$en {
 	/// en: 'Tabs'
 	String get title => 'Tabs';
 
-	/// en: 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history. - `Ctrl+T` opens a new tab. - `Ctrl+W` closes the current tab. - `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab. - `Ctrl+1`…`Ctrl+9` jump straight to a tab by position. - The `+` button on the tab strip opens a new tab in the current folder.'
-	String get body => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.';
+	/// en: 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history. - `Ctrl+T` opens a new tab. - `Ctrl+W` closes the current tab. - `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab. - `Ctrl+1`…`Ctrl+9` jump straight to a tab by position. - The `+` button on the tab strip opens a new tab in the current folder. - `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection.'
+	String get body => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.\n- `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection.';
 }
 
 // Path: help.groups.tabsPanes.dualPane
@@ -4133,6 +4139,7 @@ extension on Translations {
 			'menu.rename' => 'Rename',
 			'menu.openLocation' => 'Open Location',
 			'menu.openInNewTab' => 'Open in New Tab',
+			'menu.moveTabToOtherPane' => 'Move Tab to Other Pane',
 			'menu.removeBookmark' => 'Remove Bookmark',
 			'menu.addBookmark' => 'Add to Bookmarks',
 			'menu.eject' => 'Eject',
@@ -4516,7 +4523,7 @@ extension on Translations {
 			'help.groups.navigating.typeAhead.body' => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Type-ahead can be turned off in **Preferences -> General**.',
 			'help.groups.tabsPanes.title' => 'Tabs & Panes',
 			'help.groups.tabsPanes.tabs.title' => 'Tabs',
-			'help.groups.tabsPanes.tabs.body' => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.',
+			'help.groups.tabsPanes.tabs.body' => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.\n- `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection.',
 			'help.groups.tabsPanes.dualPane.title' => 'Dual Pane',
 			'help.groups.tabsPanes.dualPane.body' => 'Show a source and a destination side by side. The active pane owns keyboard focus, and the copy / move shortcuts target the opposite pane.\n\n- `F9` (or `Ctrl+D`) toggles dual pane mode.\n- `Tab` switches the active pane.\n- `F5` copies the selected files to the other pane.\n- `F6` moves the selected files to the other pane.\n- Drag the divider to change how the space is split.',
 			'help.groups.tabsPanes.compare.title' => 'Folder Compare & Sync',
@@ -4613,9 +4620,9 @@ extension on Translations {
 			'keybindings.quickLookPrevFileEdit' => 'Previous file while editing',
 			'keybindings.quickLookNextFileEdit' => 'Next file while editing',
 			'keybindings.quickLookSave' => 'Save changes',
-			'keybindings.cursorUp' => 'Move up',
 			_ => null,
 		} ?? switch (path) {
+			'keybindings.cursorUp' => 'Move up',
 			'keybindings.cursorDown' => 'Move down',
 			'keybindings.pageUp' => 'Move up one page',
 			'keybindings.pageDown' => 'Move down one page',
@@ -4626,6 +4633,7 @@ extension on Translations {
 			'keybindings.nextTab' => 'Next tab',
 			'keybindings.prevTab' => 'Previous tab',
 			'keybindings.switchTab' => 'Switch to tab',
+			'keybindings.moveTabOtherPane' => 'Move tab to other pane',
 			'keybindings.jumpBookmark' => 'Jump to bookmark',
 			'keybindings.toggleDual' => 'Toggle dual pane',
 			'keybindings.switchPane' => 'Switch active pane',

@@ -98,6 +98,47 @@ class TabsStore {
     }
   }
 
+  /// Removes and returns the tab with [id] without disposing its
+  /// [NavigationStore], for handing it off to another [TabsStore] (see
+  /// [insertTab]). Refuses to take the last tab, the same rule [closeTab]
+  /// follows — a pane must always keep at least one tab.
+  TabState? takeTab(String id) {
+    final list = tabs.value;
+    if (list.length <= 1) return null;
+    final idx = list.indexWhere((t) => t.id == id);
+    if (idx < 0) return null;
+
+    final tab = list[idx];
+    tabs.value = List.of(list)..removeAt(idx);
+
+    final current = activeIndex.value;
+    if (idx == current) {
+      activeIndex.value = (idx < tabs.value.length)
+          ? idx
+          : tabs.value.length - 1;
+    } else if (idx < current) {
+      activeIndex.value = current - 1;
+    }
+
+    return tab;
+  }
+
+  /// Inserts a [TabState] taken from another [TabsStore] (see [takeTab]).
+  void insertTab(TabState tab, {int? index, bool activate = true}) {
+    final list = tabs.value;
+    final at = (index ?? list.length).clamp(0, list.length);
+    final activeId = list.isEmpty ? null : activeTab.value.id;
+    final next = List<TabState>.of(list)..insert(at, tab);
+    tabs.value = next;
+    if (activate) {
+      activeIndex.value = at;
+    } else if (activeId != null) {
+      // Inserting shifts every tab at or after `at`; re-find the previously
+      // active tab by identity rather than assuming its index is unchanged.
+      activeIndex.value = next.indexWhere((t) => t.id == activeId);
+    }
+  }
+
   void selectTab(int i) {
     if (i >= 0 && i < tabs.value.length) {
       activeIndex.value = i;

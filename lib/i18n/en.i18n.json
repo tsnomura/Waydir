@@ -40,6 +40,7 @@
     "rename": "Rename",
     "openLocation": "Open Location",
     "openInNewTab": "Open in New Tab",
+    "moveTabToOtherPane": "Move Tab to Other Pane",
     "removeBookmark": "Remove Bookmark",
     "addBookmark": "Add to Bookmarks",
     "eject": "Eject",
@@ -489,7 +490,7 @@
         "title": "Tabs & Panes",
         "tabs": {
           "title": "Tabs",
-          "body": "Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder."
+          "body": "Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.\n- `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection."
         },
         "dualPane": {
           "title": "Dual Pane",
@@ -670,6 +671,7 @@
     "nextTab": "Next tab",
     "prevTab": "Previous tab",
     "switchTab": "Switch to tab",
+    "moveTabOtherPane": "Move tab to other pane",
     "jumpBookmark": "Jump to bookmark",
     "toggleDual": "Toggle dual pane",
     "switchPane": "Switch active pane",

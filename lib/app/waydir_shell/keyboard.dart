@@ -194,6 +194,12 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
+    if (AppShortcuts.matches('move_tab_other_pane', key)) {
+      _moveActiveTabToOtherPane();
+
+      return KeyEventResult.handled;
+    }
+
     if (ctrl) {
       final digitIdx = _digitKeys.indexOf(key);
       if (digitIdx >= 0) {

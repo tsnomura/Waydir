@@ -44,6 +44,7 @@ class PaneView extends StatelessWidget {
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPane;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
+  final void Function(String tabId)? onMoveTabToOtherPane;
   final void Function(String fullActionId)? onPluginToolbarAction;
   final PluginBarEffectsHandler? onPluginBarEffects;
   final int terminalSlot;
@@ -74,6 +75,7 @@ class PaneView extends StatelessWidget {
     this.onOpenInNewTab,
     this.onOpenInOtherPane,
     this.onOpenInOtherPaneNewTab,
+    this.onMoveTabToOtherPane,
     this.onPluginToolbarAction,
     this.onPluginBarEffects,
     required this.terminalSlot,
@@ -103,7 +105,11 @@ class PaneView extends StatelessWidget {
         children: [
           Column(
             children: [
-              TabStrip(tabsStore: pane.tabs, isActive: isActive),
+              TabStrip(
+                tabsStore: pane.tabs,
+                isActive: isActive,
+                onMoveToOtherPane: onMoveTabToOtherPane,
+              ),
               SignalBuilder(
                 builder: (_) {
                   final tabStore = pane.tabs.activeTab.value.store;

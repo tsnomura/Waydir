@@ -196,6 +196,29 @@ mixin _WaydirStateBase on State<WaydirShell> {
     _otherPane(fromSlot)?.tabs.addTab(path);
   }
 
+  /// Moves the tab [tabId] from the pane at [fromSlot] to the pane opposite
+  /// it, keeping its navigation history, selection and scroll position
+  /// intact (the tab's [NavigationStore] moves with it, rather than opening
+  /// the same path fresh in a new tab).
+  void _moveTabToOtherPane(int fromSlot, String tabId) {
+    final panes = _shell.panes.value;
+    if (fromSlot < 0 || fromSlot >= panes.length) return;
+    final sourceTabs = panes[fromSlot].tabs;
+    final destination = _otherPane(fromSlot);
+    if (destination == null) return;
+    final tab = sourceTabs.takeTab(tabId);
+    if (tab == null) return;
+    destination.tabs.insertTab(tab);
+  }
+
+  /// Moves the active pane's active tab to the opposite pane.
+  void _moveActiveTabToOtherPane() {
+    final slot = _shell.activePaneIndex.value;
+    final tabId = _shell.activePane.value?.tabs.activeTab.value.id;
+    if (tabId == null) return;
+    _moveTabToOtherPane(slot, tabId);
+  }
+
   void _setShowHiddenGlobal(bool value) {
     SettingsStore.instance.showHiddenDefault.value = value;
     if (!_shell.ready.value) return;

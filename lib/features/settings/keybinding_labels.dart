@@ -79,6 +79,7 @@ String shortcutLabel(ShortcutDef s) => switch (s.id) {
   'next_tab' => t.keybindings.nextTab,
   'prev_tab' => t.keybindings.prevTab,
   'switch_tab' => t.keybindings.switchTab,
+  'move_tab_other_pane' => t.keybindings.moveTabOtherPane,
   'jump_bookmark' => t.keybindings.jumpBookmark,
   'toggle_dual' => t.keybindings.toggleDual,
   'switch_pane' => t.keybindings.switchPane,

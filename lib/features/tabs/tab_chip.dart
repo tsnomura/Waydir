@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
+import '../../i18n/strings.g.dart';
+import '../../ui/overlays/context_menu.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'tab_state.dart';
@@ -10,12 +12,14 @@ class TabChip extends StatefulWidget {
   final TabState tab;
   final int index;
   final TabsStore tabsStore;
+  final void Function(String tabId)? onMoveToOtherPane;
 
   const TabChip({
     super.key,
     required this.tab,
     required this.index,
     required this.tabsStore,
+    this.onMoveToOtherPane,
   });
 
   @override
@@ -24,6 +28,27 @@ class TabChip extends StatefulWidget {
 
 class _TabChipState extends State<TabChip> {
   bool _hovered = false;
+
+  void _showContextMenu(Offset position) {
+    final canMove = widget.tabsStore.tabs.value.length > 1;
+    showContextMenu(
+      context: context,
+      position: position,
+      items: [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.arrowsLeftRight,
+          label: t.menu.moveTabToOtherPane,
+          action: 'move_to_other_pane',
+          enabled: canMove && widget.onMoveToOtherPane != null,
+        ),
+      ],
+      onSelect: (action) {
+        if (action == 'move_to_other_pane') {
+          widget.onMoveToOtherPane?.call(widget.tab.id);
+        }
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +90,8 @@ class _TabChipState extends State<TabChip> {
             onTertiaryTapDown: canClose
                 ? (_) => widget.tabsStore.closeTab(widget.tab.id)
                 : null,
+            onSecondaryTapUp: (details) =>
+                _showContextMenu(details.globalPosition),
             child: Tooltip(
               message: fullPath,
               child: Container(

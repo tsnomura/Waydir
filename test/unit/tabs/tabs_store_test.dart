@@ -150,6 +150,76 @@ void main() {
     });
   });
 
+  group('TabsStore.takeTab', () {
+    test('removes and returns the tab without disposing its store', () {
+      final target = _tabs.tabs.value[0];
+
+      final taken = _tabs.takeTab(target.id);
+
+      expect(taken, isNotNull);
+      expect(taken!.id, target.id);
+      expect(_tabs.tabs.value.length, 2);
+      // Not disposed: still readable.
+      expect(taken.store.currentPath.value, '/one');
+    });
+
+    test('shifts activeIndex left when taking a tab before the active one', () {
+      final activeId = _tabs.activeTab.value.id;
+
+      _tabs.takeTab(_tabs.tabs.value.first.id);
+
+      expect(_tabs.activeTab.value.id, activeId);
+      expect(_tabs.activeIndex.value, 0);
+    });
+
+    test('refuses to take the last remaining tab', () {
+      final store = TabsStore.fromPaths(operationStore: _ops, paths: ['/only']);
+      addTearDown(store.dispose);
+
+      final taken = store.takeTab(store.tabs.value.first.id);
+
+      expect(taken, isNull);
+      expect(store.tabs.value.length, 1);
+    });
+
+    test('returns null for an unknown tab id', () {
+      expect(_tabs.takeTab('no-such-id'), isNull);
+      expect(_tabs.tabs.value.length, 3);
+    });
+  });
+
+  group('TabsStore.insertTab', () {
+    test('inserts and activates a tab taken from another store', () {
+      final other = TabsStore.fromPaths(
+        operationStore: _ops,
+        paths: const ['/moved', '/stays'],
+      );
+      final taken = other.takeTab(other.tabs.value.first.id);
+      addTearDown(other.dispose);
+
+      _tabs.insertTab(taken!);
+
+      expect(_tabs.tabs.value.length, 4);
+      expect(_tabs.activeTab.value.id, taken.id);
+      expect(_tabs.activeTab.value.store.currentPath.value, '/moved');
+    });
+
+    test('inserts at a specific index without activating', () {
+      final other = TabsStore.fromPaths(
+        operationStore: _ops,
+        paths: const ['/moved', '/stays'],
+      );
+      final taken = other.takeTab(other.tabs.value.first.id);
+      addTearDown(other.dispose);
+      final prevActiveId = _tabs.activeTab.value.id;
+
+      _tabs.insertTab(taken!, index: 0, activate: false);
+
+      expect(_tabs.tabs.value.map((t) => t.id).first, taken.id);
+      expect(_tabs.activeTab.value.id, prevActiveId);
+    });
+  });
+
   group('TabsStore.selectTab', () {
     test('updates activeIndex for a valid index', () {
       _tabs.selectTab(2);

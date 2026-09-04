@@ -406,6 +406,14 @@ class AppShortcuts {
       editable: false,
     ),
     ShortcutDef(
+      id: 'move_tab_other_pane',
+      label: () => '',
+      group: ShortcutGroup.tabs,
+      key: LogicalKeyboardKey.keyM,
+      ctrl: true,
+      shift: true,
+    ),
+    ShortcutDef(
       id: 'jump_bookmark',
       label: () => '',
       group: ShortcutGroup.navigation,

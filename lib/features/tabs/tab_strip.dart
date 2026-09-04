@@ -8,8 +8,14 @@ import 'tabs_store.dart';
 class TabStrip extends StatelessWidget {
   final TabsStore tabsStore;
   final bool isActive;
+  final void Function(String tabId)? onMoveToOtherPane;
 
-  const TabStrip({super.key, required this.tabsStore, this.isActive = true});
+  const TabStrip({
+    super.key,
+    required this.tabsStore,
+    this.isActive = true,
+    this.onMoveToOtherPane,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +48,7 @@ class TabStrip extends StatelessWidget {
                         tab: tab,
                         index: index,
                         tabsStore: tabsStore,
+                        onMoveToOtherPane: onMoveToOtherPane,
                       ),
                     );
                   },
