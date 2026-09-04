@@ -101,8 +101,9 @@ Relevant commit: `6ee9177`.
 
 ## Pane navigation & layout
 
-- Double-click the pane divider to swap the left and right panes (only
-  triggers when the divider itself is actually hovered).
+- Double-click the pane divider to swap the two panes' *active* tabs (only
+  triggers when the divider itself is actually hovered) — see "Move/swap
+  tabs between panes" below.
 - The divider's full hit width is clickable/draggable, not just the thin
   visible line.
 - `Ctrl` + double-click a folder opens it in the *other* pane.
@@ -116,6 +117,37 @@ Relevant commit: `6ee9177`.
 
 Relevant commits: `4bc5295`, `cf9dbdd`, `540a503`, `2504f49`, `63ba23b`,
 `194a146`, `bf84058`, `e3b8a68`.
+
+## Move/swap tabs between panes
+
+A tab can move to the other pane on its own, keeping its navigation
+history, selection and scroll position (the tab's `NavigationStore` moves
+with it, rather than reopening the same path fresh in a new tab).
+
+- `Ctrl+Shift+M` moves the active pane's active tab to the other pane, and
+  follows it with keyboard focus. Auto-enters dual-pane mode if needed.
+- Right-click a tab for a "Move Tab to Other Pane" context menu item, same
+  behavior as the shortcut.
+- A pane always keeps at least one tab — moving away a pane's only tab is
+  refused, the same rule tab-closing already follows.
+- Double-clicking the pane divider swaps the two panes' *active* tabs in
+  place (each pane's other tabs are untouched) instead of swapping the
+  panes' entire tab sets, using the same underlying tab-move machinery.
+
+Found and fixed two real bugs building this:
+- Tab ids were only unique *within* one pane (a per-`TabsStore` counter),
+  so two independently-created panes could mint the same id — moving a tab
+  across panes could then produce two tabs sharing one id (and therefore
+  one `ValueKey`) in the same pane, corrupting which widget/state Flutter
+  associated with which tab. Ids are now a single counter shared across
+  every pane.
+- The pane-swap helper could enter dual-pane mode (replacing the whole
+  pane list) *after* the tab list to move from had already been read,
+  leaving a stale, discarded `PaneStore` reference on a from-single-pane
+  first invocation.
+
+Relevant commits: `1f867f5`, `1690f4e`, `6b90f5d` (temporary diagnostic,
+removed), `c25fbca`, `7212432`.
 
 ## Compare directories on network drives
 
