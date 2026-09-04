@@ -218,6 +218,24 @@ void main() {
       expect(_tabs.tabs.value.map((t) => t.id).first, taken.id);
       expect(_tabs.activeTab.value.id, prevActiveId);
     });
+
+    test('a tab moved between two independently-created stores never collides '
+        'with an existing id (regression: ids used to be per-store)', () {
+      // Two fresh TabsStore instances, exactly like two panes each
+      // starting from PaneStore's own constructor — the scenario where a
+      // per-instance id counter let both mint the same ids independently.
+      final paneA = TabsStore(operationStore: _ops, initialPath: '/a1');
+      paneA.addTab('/a2');
+      final paneB = TabsStore(operationStore: _ops, initialPath: '/b1');
+      addTearDown(paneA.dispose);
+      addTearDown(paneB.dispose);
+
+      final moved = paneA.takeTab(paneA.tabs.value.first.id)!;
+      paneB.insertTab(moved);
+
+      final ids = paneB.tabs.value.map((t) => t.id).toList();
+      expect(ids.toSet().length, ids.length, reason: 'no duplicate ids');
+    });
   });
 
   group('TabsStore.selectTab', () {

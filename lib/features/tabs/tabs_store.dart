@@ -24,7 +24,15 @@ class TabsStore {
   });
 
   final OperationStore operationStore;
-  int _idCounter = 0;
+
+  // Shared across every TabsStore (one per pane), not per-instance: tab ids
+  // must stay unique across panes too, since a tab (and its id) can move
+  // from one pane's TabsStore to another's (see `takeTab`/`insertTab`). A
+  // per-instance counter let both panes mint the same id independently,
+  // producing two tabs with the same id — and therefore the same
+  // `ValueKey` — in one TabsStore once a tab moved, corrupting which
+  // widget/state Flutter associated with which tab.
+  static int _idCounter = 0;
 
   TabsStore({required this.operationStore, String? initialPath}) {
     addTab(initialPath ?? PlatformPaths.homePath);

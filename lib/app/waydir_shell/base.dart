@@ -206,76 +206,24 @@ mixin _WaydirStateBase on State<WaydirShell> {
     // replaces `_shell.panes.value` wholesale, so `sourceTabs` must be read
     // afterward or it can end up pointing at a discarded PaneStore.
     final destination = _otherPane(fromSlot);
-    if (destination == null) {
-      log.warn(
-        'tabs',
-        'move_tab_other_pane: no destination pane for fromSlot=$fromSlot',
-      );
-
-      return;
-    }
+    if (destination == null) return;
     final panes = _shell.panes.value;
-    if (fromSlot < 0 || fromSlot >= panes.length) {
-      log.warn(
-        'tabs',
-        'move_tab_other_pane: fromSlot=$fromSlot out of range '
-            '(panes=${panes.length})',
-      );
-
-      return;
-    }
-    final before = _tabsDebugSnapshot();
+    if (fromSlot < 0 || fromSlot >= panes.length) return;
     final tab = panes[fromSlot].tabs.takeTab(tabId);
-    if (tab == null) {
-      log.warn(
-        'tabs',
-        'move_tab_other_pane: takeTab($tabId) from slot=$fromSlot failed '
-            '(not found, or it was the pane\'s last tab). $before',
-      );
-
-      return;
-    }
+    if (tab == null) return;
     destination.tabs.insertTab(tab);
 
     final otherSlot = fromSlot == 0 ? 1 : 0;
     _shell.setActivePane(otherSlot);
     _restoreFocus();
-
-    log.warn(
-      'tabs',
-      'move_tab_other_pane: moved "${tab.title.value}" ($tabId) '
-          'slot=$fromSlot -> slot=$otherSlot. before=$before '
-          'after=${_tabsDebugSnapshot()}',
-    );
   }
 
   /// Moves the active pane's active tab to the opposite pane.
   void _moveActiveTabToOtherPane() {
     final slot = _shell.activePaneIndex.value;
-    final activeTab = _shell.activePane.value?.tabs.activeTab.value;
-    if (activeTab == null) return;
-    log.warn(
-      'tabs',
-      'move_tab_other_pane: keyboard-triggered, activePaneIndex=$slot '
-          'activeTab="${activeTab.title.value}" (${activeTab.id})',
-    );
-    _moveTabToOtherPane(slot, activeTab.id);
-  }
-
-  /// One-line snapshot of every pane's tab ids/titles and which is active,
-  /// for the `move_tab_other_pane` diagnostic log above.
-  String _tabsDebugSnapshot() {
-    final panes = _shell.panes.value;
-    final parts = <String>[];
-    for (var i = 0; i < panes.length; i++) {
-      final tabsStore = panes[i].tabs;
-      final ids = tabsStore.tabs.value
-          .map((t) => '${t.id}:${t.title.value}')
-          .join(',');
-      parts.add('pane$i(active=${tabsStore.activeIndex.value},tabs=[$ids])');
-    }
-
-    return 'activePaneIndex=${_shell.activePaneIndex.value} ${parts.join(' ')}';
+    final tabId = _shell.activePane.value?.tabs.activeTab.value.id;
+    if (tabId == null) return;
+    _moveTabToOtherPane(slot, tabId);
   }
 
   void _setShowHiddenGlobal(bool value) {
