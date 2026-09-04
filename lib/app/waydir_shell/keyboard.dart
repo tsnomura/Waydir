@@ -194,7 +194,7 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
-    if (AppShortcuts.matches('move_tab_other_pane', key)) {
+    if (!isRepeat && AppShortcuts.matches('move_tab_other_pane', key)) {
       _moveActiveTabToOtherPane();
 
       return KeyEventResult.handled;

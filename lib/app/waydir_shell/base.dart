@@ -199,16 +199,23 @@ mixin _WaydirStateBase on State<WaydirShell> {
   /// Moves the tab [tabId] from the pane at [fromSlot] to the pane opposite
   /// it, keeping its navigation history, selection and scroll position
   /// intact (the tab's [NavigationStore] moves with it, rather than opening
-  /// the same path fresh in a new tab).
+  /// the same path fresh in a new tab). Follows the move with keyboard
+  /// focus, switching the active pane to the destination.
   void _moveTabToOtherPane(int fromSlot, String tabId) {
-    final panes = _shell.panes.value;
-    if (fromSlot < 0 || fromSlot >= panes.length) return;
-    final sourceTabs = panes[fromSlot].tabs;
+    // Resolve the destination first: it may call `enterDual()`, which
+    // replaces `_shell.panes.value` wholesale, so `sourceTabs` must be read
+    // afterward or it can end up pointing at a discarded PaneStore.
     final destination = _otherPane(fromSlot);
     if (destination == null) return;
-    final tab = sourceTabs.takeTab(tabId);
+    final panes = _shell.panes.value;
+    if (fromSlot < 0 || fromSlot >= panes.length) return;
+    final tab = panes[fromSlot].tabs.takeTab(tabId);
     if (tab == null) return;
     destination.tabs.insertTab(tab);
+
+    final otherSlot = fromSlot == 0 ? 1 : 0;
+    _shell.setActivePane(otherSlot);
+    _restoreFocus();
   }
 
   /// Moves the active pane's active tab to the opposite pane.
