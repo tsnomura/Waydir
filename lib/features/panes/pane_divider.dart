@@ -39,7 +39,7 @@ class _PaneDividerState extends State<PaneDivider> {
           widget.shell.setSplitRatio(_startRatio + dx / widget.totalWidth);
         },
         onDoubleTap: () {
-          if (_hovered) widget.shell.swapPanes();
+          if (_hovered) widget.shell.swapActiveTabs();
         },
         child: SizedBox(
           width: PaneDivider.hitWidth,

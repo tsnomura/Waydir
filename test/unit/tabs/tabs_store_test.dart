@@ -238,6 +238,79 @@ void main() {
     });
   });
 
+  group('TabsStore.replaceActiveTab', () {
+    test('swaps in the new tab at the same position, keeping it active', () {
+      final other = TabsStore.fromPaths(
+        operationStore: _ops,
+        paths: const ['/incoming'],
+      );
+      addTearDown(other.dispose);
+      final incoming = other.tabs.value.first;
+
+      final replaced = _tabs.replaceActiveTab(incoming);
+
+      expect(replaced.store.currentPath.value, '/two');
+      expect(_tabs.tabs.value.length, 3);
+      expect(_tabs.activeIndex.value, 1);
+      expect(_tabs.activeTab.value.id, incoming.id);
+      expect(_tabs.tabs.value.map((t) => t.store.currentPath.value), [
+        '/one',
+        '/incoming',
+        '/three',
+      ]);
+    });
+
+    test('works on a store with only one tab', () {
+      final store = TabsStore.fromPaths(operationStore: _ops, paths: ['/only']);
+      addTearDown(store.dispose);
+      final other = TabsStore.fromPaths(
+        operationStore: _ops,
+        paths: const ['/incoming'],
+      );
+      addTearDown(other.dispose);
+
+      final replaced = store.replaceActiveTab(other.tabs.value.first);
+
+      expect(replaced.store.currentPath.value, '/only');
+      expect(store.tabs.value.length, 1);
+      expect(store.activeTab.value.store.currentPath.value, '/incoming');
+    });
+  });
+
+  group('ShellStore.swapActiveTabs (via TabsStore.replaceActiveTab)', () {
+    test('swapping both panes\' active tabs exchanges them symmetrically', () {
+      final paneA = TabsStore.fromPaths(
+        operationStore: _ops,
+        paths: const ['/a1', '/a2'],
+        activeTabIndex: 1,
+      );
+      final paneB = TabsStore.fromPaths(
+        operationStore: _ops,
+        paths: const ['/b1', '/b2', '/b3'],
+        activeTabIndex: 2,
+      );
+      addTearDown(paneA.dispose);
+      addTearDown(paneB.dispose);
+
+      final activeA = paneA.activeTab.value;
+      final activeB = paneB.activeTab.value;
+      paneA.replaceActiveTab(activeB);
+      paneB.replaceActiveTab(activeA);
+
+      expect(paneA.tabs.value.map((t) => t.store.currentPath.value), [
+        '/a1',
+        '/b3',
+      ]);
+      expect(paneB.tabs.value.map((t) => t.store.currentPath.value), [
+        '/b1',
+        '/b2',
+        '/a2',
+      ]);
+      expect(paneA.activeTab.value.id, activeB.id);
+      expect(paneB.activeTab.value.id, activeA.id);
+    });
+  });
+
   group('TabsStore.selectTab', () {
     test('updates activeIndex for a valid index', () {
       _tabs.selectTab(2);

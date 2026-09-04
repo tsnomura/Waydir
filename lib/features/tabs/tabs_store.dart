@@ -147,6 +147,24 @@ class TabsStore {
     }
   }
 
+  /// Swaps the active tab out for [newTab] at the same position, keeping it
+  /// active. Unlike [takeTab]/[insertTab] this never refuses on a
+  /// single-tab store — the tab count never actually changes, so there's no
+  /// risk of a pane ending up with zero tabs, even momentarily. Returns the
+  /// replaced-out tab without disposing its [NavigationStore], for handing
+  /// to whoever is doing the other half of the swap.
+  TabState replaceActiveTab(TabState newTab) {
+    final list = tabs.value;
+    final idx = activeIndex.value.clamp(0, list.length - 1);
+    final old = list[idx];
+    final next = List<TabState>.of(list);
+    next[idx] = newTab;
+    tabs.value = next;
+    activeIndex.value = idx;
+
+    return old;
+  }
+
   void selectTab(int i) {
     if (i >= 0 && i < tabs.value.length) {
       activeIndex.value = i;
