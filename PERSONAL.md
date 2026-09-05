@@ -92,6 +92,28 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`,
 `32b9119`, `7abfac6`.
 
+## LaTeX math in the Markdown preview
+
+`$...$` (inline) and `$$...$$` (block, one line or multi-line) render as
+real typeset math via `flutter_math_fork` — a pure Flutter/Dart renderer
+(KaTeX-compatible subset, no WebView), reusing `flutter_svg` which was
+already a dependency.
+
+- Custom `InlineSyntax`/`BlockSyntax` registered into the `markdown`
+  package parser `flutter_markdown_plus` uses under the hood, plus a
+  `MarkdownElementBuilder` that turns the matched TeX source into a
+  `Math.tex(...)` widget styled with the current theme's text color.
+- The inline delimiter regex requires content to start/end on a
+  non-whitespace, non-`$` character (Pandoc's `tex_math_dollars` rule), so
+  ordinary prose mentioning two dollar amounts (`$5 and $10`) is never
+  misread as one equation.
+- Found while building it: a custom element builder must override
+  `visitElementAfter`, not `visitText` — overriding `visitText` silently
+  left the `$`-delimited span rendered as plain text (dollar signs
+  stripped, content untouched) instead of typeset math.
+
+Relevant commit: `4076f76`.
+
 ## Window state persistence
 
 Window size and maximized/restored state are remembered across restarts
