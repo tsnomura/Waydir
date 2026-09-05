@@ -188,7 +188,15 @@ class CompareController {
 
   bool _isComparablePath(String path) {
     if (path.isEmpty) return false;
-    if (PlatformPaths.isRemoteUri(path)) return false;
+    // smb:// is a Linux gvfs mount alias resolved to a real local path
+    // before any FS op reaches it (see LocationResolver) — not a backend
+    // compare can talk to directly, unlike sftp://.
+    if (PlatformPaths.isSmbUri(path)) return false;
+    // sftp:// has no cheap synchronous existence check available (it's a
+    // network round trip); trust that a pane already showing this path
+    // means it was already proven to exist by successfully navigating
+    // there.
+    if (PlatformPaths.isSftpUri(path)) return true;
     try {
       return Directory(path).existsSync();
     } catch (_) {

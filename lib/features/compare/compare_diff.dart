@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../core/models/file_entry.dart';
+import '../../core/platform/platform_paths.dart';
 
 const compareMtimeToleranceMs = 2000;
 
@@ -187,6 +188,18 @@ Map<String, _CompareItem> _mapByRelativePath(
 }
 
 String _relativePath(String root, String path) {
+  // `package:path`'s relative()/normalize() assume a real OS path — on
+  // Windows in particular, the `:` in `sftp://host:port/...` gets
+  // misparsed as a drive-letter separator. Scheme-aware roots split on
+  // segments instead, the same way PlatformPaths.join/parentOf/segments
+  // already have to for these paths.
+  if (PlatformPaths.isRemoteUri(root)) {
+    final rootSegments = PlatformPaths.segments(root);
+    final pathSegments = PlatformPaths.segments(path);
+    if (pathSegments.length <= rootSegments.length) return '';
+
+    return pathSegments.sublist(rootSegments.length).join('/');
+  }
   final rel = p.relative(path, from: root).replaceAll('\\', '/');
   if (rel == '.') return '';
 

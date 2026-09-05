@@ -502,8 +502,8 @@ class Translations$compare$en {
 	/// en: 'Compare needs two panes — press F9 for dual-pane mode first'
 	String get needsDualPane => 'Compare needs two panes — press F9 for dual-pane mode first';
 
-	/// en: 'Compare doesn't work with sftp/smb paths, trash, or tags'
-	String get needsLocalFolders => 'Compare doesn\'t work with sftp/smb paths, trash, or tags';
+	/// en: 'Compare doesn't work with smb paths, trash, or tags'
+	String get needsLocalFolders => 'Compare doesn\'t work with smb paths, trash, or tags';
 }
 
 // Path: properties
@@ -4228,7 +4228,7 @@ extension on Translations {
 			'compare.running' => 'Comparing…',
 			'compare.counts' => ({required Object identical, required Object differ, required Object uniqueLeft, required Object uniqueRight}) => '${identical} identical · ${differ} different · ${uniqueLeft} left only · ${uniqueRight} right only',
 			'compare.needsDualPane' => 'Compare needs two panes — press F9 for dual-pane mode first',
-			'compare.needsLocalFolders' => 'Compare doesn\'t work with sftp/smb paths, trash, or tags',
+			'compare.needsLocalFolders' => 'Compare doesn\'t work with smb paths, trash, or tags',
 			'properties.title' => 'Properties',
 			'properties.name' => 'Name',
 			'properties.type' => 'Type',

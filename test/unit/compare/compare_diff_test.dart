@@ -91,4 +91,36 @@ void main() {
     expect(diff.left['/left/folder']!.status, CompareStatus.newer);
     expect(diff.right['/right/folder']!.status, CompareStatus.older);
   });
+
+  test('computes correct relative paths for sftp:// roots', () {
+    // package:path's relative()/normalize() misparse `sftp://host:port/...`
+    // (the `:` reads as a Windows drive separator) — sftp roots must go
+    // through PlatformPaths.segments() instead. Regression coverage for
+    // that fix.
+    final diff = buildCompareDiff(
+      leftRoot: 'sftp://user@host:22/left',
+      rightRoot: 'sftp://user@host:22/right',
+      leftEntries: [
+        entry('sftp://user@host:22/left/dir', type: FileItemType.folder),
+        entry('sftp://user@host:22/left/dir/child.txt', ms: 30000),
+      ],
+      rightEntries: [
+        entry('sftp://user@host:22/right/dir', type: FileItemType.folder),
+        entry('sftp://user@host:22/right/dir/child.txt', ms: 10000),
+      ],
+    );
+
+    expect(
+      diff.left['sftp://user@host:22/left/dir/child.txt']!.relativePath,
+      'dir/child.txt',
+    );
+    expect(
+      diff.right['sftp://user@host:22/right/dir/child.txt']!.relativePath,
+      'dir/child.txt',
+    );
+    expect(
+      diff.left['sftp://user@host:22/left/dir/child.txt']!.status,
+      CompareStatus.newer,
+    );
+  });
 }
