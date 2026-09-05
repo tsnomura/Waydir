@@ -171,21 +171,38 @@ Found and fixed two real bugs building this:
 Relevant commits: `1f867f5`, `1690f4e`, `6b90f5d` (temporary diagnostic,
 removed), `c25fbca`, `7212432`.
 
-## Compare directories on network drives
+## Compare directories on network drives and sftp
 
 `F8` compare now works against mapped/UNC network drives, not just local
 disks — the restriction only ever needed to exclude Waydir's own virtual
 `smb://`/`sftp://` filesystems, not real (if slow) OS-level network paths.
+`sftp://` itself is now allowed too (Waydir's own `smb://` gvfs-mount alias
+still isn't — see below).
 
-- Comparing a network path defaults `Recursive` to off on activation, since a
-  full recursive walk over a slow share can take a long time — the user
-  opts in explicitly rather than triggering it by accident.
+- Comparing a network path (UNC/mapped drive, or now `sftp://`) defaults
+  `Recursive` to off on activation, since a full recursive walk over a slow
+  connection can take a long time — the user opts in explicitly rather
+  than triggering it by accident. Recursive listing over sftp always uses
+  the plain per-directory fallback walk (one round trip per directory) —
+  there's no native fast-walker for a virtual filesystem, just the same
+  dispatch every other sftp file op already goes through.
 - While a comparison is running, a dedicated Cancel control (with the `Esc`
   shortcut shown) sits next to the "Comparing…" label, and the close button's
   tooltip/color reflect that it cancels an in-progress scan rather than just
   closing a finished one.
+- `smb://` stays unsupported — on Linux it's a gvfs mount alias resolved to
+  a real local path before any FS op touches it, not a cross-platform
+  backend compare can talk to directly. Irrelevant on Windows (network
+  shares are already plain UNC paths, already handled).
+- Found while adding sftp support: `package:path`'s `relative()`/
+  `normalize()` assume a real OS path, and on Windows in particular misparse
+  the `:` in `sftp://host:port/...` as a drive-letter separator — the
+  relative-path math compare uses to key its diff now branches to
+  scheme-aware segment splitting (matching how `PlatformPaths.join`/
+  `parentOf`/`segments` already had to, for the same reason) whenever
+  either root is a `smb://`/`sftp://` URI.
 
-Relevant commits: `dec6776`, `bb6ef7f`.
+Relevant commits: `dec6776`, `bb6ef7f`, `a348b95`.
 
 ## Windows Terminal integration
 
