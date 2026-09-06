@@ -21,6 +21,8 @@ Fast, keyboard-first desktop file manager with dual panes, tabs, network drives,
 
 </div>
 
+> **This is an unofficial personal fork** of [Waydir/Waydir](https://github.com/Waydir/Waydir), with personal customizations on the `personal` branch — not affiliated with or endorsed by the original maintainers. See [`PERSONAL.md`](PERSONAL.md) for what's different. For the upstream project, issues and releases, see [github.com/Waydir/Waydir](https://github.com/Waydir/Waydir).
+
 <p align="center">
   <img src="docs/screenshots/hero.png" alt="Waydir" width="860">
 </p>
