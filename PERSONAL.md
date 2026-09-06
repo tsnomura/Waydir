@@ -201,8 +201,25 @@ still isn't — see below).
   scheme-aware segment splitting (matching how `PlatformPaths.join`/
   `parentOf`/`segments` already had to, for the same reason) whenever
   either root is a `smb://`/`sftp://` URI.
+- **Also found while adding sftp support — this one's an upstream bug, not
+  a personal one** (present in `main` since compare was first added,
+  `c09bbe7`): recursive compare's "fast path" called
+  `WaydirCoreLoader.enumerate` (the native `waydir_enumerate`), which is
+  actually built for delete pre-scans and always reports every entry's
+  size/mtime as `0` — every file that exists on both sides was silently
+  reported `identical` no matter how different its real content was,
+  since `0 == 0` and `|0 - 0|` is always within tolerance. Only
+  unique-to-one-side detection (which doesn't depend on metadata) ever
+  worked correctly under recursive compare. It also isn't scheme-aware, so
+  for an sftp root it "succeeded" with zero entries instead of ever
+  reaching the sftp-capable fallback walk. Recursive compare now always
+  uses the plain per-directory walk (already correct, already
+  scheme-aware) — slower on huge local trees, but the native path was
+  never something merely slow, it was actively wrong. Caught by a
+  real-disk integration test that fails against the old code with
+  "Expected: older, Actual: identical".
 
-Relevant commits: `dec6776`, `bb6ef7f`, `a348b95`.
+Relevant commits: `dec6776`, `bb6ef7f`, `a348b95`, `251abb3`.
 
 ## Windows Terminal integration
 
