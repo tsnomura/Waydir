@@ -242,6 +242,27 @@ class SelectionController {
     if (rows > 0) _pageRows = rows;
   }
 
+  /// [cursorIndex] as-is when valid, otherwise resolved from the single
+  /// selected file if there is exactly one (e.g. right after Quick Look
+  /// opens on a file that was selected without going through cursor-based
+  /// navigation — a reveal/jump, a stats-panel click, ...). Falling back to
+  /// jumping to the very start/end of the list in that case, as every
+  /// `cursorIndex.value < 0` branch below used to do unconditionally,
+  /// ignored what's actually selected/shown, so the first arrow press
+  /// after such a jump landed on the wrong file instead of stepping from
+  /// the one already on screen.
+  int _resolvedCursorIndex() {
+    final idx = cursorIndex.value;
+    if (idx >= 0) return idx;
+    final sel = selectedPaths.value;
+    if (sel.length == 1) {
+      final found = _vf.indexWhere((f) => f.path == sel.first);
+      if (found >= 0) return found;
+    }
+
+    return -1;
+  }
+
   void moveCursorHorizontally(int delta) {
     final settings = SettingsStore.instance;
     if (settings.fileViewMode.value != 'grid') {
@@ -250,16 +271,17 @@ class SelectionController {
       return;
     }
     if (_vf.isEmpty || delta == 0) return;
-    if (cursorIndex.value < 0) {
+    final current = _resolvedCursorIndex();
+    if (current < 0) {
       _initCursor(delta > 0 ? 0 : _vf.length - 1);
 
       return;
     }
     final columns = gridColumns.value.clamp(1, 1000);
-    final col = cursorIndex.value % columns;
+    final col = current % columns;
     if (delta < 0 && col == 0) return;
     if (delta > 0 && col == columns - 1) return;
-    final next = cursorIndex.value + delta;
+    final next = current + delta;
     if (next < 0 || next >= _vf.length) return;
     _applyCursorMove(next);
   }
@@ -270,26 +292,28 @@ class SelectionController {
         ? delta * gridColumns.value.clamp(1, 1000)
         : delta;
     if (_vf.isEmpty) return;
-    if (cursorIndex.value < 0) {
+    final current = _resolvedCursorIndex();
+    if (current < 0) {
       _initCursor(step > 0 ? 0 : _vf.length - 1);
 
       return;
     }
-    final next = cursorIndex.value + step;
+    final next = current + step;
     if (next < 0 || next >= _vf.length) return;
     _applyCursorMove(next);
   }
 
   void moveCursorByPage(int dir) {
     if (_vf.isEmpty) return;
-    if (cursorIndex.value < 0) {
+    final current = _resolvedCursorIndex();
+    if (current < 0) {
       _initCursor(dir > 0 ? 0 : _vf.length - 1);
 
       return;
     }
     final step = (_pageRows * 0.8).floor().clamp(1, _pageRows);
-    final next = (cursorIndex.value + dir * step).clamp(0, _vf.length - 1);
-    if (next == cursorIndex.value) return;
+    final next = (current + dir * step).clamp(0, _vf.length - 1);
+    if (next == current) return;
     _applyCursorMove(next);
   }
 
