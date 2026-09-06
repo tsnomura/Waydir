@@ -53,8 +53,18 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
   between files); this also works for the unfocused text preview.
 - Fixed: the scroll controller wasn't attached at all on Windows, so scrolling
   silently did nothing there.
+- Fixed: stepping the cursor with the arrow keys right after Quick Look opened
+  on a file selected some other way (not through cursor navigation) jumped to
+  the start/end of the file list instead of stepping from the file on screen.
+- Fixed: stepping to another file with the arrow keys could leave the header
+  showing the new file's name while the body kept showing the previous
+  file's content, until something else forced a rebuild. The async preview
+  loader kept rendering the old cache entry for the frames between the
+  cache key changing and the new file's load finishing, and previews that
+  key a fresh child widget off the file path (e.g. the text editor) baked
+  that stale content in as their initial value, permanently.
 
-Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`.
+Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`, `cc1bdfd`, `6513cb6`.
 
 ## Quick Look preview generators
 
