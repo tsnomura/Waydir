@@ -47,10 +47,20 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
 
 ## Quick Look
 
-- Draggable and resizable — it opens over the inactive pane instead of
-  centered/fixed, and can be moved and resized like a floating panel.
+- Draggable and resizable — always centered on screen (previously anchored
+  over the inactive pane in dual-pane mode; that rule was dropped since it
+  fought with the wider window a compare-mode diff needs), and can be moved
+  and resized like a floating panel.
 - `PageUp`/`PageDown` scroll the preview (previously they paged left/right
   between files); this also works for the unfocused text preview.
+- In compare mode, opening Quick Look while exactly one file is selected in
+  each pane attempts a side-by-side text diff (via an external `diff -y`-style
+  command, config-driven like preview generators — see below) instead of the
+  normal single-file preview, opening wider to fit two columns. Falls back to
+  the normal single-file preview whenever the diff command is unset, missing,
+  errors or times out, or the selection stops being one-file-per-pane (e.g.
+  arrowing to a different file). Added/removed/changed lines are tinted using
+  the same colors as compare mode's own row decorations.
 - Fixed: the scroll controller wasn't attached at all on Windows, so scrolling
   silently did nothing there.
 - Fixed: stepping the cursor with the arrow keys right after Quick Look opened
@@ -64,7 +74,25 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
   key a fresh child widget off the file path (e.g. the text editor) baked
   that stale content in as their initial value, permanently.
 
-Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`, `cc1bdfd`, `6513cb6`.
+### Compare diff command
+
+The command Quick Look runs for the compare-mode diff preview is configurable,
+the same way preview generators are: drop a `compare_diff.json` in Waydir's
+application support directory (next to `generators/`, e.g.
+`%APPDATA%\Waydir\compare_diff.json` on Windows) with `cmd`, `args`
+(`%LEFT%`/`%RIGHT%`/`%WIDTH%` placeholders) and an optional `timeoutSeconds`.
+Falls back to plain `diff -y --strip-trailing-cr` on `PATH` when the file is
+missing — `--strip-trailing-cr` matters whenever either file has Windows CRLF
+line endings, which `diff` otherwise treats as part of each line's content
+rather than a terminator, corrupting every line's right-hand column. `%WIDTH%`
+is a fixed generous constant, not the live pane width, since `-y` truncates
+(rather than wraps) lines past it and Quick Look lays the two columns out
+itself — re-running the command on every resize to keep it in sync isn't
+worth the flicker. Runs with the user's full privileges; only point this at a
+command you trust, same as generators.
+
+Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`, `cc1bdfd`,
+`6513cb6`, `8f36b93`.
 
 ## Quick Look preview generators
 
