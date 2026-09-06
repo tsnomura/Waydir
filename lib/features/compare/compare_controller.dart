@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
 
 import '../../core/fs/file_system_service.dart';
-import '../../core/fs/waydir_core_loader.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../ui/theme/app_theme.dart';
@@ -204,24 +202,23 @@ class CompareController {
     }
   }
 
+  // Deliberately not using WaydirCoreLoader.enumerate() here: that native
+  // walker is built for delete pre-scans, where only the path matters, and
+  // always reports size/mtime as zero — every file would then compare as
+  // identical (0 == 0, |0-0| within tolerance) no matter its real content,
+  // and unique-only-on-one-side would be the only status compare could
+  // ever detect correctly. It's also not scheme-aware: given an sftp://
+  // root it just fails to find anything, "succeeding" with zero entries
+  // instead of falling through to the fallback below, which is the only
+  // one of the two that can actually talk to sftp. The per-directory walk
+  // below is slower for large local trees but is the only one that's
+  // actually correct.
   Future<List<FileEntry>> _entriesFor(
     String root,
     int run,
     bool recursive,
   ) async {
     if (!recursive) return FileSystemService.listDirectory(root);
-
-    final native = await Isolate.run(() {
-      try {
-        final blob = WaydirCoreLoader.enumerate(root, postorder: false);
-        if (blob == null) return null;
-
-        return FileEntryCodec.decode(blob);
-      } catch (_) {
-        return null;
-      }
-    });
-    if (native != null) return native;
 
     final out = <FileEntry>[];
     final pending = <String>[root];
