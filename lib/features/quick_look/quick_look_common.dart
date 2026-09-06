@@ -181,7 +181,16 @@ class _AsyncRetainState<T> extends State<AsyncRetain<T>> {
   @override
   void didUpdateWidget(AsyncRetain<T> old) {
     super.didUpdateWidget(old);
-    if (old.cacheKey != widget.cacheKey) _load();
+    if (old.cacheKey != widget.cacheKey) {
+      // Otherwise builder(_data) keeps rendering the previous cacheKey's
+      // data for the frames between the key changing and the new load
+      // resolving, which callers can bake into a fresh child keyed off the
+      // new cacheKey (e.g. Quick Look's CodeEditor) before that child ever
+      // sees the right content.
+      _has = false;
+      _data = null;
+      _load();
+    }
   }
 
   Future<void> _load() async {
