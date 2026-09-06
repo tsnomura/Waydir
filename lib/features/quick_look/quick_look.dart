@@ -13,6 +13,8 @@ import '../../ui/dialogs/dialog.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'code_editor.dart';
+import 'diff/diff_preview.dart';
+import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
 import 'generators/generator_preview.dart';
 import 'generators/generator_registry.dart';
@@ -27,7 +29,7 @@ Future<void> showQuickLook({
   required BuildContext context,
   required NavigationStore store,
   FileEntry? explicitEntry,
-  Rect? anchorArea,
+  (FileEntry, FileEntry)? diffPair,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -39,7 +41,7 @@ Future<void> showQuickLook({
       return _QuickLook(
         store: store,
         explicitEntry: explicitEntry,
-        anchorArea: anchorArea,
+        diffPair: diffPair,
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -59,9 +61,9 @@ Future<void> showQuickLook({
 class _QuickLook extends StatefulWidget {
   final NavigationStore store;
   final FileEntry? explicitEntry;
-  final Rect? anchorArea;
+  final (FileEntry, FileEntry)? diffPair;
 
-  const _QuickLook({required this.store, this.explicitEntry, this.anchorArea});
+  const _QuickLook({required this.store, this.explicitEntry, this.diffPair});
 
   @override
   State<_QuickLook> createState() => _QuickLookState();
@@ -89,24 +91,19 @@ class _QuickLookState extends State<_QuickLook> {
 
   static const _cursorRepeatInterval = Duration(milliseconds: 70);
 
-  /// Centers the window in [screen] by default, or within [anchor] when
-  /// given (e.g. the inactive pane's area in dual-pane mode).
+  /// Centers the window in [screen] — wider by default when opened as a
+  /// compare-mode diff, since a side-by-side diff needs more room than a
+  /// normal single-file preview.
   Rect _initialRect(Size screen) {
-    final anchor = widget.anchorArea;
-    final maxWidth = anchor != null ? anchor.width : screen.width;
-    final maxHeight = anchor != null ? anchor.height : screen.height;
+    final isDiff = widget.diffPair != null;
     final width = _clampSize(
-      anchor != null ? maxWidth * 0.86 : maxWidth * 0.7,
+      screen.width * (isDiff ? 0.92 : 0.7),
       _kMinWindowWidth,
-      anchor != null ? maxWidth : 1100.0,
+      isDiff ? 1600.0 : 1100.0,
     );
-    final height = _clampSize(
-      anchor != null ? maxHeight * 0.86 : maxHeight * 0.78,
-      _kMinWindowHeight,
-      anchor != null ? maxHeight : 900.0,
-    );
-    final originX = (anchor?.left ?? 0) + (maxWidth - width) / 2;
-    final originY = (anchor?.top ?? 0) + (maxHeight - height) / 2;
+    final height = _clampSize(screen.height * 0.78, _kMinWindowHeight, 900.0);
+    final originX = (screen.width - width) / 2;
+    final originY = (screen.height - height) / 2;
 
     return _clampToScreen(
       Rect.fromLTWH(originX, originY, width, height),
@@ -641,6 +638,11 @@ class _QuickLookState extends State<_QuickLook> {
         }
         final entry = widget.store.cursorEntry.value;
         _syncPresentation(entry);
+        final diffPair = widget.diffPair;
+        final showDiff =
+            diffPair != null &&
+            (entry?.realPath == diffPair.$1.realPath ||
+                entry?.realPath == diffPair.$2.realPath);
 
         return Column(
           children: [
@@ -658,16 +660,33 @@ class _QuickLookState extends State<_QuickLook> {
             ),
             Container(height: 1, color: AppColors.bgDivider),
             Expanded(
-              child: _Body(
-                entry: entry,
-                editorActive: _editorActive,
-                editorController: _editorController,
-                showInfo: _showInfo,
-                onCompactChanged: _setCompact,
-                markdownRendered: _markdownRendered,
-                scrollController: _contentScroll,
-                generatorPage: _generatorPage,
-              ),
+              child: showDiff
+                  ? _DiffAttempt(
+                      left: diffPair.$1,
+                      right: diffPair.$2,
+                      editorActive: _editorActive,
+                      onCompactChanged: _setCompact,
+                      fallback: (context) => _Body(
+                        entry: entry,
+                        editorActive: _editorActive,
+                        editorController: _editorController,
+                        showInfo: _showInfo,
+                        onCompactChanged: _setCompact,
+                        markdownRendered: _markdownRendered,
+                        scrollController: _contentScroll,
+                        generatorPage: _generatorPage,
+                      ),
+                    )
+                  : _Body(
+                      entry: entry,
+                      editorActive: _editorActive,
+                      editorController: _editorController,
+                      showInfo: _showInfo,
+                      onCompactChanged: _setCompact,
+                      markdownRendered: _markdownRendered,
+                      scrollController: _contentScroll,
+                      generatorPage: _generatorPage,
+                    ),
             ),
           ],
         );
@@ -1101,6 +1120,43 @@ class _Body extends StatelessWidget {
       showInfo: showInfo,
       onCompactChanged: onCompactChanged,
       scrollController: scrollController,
+    );
+  }
+}
+
+/// Attempts a side-by-side diff of [left] and [right] (the two files
+/// selected across panes in compare mode) and falls back to [fallback] —
+/// Quick Look's normal single-file preview — whenever the configured diff
+/// command is missing, errors, times out, or isn't set up at all.
+class _DiffAttempt extends StatelessWidget {
+  final FileEntry left;
+  final FileEntry right;
+  final Signal<bool> editorActive;
+  final ValueChanged<bool> onCompactChanged;
+  final WidgetBuilder fallback;
+
+  const _DiffAttempt({
+    required this.left,
+    required this.right,
+    required this.editorActive,
+    required this.onCompactChanged,
+    required this.fallback,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    onCompactChanged(false);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => editorActive.value = false,
+    );
+
+    return AsyncRetain<TextDiffResult>(
+      cacheKey: DiffRunner.cacheKeyFor(left, right),
+      loader: () => DiffRunner.run(left, right),
+      loading: const QlCentered.spinner(),
+      builder: (result) => result.available
+          ? TextDiffView(left: left, right: right, result: result)
+          : fallback(context),
     );
   }
 }
