@@ -91,8 +91,13 @@ itself — re-running the command on every resize to keep it in sync isn't
 worth the flicker. Runs with the user's full privileges; only point this at a
 command you trust, same as generators.
 
+Its output is decoded as UTF-8 (matching Quick Look's normal text preview),
+not the OS's legacy codepage — decoding as the latter garbled any non-ASCII
+content on non-English Windows installs, since `diff` just echoes the source
+files' own UTF-8 bytes back verbatim.
+
 Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`, `cc1bdfd`,
-`6513cb6`, `8f36b93`.
+`6513cb6`, `8f36b93`, `f93b97d`.
 
 ## Quick Look preview generators
 
@@ -284,5 +289,15 @@ Relevant commits: `550baa7`, `b273adc`, `e92c5b5`, `c5ec4d4`.
 
 - Changing the sort key now preserves the prior sort order as a tiebreak
   instead of resetting it.
+- Fixed: permanently deleting a directory that's actually a reparse point
+  (e.g. a cloud-sync client's placeholder folder — OneDrive-style Cloud
+  Files API, `IO_REPARSE_TAG_CLOUD*`) could fail. `Link.delete()` assumes
+  symlink semantics that don't apply to these; it now falls back to
+  `Directory.delete(recursive: false)`, which is safe for a genuine
+  symlink/junction too — Windows never deletes a reparse point's target
+  through that call, only the reparse point itself.
+- Right-clicking the "Date modified"/"Date created"/"Date added" column
+  header now offers a "Recent dates relative" toggle directly, instead of
+  only being reachable through Preferences → Appearance.
 
-Relevant commit: `3b121a8`.
+Relevant commits: `3b121a8`, `77554de`, `c9d8882`.
