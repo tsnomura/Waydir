@@ -12,6 +12,7 @@ import '../../core/fs/file_sort.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
+import '../../ui/overlays/context_menu.dart';
 import '../../ui/overlays/popup_overlay.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
@@ -1052,7 +1053,13 @@ class _ListHeader extends StatelessWidget {
     this.onConfigureColumns,
   });
 
-  Widget _sortable(String label, SortKey key, TextStyle style) {
+  Widget _sortable(
+    BuildContext context,
+    String label,
+    SortKey key,
+    TextStyle style, {
+    FileColumn? column,
+  }) {
     final active = sortColumn == key;
     final ascending = sortAscending;
 
@@ -1061,6 +1068,9 @@ class _ListHeader extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onSortColumn == null ? null : () => onSortColumn!(key),
+        onSecondaryTapUp: column != null && _isDateColumn(column)
+            ? (details) => _showDateColumnMenu(context, details.globalPosition)
+            : null,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1086,6 +1096,32 @@ class _ListHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  static bool _isDateColumn(FileColumn column) => switch (column) {
+    FileColumn.date || FileColumn.created || FileColumn.added => true,
+    _ => false,
+  };
+
+  static void _showDateColumnMenu(BuildContext context, Offset position) {
+    final signal = SettingsStore.instance.recentDatesRelative;
+    const action = 'toggle_recent_dates_relative';
+    showContextMenu(
+      context: context,
+      position: position,
+      items: [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.clockClockwise,
+          label: t.preferences.appearance.recentDatesRelative,
+          action: action,
+          isToggle: true,
+          toggleSignal: signal,
+        ),
+      ],
+      onSelect: (selected) {
+        if (selected == action) signal.value = !signal.value;
+      },
     );
   }
 
@@ -1138,6 +1174,7 @@ class _ListHeader extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: _sortable(
+                context,
                 t.fileView.columns.name,
                 SortKey.name,
                 headerStyle,
@@ -1169,9 +1206,11 @@ class _ListHeader extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: _sortable(
+                  context,
                   fileColumnLabel(col),
                   fileColumnSortKey(col),
                   headerStyle,
+                  column: col,
                 ),
               ),
             ),
