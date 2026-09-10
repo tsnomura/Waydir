@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../../../core/logging/app_logger.dart';
@@ -64,11 +65,17 @@ class DiffRunner {
       // have finished delivering their data yet — collecting them as
       // futures (rather than firing a callback into a buffer and reading it
       // straight after exitCode) is what actually waits for that.
+      //
+      // UTF-8, not SystemEncoding: diff just echoes the source files' own
+      // bytes back verbatim, and Quick Look's normal text preview
+      // (quick_look_io.dart's probeFile) already assumes UTF-8 for those —
+      // SystemEncoding decodes as the OS's legacy codepage (e.g. Shift-JIS
+      // on Japanese Windows), garbling any non-ASCII content.
       final stdoutFuture = process.stdout
-          .transform(const SystemEncoding().decoder)
+          .transform(const Utf8Decoder(allowMalformed: true))
           .join();
       final stderrFuture = process.stderr
-          .transform(const SystemEncoding().decoder)
+          .transform(const Utf8Decoder(allowMalformed: true))
           .join();
       var timedOut = false;
       final exitCode = await process.exitCode.timeout(
