@@ -1117,7 +1117,21 @@ class FileSystemService {
           await _withTransientRetry(() async {
             final type = pathTypes[path];
             if (type == FileSystemEntityType.link) {
-              await Link(path).delete();
+              try {
+                await Link(path).delete();
+              } on FileSystemException {
+                // Some reparse points (e.g. cloud-sync placeholder folders)
+                // are directories in every practical sense, but Dart's type
+                // detection lumps every reparse point into `link` regardless
+                // of the underlying attributes, and Link.delete() assumes
+                // symlink semantics that don't apply to them. Retrying as a
+                // directory delete is safe even for a genuine
+                // symlink/junction: Windows never deletes a reparse point's
+                // target through this call, only the reparse point itself,
+                // and recursive:false additionally refuses outright unless
+                // it's actually empty.
+                await Directory(path).delete(recursive: false);
+              }
             } else if (type == FileSystemEntityType.directory) {
               await Directory(path).delete(recursive: false);
             } else if (type == FileSystemEntityType.file) {
@@ -2114,7 +2128,15 @@ class FileSystemService {
   static void _deleteExistingEntity(String path) {
     final type = FileSystemEntity.typeSync(path, followLinks: false);
     if (type == FileSystemEntityType.link) {
-      Link(path).deleteSync();
+      try {
+        Link(path).deleteSync();
+      } on FileSystemException {
+        // See the matching fallback in deleteWorker's deletePath: some
+        // reparse points (e.g. cloud-sync placeholder folders) aren't
+        // symlinks in the sense Link.delete() assumes. recursive:false
+        // keeps this to removing just the reparse point itself.
+        Directory(path).deleteSync(recursive: false);
+      }
     } else if (type == FileSystemEntityType.directory) {
       Directory(path).deleteSync(recursive: true);
     } else if (type == FileSystemEntityType.file) {
