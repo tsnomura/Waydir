@@ -220,7 +220,6 @@ class FileSystemService {
     final allPaths = <String>[];
     final fileSizes = <String, int>{};
     final sourceRoots = <String>{};
-    final visitedDirs = <String>{};
     int totalBytes = 0;
     int totalFiles = 0;
     final conflicts = <ConflictInfo>[];
@@ -273,6 +272,23 @@ class FileSystemService {
       }
     }
 
+    String mapDestination(String srcPath, String dest) {
+      final sep = Platform.pathSeparator;
+      final srcRoot = _findSourceRoot(srcPath, sourceRoots);
+      if (srcRoot != null) {
+        final relative = srcPath.substring(srcRoot.length);
+        if (isDuplicate && duplicateRootDest[srcRoot] != null) {
+          return '${duplicateRootDest[srcRoot]}$relative';
+        }
+        final srcName = srcRoot.split(sep).last;
+
+        return '$dest$sep$srcName$relative';
+      }
+      final name = srcPath.split(sep).last;
+
+      return '$dest$sep$name';
+    }
+
     Future<void> scanEntity(String src, String dest) async {
       final name = src.split(Platform.pathSeparator).last;
       final targetPath = rootTargetPath(src, dest);
@@ -287,23 +303,59 @@ class FileSystemService {
       if (type == FileSystemEntityType.directory) {
         allPaths.add(src);
         totalFiles++;
-        await _scanDirForCopy(
-          Directory(src),
-          targetPath,
-          visitedDirs,
-          (path, bytes, conflict) {
-            allPaths.add(path);
-            fileSizes[path] = bytes;
-            totalFiles++;
-            totalBytes += bytes;
-            if (conflict != null) conflicts.add(conflict);
-          },
-          (errorPath, errorMsg) {
-            errors.add(TaskError(path: errorPath, message: errorMsg));
-            mainSendPort.send(ErrorMessage(path: errorPath, message: errorMsg));
-          },
-          () => cancelled,
+        // Native, parallel walk (also resolves through reparse points —
+        // symlinks, junctions, cloud-sync placeholders — deep-copying what's
+        // really inside rather than stopping at them) instead of a
+        // sequential per-file Dart listSync/statSync recursion.
+        final native = WaydirCoreLoader.enumerate(
+          src,
+          postorder: false,
+          withStat: true,
         );
+        if (native == null) {
+          final message = _friendlyError(
+            FileSystemException(t.errors.directoryNotReadable, src),
+          );
+          errors.add(TaskError(path: src, message: message));
+          mainSendPort.send(ErrorMessage(path: src, message: message));
+
+          return;
+        }
+        Map<String, FileEntry>? destEntries;
+        if (Directory(targetPath).existsSync()) {
+          final destNative = WaydirCoreLoader.enumerate(
+            targetPath,
+            postorder: false,
+            withStat: true,
+          );
+          if (destNative != null) {
+            destEntries = {
+              for (final d in FileEntryCodec.decode(destNative)) d.path: d,
+            };
+          }
+        }
+        for (final e in FileEntryCodec.decode(native)) {
+          allPaths.add(e.path);
+          totalFiles++;
+          if (e.type != FileItemType.file) continue;
+          fileSizes[e.path] = e.size;
+          totalBytes += e.size;
+          final entryDest = mapDestination(e.path, dest);
+          final destEntry = destEntries?[entryDest];
+          if (destEntry != null && destEntry.type == FileItemType.file) {
+            conflicts.add(
+              ConflictInfo(
+                sourcePath: e.path,
+                targetPath: entryDest,
+                name: e.name,
+                sourceSize: e.size,
+                targetSize: destEntry.size,
+                sourceModified: e.modified,
+                targetModified: destEntry.modified,
+              ),
+            );
+          }
+        }
       } else {
         try {
           final sourceStat = FileStat.statSync(src);
@@ -335,23 +387,6 @@ class FileSystemService {
       }
     }
 
-    String mapDestination(String srcPath, String dest) {
-      final sep = Platform.pathSeparator;
-      final srcRoot = _findSourceRoot(srcPath, sourceRoots);
-      if (srcRoot != null) {
-        final relative = srcPath.substring(srcRoot.length);
-        if (isDuplicate && duplicateRootDest[srcRoot] != null) {
-          return '${duplicateRootDest[srcRoot]}$relative';
-        }
-        final srcName = srcRoot.split(sep).last;
-
-        return '$dest$sep$srcName$relative';
-      }
-      final name = srcPath.split(sep).last;
-
-      return '$dest$sep$name';
-    }
-
     Future<bool> processCopyItem(
       String srcPath, {
       bool useAsyncIo = false,
@@ -370,21 +405,15 @@ class FileSystemService {
       }
 
       try {
-        final linkType = FileSystemEntity.typeSync(srcPath, followLinks: false);
-        if (linkType == FileSystemEntityType.link) {
-          final dstDir = dstPath.substring(
-            0,
-            dstPath.lastIndexOf(Platform.pathSeparator),
-          );
-          if (!Directory(dstDir).existsSync()) {
-            Directory(dstDir).createSync(recursive: true);
-          }
-          _deleteExistingEntity(dstPath);
-          Link(dstPath).createSync(Link(srcPath).targetSync());
-
-          return true;
-        }
-        final type = linkType;
+        // Reparse points (symlinks, junctions, cloud-sync placeholders) are
+        // resolved through rather than recreated as a link at the
+        // destination — a deep copy of what's really there, matching what
+        // the pre-scan above already walked into.
+        final rawType = FileSystemEntity.typeSync(srcPath, followLinks: false);
+        final isReparsePoint = rawType == FileSystemEntityType.link;
+        final type = isReparsePoint
+            ? FileSystemEntity.typeSync(srcPath, followLinks: true)
+            : rawType;
         if (type == FileSystemEntityType.notFound) {
           errors.add(TaskError(path: srcPath, message: t.errors.notFound));
 
@@ -429,7 +458,10 @@ class FileSystemService {
               maybeReport(fileName);
             },
             isCancelled: () => cancelled,
-            useAsyncIo: useAsyncIo,
+            // File.copy() (the async path) doesn't follow reparse points and
+            // throws PathNotFoundException for one — the sync read/write
+            // path resolves them correctly, so force it for these.
+            useAsyncIo: isReparsePoint ? false : useAsyncIo,
           );
         } else if (type == FileSystemEntityType.directory) {
           if (!Directory(dstPath).existsSync()) {
@@ -1925,66 +1957,6 @@ class FileSystemService {
         useAsyncIo: useAsyncIo,
       ),
     );
-  }
-
-  static Future<void> _scanDirForCopy(
-    Directory dir,
-    String dest,
-    Set<String> visited,
-    void Function(String path, int bytes, ConflictInfo? conflict) onFile,
-    void Function(String path, String message) onError,
-    bool Function() isCancelled,
-  ) async {
-    if (isCancelled()) return;
-    final canonical = _resolveCanonical(dir.path);
-    if (!visited.add(canonical)) return;
-    try {
-      var counter = 0;
-      for (final entity in dir.listSync(followLinks: false)) {
-        if (isCancelled()) return;
-        final name = entity.path.split(Platform.pathSeparator).last;
-        final targetPath = '$dest${Platform.pathSeparator}$name';
-        if (entity is Link) {
-          onFile(entity.path, 0, null);
-        } else if (entity is Directory) {
-          onFile(entity.path, 0, null);
-          await _scanDirForCopy(
-            entity,
-            targetPath,
-            visited,
-            onFile,
-            onError,
-            isCancelled,
-          );
-        } else if (entity is File) {
-          try {
-            final sourceStat = FileStat.statSync(entity.path);
-            final size = sourceStat.size;
-            ConflictInfo? conflict;
-            final targetStat = FileStat.statSync(targetPath);
-            if (targetStat.type != FileSystemEntityType.notFound) {
-              conflict = ConflictInfo(
-                sourcePath: entity.path,
-                targetPath: targetPath,
-                name: name,
-                sourceSize: size,
-                targetSize: targetStat.size,
-                sourceModified: sourceStat.modified,
-                targetModified: targetStat.modified,
-              );
-            }
-            onFile(entity.path, size, conflict);
-          } catch (e) {
-            onError(entity.path, _friendlyError(e));
-          }
-        }
-        if ((++counter & 0x3F) == 0) {
-          await Future.delayed(Duration.zero);
-        }
-      }
-    } catch (e) {
-      onError(dir.path, _friendlyError(e));
-    }
   }
 
   static Future<void> _scanDirForMove(

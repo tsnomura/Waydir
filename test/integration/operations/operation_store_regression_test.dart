@@ -48,7 +48,7 @@ void main() {
       );
     });
 
-    test('copy recreates a symlink contained in a directory', () async {
+    test('copy deep-copies a symlink contained in a directory', () async {
       final src = Directory(p.join(tmpDir.path, 'src'))..createSync();
       final target = File(p.join(src.path, 'real.txt'))
         ..writeAsStringSync('payload');
@@ -65,9 +65,11 @@ void main() {
       expect(done.errors, isEmpty);
       final copiedLink = p.join(dest.path, 'src', 'alias.txt');
       expect(
-        FileSystemEntity.isLinkSync(copiedLink),
-        isTrue,
-        reason: 'symlinks inside copied trees must be recreated, not skipped',
+        FileSystemEntity.typeSync(copiedLink, followLinks: false),
+        FileSystemEntityType.file,
+        reason:
+            'symlinks inside copied trees are resolved through and deep-'
+            'copied, not recreated as a link',
       );
       expect(File(copiedLink).readAsStringSync(), 'payload');
     });
