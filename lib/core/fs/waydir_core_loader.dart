@@ -84,9 +84,9 @@ typedef _ListDart =
     Pointer<Uint8> Function(Pointer<Utf8>, bool, Pointer<IntPtr>);
 
 typedef _EnumNative =
-    Pointer<Uint8> Function(Pointer<Utf8>, Bool, Pointer<IntPtr>);
+    Pointer<Uint8> Function(Pointer<Utf8>, Bool, Bool, Pointer<IntPtr>);
 typedef _EnumDart =
-    Pointer<Uint8> Function(Pointer<Utf8>, bool, Pointer<IntPtr>);
+    Pointer<Uint8> Function(Pointer<Utf8>, bool, bool, Pointer<IntPtr>);
 
 typedef _TrashNative =
     Pointer<Uint8> Function(Pointer<Pointer<Utf8>>, IntPtr, Pointer<IntPtr>);
@@ -359,7 +359,7 @@ class NativeTrashItem {
 class WaydirCoreLoader {
   WaydirCoreLoader._();
 
-  static const int _requiredAbi = 16;
+  static const int _requiredAbi = 17;
 
   static DynamicLibrary? _cached;
   static bool _tried = false;
@@ -643,16 +643,25 @@ class WaydirCoreLoader {
     }
   }
 
-  /// Recursive enumeration for delete pre-scans. [postorder] yields
-  /// deepest-first ordering. Returns a FileEntryCodec buffer or null.
-  static Uint8List? enumerate(String root, {bool postorder = true}) {
+  /// Recursive enumeration for delete/copy pre-scans. [postorder] yields
+  /// deepest-first ordering (delete pre-scans, unlinking children before
+  /// their parents). [withStat] fills in real size/mtime/created/added/
+  /// mode/uid/gid instead of leaving them zero — needed for copy pre-scans
+  /// (progress totals, conflict comparisons) but skipped by default since
+  /// delete pre-scans don't use them and it costs an extra stat per entry on
+  /// non-Windows platforms. Returns a FileEntryCodec buffer or null.
+  static Uint8List? enumerate(
+    String root, {
+    bool postorder = true,
+    bool withStat = false,
+  }) {
     final lib = requireLib();
     final fn = lib.lookupFunction<_EnumNative, _EnumDart>('waydir_enumerate');
     final free = lib.lookupFunction<_FreeNative, _FreeDart>('waydir_free');
     final rootPtr = root.toNativeUtf8();
     final outLen = calloc<IntPtr>();
     try {
-      final buf = fn(rootPtr, postorder, outLen);
+      final buf = fn(rootPtr, postorder, withStat, outLen);
       if (buf == nullptr) return null;
       final len = outLen.value;
       final copy = Uint8List.fromList(buf.asTypedList(len));
