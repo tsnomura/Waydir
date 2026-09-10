@@ -301,3 +301,35 @@ Relevant commits: `550baa7`, `b273adc`, `e92c5b5`, `c5ec4d4`.
   only being reachable through Preferences → Appearance.
 
 Relevant commits: `3b121a8`, `77554de`, `c9d8882`.
+
+## Directory copy: native scan, deep-copy through reparse points
+
+Copy's pre-scan (building the file list, totals and conflict list before any
+bytes move) now goes through `waydir_core`'s parallel Rust walker instead of
+a sequential Dart `listSync`/`statSync` recursion — `waydir_enumerate` gained
+a `with_stat` parameter that fills in real size/mtime (free on Windows,
+where `FindNextFileW` already returns it during enumeration; one extra stat
+per entry elsewhere), reusing the same metadata-fill code the directory
+lister already had. Bumped the native ABI to 17 since the FFI signature
+changed. When the destination doesn't exist yet, conflict detection is
+skipped entirely — nothing there could conflict.
+
+Symlinks, junctions and cloud-sync placeholder folders (e.g. OneDrive-style
+Cloud Files API reparse points) encountered while copying are now resolved
+through and deep-copied — the real content underneath, not a recreated
+link — matching how the pre-scan itself now walks (`follow_links(true)` on
+the native side, which correctly stops infinite loops via `walkdir`'s
+file-id cycle tracking). Fixed a bug this surfaced: `File.copy()` (Dart's
+async copy path) doesn't follow reparse points and throws
+`PathNotFoundException` even though the source genuinely resolves — copying
+a reparse point now always forces the synchronous read/write path, which
+handles it correctly.
+
+Measured no improvement scanning a directory on a cloud-sync-backed drive
+mounted as a local drive letter — the bottleneck there is the sync client's
+own network latency per item, not scan-side CPU/algorithm cost, so no
+client-side scan optimization helps. For that case the plan is a separate
+feature: launching `robocopy` (Windows) / `rsync` (Unix) in the built-in
+terminal instead of using Waydir's own copy engine.
+
+Relevant commits: `8404fee`, `f9c874f`.
