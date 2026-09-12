@@ -203,6 +203,30 @@ mixin _WaydirMenuMixin
           )
         : null;
 
+    final canBulkCopy =
+        entries.isNotEmpty &&
+        entries.every(
+          (e) =>
+              !PlatformPaths.isSmbUri(e.realPath) &&
+              !FileSystemService.isInsideArchive(e.realPath),
+        );
+    final bulkCopyToolForMenu = bulkCopyToolFor(
+      involvesSftp:
+          entries.any((e) => PlatformPaths.isSftpUri(e.realPath)) ||
+          PlatformPaths.isSftpUri(_bulkCopyDefaultDestination(store)),
+    );
+    final bulkCopyItem = canBulkCopy
+        ? ContextMenuItem(
+            icon: WaydirIconsRegular.terminal,
+            label: switch (bulkCopyToolForMenu) {
+              BulkCopyTool.robocopy => t.menu.bulkCopyRobocopy,
+              BulkCopyTool.rsync => t.menu.bulkCopyRsync,
+              BulkCopyTool.scp => t.menu.bulkCopyScp,
+            },
+            action: 'bulk_copy',
+          )
+        : null;
+
     final extractItem = canExtract
         ? ContextMenuItem(
             icon: WaydirIconsRegular.archive,
@@ -274,6 +298,7 @@ mixin _WaydirMenuMixin
       ...openWithItems,
       ?extractItem,
       ?compressItem,
+      ?bulkCopyItem,
       if ((isRecursive || store.isTagView) && count == 1)
         ContextMenuItem(
           icon: WaydirIconsRegular.arrowSquareOut,
@@ -1303,6 +1328,8 @@ mixin _WaydirMenuMixin
         _quickCompress(ArchiveFormat.tarGz);
       case 'compress_options':
         _compressWithOptions();
+      case 'bulk_copy':
+        _openBulkCopyDialog();
       case 'extract_here':
         _extractSelected(toOwnFolder: false);
       case 'extract_to_folder':
@@ -1353,6 +1380,93 @@ mixin _WaydirMenuMixin
       default:
         if (action.startsWith('plugin:')) _runPluginAction(action);
     }
+  }
+
+  /// The other pane's current directory — the sensible default destination
+  /// for a bulk copy, and the thing that decides whether it'll end up
+  /// talking to an sftp:// host (and so which tool runs) whenever the
+  /// selection itself is local (e.g. uploading local files to the other
+  /// pane's sftp:// location).
+  String _bulkCopyDefaultDestination(NavigationStore store) {
+    final slot = _shell.activePaneIndex.value;
+    final panes = _shell.panes.value;
+    final otherSlot = slot == 0 ? 1 : 0;
+
+    return otherSlot < panes.length
+        ? panes[otherSlot].tabs.activeTab.value.store.currentPath.value
+        : store.currentPath.value;
+  }
+
+  /// Opens a robocopy/rsync/scp options dialog for the selected entries,
+  /// then opens a terminal and fills in the resulting command line —
+  /// without pressing Enter, so the user reviews it (these commands can
+  /// delete files at the destination, e.g. `/MIR`/`--delete`) before
+  /// running it themselves.
+  Future<void> _openBulkCopyDialog() async {
+    final store = _active;
+    final entries = store.selectedEntries;
+    if (entries.isEmpty) return;
+    final slot = _shell.activePaneIndex.value;
+    final panes = _shell.panes.value;
+    final defaultDest = _bulkCopyDefaultDestination(store);
+
+    final tool = bulkCopyToolFor(
+      involvesSftp:
+          entries.any((e) => PlatformPaths.isSftpUri(e.realPath)) ||
+          PlatformPaths.isSftpUri(defaultDest),
+    );
+
+    final request = await showBulkCopyDialog(
+      context: context,
+      tool: tool,
+      sourceName: entries.length == 1
+          ? entries.first.name
+          : t.quickLook.items(count: entries.length),
+      defaultDestinationDir: defaultDest,
+    );
+    if (!mounted || request == null) return;
+
+    final command = buildBulkCopyCommand(
+      tool: tool,
+      sources: [
+        for (final e in entries)
+          BulkCopySource(
+            path: e.realPath,
+            isFolder: e.type == FileItemType.folder,
+          ),
+      ],
+      destinationDir: request.destinationDir,
+      flags: request.flags,
+    );
+
+    // robocopy's `/flag` syntax is cmd/PowerShell-only — MSYS-based shells
+    // (Git Bash etc.) parse a bare `/E`-style argument as a Unix path and
+    // mangle it, regardless of what the user's configured default terminal
+    // shell is, so it always forces cmd.exe. scp talks to a remote host, so
+    // it needs a real local starting directory rather than the active
+    // pane's own cwd, which could itself be an sftp:// location (that would
+    // open a *remote* shell on that host instead of a local one with scp).
+    final cwd = tool == BulkCopyTool.scp
+        ? PlatformPaths.homePath
+        : panes[slot].tabs.activeTab.value.store.currentPath.value;
+    final spec = tool == BulkCopyTool.robocopy
+        ? TerminalLaunchSpec(cwd: cwd, shell: 'cmd.exe')
+        : TerminalLaunch.resolve(cwd);
+    final tab = _shell.openTerminal(slot, cwd, spec: spec);
+    if (tab == null) {
+      showToast(context: context, message: t.toast.terminalUnavailable);
+
+      return;
+    }
+    if (!_shell.terminalVisible.value[slot]) {
+      _shell.setTerminalVisible(slot, true);
+    }
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _shell.setActiveTerminal(slot, tab.id);
+      tab.focusNode.requestFocus();
+      tab.session.writeInput(command);
+    });
   }
 
   Widget _buildViewMenu() {

@@ -60,6 +60,9 @@
     "compress": "Compress",
     "compressTo": "Compress to $name",
     "compressOptions": "Add to Archive…",
+    "bulkCopyRobocopy": "Copy with robocopy…",
+    "bulkCopyRsync": "Copy with rsync…",
+    "bulkCopyScp": "Copy with scp…",
     "multiRename": "Multi Rename…",
     "verifyChecksum": "Verify Checksum…",
     "sortBy": "Sort By",
@@ -109,6 +112,14 @@
     "levelMaximum": "Maximum",
     "create": "Create",
     "cancel": "Cancel"
+  },
+  "bulkCopy": {
+    "title": "Copy with $tool",
+    "source": "Source",
+    "destination": "Destination",
+    "options": "Options",
+    "cancel": "Cancel",
+    "insertCommand": "Insert Command"
   },
   "checksum": {
     "title": "Verify Checksum",
