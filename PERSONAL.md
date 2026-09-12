@@ -330,6 +330,37 @@ mounted as a local drive letter — the bottleneck there is the sync client's
 own network latency per item, not scan-side CPU/algorithm cost, so no
 client-side scan optimization helps. For that case the plan is a separate
 feature: launching `robocopy` (Windows) / `rsync` (Unix) in the built-in
-terminal instead of using Waydir's own copy engine.
+terminal instead of using Waydir's own copy engine — see below.
 
 Relevant commits: `8404fee`, `f9c874f`.
+
+## Bulk copy via the built-in terminal (robocopy/rsync/scp)
+
+For copies where Waydir's own engine isn't the right tool — chiefly SFTP and
+cloud-sync-backed drives, where the bottleneck is per-item network latency no
+client-side algorithm can fix — a context menu item builds and inserts a
+`robocopy`/`rsync`/`scp` command line into the built-in terminal instead,
+after an options dialog to pick flags and confirm the destination. The
+command is inserted but *not* run (no auto-`Enter`) so the user can review or
+edit it first.
+
+- Tool choice: `scp` whenever either side is an `sftp://` location, otherwise
+  the platform default (`robocopy` on Windows, `rsync` elsewhere) — neither
+  robocopy nor rsync understands Waydir's own URI scheme.
+- Multi-selection is supported: rsync/scp take multiple source arguments in
+  one call; robocopy (one source directory per invocation) becomes multiple
+  `&&`-chained calls, one per selected folder plus one per group of selected
+  files sharing a parent directory.
+- robocopy specifically forces `cmd.exe` as the terminal shell regardless of
+  the user's configured default profile — its `/E`-style flags get mangled
+  as Unix paths under Git Bash/MSYS syntax.
+- `LocationUri.path` strips the URI's leading `/`, so building an
+  `user@host:/remotePath` scp spec has to re-add it manually, or scp treats
+  the remote path as relative to the login's home directory instead of
+  absolute.
+- The context menu's tool label and the dialog's chosen tool both derive
+  from one shared "what's the effective destination" helper, so an
+  upload-to-sftp case can't show a stale "robocopy" label while actually
+  running `scp` underneath.
+
+Relevant commits: `bb770dc`.
