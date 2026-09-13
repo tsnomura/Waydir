@@ -10,124 +10,6 @@ permissions:
   contents: write
 
 jobs:
-  build-linux:
-    name: Build Linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev \
-            rpm fakeroot patchelf \
-            libfuse2 desktop-file-utils
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build and vendor waydir_core
-        run: scripts/build_waydir_core.sh
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Enable Linux desktop
-        run: flutter config --enable-linux-desktop
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Install fastforge
-        run: dart pub global activate fastforge
-
-      - name: Install appimagetool
-        run: |
-          # AppImage compatibility needs two things:
-          #  - gzip-compressed squashfs (classic AppImageKit appimagetool's
-          #    default), readable by older libappimage / AppImageLauncher /
-          #    squashfuse. The newer appimagetool defaults to zstd, which those
-          #    cannot read ("Squashfs image uses (null) compression").
-          #  - a statically linked type2 runtime, so the AppImage mounts itself
-          #    without a system libfuse.so.2 (absent on modern fuse3-only
-          #    distros like Fedora).
-          # fastforge runs whatever `appimagetool` is on PATH; wrap it to always
-          # inject the static runtime.
-          curl -sSL -o /usr/local/bin/appimagetool.real \
-            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          curl -sSL -o /usr/local/bin/appimage-runtime-x86_64 \
-            https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64
-          printf '%s\n' \
-            '#!/usr/bin/env bash' \
-            'export ARCH="${ARCH:-x86_64}"' \
-            'exec /usr/local/bin/appimagetool.real --runtime-file /usr/local/bin/appimage-runtime-x86_64 "$@"' \
-            > /usr/local/bin/appimagetool
-          sudo chmod +x /usr/local/bin/appimagetool /usr/local/bin/appimagetool.real /usr/local/bin/appimage-runtime-x86_64
-
-      - name: Read version
-        id: version
-        run: echo "version=$(grep '^version:' pubspec.yaml | sed -E 's/version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')" >> $GITHUB_OUTPUT
-
-      - name: Build Linux release
-        run: flutter build linux --release
-
-      - name: Package tar.gz
-        run: |
-          mkdir -p dist
-          cd build/linux/x64/release/bundle
-          tar -czf "$GITHUB_WORKSPACE/dist/waydir-${{ steps.version.outputs.version }}-linux-x64.tar.gz" .
-
-      - name: Package deb / rpm / appimage via fastforge
-        env:
-          # Runner has no FUSE for the appimagetool AppImage itself; extract and run.
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-        run: |
-          export PATH="$PATH":"$HOME/.pub-cache/bin"
-          # Bundled libraries (Flutter engine) ship inside the package;
-          # do not let rpmbuild emit host-soname Requires for them.
-          echo '%__requires_exclude_from ^/usr/share/[^/]+/lib/' > "$HOME/.rpmmacros"
-          fastforge package --platform linux --targets deb,rpm,appimage
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: linux-artifacts
-          path: dist/**/*
-
-  publish-cloudsmith:
-    name: Publish to Cloudsmith
-    needs: build-linux
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
-    env:
-      CLOUDSMITH_REPO: waydir/waydir-project
-      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
-    steps:
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: linux-artifacts
-          path: dist
-
-      - name: Install Cloudsmith CLI
-        run: pipx install cloudsmith-cli
-
-      - name: Push deb and rpm
-        run: |
-          # any-distro/any-version: one Cloudsmith repo serves every
-          # deb and rpm distribution from a single target.
-          find dist -name '*.deb' -print0 | while IFS= read -r -d '' f; do
-            cloudsmith push deb "$CLOUDSMITH_REPO/any-distro/any-version" "$f"
-          done
-          find dist -name '*.rpm' -print0 | while IFS= read -r -d '' f; do
-            cloudsmith push rpm "$CLOUDSMITH_REPO/any-distro/any-version" "$f"
-          done
-
   build-windows:
     name: Build Windows
     runs-on: windows-latest
@@ -177,51 +59,9 @@ jobs:
           name: windows-artifacts
           path: dist/**/*
 
-  build-macos:
-    name: Build macOS
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Get dependencies
-        run: flutter pub get
-
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build and vendor waydir_core
-        run: scripts/build_waydir_core.sh
-
-      - name: Install fastforge
-        run: dart pub global activate fastforge
-
-      - name: Install appdmg
-        run: npm install -g appdmg
-
-      - name: Build macOS release
-        run: flutter build macos --release
-
-      - name: Package dmg via fastforge
-        run: |
-          export PATH="$PATH":"$HOME/.pub-cache/bin"
-          fastforge package --platform macos --targets dmg
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: macos-artifacts
-          path: dist/**/*
-
   release:
     name: Publish GitHub Release
-    needs: [build-linux, build-windows, build-macos]
+    needs: [build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -235,11 +75,8 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release-files
-          find artifacts -type f \( \
-            -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.tar.gz" \
-            -o -name "*.exe" -o -name "*.zip" \
-            -o -name "*.dmg" \
-          \) -exec cp {} release-files/ \;
+          find artifacts -type f \( -name "*.exe" -o -name "*.zip" \) \
+            -exec cp {} release-files/ \;
           ls -la release-files/
 
       - name: Extract changelog section
