@@ -47,6 +47,12 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
+      - name: Include preview generator setup guide
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build\windows\x64\runner\Release\docs | Out-Null
+          Copy-Item docs\generators.md build\windows\x64\runner\Release\docs\generators.md
+
       - name: Package exe + zip via fastforge
         shell: pwsh
         run: |
