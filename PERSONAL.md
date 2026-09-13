@@ -380,3 +380,23 @@ for the sidebar) rather than re-deriving removable/network detection, so it
 stays correct without new native calls per tab.
 
 Relevant commits: `28cf621`.
+
+## Embedded terminal reliability fixes
+
+- Fixed: a terminal tab stayed open even after its shell process had
+  already exited (e.g. typing `exit` in `cmd.exe`). The native pty session
+  only tracked liveness via the reader thread hitting EOF, which on
+  Windows never happens just because the child process exited — ConPTY
+  doesn't close the master's read side on its own. Liveness now also polls
+  the child process's own exit status directly.
+- Fixed: a bare `Ctrl+A` inside the terminal was always hijacked into
+  "select all terminal text" (for copy), silently eating the keystroke
+  shells almost universally bind to "move to start of line"
+  (readline/emacs convention) — a real fix, not a niche one, since this
+  fires by default on Windows/Linux (`terminalCopyPasteMode` defaults to
+  the mode where Ctrl+C/V/A all use the bare modifier there). Select-all
+  now always requires the shift-augmented combo (`Ctrl+Shift+A` /
+  `Cmd+Shift+A`) regardless of that setting, matching how copy/paste
+  already degrade gracefully instead of unconditionally claiming the key.
+
+Relevant commits: `23459d7`.
