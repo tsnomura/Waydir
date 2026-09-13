@@ -159,6 +159,11 @@ class WaydirIconsRegular {
     fontFamily: 'PhosphorRegular',
     matchTextDirection: true,
   );
+  static const IconData desktopTower = IconData(
+    0xe562,
+    fontFamily: 'PhosphorRegular',
+    matchTextDirection: true,
+  );
   static const IconData dotsThreeOutline = IconData(
     0xe204,
     fontFamily: 'PhosphorRegular',

@@ -1,12 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
+import '../../core/platform/platform_paths.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/overlays/context_menu.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../drives/drive_store.dart';
 import 'tab_state.dart';
 import 'tabs_store.dart';
+
+enum TabLocationKind { local, removable, network, sftp }
+
+TabLocationKind classifyTabLocation(String path) {
+  if (PlatformPaths.isSftpUri(path)) return TabLocationKind.sftp;
+  if (PlatformPaths.isRemoteUri(path) || PlatformPaths.isNetworkPath(path)) {
+    return TabLocationKind.network;
+  }
+  for (final drive in driveStore.drives.value) {
+    final mountPoint = drive.mountPoint;
+    if (mountPoint == null) continue;
+    final prefix = mountPoint.endsWith(PlatformPaths.separator)
+        ? mountPoint
+        : '$mountPoint${PlatformPaths.separator}';
+    if (path != mountPoint && !path.startsWith(prefix)) continue;
+    if (drive.isNetwork) return TabLocationKind.network;
+    if (drive.isRemovable) return TabLocationKind.removable;
+
+    return TabLocationKind.local;
+  }
+
+  return TabLocationKind.local;
+}
+
+IconData _iconForTabLocation(TabLocationKind kind) => switch (kind) {
+  TabLocationKind.local => WaydirIconsRegular.folder,
+  TabLocationKind.removable => WaydirIconsRegular.usb,
+  TabLocationKind.network => WaydirIconsRegular.treeStructure,
+  TabLocationKind.sftp => WaydirIconsRegular.desktopTower,
+};
+
+final _driveLetterPattern = RegExp(r'^([A-Za-z]):[\\/]');
+
+String? tabDriveLetter(String path) {
+  if (!PlatformPaths.isWindows) return null;
+
+  return _driveLetterPattern.firstMatch(path)?.group(1)?.toUpperCase();
+}
 
 class TabChip extends StatefulWidget {
   final TabState tab;
@@ -58,6 +98,8 @@ class _TabChipState extends State<TabChip> {
         final title = widget.tab.title.value;
         final fullPath = widget.tab.store.currentPath.value;
         final canClose = widget.tabsStore.tabs.value.length > 1;
+        final locationKind = classifyTabLocation(fullPath);
+        final driveLetter = tabDriveLetter(fullPath);
 
         Color bg;
         Color fg;
@@ -103,10 +145,20 @@ class _TabChipState extends State<TabChip> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      WaydirIconsRegular.folder,
+                      _iconForTabLocation(locationKind),
                       size: 14,
                       color: isActive ? AppColors.accent : fg,
                     ),
+                    if (driveLetter != null) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        driveLetter,
+                        style: context.txt.keyCap.copyWith(
+                          fontSize: 9,
+                          color: AppColors.fgSubtle,
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 7),
                     Flexible(
                       child: Text(
