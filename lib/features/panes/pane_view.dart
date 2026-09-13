@@ -481,10 +481,13 @@ class _TerminalPanelState extends State<_TerminalPanel> {
         _terminalPaste();
         return KeyEventResult.handled;
       }
-      if (key == PhysicalKeyboardKey.keyA) {
-        _terminalSelectAll();
-        return KeyEventResult.handled;
-      }
+    }
+    if (event is KeyDownEvent &&
+        _isSelectAllModifierHeld() &&
+        event.physicalKey == PhysicalKeyboardKey.keyA) {
+      _terminalSelectAll();
+
+      return KeyEventResult.handled;
     }
     if (event is KeyDownEvent &&
         event.physicalKey == AppShortcuts.terminalTogglePhysicalKey &&
@@ -570,6 +573,19 @@ class _TerminalPanelState extends State<_TerminalPanel> {
     final ctrl = HardwareKeyboard.instance.isControlPressed;
 
     return mode == 'shift' ? (ctrl && shift) : (ctrl && !shift);
+  }
+
+  /// Select-all always needs the shift-augmented combo, regardless of the
+  /// copy/paste mode setting — unlike copy/paste, a bare Ctrl+A has no safe
+  /// fallback when nothing's selected, and shells overwhelmingly bind it to
+  /// "move to start of line" (readline/emacs convention), so claiming it
+  /// unconditionally would eat a keystroke shell users rely on constantly.
+  bool _isSelectAllModifierHeld() {
+    if (!HardwareKeyboard.instance.isShiftPressed) return false;
+
+    return Platform.isMacOS
+        ? HardwareKeyboard.instance.isMetaPressed
+        : HardwareKeyboard.instance.isControlPressed;
   }
 
   KeyEventResult _handleTerminalCopy() {

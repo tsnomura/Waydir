@@ -252,18 +252,28 @@ pub extern "C" fn waydir_pty_resize(id: u64, cols: u16, rows: u16) -> i32 {
 }
 
 /// Returns 1 while the shell process is running, 0 once it has exited.
+///
+/// Checks both the reader thread's EOF flag (reliable on unix, where closing
+/// the child closes the pty's read side) and the child's own exit status via
+/// `try_wait` (needed on Windows, where ConPTY doesn't EOF the master's read
+/// side just because the child process exited).
 #[no_mangle]
 pub extern "C" fn waydir_pty_alive(id: u64) -> i32 {
-    let map = match SESSIONS.lock() {
+    let mut map = match SESSIONS.lock() {
         Ok(m) => m,
         Err(_) => return 0,
     };
-    match map.get(&id) {
+    match map.get_mut(&id) {
         Some(session) => {
-            if session.alive.load(Ordering::Acquire) {
-                1
-            } else {
-                0
+            if !session.alive.load(Ordering::Acquire) {
+                return 0;
+            }
+            match session.child.try_wait() {
+                Ok(Some(_)) => {
+                    session.alive.store(false, Ordering::Release);
+                    0
+                }
+                _ => 1,
             }
         }
         None => 0,
