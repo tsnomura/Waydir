@@ -364,3 +364,19 @@ edit it first.
   running `scp` underneath.
 
 Relevant commits: `bb770dc`.
+
+## Drive-type icons on pane tabs
+
+A pane tab's icon reflects what kind of location it's currently showing,
+instead of always being a plain folder: `usb` for a removable drive,
+`treeStructure` for a network drive/UNC/mapped share, `desktopTower` for an
+`sftp://` connection, and `folder` (unchanged) for a regular local folder.
+On Windows, a small muted drive-letter badge (e.g. `C`) sits next to the
+icon too, since the icon alone doesn't say *which* local/removable/network
+drive a tab is on.
+
+Classification reuses the same drive list (`DriveStore`, already computed
+for the sidebar) rather than re-deriving removable/network detection, so it
+stays correct without new native calls per tab.
+
+Relevant commits: `28cf621`.
