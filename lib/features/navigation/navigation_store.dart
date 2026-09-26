@@ -831,6 +831,7 @@ class NavigationStore {
     if (cursor < 0 && restored.isNotEmpty) {
       cursor = list.indexWhere((f) => f.path == restored.first);
     }
+    if (selectedPaths.value.isNotEmpty || cursorIndex.value >= 0) return;
     batch(() {
       if (restored.isNotEmpty) selectedPaths.value = restored;
       if (cursor >= 0) {

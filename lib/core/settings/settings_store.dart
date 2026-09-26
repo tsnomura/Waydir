@@ -93,9 +93,9 @@ class SettingsStore {
   AppDatabase get db => _db;
   bool get isLoaded => _loaded;
 
-  Future<void> load() async {
+  Future<void> load({QueryExecutor? executor}) async {
     if (_loaded) return;
-    _db = AppDatabase();
+    _db = AppDatabase(executor);
     await _loadFromDb();
     _loaded = true;
     _wireAutoSave();
