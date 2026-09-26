@@ -2650,8 +2650,8 @@ class Translations$preferences$general$en {
 	/// en: 'Delete key behavior'
 	String get deleteKeyBehavior => 'Delete key behavior';
 
-	/// en: 'What the Delete key does by default. Shift+Delete always deletes permanently.'
-	String get deleteKeyBehaviorHint => 'What the Delete key does by default. Shift+Delete always deletes permanently.';
+	/// en: 'Shift+Delete always deletes permanently. This setting doesn't yet change what the bare Delete key does — it currently always moves items to Trash.'
+	String get deleteKeyBehaviorHint => 'Shift+Delete always deletes permanently. This setting doesn\'t yet change what the bare Delete key does — it currently always moves items to Trash.';
 
 	/// en: 'Move to Trash'
 	String get deleteKeyTrash => 'Move to Trash';
@@ -4353,7 +4353,7 @@ extension on Translations {
 			'preferences.general.typeAheadBuffer' => 'Type-ahead multi-letter jump',
 			'preferences.general.typeAheadBufferHint' => 'Quickly typed letters combine into a search string to jump to a matching item; pausing resets it. When off, each letter cycles through items starting with that letter.',
 			'preferences.general.deleteKeyBehavior' => 'Delete key behavior',
-			'preferences.general.deleteKeyBehaviorHint' => 'What the Delete key does by default. Shift+Delete always deletes permanently.',
+			'preferences.general.deleteKeyBehaviorHint' => 'Shift+Delete always deletes permanently. This setting doesn\'t yet change what the bare Delete key does — it currently always moves items to Trash.',
 			'preferences.general.deleteKeyTrash' => 'Move to Trash',
 			'preferences.general.deleteKeyPermanent' => 'Delete Permanently',
 			'preferences.general.terminalSection' => 'Terminal',

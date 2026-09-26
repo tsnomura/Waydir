@@ -241,7 +241,7 @@
       "typeAheadBuffer": "Type-ahead multi-letter jump",
       "typeAheadBufferHint": "Quickly typed letters combine into a search string to jump to a matching item; pausing resets it. When off, each letter cycles through items starting with that letter.",
       "deleteKeyBehavior": "Delete key behavior",
-      "deleteKeyBehaviorHint": "What the Delete key does by default. Shift+Delete always deletes permanently.",
+      "deleteKeyBehaviorHint": "Shift+Delete always deletes permanently. This setting doesn't yet change what the bare Delete key does — it currently always moves items to Trash.",
       "deleteKeyTrash": "Move to Trash",
       "deleteKeyPermanent": "Delete Permanently",
       "terminalSection": "Terminal",

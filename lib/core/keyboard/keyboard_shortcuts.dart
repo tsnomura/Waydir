@@ -624,7 +624,7 @@ class AppShortcuts {
       label: () => '',
       group: ShortcutGroup.fileOps,
       key: LogicalKeyboardKey.delete,
-      ctrl: true,
+      shift: true,
     ),
     ShortcutDef(
       id: 'rename',
