@@ -264,7 +264,6 @@ class _WaydirShellState extends State<WaydirShell>
       onContextMenu: _handleContextMenu,
       onMenuAction: _handleMenuAction,
       onOpenInNewTab: _openInNewTab,
-      onOpenInOtherPane: (path) => _openInOtherPane(slot, path),
       onOpenInOtherPaneNewTab: (path) => _openInOtherPaneNewTab(slot, path),
       onMoveTabToOtherPane: (tabId) => _moveTabToOtherPane(slot, tabId),
       onPluginToolbarAction: (id) => _runPluginAction(id, background: true),
@@ -415,6 +414,11 @@ class _WaydirShellState extends State<WaydirShell>
                                   active: _active,
                                   operationStore: _operationStore,
                                   onOpenInNewTab: _openInNewTab,
+                                  onOpenOtherPaneNewTab: (path) =>
+                                      _openInOtherPaneNewTab(
+                                        _shell.activePaneIndex.value,
+                                        path,
+                                      ),
                                 ),
                                 Expanded(child: _buildPaneArea()),
                               ],
@@ -481,11 +485,13 @@ class _SidebarHost extends StatefulWidget {
   final NavigationStore active;
   final OperationStore operationStore;
   final void Function(String path) onOpenInNewTab;
+  final void Function(String path) onOpenOtherPaneNewTab;
 
   const _SidebarHost({
     required this.active,
     required this.operationStore,
     required this.onOpenInNewTab,
+    required this.onOpenOtherPaneNewTab,
   });
 
   @override
@@ -568,6 +574,7 @@ class _SidebarHostState extends State<_SidebarHost> {
                     store: widget.active,
                     operationStore: widget.operationStore,
                     onOpenInNewTab: widget.onOpenInNewTab,
+                    onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab,
                     collapsed: collapsed,
                     onToggleCollapsed: _toggleUserCollapsed,
                   ),

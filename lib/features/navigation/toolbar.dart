@@ -25,9 +25,15 @@ import '../../ui/overlays/toast.dart';
 
 class PaneLocationBar extends StatelessWidget {
   final NavigationStore store;
+  final bool isActive;
   final void Function(String fullActionId)? onPluginAction;
 
-  const PaneLocationBar({super.key, required this.store, this.onPluginAction});
+  const PaneLocationBar({
+    super.key,
+    required this.store,
+    this.isActive = true,
+    this.onPluginAction,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +41,11 @@ class PaneLocationBar extends StatelessWidget {
       height: 38,
       decoration: BoxDecoration(
         color: AppColors.bgToolbar,
-        border: Border(bottom: BorderSide(color: AppColors.bgDivider)),
+        border: Border(
+          bottom: isActive
+              ? BorderSide(color: AppColors.accent, width: 2)
+              : BorderSide(color: AppColors.bgDivider),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) => Row(

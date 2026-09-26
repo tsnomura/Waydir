@@ -77,6 +77,7 @@ class _SidebarEntry {
   final String? tooltip;
   final ValueChanged<String> onTap;
   final VoidCallback? onMiddleTap;
+  final VoidCallback? onOpenOtherPaneNewTab;
   final void Function(List<String> paths, {bool move})? onDropFiles;
   final bool isTagTarget;
   final VoidCallback? onUnmount;
@@ -91,6 +92,7 @@ class _SidebarEntry {
     this.tooltip,
     required this.onTap,
     this.onMiddleTap,
+    this.onOpenOtherPaneNewTab,
     this.onDropFiles,
     this.isTagTarget = false,
     this.onUnmount,
@@ -114,6 +116,7 @@ class Sidebar extends StatefulWidget {
   final NavigationStore store;
   final OperationStore operationStore;
   final void Function(String path)? onOpenInNewTab;
+  final void Function(String path)? onOpenOtherPaneNewTab;
   final bool collapsed;
   final VoidCallback? onToggleCollapsed;
 
@@ -122,6 +125,7 @@ class Sidebar extends StatefulWidget {
     required this.store,
     required this.operationStore,
     this.onOpenInNewTab,
+    this.onOpenOtherPaneNewTab,
     this.collapsed = false,
     this.onToggleCollapsed,
   });
@@ -729,6 +733,7 @@ class _SidebarState extends State<Sidebar> {
       tooltip: entry.tooltip,
       onTap: entry.onTap,
       onMiddleTap: entry.onMiddleTap,
+      onOpenOtherPaneNewTab: entry.onOpenOtherPaneNewTab,
       onDropFiles: entry.onDropFiles ?? (paths, {bool move = false}) {},
       isTagTarget: entry.isTagTarget,
       onUnmount: entry.onUnmount,
@@ -803,6 +808,10 @@ class _SidebarState extends State<Sidebar> {
         onMiddleTap: widget.onOpenInNewTab != null && !isRecycleBin
             ? () => widget.onOpenInNewTab!(item.path)
             : null,
+        onOpenOtherPaneNewTab:
+            widget.onOpenOtherPaneNewTab != null && !isRecycleBin
+            ? () => widget.onOpenOtherPaneNewTab!(item.path)
+            : null,
         onDropFiles: (paths, {bool move = false}) {
           if (isRecycleBin) {
             widget.operationStore.enqueueTrash(paths);
@@ -846,6 +855,9 @@ class _SidebarState extends State<Sidebar> {
         onMiddleTap: widget.onOpenInNewTab != null && isMounted
             ? () => widget.onOpenInNewTab!(path)
             : null,
+        onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null && isMounted
+            ? () => widget.onOpenOtherPaneNewTab!(path)
+            : null,
         onDropFiles: (paths, {bool move = false}) {
           if (isMounted) widget.store.dropFiles(paths, path, move: move);
         },
@@ -885,6 +897,9 @@ class _SidebarState extends State<Sidebar> {
         onMiddleTap: widget.onOpenInNewTab != null
             ? () => widget.onOpenInNewTab!(path)
             : null,
+        onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null
+            ? () => widget.onOpenOtherPaneNewTab!(path)
+            : null,
         onDropFiles: (paths, {bool move = false}) =>
             widget.store.dropFiles(paths, path, move: move),
       );
@@ -921,6 +936,9 @@ class _SidebarState extends State<Sidebar> {
           onMiddleTap: widget.onOpenInNewTab != null
               ? () => widget.onOpenInNewTab!(path)
               : null,
+          onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null
+              ? () => widget.onOpenOtherPaneNewTab!(path)
+              : null,
           onDropFiles: (paths, {bool move = false}) =>
               widget.store.dropFiles(paths, path, move: move),
           onContextMenu: (position) =>
@@ -945,6 +963,9 @@ class _SidebarState extends State<Sidebar> {
           onTap: widget.store.navigateTo,
           onMiddleTap: widget.onOpenInNewTab != null
               ? () => widget.onOpenInNewTab!(path)
+              : null,
+          onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null
+              ? () => widget.onOpenOtherPaneNewTab!(path)
               : null,
           onDropFiles: (paths, {bool move = false}) =>
               widget.store.dropFiles(paths, path, move: move),
@@ -984,6 +1005,9 @@ class _SidebarState extends State<Sidebar> {
         onMiddleTap: widget.onOpenInNewTab != null
             ? () => widget.onOpenInNewTab!(bookmark.path)
             : null,
+        onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null
+            ? () => widget.onOpenOtherPaneNewTab!(bookmark.path)
+            : null,
         onDropFiles: (paths, {bool move = false}) =>
             widget.store.dropFiles(paths, bookmark.path, move: move),
         onContextMenu: (position) => _showBookmarkMenu(bookmark, position),
@@ -1011,6 +1035,9 @@ class _SidebarState extends State<Sidebar> {
         onTap: widget.store.navigateTo,
         onMiddleTap: widget.onOpenInNewTab != null
             ? () => widget.onOpenInNewTab!(path)
+            : null,
+        onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null
+            ? () => widget.onOpenOtherPaneNewTab!(path)
             : null,
         onDropFiles: (paths, {bool move = false}) =>
             widget.store.addTag(paths, tag.id),
@@ -1965,6 +1992,7 @@ class _ItemRow extends StatefulWidget {
   final bool collapsed;
   final ValueChanged<String> onTap;
   final VoidCallback? onMiddleTap;
+  final VoidCallback? onOpenOtherPaneNewTab;
   final void Function(List<String> paths, {bool move}) onDropFiles;
   final bool isTagTarget;
   final VoidCallback? onUnmount;
@@ -1979,6 +2007,7 @@ class _ItemRow extends StatefulWidget {
     this.collapsed = false,
     required this.onTap,
     this.onMiddleTap,
+    this.onOpenOtherPaneNewTab,
     required this.onDropFiles,
     this.isTagTarget = false,
     this.onUnmount,
@@ -2026,6 +2055,13 @@ class _ItemRowState extends State<_ItemRow> {
           onTap: () {
             if (widget.isMounted &&
                 HardwareKeyboard.instance.isShiftPressed &&
+                widget.onOpenOtherPaneNewTab != null) {
+              widget.onOpenOtherPaneNewTab!();
+
+              return;
+            }
+            if (widget.isMounted &&
+                HardwareKeyboard.instance.isControlPressed &&
                 widget.onMiddleTap != null) {
               widget.onMiddleTap!();
 

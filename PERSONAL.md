@@ -171,11 +171,13 @@ Relevant commit: `6ee9177`.
   tabs between panes" below.
 - The divider's full hit width is clickable/draggable, not just the thin
   visible line.
-- `Ctrl` + double-click a folder opens it in the *other* pane.
-- `Shift` + double-click a folder (or `Shift`+click in the sidebar) opens it
-  in a new tab.
-- `Ctrl+Shift` + double-click a folder opens it in a new tab in the other
-  pane.
+- `Ctrl` + double-click a folder (or `Ctrl`+click a sidebar item) opens it in
+  a new tab; `Shift` + double-click (or `Shift`+click in the sidebar) opens
+  it in the *other* pane; `Ctrl+Shift` + double-click opens it in a new tab
+  in the other pane. Deliberately mirrors the browser convention (`Ctrl`+click
+  a link = new tab, `Shift`+click = new window) with "pane" standing in for
+  "window", rather than an invented scheme — `Ctrl` always means "new tab",
+  `Shift` always means "the other pane", and they compose.
 - Window/pane resize edge hit areas were widened so they're easier to grab.
 - `F8` compare now toasts an explanation when it can't start (not in dual-pane
   mode, or one side isn't a local folder) instead of silently doing nothing.
@@ -418,3 +420,22 @@ true for a fresh navigation (the feature's actual intended case) but not for
 a refresh of a folder you're already actively working in.
 
 Relevant commits: `00ac0de`.
+
+## Fixed: "delete permanently" keybind, and a stale Preferences hint
+
+`delete_permanent` was bound to `Ctrl+Delete`, not the real Windows standard
+(`Shift+Delete`) — and the Preferences hint text for the separate (and, it
+turns out, non-functional) `deleteKeyBehavior` setting already claimed
+*"Shift+Delete always deletes permanently"*, a promise the actual binding
+didn't keep. Rebound `delete_permanent` to `Shift+Delete` to match both the
+real Windows convention and that existing hint text.
+
+Also found along the way: `deleteKeyBehavior` (Preferences → General →
+"Delete key behavior", a "Move to Trash" / "Delete Permanently" choice) is
+persisted but never actually read by the delete dispatch — bare `Delete`
+always moves to Trash regardless of this setting. Not wiring it up for real
+this round (kept as future scope); just reworded the hint text to stop
+over-promising, since it previously described `deleteKeyBehavior` as
+controlling the bare Delete key's default action.
+
+Relevant commits: `<pending>`.

@@ -42,7 +42,6 @@ class PaneView extends StatelessWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final OpenInNewTabCallback? onOpenInNewTab;
-  final OpenInNewTabCallback? onOpenInOtherPane;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final void Function(String tabId)? onMoveTabToOtherPane;
   final void Function(String fullActionId)? onPluginToolbarAction;
@@ -73,7 +72,6 @@ class PaneView extends StatelessWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onOpenInNewTab,
-    this.onOpenInOtherPane,
     this.onOpenInOtherPaneNewTab,
     this.onMoveTabToOtherPane,
     this.onPluginToolbarAction,
@@ -116,6 +114,7 @@ class PaneView extends StatelessWidget {
 
                   return PaneLocationBar(
                     store: tabStore,
+                    isActive: isActive,
                     onPluginAction: onPluginToolbarAction,
                   );
                 },
@@ -142,7 +141,6 @@ class PaneView extends StatelessWidget {
                             onContextMenu: onContextMenu,
                             onMenuAction: onMenuAction,
                             onOpenInNewTab: onOpenInNewTab,
-                            onOpenInOtherPane: onOpenInOtherPane,
                             onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
                             onRectSelect: (paths, {additive = false}) => tab
                                 .store
@@ -227,7 +225,6 @@ class _TabContent extends StatelessWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final OpenInNewTabCallback? onOpenInNewTab;
-  final OpenInNewTabCallback? onOpenInOtherPane;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final RubberBandSelectCallback? onRectSelect;
 
@@ -237,7 +234,6 @@ class _TabContent extends StatelessWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onOpenInNewTab,
-    this.onOpenInOtherPane,
     this.onOpenInOtherPaneNewTab,
     this.onRectSelect,
   });
@@ -305,7 +301,6 @@ class _TabContent extends StatelessWidget {
                 onRenameCancel: store.cancelRename,
                 onCloseSearch: store.closeSearch,
                 onOpenInNewTab: onOpenInNewTab,
-                onOpenInOtherPane: onOpenInOtherPane,
                 onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
                 onPageRows: store.setPageRows,
                 onGridColumns: store.setGridColumns,
@@ -335,7 +330,6 @@ class _TabContent extends StatelessWidget {
                 onRenameCancel: store.cancelRename,
                 onCloseSearch: store.closeSearch,
                 onOpenInNewTab: onOpenInNewTab,
-                onOpenInOtherPane: onOpenInOtherPane,
                 onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
                 onRectSelect: onRectSelect,
                 sortColumn: store.sortKey.value,
@@ -367,7 +361,6 @@ class _TabContent extends StatelessWidget {
               onRenameCancel: store.cancelRename,
               onCloseSearch: store.closeSearch,
               onOpenInNewTab: onOpenInNewTab,
-              onOpenInOtherPane: onOpenInOtherPane,
               onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
               onRectSelect: onRectSelect,
               sortColumn: store.sortKey.value,

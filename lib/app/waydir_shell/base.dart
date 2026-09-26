@@ -176,14 +176,13 @@ mixin _WaydirStateBase on State<WaydirShell> {
     return otherSlot < panes.length ? panes[otherSlot] : null;
   }
 
-  /// Navigates the pane opposite [fromSlot]'s active tab to [path].
-  void _openInOtherPane(int fromSlot, String path) {
-    _otherPane(fromSlot)?.tabs.activeTab.value.store.navigateTo(path);
-  }
-
-  /// Opens [path] in a new tab in the pane opposite [fromSlot].
+  /// Opens [path] in a new tab in the pane opposite [fromSlot], switching
+  /// keyboard/toolbar focus there so the new tab is immediately visible.
   void _openInOtherPaneNewTab(int fromSlot, String path) {
-    _otherPane(fromSlot)?.tabs.addTab(path);
+    final pane = _otherPane(fromSlot);
+    if (pane == null) return;
+    pane.tabs.addTab(path);
+    _shell.setActivePane(fromSlot == 0 ? 1 : 0);
   }
 
   /// Moves the tab [tabId] from the pane at [fromSlot] to the pane opposite

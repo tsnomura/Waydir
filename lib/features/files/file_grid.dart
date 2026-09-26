@@ -88,7 +88,6 @@ class FileGrid extends StatefulWidget {
   final bool recursiveResults;
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
-  final OpenInNewTabCallback? onOpenInOtherPane;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final ValueChanged<int>? onPageRows;
   final ValueChanged<int>? onGridColumns;
@@ -115,7 +114,6 @@ class FileGrid extends StatefulWidget {
     this.recursiveResults = false,
     this.onCloseSearch,
     this.onOpenInNewTab,
-    this.onOpenInOtherPane,
     this.onOpenInOtherPaneNewTab,
     this.onPageRows,
     this.onGridColumns,
@@ -394,7 +392,6 @@ class _FileGridState extends State<FileGrid> {
                             onOpen: widget.onOpen,
                             onContextMenu: widget.onContextMenu,
                             onOpenInNewTab: widget.onOpenInNewTab,
-                            onOpenInOtherPane: widget.onOpenInOtherPane,
                             onOpenInOtherPaneNewTab:
                                 widget.onOpenInOtherPaneNewTab,
                           );
@@ -460,7 +457,6 @@ class _GridTile extends StatefulWidget {
   final FileOpenCallback onOpen;
   final FileContextMenuCallback? onContextMenu;
   final OpenInNewTabCallback? onOpenInNewTab;
-  final OpenInNewTabCallback? onOpenInOtherPane;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
 
   const _GridTile({
@@ -486,7 +482,6 @@ class _GridTile extends StatefulWidget {
     required this.onOpen,
     this.onContextMenu,
     this.onOpenInNewTab,
-    this.onOpenInOtherPane,
     this.onOpenInOtherPaneNewTab,
   });
 
@@ -577,11 +572,9 @@ class _GridTileState extends State<_GridTile> {
       _lastTap = null;
       final keys = HardwareKeyboard.instance;
       final isFolder = widget.entry.type == FileItemType.folder;
-      if (isFolder && keys.isControlPressed && keys.isShiftPressed) {
+      if (isFolder && keys.isShiftPressed) {
         widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
       } else if (isFolder && keys.isControlPressed) {
-        widget.onOpenInOtherPane?.call(widget.entry.path);
-      } else if (isFolder && keys.isShiftPressed) {
         widget.onOpenInNewTab?.call(widget.entry.path);
       } else {
         widget.onOpen(widget.entry);
