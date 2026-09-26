@@ -452,3 +452,27 @@ over-promising, since it previously described `deleteKeyBehavior` as
 controlling the bare Delete key's default action.
 
 Relevant commits: `d3ca1be`.
+
+## Keyboard-oriented cleanup: Escape/Enter across everyday-workflow dialogs
+
+Waydir bills itself as keyboard-driven, but several dialogs used during
+ordinary, frequent file-management work (compress, checksum, multi-rename,
+select-by-pattern, open-with, bulk-copy) were built with a raw `showDialog`
+instead of the shared `showCustomDialog` machinery, and so silently lacked
+its `Escape`-to-cancel / `Enter`-to-confirm handling — a `Tab` off the
+autofocused text field (e.g. onto a checkbox or dropdown) left you with no
+keyboard way to close the dialog at all. Deliberately scoped to the dialogs
+that come up during everyday work, not settings/help dialogs — those are
+rare enough that requiring the mouse there is an acceptable tradeoff, per
+the actual design goal (efficient common operations, not "every widget must
+be keyboard-reachable").
+
+Extracted the key handling `showCustomDialog` already had into a reusable
+`DialogKeyBindings` widget (`lib/ui/dialogs/dialog.dart`) — wraps a dialog's
+content and calls `onConfirm`/`onCancel` for `Enter`/`Escape` regardless of
+which control inside currently has focus — and refactored
+`showCustomDialog` itself to use it too, instead of duplicating the logic.
+Applied it to the six dialogs above (two of which had grown their own
+ad-hoc, Escape-only version of the same thing independently).
+
+Relevant commits: `0cbb0c5`.
