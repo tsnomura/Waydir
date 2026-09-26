@@ -92,58 +92,62 @@ class _BulkCopyBodyState extends State<_BulkCopyBody> {
 
   @override
   Widget build(BuildContext context) {
-    return AppModal(
-      icon: WaydirIconsRegular.terminal,
-      title: t.bulkCopy.title(tool: bulkCopyToolName(widget.tool)),
-      width: 460,
-      padding: const EdgeInsets.all(20),
-      onClose: () => Navigator.of(context).pop(),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(t.bulkCopy.source, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          Text(
-            widget.sourceName,
-            style: context.txt.body.copyWith(color: AppColors.fgMuted),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 14),
-          Text(t.bulkCopy.destination, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          AppTextField(
-            controller: _dest,
-            autofocus: true,
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 14),
-          Text(t.bulkCopy.options, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          for (final option in bulkCopyOptionsFor(widget.tool))
-            _FlagRow(
-              label: '${option.label} (${option.flag})',
-              value: _enabledFlags.contains(option.flag),
-              onTap: () => _toggle(option.flag),
+    return DialogKeyBindings(
+      onConfirm: _valid ? _submit : null,
+      onCancel: () => Navigator.of(context).pop(),
+      child: AppModal(
+        icon: WaydirIconsRegular.terminal,
+        title: t.bulkCopy.title(tool: bulkCopyToolName(widget.tool)),
+        width: 460,
+        padding: const EdgeInsets.all(20),
+        onClose: () => Navigator.of(context).pop(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t.bulkCopy.source, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            Text(
+              widget.sourceName,
+              style: context.txt.body.copyWith(color: AppColors.fgMuted),
+              overflow: TextOverflow.ellipsis,
             ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              DialogButton(
-                label: t.bulkCopy.cancel,
-                color: AppColors.fgMuted,
-                onTap: () => Navigator.of(context).pop(),
+            const SizedBox(height: 14),
+            Text(t.bulkCopy.destination, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            AppTextField(
+              controller: _dest,
+              autofocus: true,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 14),
+            Text(t.bulkCopy.options, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            for (final option in bulkCopyOptionsFor(widget.tool))
+              _FlagRow(
+                label: '${option.label} (${option.flag})',
+                value: _enabledFlags.contains(option.flag),
+                onTap: () => _toggle(option.flag),
               ),
-              const SizedBox(width: 8),
-              DialogButton(
-                label: t.bulkCopy.insertCommand,
-                color: _valid ? AppColors.accent : AppColors.fgSubtle,
-                onTap: _valid ? _submit : () {},
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                DialogButton(
+                  label: t.bulkCopy.cancel,
+                  color: AppColors.fgMuted,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 8),
+                DialogButton(
+                  label: t.bulkCopy.insertCommand,
+                  color: _valid ? AppColors.accent : AppColors.fgSubtle,
+                  onTap: _valid ? _submit : () {},
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

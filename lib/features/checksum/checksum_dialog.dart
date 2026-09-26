@@ -146,18 +146,9 @@ class _ChecksumDialogState extends State<_ChecksumDialog> {
   Widget build(BuildContext context) {
     final result = _result;
 
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (_, event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          Navigator.of(context).pop();
-
-          return KeyEventResult.handled;
-        }
-
-        return KeyEventResult.ignored;
-      },
+    return DialogKeyBindings(
+      onConfirm: _running ? null : _verify,
+      onCancel: () => Navigator.of(context).pop(),
       child: AppModal(
         icon: WaydirIconsRegular.checkSquare,
         title: t.checksum.title,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
@@ -270,18 +269,9 @@ class _MultiRenameBodyState extends State<_MultiRenameBody> {
     final errors = _errorCount(previews);
     final canSubmit = _canSubmit(previews);
 
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (_, event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          Navigator.of(context).pop();
-
-          return KeyEventResult.handled;
-        }
-
-        return KeyEventResult.ignored;
-      },
+    return DialogKeyBindings(
+      onConfirm: canSubmit ? () => _submit(previews) : null,
+      onCancel: () => Navigator.of(context).pop(),
       child: AppModal(
         icon: WaydirIconsRegular.pencilSimple,
         title: t.multiRename.title,

@@ -87,83 +87,87 @@ class _CompressBodyState extends State<_CompressBody> {
 
   @override
   Widget build(BuildContext context) {
-    return AppModal(
-      icon: WaydirIconsRegular.fileZip,
-      title: t.compress.title,
-      width: 420,
-      padding: const EdgeInsets.all(20),
-      onClose: () => Navigator.of(context).pop(),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(t.compress.archiveName, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          AppTextField(
-            controller: _name,
-            autofocus: true,
-            suffixText: '.${_format.extension}',
-            suffixStyle: context.txt.body.copyWith(color: AppColors.fgMuted),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 14),
-          Text(t.compress.format, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          AppDropdown<ArchiveFormat>(
-            value: _format,
-            items: [
-              for (final f in ArchiveFormat.values)
-                AppDropdownItem(value: f, label: f.label),
-            ],
-            onChanged: (v) => setState(() => _format = v),
-          ),
-          const SizedBox(height: 14),
-          Text(t.compress.level, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          AppDropdown<CompressionLevel>(
-            value: _level,
-            items: [
-              AppDropdownItem(
-                value: CompressionLevel.store,
-                label: t.compress.levelStore,
-              ),
-              AppDropdownItem(
-                value: CompressionLevel.normal,
-                label: t.compress.levelNormal,
-              ),
-              AppDropdownItem(
-                value: CompressionLevel.maximum,
-                label: t.compress.levelMaximum,
-              ),
-            ],
-            onChanged: (v) => setState(() => _level = v),
-          ),
-          const SizedBox(height: 14),
-          Text(t.compress.destination, style: context.txt.fieldLabel),
-          const SizedBox(height: 6),
-          Text(
-            widget.destinationDir,
-            style: context.txt.body.copyWith(color: AppColors.fgMuted),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              DialogButton(
-                label: t.compress.cancel,
-                color: AppColors.fgMuted,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-              const SizedBox(width: 8),
-              DialogButton(
-                label: t.compress.create,
-                color: _valid ? AppColors.accent : AppColors.fgSubtle,
-                onTap: _valid ? _submit : () {},
-              ),
-            ],
-          ),
-        ],
+    return DialogKeyBindings(
+      onConfirm: _valid ? _submit : null,
+      onCancel: () => Navigator.of(context).pop(),
+      child: AppModal(
+        icon: WaydirIconsRegular.fileZip,
+        title: t.compress.title,
+        width: 420,
+        padding: const EdgeInsets.all(20),
+        onClose: () => Navigator.of(context).pop(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t.compress.archiveName, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            AppTextField(
+              controller: _name,
+              autofocus: true,
+              suffixText: '.${_format.extension}',
+              suffixStyle: context.txt.body.copyWith(color: AppColors.fgMuted),
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 14),
+            Text(t.compress.format, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            AppDropdown<ArchiveFormat>(
+              value: _format,
+              items: [
+                for (final f in ArchiveFormat.values)
+                  AppDropdownItem(value: f, label: f.label),
+              ],
+              onChanged: (v) => setState(() => _format = v),
+            ),
+            const SizedBox(height: 14),
+            Text(t.compress.level, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            AppDropdown<CompressionLevel>(
+              value: _level,
+              items: [
+                AppDropdownItem(
+                  value: CompressionLevel.store,
+                  label: t.compress.levelStore,
+                ),
+                AppDropdownItem(
+                  value: CompressionLevel.normal,
+                  label: t.compress.levelNormal,
+                ),
+                AppDropdownItem(
+                  value: CompressionLevel.maximum,
+                  label: t.compress.levelMaximum,
+                ),
+              ],
+              onChanged: (v) => setState(() => _level = v),
+            ),
+            const SizedBox(height: 14),
+            Text(t.compress.destination, style: context.txt.fieldLabel),
+            const SizedBox(height: 6),
+            Text(
+              widget.destinationDir,
+              style: context.txt.body.copyWith(color: AppColors.fgMuted),
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                DialogButton(
+                  label: t.compress.cancel,
+                  color: AppColors.fgMuted,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 8),
+                DialogButton(
+                  label: t.compress.create,
+                  color: _valid ? AppColors.accent : AppColors.fgSubtle,
+                  onTap: _valid ? _submit : () {},
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

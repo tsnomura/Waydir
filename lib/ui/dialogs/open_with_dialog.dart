@@ -11,6 +11,7 @@ import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_modal.dart';
+import 'dialog.dart';
 
 /// Shows the "Open With" chooser for [entry]. Resolves the file type, lists
 /// recommended/recent/all applications, launches the chosen one and (when
@@ -123,35 +124,39 @@ class _OpenWithBodyState extends State<_OpenWithBody> {
 
   @override
   Widget build(BuildContext context) {
-    return AppModal(
-      icon: WaydirIconsRegular.appWindow,
-      title: t.openWith.title,
-      width: 460,
-      padding: const EdgeInsets.all(16),
-      onClose: () => Navigator.of(context).pop(),
-      child: FutureBuilder<_LoadedOptions>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const SizedBox(
-              height: 160,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            );
-          }
-          if (!snap.hasData) {
-            return SizedBox(
-              height: 120,
-              child: Center(
-                child: Text(
-                  t.openWith.noApps,
-                  style: context.txt.body.copyWith(color: AppColors.fgMuted),
+    return DialogKeyBindings(
+      onConfirm: (_selected != null && !_busy) ? _confirm : null,
+      onCancel: () => Navigator.of(context).pop(),
+      child: AppModal(
+        icon: WaydirIconsRegular.appWindow,
+        title: t.openWith.title,
+        width: 460,
+        padding: const EdgeInsets.all(16),
+        onClose: () => Navigator.of(context).pop(),
+        child: FutureBuilder<_LoadedOptions>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
+            if (!snap.hasData) {
+              return SizedBox(
+                height: 120,
+                child: Center(
+                  child: Text(
+                    t.openWith.noApps,
+                    style: context.txt.body.copyWith(color: AppColors.fgMuted),
+                  ),
                 ),
-              ),
-            );
-          }
+              );
+            }
 
-          return _content(snap.data!);
-        },
+            return _content(snap.data!);
+          },
+        ),
       ),
     );
   }

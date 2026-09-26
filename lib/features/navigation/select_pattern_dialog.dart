@@ -77,48 +77,52 @@ class _SelectPatternDialogState extends State<_SelectPatternDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AppModal(
-      icon: WaydirIconsRegular.selectionAll,
-      title: t.selectPattern.title,
-      width: 360,
-      padding: const EdgeInsets.all(16),
-      onClose: widget.onCancel,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppTextField(
-            controller: widget.controller,
-            autofocus: true,
-            hintText: t.selectPattern.hint,
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 8),
-          Text(t.selectPattern.help, style: context.txt.muted),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              DialogButton(
-                label: t.dialog.cancel,
-                color: AppColors.fgMuted,
-                onTap: widget.onCancel,
-              ),
-              const SizedBox(width: 8),
-              Opacity(
-                opacity: _valid ? 1.0 : 0.4,
-                child: IgnorePointer(
-                  ignoring: !_valid,
-                  child: DialogButton(
-                    label: t.selectPattern.select,
-                    color: AppColors.accent,
-                    onTap: _submit,
+    return DialogKeyBindings(
+      onConfirm: _valid ? _submit : null,
+      onCancel: widget.onCancel,
+      child: AppModal(
+        icon: WaydirIconsRegular.selectionAll,
+        title: t.selectPattern.title,
+        width: 360,
+        padding: const EdgeInsets.all(16),
+        onClose: widget.onCancel,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppTextField(
+              controller: widget.controller,
+              autofocus: true,
+              hintText: t.selectPattern.hint,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 8),
+            Text(t.selectPattern.help, style: context.txt.muted),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                DialogButton(
+                  label: t.dialog.cancel,
+                  color: AppColors.fgMuted,
+                  onTap: widget.onCancel,
+                ),
+                const SizedBox(width: 8),
+                Opacity(
+                  opacity: _valid ? 1.0 : 0.4,
+                  child: IgnorePointer(
+                    ignoring: !_valid,
+                    child: DialogButton(
+                      label: t.selectPattern.select,
+                      color: AppColors.accent,
+                      onTap: _submit,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

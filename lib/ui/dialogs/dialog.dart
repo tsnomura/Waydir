@@ -55,31 +55,11 @@ class _CustomDialogBody extends StatelessWidget {
     required this.onAction,
   });
 
-  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent || actions.isEmpty) {
-      return KeyEventResult.ignored;
-    }
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.numpadEnter) {
-      onAction(actions.last.label);
-
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.escape) {
-      onAction(actions.first.label);
-
-      return KeyEventResult.handled;
-    }
-
-    return KeyEventResult.ignored;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      autofocus: true,
-      onKeyEvent: _handleKey,
+    return DialogKeyBindings(
+      onConfirm: actions.isEmpty ? null : () => onAction(actions.last.label),
+      onCancel: actions.isEmpty ? null : () => onAction(actions.first.label),
       child: AppModal(
         icon: icon,
         iconColor: iconColor,
@@ -111,6 +91,47 @@ class _CustomDialogBody extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Wraps a dialog's content so `Enter`/`Escape` reach [onConfirm]/[onCancel]
+/// no matter which control inside the dialog currently has focus (a checkbox,
+/// a toggle chip, a button — not just a text field with its own `onSubmitted`).
+/// A null callback leaves that key unhandled, so it falls through as usual.
+class DialogKeyBindings extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onConfirm;
+  final VoidCallback? onCancel;
+
+  const DialogKeyBindings({
+    super.key,
+    required this.child,
+    this.onConfirm,
+    this.onCancel,
+  });
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if ((key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter) &&
+        onConfirm != null) {
+      onConfirm!();
+
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.escape && onCancel != null) {
+      onCancel!();
+
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(autofocus: true, onKeyEvent: _handleKey, child: child);
   }
 }
 
