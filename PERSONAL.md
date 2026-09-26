@@ -172,18 +172,31 @@ Relevant commit: `6ee9177`.
 - The divider's full hit width is clickable/draggable, not just the thin
   visible line.
 - `Ctrl` + double-click a folder (or `Ctrl`+click a sidebar item) opens it in
-  a new tab; `Shift` + double-click (or `Shift`+click in the sidebar) opens
-  it in the *other* pane; `Ctrl+Shift` + double-click opens it in a new tab
-  in the other pane. Deliberately mirrors the browser convention (`Ctrl`+click
-  a link = new tab, `Shift`+click = new window) with "pane" standing in for
-  "window", rather than an invented scheme — `Ctrl` always means "new tab",
-  `Shift` always means "the other pane", and they compose.
+  a new tab in the *same* pane; `Shift` + double-click (or `Shift`+click in
+  the sidebar) opens it in a new tab in the *other* pane, and switches
+  keyboard/toolbar focus there too so the new tab is immediately visible.
+  `Ctrl` held together with `Shift` doesn't change the meaning — `Shift`
+  alone already means "other pane". Deliberately mirrors the browser
+  convention (`Ctrl`+click a link = new tab, `Shift`+click = new window)
+  with "pane" standing in for "window", rather than an invented scheme.
+  There's deliberately no way to make the double-click/sidebar-click reuse
+  an *existing* tab in the other pane — before tabs existed, the only way to
+  drill sideways into a subfolder (à la AmigaOS Directory Opus) was to
+  overwrite the other pane's view, but now that tabs exist, always opening a
+  fresh one is strictly better (nothing is lost, and back-navigation still
+  works) — so that "reuse" concept was designed out entirely rather than
+  kept as a third option.
+- The active pane's toolbar (back/forward/up + address bar) shows a thin
+  accent-colored underline instead of the neutral divider color, so it's
+  obvious which pane is active without relying on the more subtle overlay
+  the two panes already had (a light dark tint over whichever pane is
+  *inactive* — unchanged, this is additive to that).
 - Window/pane resize edge hit areas were widened so they're easier to grab.
 - `F8` compare now toasts an explanation when it can't start (not in dual-pane
   mode, or one side isn't a local folder) instead of silently doing nothing.
 
 Relevant commits: `4bc5295`, `cf9dbdd`, `540a503`, `2504f49`, `63ba23b`,
-`194a146`, `bf84058`, `e3b8a68`.
+`194a146`, `bf84058`, `e3b8a68`, `c680443`.
 
 ## Move/swap tabs between panes
 
@@ -438,4 +451,4 @@ this round (kept as future scope); just reworded the hint text to stop
 over-promising, since it previously described `deleteKeyBehavior` as
 controlling the bare Delete key's default action.
 
-Relevant commits: `<pending>`.
+Relevant commits: `d3ca1be`.
