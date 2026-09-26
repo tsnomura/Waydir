@@ -400,3 +400,21 @@ Relevant commits: `28cf621`.
   already degrade gracefully instead of unconditionally claiming the key.
 
 Relevant commits: `23459d7`.
+
+## Fixed: renaming a file could select an unrelated file and scroll to it
+
+Waydir remembers each folder's selection/cursor across visits
+(`rememberFolderState`, on by default) and restores it whenever a folder is
+loaded — but it was restoring on *every* load, including a plain same-folder
+refresh, not just a genuine fresh navigation into the folder. Renaming a
+file in a folder you'd visited before (with something else selected there
+previously) raced the rename's own correct new-selection against that stale,
+unrelated remembered one — and the stale one could win, taking the cursor
+(and the list's scroll position) with it.
+
+Fixed by only restoring a remembered folder selection when the current view
+genuinely has nothing selected yet (empty selection, no cursor) — which is
+true for a fresh navigation (the feature's actual intended case) but not for
+a refresh of a folder you're already actively working in.
+
+Relevant commits: `00ac0de`.
