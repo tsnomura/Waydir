@@ -476,3 +476,68 @@ Applied it to the six dialogs above (two of which had grown their own
 ad-hoc, Escape-only version of the same thing independently).
 
 Relevant commits: `0cbb0c5`.
+
+## File selection: anchor-free cursor/mark model, dired commands
+
+Reworked the file list's selection system from scratch around a private draft
+spec (`selection-spec.md`, not committed — personal design notes). Core idea:
+state is only ever **cursor** (a position) and **mark** (a path-keyed set) —
+no invisible "anchor" the old Shift+click/Shift+arrow range logic depended on.
+Every operation's result is derivable from what's currently on screen (the
+existing marks, the current cursor) plus the key/click just made, never from
+unseen history.
+
+- **Keyboard**: arrows/Home/End/PgUp/PgDn move the cursor only, never
+  touching marks. `Shift`+move toggles the range between the old and new
+  cursor position, excluding the destination cell (which the cursor's own
+  highlight already indicates) — so one press changes exactly one item.
+  `Ctrl` always means "bigger step" (page-sized, mirroring text editors'
+  `Ctrl`+arrow = word) rather than changing what the toggle does — so
+  `Ctrl+Shift`+move is the same toggle, just over a page-sized range.
+  Toggling still fires (on the current cell) even when the cursor can't
+  actually move because it's already at the top/bottom of the list; holding
+  the key down doesn't keep re-toggling once stuck (only a fresh, non-repeat
+  press does).
+- **Mouse**: click toggles the clicked item in place (`Ctrl`+click is a
+  deliberate alias); `Shift`+click toggles the *inclusive* range between the
+  cursor and the click (both endpoints — a different rule from keyboard
+  Shift+move on purpose, since a click names two points directly rather than
+  sweeping through them). Right-click always moves the cursor to the target
+  now (previously did nothing when the target was already marked).
+- **Rubber-band**: `Shift`+drag only (can start even on top of an item — the
+  row's own drag-and-drop recognizer backs off via a `HardwareKeyboard`
+  Shift-check so it doesn't compete for the gesture). Takes a snapshot of the
+  marks at drag start and recomputes `snapshot XOR (paths currently in the
+  rectangle)` fresh every frame, so shrinking the rectangle back always
+  restores whatever was marked before the drag — not an incremental
+  union/difference that can't be undone by moving the mouse back. `Ctrl`+drag
+  isn't used for selection at all (reserved for the OS's usual "copy" D&D
+  connotation).
+- **Visual**: the cursor's row/tile gets its own highlight (a background tint
+  plus an outline, reusing `AppColors.accent`/`bgHoverStrong`) independent of
+  the mark's highlight, so cursor-only, mark-only, and both-at-once are all
+  visually distinguishable — previously only marks were painted, so arrow-key
+  navigation with nothing marked was invisible.
+- **dired-style single-letter commands** (`m`/`u`/`t`/`Shift+u`/`Shift+c`/
+  `Shift+r`/`Shift+d`): mark/unmark-and-advance, invert selection, deselect
+  all, copy/move to the other pane (same as `F5`/`F6`), delete. These
+  repurpose the existing "Type-ahead jump" setting (Preferences → General) as
+  a mode switch rather than adding a new one: **on** (the original default)
+  keeps today's first-letter-jump-to-file behavior for every letter; **off**
+  disables that jump entirely and turns on these seven commands instead —
+  avoids the two features permanently fighting over the same keys.
+  `Shift+r` specifically checks the mark count: exactly one (or none) does an
+  in-place rename (same as `F2`), two or more does the `F6` move-to-other-pane
+  — a single rename target doesn't have an "other pane" destination that
+  makes sense.
+- Fixed along the way: the copy/move confirmation dialog said "Move
+  \"x\" *here*?" with no indication of where "here" was — fine for a
+  drag-and-drop drop (you can see the drop point) but meaningless for a
+  keyboard-triggered `F5`/`F6`/dired transfer. Now shows the actual
+  destination path. Also fixed: `deselectAll()` (bound to `Esc` and
+  `Shift+u`) and `closeSearch()` both reset the cursor position to "none" as
+  a side effect, even though neither actually changes what's in the list —
+  the next arrow press after either would jump to the very start/end of the
+  list instead of stepping from wherever the cursor visibly was.
+
+Relevant commit: `64a9187`.
