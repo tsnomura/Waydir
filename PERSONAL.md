@@ -488,16 +488,26 @@ existing marks, the current cursor) plus the key/click just made, never from
 unseen history.
 
 - **Keyboard**: arrows/Home/End/PgUp/PgDn move the cursor only, never
-  touching marks. `Shift`+move toggles the range between the old and new
+  touching marks. `Shift`+move **paints** the range between the old and new
   cursor position, excluding the destination cell (which the cursor's own
   highlight already indicates) — so one press changes exactly one item.
-  `Ctrl` always means "bigger step" (page-sized, mirroring text editors'
-  `Ctrl`+arrow = word) rather than changing what the toggle does — so
-  `Ctrl+Shift`+move is the same toggle, just over a page-sized range.
-  Toggling still fires (on the current cell) even when the cursor can't
-  actually move because it's already at the top/bottom of the list; holding
-  the key down doesn't keep re-toggling once stuck (only a fresh, non-repeat
-  press does).
+  "Paint" rather than toggle: the mode (mark vs. unmark) is decided once,
+  from whichever cell the cursor was on when the `Shift`+move session began,
+  and stays locked until a plain (unmodified) move ends the session — so a
+  session paints a uniform run even if it sweeps back over a cell whose mark
+  state doesn't match, rather than punching a hole in it. Tried a pure
+  per-cell toggle first; it technically matched the "no anchor" philosophy
+  (fully derivable from the current cursor+marks, no session state) but felt
+  wrong in practice — sweeping back over ground you'd already marked could
+  unmark it, and reversing direction produced results that needed real
+  thought to predict. `Ctrl` always means "bigger step" (page-sized,
+  mirroring text editors' `Ctrl`+arrow = word) rather than changing what the
+  paint does — so `Ctrl+Shift`+move is the same paint, just over a
+  page-sized range. Painting still fires (on the current cell) even when the
+  cursor can't actually move because it's already at the top/bottom of the
+  list; holding the key down doesn't keep re-applying it once stuck (only a
+  fresh, non-repeat press does, and it's a no-op anyway since the mode is
+  already locked).
 - **Mouse**: click toggles the clicked item in place (`Ctrl`+click is a
   deliberate alias); `Shift`+click toggles the *inclusive* range between the
   cursor and the click (both endpoints — a different rule from keyboard
@@ -506,13 +516,17 @@ unseen history.
   now (previously did nothing when the target was already marked).
 - **Rubber-band**: `Shift`+drag only (can start even on top of an item — the
   row's own drag-and-drop recognizer backs off via a `HardwareKeyboard`
-  Shift-check so it doesn't compete for the gesture). Takes a snapshot of the
-  marks at drag start and recomputes `snapshot XOR (paths currently in the
-  rectangle)` fresh every frame, so shrinking the rectangle back always
-  restores whatever was marked before the drag — not an incremental
-  union/difference that can't be undone by moving the mouse back. `Ctrl`+drag
-  isn't used for selection at all (reserved for the OS's usual "copy" D&D
-  connotation).
+  Shift-check so it doesn't compete for the gesture). Also paints rather
+  than toggles: the mode is decided once, from whichever item (if any) was
+  under the pointer when the drag started, and every frame recomputes
+  `snapshot ∪ (paths currently in the rectangle)` (mark mode) or
+  `snapshot − (paths currently in the rectangle)` (unmark mode) fresh from
+  the drag-start snapshot — so shrinking the rectangle back always restores
+  whatever was marked before the drag, same reversibility the earlier
+  toggle/XOR version had, just without toggling individual cells. Starting
+  on empty space always means mark mode (there's no origin cell to read a
+  mode from). `Ctrl`+drag isn't used for selection at all (reserved for the
+  OS's usual "copy" D&D connotation).
 - **Visual**: the cursor's row/tile gets its own highlight (a background tint
   plus an outline, reusing `AppColors.accent`/`bgHoverStrong`) independent of
   the mark's highlight, so cursor-only, mark-only, and both-at-once are all
@@ -540,4 +554,4 @@ unseen history.
   the next arrow press after either would jump to the very start/end of the
   list instead of stepping from wherever the cursor visibly was.
 
-Relevant commit: `64a9187`.
+Relevant commits: `64a9187`, `efa780a`.
