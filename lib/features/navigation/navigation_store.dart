@@ -41,7 +41,6 @@ class NavigationStore {
   final showHidden = signal(false);
   final selectedPaths = signal<Set<String>>({});
   final cursorIndex = signal(-1);
-  final anchorIndex = signal(-1);
   final history = signal<List<String>>([]);
   final historyIndex = signal(0);
   final isLoading = signal(false);
@@ -142,12 +141,10 @@ class NavigationStore {
     resolvePhysicalDestination: _resolvePhysicalDestination,
     filterByTags: _filterByTags,
     cursorIndex: cursorIndex,
-    anchorIndex: anchorIndex,
   );
   late final SelectionController _selectionController = SelectionController(
     selectedPaths: selectedPaths,
     cursorIndex: cursorIndex,
-    anchorIndex: anchorIndex,
     gridColumns: gridColumns,
     visibleFiles: () => _selectionFiles,
   );
@@ -708,7 +705,6 @@ class NavigationStore {
     batch(() {
       selectedPaths.value = {};
       cursorIndex.value = -1;
-      anchorIndex.value = -1;
       currentPath.value = normalized;
     });
     _loadSortFor(normalized);
@@ -768,7 +764,6 @@ class NavigationStore {
       selectedPaths.value = {target};
       if (idx >= 0) {
         cursorIndex.value = idx;
-        anchorIndex.value = idx;
       }
     });
   }
@@ -836,7 +831,6 @@ class NavigationStore {
       if (restored.isNotEmpty) selectedPaths.value = restored;
       if (cursor >= 0) {
         cursorIndex.value = cursor;
-        anchorIndex.value = cursor;
       }
     });
   }
@@ -1230,7 +1224,6 @@ class NavigationStore {
     batch(() {
       selectedPaths.value = {};
       cursorIndex.value = -1;
-      anchorIndex.value = -1;
     });
   }
 
@@ -1464,18 +1457,11 @@ class NavigationStore {
     if (newCursor < 0 && oldCursor >= 0 && visible.isNotEmpty) {
       newCursor = oldCursor.clamp(0, visible.length - 1);
     }
-    int newAnchor = -1;
-    if (anchorIndex.value >= 0 && anchorIndex.value < _vf.length) {
-      final anchorPath = _vf[anchorIndex.value].path;
-      newAnchor = visible.indexWhere((e) => e.path == anchorPath);
-    }
-    if (newAnchor < 0) newAnchor = newCursor;
 
     batch(() {
       files.value = newEntries;
       selectedPaths.value = filteredSelected;
       cursorIndex.value = newCursor;
-      anchorIndex.value = newAnchor;
     });
   }
 
@@ -1577,21 +1563,11 @@ class NavigationStore {
           }).toList();
           searchResults.value = updated;
           final idx = updated.indexWhere((f) => f.path == logicalNew);
-          if (idx >= 0) {
-            batch(() {
-              cursorIndex.value = idx;
-              anchorIndex.value = idx;
-            });
-          }
+          if (idx >= 0) cursorIndex.value = idx;
         } else {
           await refresh();
           final idx = _vf.indexWhere((f) => f.path == logicalNew);
-          if (idx >= 0) {
-            batch(() {
-              cursorIndex.value = idx;
-              anchorIndex.value = idx;
-            });
-          }
+          if (idx >= 0) cursorIndex.value = idx;
         }
         fileListFocusRequest.value++;
       case RenameAlreadyExists():
@@ -1650,12 +1626,7 @@ class NavigationStore {
     });
     await refresh();
     final idx = _vf.indexWhere((f) => f.path == newPath);
-    if (idx >= 0) {
-      batch(() {
-        cursorIndex.value = idx;
-        anchorIndex.value = idx;
-      });
-    }
+    if (idx >= 0) cursorIndex.value = idx;
   }
 
   Future<MultiRenameOutcome> multiRename(
@@ -1727,7 +1698,6 @@ class NavigationStore {
         selectedPaths.value = remaining;
         if (remaining.isEmpty) {
           cursorIndex.value = -1;
-          anchorIndex.value = -1;
         }
       });
     }
@@ -2022,7 +1992,6 @@ class NavigationStore {
       batch(() {
         selectedPaths.value = {logicalNewPath};
         cursorIndex.value = idx;
-        anchorIndex.value = idx;
       });
     }
     fileListFocusRequest.value++;
@@ -2076,7 +2045,6 @@ class NavigationStore {
       batch(() {
         selectedPaths.value = {entry.path};
         cursorIndex.value = idx;
-        anchorIndex.value = idx;
       });
     } else {
       _pendingInitialSelect = entry.path;
@@ -2145,10 +2113,15 @@ class NavigationStore {
   void toggleSelectAndAdvance() =>
       _selectionController.toggleSelectAndAdvance();
 
+  void markCursorAndAdvance() => _selectionController.markCursorAndAdvance();
+
+  void unmarkCursorAndAdvance() =>
+      _selectionController.unmarkCursorAndAdvance();
+
   void onBackgroundTap() => deselectAll();
 
-  void onRectSelect(Set<String> paths, {bool additive = false}) =>
-      _selectionController.onRectSelect(paths, additive: additive);
+  void onRectSelect(Set<String> paths) =>
+      _selectionController.onRectSelect(paths);
 
   List<FileEntry> get selectedEntries => _selectionController.selectedEntries;
 
@@ -2160,7 +2133,6 @@ class NavigationStore {
     batch(() {
       selectedPaths.value = {};
       cursorIndex.value = -1;
-      anchorIndex.value = -1;
     });
     final archiveLoc = await _archiveLocationFor(currentPath.value);
     if (archiveLoc != null) {
@@ -2325,16 +2297,20 @@ class NavigationStore {
     if (columns > 0) gridColumns.value = columns;
   }
 
-  void moveCursorHorizontally(int delta) =>
-      _selectionController.moveCursorHorizontally(delta);
+  void moveCursorHorizontally(int delta, {bool isRepeat = false}) =>
+      _selectionController.moveCursorHorizontally(delta, isRepeat: isRepeat);
 
-  void moveCursor(int delta) => _selectionController.moveCursor(delta);
+  void moveCursor(int delta, {bool isRepeat = false}) =>
+      _selectionController.moveCursor(delta, isRepeat: isRepeat);
 
-  void moveCursorByPage(int dir) => _selectionController.moveCursorByPage(dir);
+  void moveCursorByPage(int dir, {bool isRepeat = false}) =>
+      _selectionController.moveCursorByPage(dir, isRepeat: isRepeat);
 
-  void moveCursorToStart() => _selectionController.moveCursorToStart();
+  void moveCursorToStart({bool isRepeat = false}) =>
+      _selectionController.moveCursorToStart(isRepeat: isRepeat);
 
-  void moveCursorToEnd() => _selectionController.moveCursorToEnd();
+  void moveCursorToEnd({bool isRepeat = false}) =>
+      _selectionController.moveCursorToEnd(isRepeat: isRepeat);
 }
 
 class _FolderState {

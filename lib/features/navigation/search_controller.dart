@@ -21,7 +21,6 @@ class SearchController {
   final List<FileEntry> Function(List<FileEntry> list, FilterQuery filter)
   filterByTags;
   final Signal<int> cursorIndex;
-  final Signal<int> anchorIndex;
 
   final searchActive = signal(false);
   final searchQuery = signal('');
@@ -49,7 +48,6 @@ class SearchController {
     required this.resolvePhysicalDestination,
     required this.filterByTags,
     required this.cursorIndex,
-    required this.anchorIndex,
   });
 
   void openSearch({bool recursive = false}) {
@@ -77,8 +75,6 @@ class SearchController {
       isSearching.value = false;
       searchScannedDirs.value = 0;
       searchCurrentDir.value = null;
-      cursorIndex.value = -1;
-      anchorIndex.value = -1;
     });
   }
 
@@ -90,7 +86,6 @@ class SearchController {
         currentSearchMode(),
       );
       cursorIndex.value = -1;
-      anchorIndex.value = -1;
     });
     scheduleRestart();
   }
@@ -255,7 +250,6 @@ class SearchController {
       searchCurrentDir.value = null;
       isSearching.value = false;
       cursorIndex.value = -1;
-      anchorIndex.value = -1;
     });
     if (!searchActive.value ||
         (!searchRecursive.value && !searchContent.value)) {

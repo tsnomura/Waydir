@@ -341,6 +341,7 @@ class _FileGridState extends State<FileGrid> {
                     rowAt: (localPosition) => _indexAt(localPosition, columns),
                     pathsInRect: (rect) => _pathsInRect(rect, columns),
                     onSelectionChanged: widget.onRectSelect,
+                    currentSelection: () => widget.selectedPaths,
                     onBackgroundTap: widget.onBackgroundTap,
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
@@ -378,6 +379,7 @@ class _FileGridState extends State<FileGrid> {
                             captionGap: _gridCaptionGap(scale, compact),
                             captionBlock: _gridCaptionBlock(scale, compact),
                             selected: widget.selectedPaths.contains(entry.path),
+                            isCursor: index == widget.cursorIndex,
                             selectedPaths: widget.selectedPaths,
                             rowDecoration:
                                 widget.rowDecorations[entry.path] ??
@@ -445,6 +447,7 @@ class _GridTile extends StatefulWidget {
   final double captionGap;
   final double captionBlock;
   final bool selected;
+  final bool isCursor;
   final Set<String> selectedPaths;
   final RowDecoration? rowDecoration;
   final bool isCut;
@@ -470,6 +473,7 @@ class _GridTile extends StatefulWidget {
     required this.captionGap,
     required this.captionBlock,
     required this.selected,
+    this.isCursor = false,
     required this.selectedPaths,
     this.rowDecoration,
     required this.isCut,
@@ -616,11 +620,8 @@ class _GridTileState extends State<_GridTile> {
   }
 
   Future<DragItem?> _provideDragItem(DragItemRequest request) async {
-    if (!widget.selected) {
-      widget.onSelect(
-        FileSelectionEvent(entry: widget.entry, index: widget.index),
-      );
-    }
+    if (HardwareKeyboard.instance.isShiftPressed) return null;
+
     final initialMode = initialDragMode();
 
     void updateDragging() {
@@ -699,10 +700,15 @@ class _GridTileState extends State<_GridTile> {
       height: 1.15,
     );
     final tint = widget.rowDecoration?.tint;
+    final isCursor = widget.isCursor;
     final bg = widget.isFolderDragOver
         ? AppColors.accent.withValues(alpha: 0.12)
+        : selected && isCursor
+        ? AppColors.bgSelected
         : selected
         ? AppColors.bgSelectedMuted
+        : isCursor
+        ? AppColors.bgHoverStrong
         : _hovered
         ? AppColors.bgHover
         : tint != null
@@ -712,6 +718,8 @@ class _GridTileState extends State<_GridTile> {
         ? Border.all(color: AppColors.accent.withValues(alpha: 0.4))
         : selected
         ? Border.all(color: AppColors.accent.withValues(alpha: 0.7))
+        : isCursor
+        ? Border.all(color: AppColors.accent.withValues(alpha: 0.5))
         : Border.all(color: Colors.transparent);
 
     final tile = MouseRegion(

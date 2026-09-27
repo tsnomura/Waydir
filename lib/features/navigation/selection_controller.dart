@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:signals/signals.dart';
 
 import '../../core/keyboard/keyboard_shortcuts.dart';
@@ -8,7 +7,6 @@ import '../../core/settings/settings_store.dart';
 class SelectionController {
   final Signal<Set<String>> selectedPaths;
   final Signal<int> cursorIndex;
-  final Signal<int> anchorIndex;
   final Signal<int> gridColumns;
   final List<FileEntry> Function() visibleFiles;
 
@@ -17,66 +15,41 @@ class SelectionController {
   SelectionController({
     required this.selectedPaths,
     required this.cursorIndex,
-    required this.anchorIndex,
     required this.gridColumns,
     required this.visibleFiles,
   });
 
   List<FileEntry> get _vf => visibleFiles();
 
+  /// Click (and Ctrl+click, a deliberate alias) toggles the clicked item's
+  /// mark in place and moves the cursor there — every other mark is left
+  /// untouched. Shift+click toggles the inclusive range from the cursor's
+  /// position *before this click* to the clicked item (both endpoints), then
+  /// moves the cursor. Neither depends on any state beyond what's currently
+  /// visible (the existing marks, the current cursor).
   void onSelect(FileSelectionEvent event) {
-    final ctrl = AppShortcuts.isControl;
     final shift = AppShortcuts.isShift;
 
     batch(() {
-      if (ctrl && !shift) {
-        final paths = Set<String>.from(selectedPaths.value);
-        if (paths.contains(event.entry.path)) {
-          paths.remove(event.entry.path);
-          if (paths.isNotEmpty) {
-            final lastSelected = _vf.lastWhere(
-              (f) => paths.contains(f.path),
-              orElse: () => event.entry,
-            );
-            anchorIndex.value = _vf.indexOf(lastSelected);
-          } else {
-            anchorIndex.value = -1;
-          }
-        } else {
-          paths.add(event.entry.path);
-          anchorIndex.value = event.index;
-        }
-        selectedPaths.value = paths;
-        cursorIndex.value = event.index;
-      } else if (shift && !ctrl) {
-        int start;
-        if (anchorIndex.value >= 0 &&
-            anchorIndex.value < _vf.length &&
-            selectedPaths.value.contains(_vf[anchorIndex.value].path)) {
-          start = anchorIndex.value;
-        } else if (cursorIndex.value >= 0 &&
-            cursorIndex.value < _vf.length &&
-            selectedPaths.value.contains(_vf[cursorIndex.value].path)) {
-          start = cursorIndex.value;
-          anchorIndex.value = start;
-        } else {
-          start = event.index;
-          anchorIndex.value = event.index;
-        }
+      if (shift) {
+        final start = cursorIndex.value >= 0 && cursorIndex.value < _vf.length
+            ? cursorIndex.value
+            : event.index;
         final end = event.index;
         final lo = start < end ? start : end;
         final hi = start < end ? end : start;
-        final paths = <String>{};
+        final paths = Set<String>.from(selectedPaths.value);
         for (int i = lo; i <= hi; i++) {
-          paths.add(_vf[i].path);
+          final p = _vf[i].path;
+          if (!paths.remove(p)) paths.add(p);
         }
         selectedPaths.value = paths;
-        cursorIndex.value = event.index;
       } else {
-        selectedPaths.value = {event.entry.path};
-        cursorIndex.value = event.index;
-        anchorIndex.value = event.index;
+        final paths = Set<String>.from(selectedPaths.value);
+        if (!paths.remove(event.entry.path)) paths.add(event.entry.path);
+        selectedPaths.value = paths;
       }
+      cursorIndex.value = event.index;
     });
   }
 
@@ -119,7 +92,6 @@ class SelectionController {
     batch(() {
       selectedPaths.value = matched;
       cursorIndex.value = cursor;
-      anchorIndex.value = cursor;
     });
 
     return matched.length;
@@ -163,11 +135,7 @@ class SelectionController {
   }
 
   void deselectAll() {
-    batch(() {
-      selectedPaths.value = {};
-      cursorIndex.value = -1;
-      anchorIndex.value = -1;
-    });
+    selectedPaths.value = {};
   }
 
   void invertSelection() {
@@ -182,11 +150,7 @@ class SelectionController {
       if (cursorIndex.value >= 0 && cursorIndex.value < _vf.length) {
         final path = _vf[cursorIndex.value].path;
         final paths = Set<String>.from(selectedPaths.value);
-        if (paths.contains(path) && paths.length > 1) {
-          paths.remove(path);
-        } else {
-          paths.add(path);
-        }
+        if (!paths.remove(path)) paths.add(path);
         selectedPaths.value = paths;
       }
       if (cursorIndex.value < _vf.length - 1) {
@@ -195,19 +159,43 @@ class SelectionController {
     });
   }
 
-  void onRectSelect(Set<String> paths, {bool additive = false}) {
+  void markCursorAndAdvance() {
     batch(() {
-      if (additive) {
-        selectedPaths.value = {...selectedPaths.value, ...paths};
-      } else {
-        selectedPaths.value = paths;
+      if (cursorIndex.value >= 0 && cursorIndex.value < _vf.length) {
+        final path = _vf[cursorIndex.value].path;
+        if (!selectedPaths.value.contains(path)) {
+          selectedPaths.value = {...selectedPaths.value, path};
+        }
       }
+      if (cursorIndex.value < _vf.length - 1) {
+        cursorIndex.value++;
+      }
+    });
+  }
+
+  void unmarkCursorAndAdvance() {
+    batch(() {
+      if (cursorIndex.value >= 0 && cursorIndex.value < _vf.length) {
+        final path = _vf[cursorIndex.value].path;
+        if (selectedPaths.value.contains(path)) {
+          selectedPaths.value = selectedPaths.value.difference({path});
+        }
+      }
+      if (cursorIndex.value < _vf.length - 1) {
+        cursorIndex.value++;
+      }
+    });
+  }
+
+  /// Rubber-band result: [paths] is the complete resulting mark set to
+  /// apply — a wholesale replace, not a delta — since the rubber-band layer
+  /// already computed it as a snapshot-XOR-rectangle each frame.
+  void onRectSelect(Set<String> paths) {
+    batch(() {
+      selectedPaths.value = paths;
       if (paths.isNotEmpty) {
         final idx = _vf.indexWhere((f) => paths.contains(f.path));
         if (idx >= 0) cursorIndex.value = idx;
-      } else if (!additive) {
-        cursorIndex.value = -1;
-        anchorIndex.value = -1;
       }
     });
   }
@@ -219,13 +207,12 @@ class SelectionController {
   }
 
   void onContextMenu(FileSelectionEvent event) {
-    if (!selectedPaths.value.contains(event.entry.path)) {
-      batch(() {
+    batch(() {
+      if (!selectedPaths.value.contains(event.entry.path)) {
         selectedPaths.value = {event.entry.path};
-        cursorIndex.value = event.index;
-        anchorIndex.value = event.index;
-      });
-    }
+      }
+      cursorIndex.value = event.index;
+    });
   }
 
   void jumpToIndex(int index) {
@@ -233,7 +220,6 @@ class SelectionController {
       if (_vf.isEmpty) return;
       if (index < 0 || index >= _vf.length) return;
       cursorIndex.value = index;
-      anchorIndex.value = index;
       selectedPaths.value = {_vf[index].path};
     });
   }
@@ -263,10 +249,12 @@ class SelectionController {
     return -1;
   }
 
-  void moveCursorHorizontally(int delta) {
+  int get _pageStep => (_pageRows * 0.8).floor().clamp(1, _pageRows);
+
+  void moveCursorHorizontally(int delta, {bool isRepeat = false}) {
     final settings = SettingsStore.instance;
     if (settings.fileViewMode.value != 'grid') {
-      moveCursor(delta);
+      moveCursor(delta, isRepeat: isRepeat);
 
       return;
     }
@@ -279,18 +267,26 @@ class SelectionController {
     }
     final columns = gridColumns.value.clamp(1, 1000);
     final col = current % columns;
-    if (delta < 0 && col == 0) return;
-    if (delta > 0 && col == columns - 1) return;
-    final next = current + delta;
-    if (next < 0 || next >= _vf.length) return;
-    _applyCursorMove(next);
+    final atEdge = delta < 0 ? col == 0 : col == columns - 1;
+    if (atEdge) {
+      if (isRepeat) return;
+      _applyCursorMove(current);
+
+      return;
+    }
+    final ctrl = AppShortcuts.isControl;
+    final next = ctrl
+        ? (delta < 0 ? current - col : current + (columns - 1 - col))
+        : current + delta;
+    _applyCursorMove(next.clamp(0, _vf.length - 1));
   }
 
-  void moveCursor(int delta) {
+  void moveCursor(int delta, {bool isRepeat = false}) {
     final settings = SettingsStore.instance;
+    final rowStep = AppShortcuts.isControl ? _pageStep : 1;
     final step = settings.fileViewMode.value == 'grid' && delta.abs() == 1
-        ? delta * gridColumns.value.clamp(1, 1000)
-        : delta;
+        ? delta * gridColumns.value.clamp(1, 1000) * rowStep
+        : delta * rowStep;
     if (_vf.isEmpty) return;
     final current = _resolvedCursorIndex();
     if (current < 0) {
@@ -298,12 +294,12 @@ class SelectionController {
 
       return;
     }
-    final next = current + step;
-    if (next < 0 || next >= _vf.length) return;
+    final next = (current + step).clamp(0, _vf.length - 1);
+    if (isRepeat && next == current) return;
     _applyCursorMove(next);
   }
 
-  void moveCursorByPage(int dir) {
+  void moveCursorByPage(int dir, {bool isRepeat = false}) {
     if (_vf.isEmpty) return;
     final current = _resolvedCursorIndex();
     if (current < 0) {
@@ -311,23 +307,23 @@ class SelectionController {
 
       return;
     }
-    final step = (_pageRows * 0.8).floor().clamp(1, _pageRows);
-    final next = (current + dir * step).clamp(0, _vf.length - 1);
-    if (next == current) return;
+    final next = (current + dir * _pageStep).clamp(0, _vf.length - 1);
+    if (isRepeat && next == current) return;
     _applyCursorMove(next);
   }
 
-  void moveCursorToStart() {
+  void moveCursorToStart({bool isRepeat = false}) {
     if (_vf.isEmpty) return;
     if (cursorIndex.value < 0) {
       _initCursor(0);
 
       return;
     }
+    if (isRepeat && cursorIndex.value == 0) return;
     _applyCursorMove(0);
   }
 
-  void moveCursorToEnd() {
+  void moveCursorToEnd({bool isRepeat = false}) {
     if (_vf.isEmpty) return;
     final last = _vf.length - 1;
     if (cursorIndex.value < 0) {
@@ -335,50 +331,41 @@ class SelectionController {
 
       return;
     }
+    if (isRepeat && cursorIndex.value == last) return;
     _applyCursorMove(last);
   }
 
   void _initCursor(int index) {
-    batch(() {
-      cursorIndex.value = index;
-      anchorIndex.value = index;
-      selectedPaths.value = {_vf[index].path};
-    });
+    cursorIndex.value = index;
   }
 
+  /// Plain move: cursor only, marks untouched. Shift+move toggles the range
+  /// between the *old* cursor position and [next], excluding [next] itself
+  /// (the destination cell is left to the cursor highlight to indicate, not
+  /// double-encoded as a mark too) — unless the cursor couldn't actually
+  /// move ([next] equals the old position), in which case the old position
+  /// itself is toggled, so a boundary Shift+move still changes exactly one
+  /// item. Ctrl no longer changes which set operation this is — Ctrl only
+  /// ever picks a bigger step, before this method is even called. Either way
+  /// the range is derived purely from the current (visible) cursor
+  /// position, never a persisted anchor.
   void _applyCursorMove(int next) {
-    final shift = HardwareKeyboard.instance.isShiftPressed;
+    final shift = AppShortcuts.isShift;
     batch(() {
       if (shift) {
-        final anchor = anchorIndex.value >= 0 && anchorIndex.value < _vf.length
-            ? anchorIndex.value
-            : cursorIndex.value;
-        final cur = cursorIndex.value;
-        final extending = (next - anchor).abs() > (cur - anchor).abs();
-        if (cur >= 0 &&
-            cur < _vf.length &&
-            !selectedPaths.value.contains(_vf[cur].path) &&
-            extending) {
-          final lo = cur < anchor ? cur : anchor;
-          final hi = cur < anchor ? anchor : cur;
-          final paths = Set<String>.from(selectedPaths.value);
-          for (int i = lo; i <= hi; i++) {
-            paths.add(_vf[i].path);
-          }
-          selectedPaths.value = paths;
-
-          return;
-        }
-        final lo = next < anchor ? next : anchor;
-        final hi = next < anchor ? anchor : next;
-        final paths = <String>{};
+        final cur = cursorIndex.value >= 0 && cursorIndex.value < _vf.length
+            ? cursorIndex.value
+            : next;
+        final lo = cur < next ? cur : next;
+        final hi = cur < next ? next : cur;
+        final paths = Set<String>.from(selectedPaths.value);
         for (int i = lo; i <= hi; i++) {
-          paths.add(_vf[i].path);
+          if (i == cur || i != next) {
+            final p = _vf[i].path;
+            if (!paths.remove(p)) paths.add(p);
+          }
         }
         selectedPaths.value = paths;
-      } else {
-        selectedPaths.value = {_vf[next].path};
-        anchorIndex.value = next;
       }
       cursorIndex.value = next;
     });

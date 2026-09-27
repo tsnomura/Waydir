@@ -297,13 +297,17 @@ class _AppSearchBarState extends State<AppSearchBar> {
                       child: KeyboardListener(
                         focusNode: _wrapperFocusNode,
                         onKeyEvent: (event) {
-                          if (event is KeyDownEvent &&
-                              event.logicalKey == LogicalKeyboardKey.escape) {
-                            if (_suggestionOverlay != null) {
-                              _dismissSuggestions();
-                            } else {
-                              widget.store.closeSearch();
-                            }
+                          if (event is! KeyDownEvent ||
+                              event.logicalKey != LogicalKeyboardKey.escape) {
+                            return;
+                          }
+                          if (_suggestionOverlay != null) {
+                            _dismissSuggestions();
+
+                            return;
+                          }
+                          if (_focusNode.hasFocus) {
+                            widget.store.closeSearch();
                           }
                         },
                         child: TextField(

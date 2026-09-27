@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../ui/theme/app_theme.dart';
 
-typedef RubberBandSelectCallback =
-    void Function(Set<String> paths, {bool additive});
+typedef RubberBandSelectCallback = void Function(Set<String> paths);
 typedef RubberBandStartPredicate = bool Function(Offset localPosition);
 typedef RubberBandRectResolver = Set<String> Function(Rect contentRect);
+typedef RubberBandSnapshotResolver = Set<String> Function();
 
 class RubberBandLayer extends StatefulWidget {
   final ScrollController scrollController;
@@ -20,6 +20,7 @@ class RubberBandLayer extends StatefulWidget {
   final RubberBandRectResolver? pathsInRect;
   final RubberBandStartPredicate? canStartSelectionAt;
   final RubberBandSelectCallback? onSelectionChanged;
+  final RubberBandSnapshotResolver currentSelection;
   final VoidCallback? onBackgroundTap;
   final Widget child;
 
@@ -35,6 +36,7 @@ class RubberBandLayer extends StatefulWidget {
     this.pathsInRect,
     this.canStartSelectionAt,
     required this.onSelectionChanged,
+    required this.currentSelection,
     this.onBackgroundTap,
     required this.child,
   });
@@ -53,8 +55,10 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
   Offset? _currentContent;
   double _currentLocalY = 0;
   bool _active = false;
+  bool _downOverItem = false;
   Timer? _autoScrollTimer;
   Set<String> _lastPaths = const {};
+  Set<String> _dragStartSnapshot = const {};
 
   Rect get _contentRect {
     if (_startContent == null || _currentContent == null) return Rect.zero;
@@ -96,11 +100,13 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
   }
 
   void _fireSelection() {
-    final paths = _pathsInRect(_contentRect);
-    if (_setsEqual(paths, _lastPaths)) return;
-    _lastPaths = paths;
-    final additive = HardwareKeyboard.instance.isControlPressed;
-    widget.onSelectionChanged?.call(paths, additive: additive);
+    final inRect = _pathsInRect(_contentRect);
+    if (_setsEqual(inRect, _lastPaths)) return;
+    _lastPaths = inRect;
+    final result = _dragStartSnapshot
+        .difference(inRect)
+        .union(inRect.difference(_dragStartSnapshot));
+    widget.onSelectionChanged?.call(result);
   }
 
   bool _setsEqual(Set<String> a, Set<String> b) {
@@ -150,8 +156,7 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
     if (widget.canStartSelectionAt?.call(event.localPosition) == false) {
       return;
     }
-    final index = widget.rowAt(event.localPosition);
-    if (index >= 0) return;
+    _downOverItem = widget.rowAt(event.localPosition) >= 0;
     final content = _toContent(event.localPosition);
     _startContent = content;
     _currentContent = content;
@@ -169,7 +174,14 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
       final dx = (content.dx - _startContent!.dx).abs();
       final dy = (content.dy - _startContent!.dy).abs();
       if (dx < _kThreshold && dy < _kThreshold) return;
+      if (!HardwareKeyboard.instance.isShiftPressed) {
+        _startContent = null;
+        _currentContent = null;
+
+        return;
+      }
       _active = true;
+      _dragStartSnapshot = widget.currentSelection();
       _startAutoScroll(viewportHeight);
     }
     _fireSelection();
@@ -177,7 +189,7 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
   }
 
   void _handlePointerUp(PointerUpEvent event) {
-    if (_startContent != null && !_active) {
+    if (_startContent != null && !_active && !_downOverItem) {
       widget.onBackgroundTap?.call();
     }
     _autoScrollTimer?.cancel();

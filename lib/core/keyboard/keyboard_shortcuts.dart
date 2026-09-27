@@ -318,14 +318,12 @@ class AppShortcuts {
       label: () => '',
       group: ShortcutGroup.quickLook,
       key: LogicalKeyboardKey.space,
-      customKeyDisplay: 'Space',
     ),
     ShortcutDef(
       id: 'quick_look_close',
       label: () => '',
       group: ShortcutGroup.quickLook,
       key: LogicalKeyboardKey.space,
-      customKeyDisplay: 'Space',
     ),
     ShortcutDef(
       id: 'quick_look_prev_file',
@@ -653,6 +651,33 @@ class AppShortcuts {
       key: LogicalKeyboardKey.f6,
     ),
     ShortcutDef(
+      id: 'dired_copy_other_pane',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.fileOps,
+      key: LogicalKeyboardKey.keyC,
+      shift: true,
+      editable: false,
+    ),
+    ShortcutDef(
+      id: 'dired_move_other_pane',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.fileOps,
+      key: LogicalKeyboardKey.keyR,
+      shift: true,
+      editable: false,
+    ),
+    ShortcutDef(
+      id: 'dired_delete',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.fileOps,
+      key: LogicalKeyboardKey.keyD,
+      shift: true,
+      editable: false,
+    ),
+    ShortcutDef(
       id: 'select_all',
       label: () => '',
       group: ShortcutGroup.selection,
@@ -685,6 +710,39 @@ class AppShortcuts {
       label: () => '',
       group: ShortcutGroup.selection,
       key: LogicalKeyboardKey.insert,
+    ),
+    ShortcutDef(
+      id: 'dired_mark',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.selection,
+      key: LogicalKeyboardKey.keyM,
+      editable: false,
+    ),
+    ShortcutDef(
+      id: 'dired_unmark',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.selection,
+      key: LogicalKeyboardKey.keyU,
+      editable: false,
+    ),
+    ShortcutDef(
+      id: 'dired_invert',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.selection,
+      key: LogicalKeyboardKey.keyT,
+      editable: false,
+    ),
+    ShortcutDef(
+      id: 'dired_deselect',
+      label: () => '',
+      hint: () => t.keybindings.diredHint,
+      group: ShortcutGroup.selection,
+      key: LogicalKeyboardKey.keyU,
+      shift: true,
+      editable: false,
     ),
     ShortcutDef(
       id: 'save_selection',
@@ -917,5 +975,17 @@ class AppShortcuts {
     final b = effectiveBinding(id);
 
     return key == b.key && isControl == b.ctrl && isAlt == b.alt;
+  }
+
+  /// Like [matchesIgnoreShift], but Ctrl is left unconstrained too — for
+  /// cursor-movement ids, where Shift *and* Ctrl+Shift both need to reach
+  /// the handler (which resolves their meaning itself) without a bare
+  /// Ctrl+key colliding with some other shortcut bound to that combo.
+  static bool matchesIgnoringShiftAndCtrl(String id, LogicalKeyboardKey key) {
+    final def = _byId[id];
+    if (def == null) return false;
+    final b = effectiveBinding(id);
+
+    return key == b.key && isAlt == b.alt;
   }
 }

@@ -1,7 +1,11 @@
 part of '../waydir_shell.dart';
 
 mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
-  Future<bool> _confirmTransfer(TaskType type, List<String> sources) async {
+  Future<bool> _confirmTransfer(
+    TaskType type,
+    List<String> sources,
+    String destination,
+  ) async {
     final isCopy = type == TaskType.copy;
     final enabled = isCopy
         ? SettingsStore.instance.confirmCopy.value
@@ -19,14 +23,14 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     if (isCopy) {
       title = t.dialog.confirmCopyTitle;
       message = single
-          ? t.dialog.confirmCopySingle(name: name)
-          : t.dialog.confirmCopyMultiple(count: count);
+          ? t.dialog.confirmCopySingle(name: name, dest: destination)
+          : t.dialog.confirmCopyMultiple(count: count, dest: destination);
       actionLabel = t.dialog.copy;
     } else {
       title = t.dialog.confirmMoveTitle;
       message = single
-          ? t.dialog.confirmMoveSingle(name: name)
-          : t.dialog.confirmMoveMultiple(count: count);
+          ? t.dialog.confirmMoveSingle(name: name, dest: destination)
+          : t.dialog.confirmMoveMultiple(count: count, dest: destination);
       actionLabel = t.dialog.move;
     }
 

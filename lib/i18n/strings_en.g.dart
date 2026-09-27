@@ -898,6 +898,9 @@ class Translations$keybindings$en {
 	/// en: 'dual'
 	String get dualHint => 'dual';
 
+	/// en: 'dired, off when type-ahead is on'
+	String get diredHint => 'dired, off when type-ahead is on';
+
 	/// en: 'Open'
 	String get openItem => 'Open';
 
@@ -1066,6 +1069,15 @@ class Translations$keybindings$en {
 	/// en: 'Move to other pane'
 	String get dualMove => 'Move to other pane';
 
+	/// en: 'Copy to other pane (dired)'
+	String get diredCopyOtherPane => 'Copy to other pane (dired)';
+
+	/// en: 'Rename, or move to other pane if multiple are marked (dired)'
+	String get diredMoveOtherPane => 'Rename, or move to other pane if multiple are marked (dired)';
+
+	/// en: 'Delete (dired)'
+	String get diredDelete => 'Delete (dired)';
+
 	/// en: 'Select all'
 	String get selectAll => 'Select all';
 
@@ -1080,6 +1092,18 @@ class Translations$keybindings$en {
 
 	/// en: 'Toggle select'
 	String get toggleSelect => 'Toggle select';
+
+	/// en: 'Mark and advance (dired)'
+	String get diredMark => 'Mark and advance (dired)';
+
+	/// en: 'Unmark and advance (dired)'
+	String get diredUnmark => 'Unmark and advance (dired)';
+
+	/// en: 'Invert selection (dired)'
+	String get diredInvert => 'Invert selection (dired)';
+
+	/// en: 'Deselect all (dired)'
+	String get diredDeselect => 'Deselect all (dired)';
 
 	/// en: 'Save selection to file'
 	String get saveSelection => 'Save selection to file';
@@ -1913,20 +1937,20 @@ class Translations$dialog$en {
 	/// en: 'Copy items?'
 	String get confirmCopyTitle => 'Copy items?';
 
-	/// en: 'Copy "$name" here?'
-	String confirmCopySingle({required Object name}) => 'Copy "${name}" here?';
+	/// en: 'Copy "$name" to $dest?'
+	String confirmCopySingle({required Object name, required Object dest}) => 'Copy "${name}" to ${dest}?';
 
-	/// en: 'Copy $count items here?'
-	String confirmCopyMultiple({required Object count}) => 'Copy ${count} items here?';
+	/// en: 'Copy $count items to $dest?'
+	String confirmCopyMultiple({required Object count, required Object dest}) => 'Copy ${count} items to ${dest}?';
 
 	/// en: 'Move items?'
 	String get confirmMoveTitle => 'Move items?';
 
-	/// en: 'Move "$name" here?'
-	String confirmMoveSingle({required Object name}) => 'Move "${name}" here?';
+	/// en: 'Move "$name" to $dest?'
+	String confirmMoveSingle({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?';
 
-	/// en: 'Move $count items here?'
-	String confirmMoveMultiple({required Object count}) => 'Move ${count} items here?';
+	/// en: 'Move $count items to $dest?'
+	String confirmMoveMultiple({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?';
 }
 
 // Path: password
@@ -2641,11 +2665,11 @@ class Translations$preferences$general$en {
 	/// en: 'Save and reuse the sort column and direction for each folder.'
 	String get rememberFolderSortHint => 'Save and reuse the sort column and direction for each folder.';
 
-	/// en: 'Type-ahead multi-letter jump'
-	String get typeAheadBuffer => 'Type-ahead multi-letter jump';
+	/// en: 'Type-ahead jump'
+	String get typeAheadBuffer => 'Type-ahead jump';
 
-	/// en: 'Quickly typed letters combine into a search string to jump to a matching item; pausing resets it. When off, each letter cycles through items starting with that letter.'
-	String get typeAheadBufferHint => 'Quickly typed letters combine into a search string to jump to a matching item; pausing resets it. When off, each letter cycles through items starting with that letter.';
+	/// en: 'When on, typing a letter jumps to files starting with it (quickly typed letters combine into a search string; pausing resets it). When off, letters no longer jump — m/u/t/U/C/R/D become dired-style mark/unmark/invert/deselect/copy/move/delete commands instead.'
+	String get typeAheadBufferHint => 'When on, typing a letter jumps to files starting with it (quickly typed letters combine into a search string; pausing resets it). When off, letters no longer jump — m/u/t/U/C/R/D become dired-style mark/unmark/invert/deselect/copy/move/delete commands instead.';
 
 	/// en: 'Delete key behavior'
 	String get deleteKeyBehavior => 'Delete key behavior';
@@ -3758,8 +3782,8 @@ class Translations$help$groups$navigating$typeAhead$en {
 	/// en: 'Type-Ahead Jump'
 	String get title => 'Type-Ahead Jump';
 
-	/// en: 'Start typing while the file list is focused to jump to a matching name. - Matching is incremental - keep typing to refine. - The cursor moves to the first match as you type. - Type-ahead can be turned off in **Preferences -> General**.'
-	String get body => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Type-ahead can be turned off in **Preferences -> General**.';
+	/// en: 'Start typing while the file list is focused to jump to a matching name. - Matching is incremental - keep typing to refine. - The cursor moves to the first match as you type. - Turn this off in **Preferences -> General** to use dired-style single-letter commands (m/u/t/U/C/R/D) instead.'
+	String get body => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Turn this off in **Preferences -> General** to use dired-style single-letter commands (m/u/t/U/C/R/D) instead.';
 }
 
 // Path: help.groups.tabsPanes.tabs
@@ -4350,8 +4374,8 @@ extension on Translations {
 			'preferences.general.rememberFolderStateHint' => 'Restore the cursor and selected files when you return to a folder.',
 			'preferences.general.rememberFolderSort' => 'Remember sort per folder',
 			'preferences.general.rememberFolderSortHint' => 'Save and reuse the sort column and direction for each folder.',
-			'preferences.general.typeAheadBuffer' => 'Type-ahead multi-letter jump',
-			'preferences.general.typeAheadBufferHint' => 'Quickly typed letters combine into a search string to jump to a matching item; pausing resets it. When off, each letter cycles through items starting with that letter.',
+			'preferences.general.typeAheadBuffer' => 'Type-ahead jump',
+			'preferences.general.typeAheadBufferHint' => 'When on, typing a letter jumps to files starting with it (quickly typed letters combine into a search string; pausing resets it). When off, letters no longer jump — m/u/t/U/C/R/D become dired-style mark/unmark/invert/deselect/copy/move/delete commands instead.',
 			'preferences.general.deleteKeyBehavior' => 'Delete key behavior',
 			'preferences.general.deleteKeyBehaviorHint' => 'Shift+Delete always deletes permanently. This setting doesn\'t yet change what the bare Delete key does — it currently always moves items to Trash.',
 			'preferences.general.deleteKeyTrash' => 'Move to Trash',
@@ -4566,7 +4590,7 @@ extension on Translations {
 			'help.groups.navigating.drives.title' => 'Drives & Devices',
 			'help.groups.navigating.drives.body' => 'Mounted drives and removable devices appear in the sidebar under Devices.\n\n- Click a device to open it.\n- Eject removable devices from the context menu.\n- Network shares and remote mounts show up alongside local drives.',
 			'help.groups.navigating.typeAhead.title' => 'Type-Ahead Jump',
-			'help.groups.navigating.typeAhead.body' => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Type-ahead can be turned off in **Preferences -> General**.',
+			'help.groups.navigating.typeAhead.body' => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Turn this off in **Preferences -> General** to use dired-style single-letter commands (m/u/t/U/C/R/D) instead.',
 			'help.groups.tabsPanes.title' => 'Tabs & Panes',
 			'help.groups.tabsPanes.tabs.title' => 'Tabs',
 			'help.groups.tabsPanes.tabs.body' => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.\n- `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection.',
@@ -4653,12 +4677,13 @@ extension on Translations {
 			'keybindings.escapeToCancel' => 'Esc cancels',
 			'keybindings.conflict' => ({required Object action}) => 'Already used by ${action}',
 			'keybindings.dualHint' => 'dual',
+			'keybindings.diredHint' => 'dired, off when type-ahead is on',
 			'keybindings.openItem' => 'Open',
 			'keybindings.goUp' => 'Go up',
 			'keybindings.goBack' => 'Go back',
-			'keybindings.goForward' => 'Go forward',
 			_ => null,
 		} ?? switch (path) {
+			'keybindings.goForward' => 'Go forward',
 			'keybindings.refresh' => 'Refresh',
 			'keybindings.focusPath' => 'Focus path bar',
 			'keybindings.quickLook' => 'Open Quick Look',
@@ -4711,11 +4736,18 @@ extension on Translations {
 			'keybindings.newFolder' => 'New folder',
 			'keybindings.dualCopy' => 'Copy to other pane',
 			'keybindings.dualMove' => 'Move to other pane',
+			'keybindings.diredCopyOtherPane' => 'Copy to other pane (dired)',
+			'keybindings.diredMoveOtherPane' => 'Rename, or move to other pane if multiple are marked (dired)',
+			'keybindings.diredDelete' => 'Delete (dired)',
 			'keybindings.selectAll' => 'Select all',
 			'keybindings.selectPattern' => 'Select by pattern',
 			'keybindings.deselectAll' => 'Deselect all',
 			'keybindings.invertSelection' => 'Invert selection',
 			'keybindings.toggleSelect' => 'Toggle select',
+			'keybindings.diredMark' => 'Mark and advance (dired)',
+			'keybindings.diredUnmark' => 'Unmark and advance (dired)',
+			'keybindings.diredInvert' => 'Invert selection (dired)',
+			'keybindings.diredDeselect' => 'Deselect all (dired)',
 			'keybindings.saveSelection' => 'Save selection to file',
 			'keybindings.loadSelection' => 'Load selection from file',
 			'keybindings.computeFolderSize' => 'Calculate folder size',
@@ -4998,11 +5030,11 @@ extension on Translations {
 			'dialog.copy' => 'Copy',
 			'dialog.move' => 'Move',
 			'dialog.confirmCopyTitle' => 'Copy items?',
-			'dialog.confirmCopySingle' => ({required Object name}) => 'Copy "${name}" here?',
-			'dialog.confirmCopyMultiple' => ({required Object count}) => 'Copy ${count} items here?',
+			'dialog.confirmCopySingle' => ({required Object name, required Object dest}) => 'Copy "${name}" to ${dest}?',
+			'dialog.confirmCopyMultiple' => ({required Object count, required Object dest}) => 'Copy ${count} items to ${dest}?',
 			'dialog.confirmMoveTitle' => 'Move items?',
-			'dialog.confirmMoveSingle' => ({required Object name}) => 'Move "${name}" here?',
-			'dialog.confirmMoveMultiple' => ({required Object count}) => 'Move ${count} items here?',
+			'dialog.confirmMoveSingle' => ({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?',
+			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
 			'password.authenticationRequired' => 'Authentication Required',
 			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',
@@ -5163,6 +5195,8 @@ extension on Translations {
 			'openWith.setDefaultFailed' => 'Could not set the default application',
 			'openWith.unsupportedPlatform' => 'Unsupported platform',
 			'openWith.xdgMimeFailed' => 'xdg-mime failed',
+			_ => null,
+		} ?? switch (path) {
 			'openWith.dutiRequired' => 'Setting the default app on macOS requires the "duti" tool',
 			'openWith.bundleIdReadFailed' => 'Could not read app bundle id',
 			'openWith.windowsDefaultDialogRequired' => 'Use the system "Open with" dialog to change the default on Windows',

@@ -238,8 +238,8 @@
       "rememberFolderStateHint": "Restore the cursor and selected files when you return to a folder.",
       "rememberFolderSort": "Remember sort per folder",
       "rememberFolderSortHint": "Save and reuse the sort column and direction for each folder.",
-      "typeAheadBuffer": "Type-ahead multi-letter jump",
-      "typeAheadBufferHint": "Quickly typed letters combine into a search string to jump to a matching item; pausing resets it. When off, each letter cycles through items starting with that letter.",
+      "typeAheadBuffer": "Type-ahead jump",
+      "typeAheadBufferHint": "When on, typing a letter jumps to files starting with it (quickly typed letters combine into a search string; pausing resets it). When off, letters no longer jump — m/u/t/U/C/R/D become dired-style mark/unmark/invert/deselect/copy/move/delete commands instead.",
       "deleteKeyBehavior": "Delete key behavior",
       "deleteKeyBehaviorHint": "Shift+Delete always deletes permanently. This setting doesn't yet change what the bare Delete key does — it currently always moves items to Trash.",
       "deleteKeyTrash": "Move to Trash",
@@ -494,7 +494,7 @@
         },
         "typeAhead": {
           "title": "Type-Ahead Jump",
-          "body": "Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Type-ahead can be turned off in **Preferences -> General**."
+          "body": "Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Turn this off in **Preferences -> General** to use dired-style single-letter commands (m/u/t/U/C/R/D) instead."
         }
       },
       "tabsPanes": {
@@ -658,6 +658,7 @@
     "escapeToCancel": "Esc cancels",
     "conflict": "Already used by $action",
     "dualHint": "dual",
+    "diredHint": "dired, off when type-ahead is on",
     "openItem": "Open",
     "goUp": "Go up",
     "goBack": "Go back",
@@ -714,11 +715,18 @@
     "newFolder": "New folder",
     "dualCopy": "Copy to other pane",
     "dualMove": "Move to other pane",
+    "diredCopyOtherPane": "Copy to other pane (dired)",
+    "diredMoveOtherPane": "Rename, or move to other pane if multiple are marked (dired)",
+    "diredDelete": "Delete (dired)",
     "selectAll": "Select all",
     "selectPattern": "Select by pattern",
     "deselectAll": "Deselect all",
     "invertSelection": "Invert selection",
     "toggleSelect": "Toggle select",
+    "diredMark": "Mark and advance (dired)",
+    "diredUnmark": "Unmark and advance (dired)",
+    "diredInvert": "Invert selection (dired)",
+    "diredDeselect": "Deselect all (dired)",
     "saveSelection": "Save selection to file",
     "loadSelection": "Load selection from file",
     "computeFolderSize": "Calculate folder size",
@@ -1072,13 +1080,13 @@
     "copy": "Copy",
     "move": "Move",
     "confirmCopyTitle": "Copy items?",
-    "confirmCopySingle": "Copy \"$name\" here?",
-    "confirmCopyMultiple(one)": "Copy 1 item here?",
-    "confirmCopyMultiple(other)": "Copy $count items here?",
+    "confirmCopySingle": "Copy \"$name\" to $dest?",
+    "confirmCopyMultiple(one)": "Copy 1 item to $dest?",
+    "confirmCopyMultiple(other)": "Copy $count items to $dest?",
     "confirmMoveTitle": "Move items?",
-    "confirmMoveSingle": "Move \"$name\" here?",
-    "confirmMoveMultiple(one)": "Move 1 item here?",
-    "confirmMoveMultiple(other)": "Move $count items here?"
+    "confirmMoveSingle": "Move \"$name\" to $dest?",
+    "confirmMoveMultiple(one)": "Move 1 item to $dest?",
+    "confirmMoveMultiple(other)": "Move $count items to $dest?"
   },
   "password": {
     "authenticationRequired": "Authentication Required",

@@ -60,7 +60,12 @@ class OperationStore {
 
   /// Optional gate shown before a copy/move is enqueued. Returns whether the
   /// transfer should proceed. Set by the UI layer so it can show a dialog.
-  Future<bool> Function(TaskType type, List<String> sources)? confirmTransfer;
+  Future<bool> Function(
+    TaskType type,
+    List<String> sources,
+    String destination,
+  )?
+  confirmTransfer;
 
   final tasks = signal<List<FileTask>>([]);
 
@@ -166,7 +171,10 @@ class OperationStore {
     if (filtered.isEmpty) return;
 
     final confirm = confirmTransfer;
-    if (confirm != null && !await confirm(TaskType.copy, filtered)) return;
+    if (confirm != null &&
+        !await confirm(TaskType.copy, filtered, destination)) {
+      return;
+    }
 
     final task = FileTask(
       id: '${_idCounter++}',
@@ -224,7 +232,7 @@ class OperationStore {
     if (filtered.isEmpty) return;
 
     final confirm = confirmTransfer;
-    if (confirm != null && !await confirm(type, filtered)) return;
+    if (confirm != null && !await confirm(type, filtered, destination)) return;
 
     final task = FileTask(
       id: '${_idCounter++}',

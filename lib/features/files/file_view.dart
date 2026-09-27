@@ -788,6 +788,7 @@ class _FileListState extends State<FileList> {
                                 rowAt: _rowAt,
                                 canStartSelectionAt: _canStartRubberBandAt,
                                 onSelectionChanged: widget.onRectSelect,
+                                currentSelection: () => widget.selectedPaths,
                                 onBackgroundTap: widget.onBackgroundTap,
                                 child: DropRegion(
                                   formats: [Formats.fileUri, formatLocalFile],
@@ -894,6 +895,8 @@ class _FileListState extends State<FileList> {
                                                     .contains(
                                                       displayFiles[i].path,
                                                     ),
+                                                isCursor:
+                                                    i == widget.cursorIndex,
                                                 selectedPaths:
                                                     widget.selectedPaths,
                                                 isCut: widget.cutPaths.contains(
@@ -1451,6 +1454,7 @@ class _ListRow extends StatefulWidget {
   final FileEntry entry;
   final int index;
   final bool selected;
+  final bool isCursor;
   final Set<String> selectedPaths;
   final bool isCut;
   final bool isDraggingSelected;
@@ -1489,6 +1493,7 @@ class _ListRow extends StatefulWidget {
     this.folderSize,
     this.rowDecoration,
     required this.selected,
+    this.isCursor = false,
     required this.selectedPaths,
     this.isCut = false,
     this.isDraggingSelected = false,
@@ -1625,6 +1630,7 @@ class _ListRowState extends State<_ListRow> {
     }
     if (_dragging) return AppColors.accent.withValues(alpha: 0.08);
     if (widget.selected) return AppColors.bgSelectedMuted;
+    if (widget.isCursor) return AppColors.bgHoverStrong;
     if (_hovered) return AppColors.bgHover;
     final tint = widget.rowDecoration?.tint;
     if (tint != null) return tint.withValues(alpha: 0.18);
@@ -1632,9 +1638,30 @@ class _ListRowState extends State<_ListRow> {
     return Colors.transparent;
   }
 
+  double get _leftBorderWidth {
+    if (widget.selected) return 2;
+    if (widget.isCursor) return 1;
+
+    return 0;
+  }
+
   BoxBorder? get _border {
     if (widget.isFolderDragOver) {
       return Border.all(color: AppColors.accent.withValues(alpha: 0.4));
+    }
+    if (widget.isCursor) {
+      final outline = BorderSide(
+        color: AppColors.accent.withValues(alpha: 0.7),
+      );
+
+      return Border(
+        top: outline,
+        right: outline,
+        bottom: outline,
+        left: widget.selected
+            ? BorderSide(color: AppColors.accent, width: 2)
+            : outline,
+      );
     }
     if (widget.selected) {
       return Border(left: BorderSide(color: AppColors.accent, width: 2));
@@ -1863,11 +1890,7 @@ class _ListRowState extends State<_ListRow> {
   }
 
   Future<DragItem?> _provideDragItem(DragItemRequest request) async {
-    if (!widget.selected) {
-      widget.onSelect(
-        FileSelectionEvent(entry: widget.entry, index: widget.index),
-      );
-    }
+    if (HardwareKeyboard.instance.isShiftPressed) return null;
 
     final pathsToDrag = _pathsToDrag();
     final item = _dragItemForPaths(pathsToDrag);
@@ -2065,7 +2088,7 @@ class _ListRowState extends State<_ListRow> {
         child: Container(
           height: widget.rowHeight,
           padding: EdgeInsets.only(
-            left: widget.selected ? _kRowPaddingLeft - 2 : _kRowPaddingLeft,
+            left: _kRowPaddingLeft - _leftBorderWidth,
             right: _kRowPaddingRight,
           ),
           decoration: BoxDecoration(
