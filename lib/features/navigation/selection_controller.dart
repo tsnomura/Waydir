@@ -339,30 +339,47 @@ class SelectionController {
     cursorIndex.value = index;
   }
 
-  /// Plain move: cursor only, marks untouched. Shift+move toggles the range
-  /// between the *old* cursor position and [next], excluding [next] itself
-  /// (the destination cell is left to the cursor highlight to indicate, not
-  /// double-encoded as a mark too) — unless the cursor couldn't actually
-  /// move ([next] equals the old position), in which case the old position
-  /// itself is toggled, so a boundary Shift+move still changes exactly one
-  /// item. Ctrl no longer changes which set operation this is — Ctrl only
-  /// ever picks a bigger step, before this method is even called. Either way
-  /// the range is derived purely from the current (visible) cursor
-  /// position, never a persisted anchor.
+  /// Paint mode for the current Shift+move "session" — decided once, from
+  /// whichever cell the cursor was on when a Shift+move session starts (the
+  /// first Shift+move after a plain, unmodified move), and reused for every
+  /// further Shift+move until a plain move ends the session. `true` = every
+  /// cell in the swept range gets marked; `false` = every cell gets
+  /// unmarked. Deliberately not per-keystroke: an origin-cell-only decision
+  /// would punch holes wherever the swept range crosses an already-marked
+  /// cell instead of painting a uniform run.
+  bool? _keyboardPaintAdd;
+
+  /// Plain move: cursor only, marks untouched (this also ends any in-progress
+  /// paint session). Shift+move paints the range between the *old* cursor
+  /// position and [next], excluding [next] itself (the destination cell is
+  /// left to the cursor highlight to indicate, not double-encoded as a mark
+  /// too) — unless the cursor couldn't actually move ([next] equals the old
+  /// position), in which case the old position itself is painted, so a
+  /// boundary Shift+move still changes exactly one item. Ctrl never changes
+  /// which set operation this is — Ctrl only ever picks a bigger step,
+  /// before this method is even called.
   void _applyCursorMove(int next) {
     final shift = AppShortcuts.isShift;
+    if (!shift) _keyboardPaintAdd = null;
     batch(() {
       if (shift) {
         final cur = cursorIndex.value >= 0 && cursorIndex.value < _vf.length
             ? cursorIndex.value
             : next;
+        final add = _keyboardPaintAdd ??= !selectedPaths.value.contains(
+          _vf[cur].path,
+        );
         final lo = cur < next ? cur : next;
         final hi = cur < next ? next : cur;
         final paths = Set<String>.from(selectedPaths.value);
         for (int i = lo; i <= hi; i++) {
           if (i == cur || i != next) {
             final p = _vf[i].path;
-            if (!paths.remove(p)) paths.add(p);
+            if (add) {
+              paths.add(p);
+            } else {
+              paths.remove(p);
+            }
           }
         }
         selectedPaths.value = paths;

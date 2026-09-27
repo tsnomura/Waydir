@@ -55,10 +55,11 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
   Offset? _currentContent;
   double _currentLocalY = 0;
   bool _active = false;
-  bool _downOverItem = false;
+  int _downRowIndex = -1;
   Timer? _autoScrollTimer;
   Set<String> _lastPaths = const {};
   Set<String> _dragStartSnapshot = const {};
+  bool _paintAdd = true;
 
   Rect get _contentRect {
     if (_startContent == null || _currentContent == null) return Rect.zero;
@@ -103,9 +104,9 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
     final inRect = _pathsInRect(_contentRect);
     if (_setsEqual(inRect, _lastPaths)) return;
     _lastPaths = inRect;
-    final result = _dragStartSnapshot
-        .difference(inRect)
-        .union(inRect.difference(_dragStartSnapshot));
+    final result = _paintAdd
+        ? _dragStartSnapshot.union(inRect)
+        : _dragStartSnapshot.difference(inRect);
     widget.onSelectionChanged?.call(result);
   }
 
@@ -156,7 +157,7 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
     if (widget.canStartSelectionAt?.call(event.localPosition) == false) {
       return;
     }
-    _downOverItem = widget.rowAt(event.localPosition) >= 0;
+    _downRowIndex = widget.rowAt(event.localPosition);
     final content = _toContent(event.localPosition);
     _startContent = content;
     _currentContent = content;
@@ -182,6 +183,9 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
       }
       _active = true;
       _dragStartSnapshot = widget.currentSelection();
+      _paintAdd = _downRowIndex < 0
+          ? true
+          : !_dragStartSnapshot.contains(widget.pathAt(_downRowIndex));
       _startAutoScroll(viewportHeight);
     }
     _fireSelection();
@@ -189,7 +193,7 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
   }
 
   void _handlePointerUp(PointerUpEvent event) {
-    if (_startContent != null && !_active && !_downOverItem) {
+    if (_startContent != null && !_active && _downRowIndex < 0) {
       widget.onBackgroundTap?.call();
     }
     _autoScrollTimer?.cancel();

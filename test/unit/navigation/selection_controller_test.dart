@@ -164,23 +164,69 @@ void main() {
     });
   });
 
-  group('SelectionController move with Shift / Ctrl+Shift', () {
-    testWidgets('Shift+move toggles the old cursor..new cursor range, '
-        'excluding the destination cell', (tester) async {
-      selectedPaths.value = {'/dir/e.txt'};
-      cursorIndex.value = 1; // b.txt
+  group('SelectionController move with Shift / Ctrl+Shift (paint mode)', () {
+    testWidgets('Shift+move paints a uniform run, punching no holes at an '
+        'already-marked cell mid-sweep', (tester) async {
+      selectedPaths.value = {'/dir/c.txt'}; // pre-marked, mid-sweep
+      cursorIndex.value = 0; // a.txt, unmarked -> session decides "add"
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
 
-      controller.moveCursor(2); // -> index 3 (d.txt)
+      controller.moveCursor(1); // a -> b
+      controller.moveCursor(1); // b -> c (already marked)
+      controller.moveCursor(1); // c -> d
 
       expect(
         selectedPaths.value,
-        {'/dir/b.txt', '/dir/c.txt', '/dir/e.txt'},
+        {'/dir/a.txt', '/dir/b.txt', '/dir/c.txt'},
         reason:
-            'toggles [old cursor..new cursor) = {b.txt, c.txt}; the '
-            'destination (d.txt) is left to the cursor highlight instead',
+            'origin (a.txt) was unmarked, so the whole session marks; '
+            'c.txt being pre-marked must not un-paint it partway through. '
+            'd.txt is only ever the destination cursor lands on, never an '
+            'origin, so it stays unmarked (shown via the cursor highlight '
+            'instead).',
       );
       expect(cursorIndex.value, 3);
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    });
+
+    testWidgets('Shift+move clears a uniform run when the origin was '
+        'already marked, ignoring an unmarked cell mid-sweep', (tester) async {
+      selectedPaths.value = {'/dir/a.txt', '/dir/c.txt', '/dir/d.txt'};
+      cursorIndex.value = 0; // a.txt, marked -> session decides "clear"
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+
+      controller.moveCursor(1); // a -> b (b.txt was never marked)
+      controller.moveCursor(1); // b -> c
+      controller.moveCursor(1); // c -> d
+
+      expect(
+        selectedPaths.value,
+        {'/dir/d.txt'},
+        reason:
+            'origin (a.txt) was marked, so the whole session clears; '
+            'b.txt being unmarked mid-sweep must not re-mark anything',
+      );
+      expect(cursorIndex.value, 3);
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    });
+
+    testWidgets('a plain move ends the paint session, so the next '
+        'Shift+move re-decides from the new origin', (tester) async {
+      cursorIndex.value = 0;
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      controller.moveCursor(1); // session: add (a.txt was unmarked)
+      expect(selectedPaths.value, {'/dir/a.txt'});
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+
+      controller.moveCursor(1); // plain move: b -> ends the session
+      expect(cursorIndex.value, 2);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      controller.moveCursor(1); // new session from c.txt (unmarked) -> add
+
+      expect(selectedPaths.value, {'/dir/a.txt', '/dir/c.txt'});
 
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     });
@@ -199,11 +245,11 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     });
 
-    testWidgets('Ctrl+Shift+move toggles the bigger (page-sized) swept '
-        'range, excluding the destination', (tester) async {
+    testWidgets('Ctrl+Shift+move paints the bigger (page-sized) swept '
+        'range as a uniform run', (tester) async {
       controller.setPageRows(4); // pageStep = 3
       selectedPaths.value = {'/dir/b.txt'};
-      cursorIndex.value = 0; // a.txt
+      cursorIndex.value = 0; // a.txt, unmarked -> session decides "add"
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
 
@@ -211,10 +257,10 @@ void main() {
 
       expect(
         selectedPaths.value,
-        {'/dir/a.txt', '/dir/c.txt'},
+        {'/dir/a.txt', '/dir/b.txt', '/dir/c.txt'},
         reason:
-            'toggles [a,b,c) = {a.txt, b.txt, c.txt}: a and c (unmarked) '
-            'turn on, b (already marked) turns off; d is the destination',
+            'paints [a,b,c) as a uniform run; b.txt being pre-marked must '
+            'not clear it. d.txt is the destination.',
       );
       expect(cursorIndex.value, 3);
 
@@ -224,7 +270,8 @@ void main() {
   });
 
   group('Shift+move at a boundary (cursor can\'t actually move)', () {
-    testWidgets('a fresh press still toggles the current cell', (tester) async {
+    testWidgets('a fresh press paints the current cell; repeating within '
+        'the same session doesn\'t flip it back', (tester) async {
       cursorIndex.value = 4; // last index, nothing selected
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
 
@@ -237,14 +284,17 @@ void main() {
 
       expect(
         selectedPaths.value,
-        isEmpty,
-        reason: 'each fresh (non-repeat) press toggles exactly one item',
+        {'/dir/e.txt'},
+        reason:
+            'paint mode is locked for the whole session, so repeating the '
+            'press at the boundary re-applies the same mark instead of '
+            'toggling it back off',
       );
 
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     });
 
-    testWidgets('auto-repeat is suppressed once stuck (no flicker)', (
+    testWidgets('auto-repeat is suppressed once stuck (no wasted work)', (
       tester,
     ) async {
       cursorIndex.value = 4;
@@ -256,13 +306,7 @@ void main() {
       controller.moveCursor(1, isRepeat: true);
       controller.moveCursor(1, isRepeat: true);
 
-      expect(
-        selectedPaths.value,
-        {'/dir/e.txt'},
-        reason:
-            'repeat events while stuck at the boundary must not toggle '
-            'again',
-      );
+      expect(selectedPaths.value, {'/dir/e.txt'});
 
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     });
