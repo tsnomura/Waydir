@@ -2880,6 +2880,78 @@ class Translations$preferences$quickLook$en {
 
 	/// en: 'Compute size and type breakdowns when inspecting multiple items.'
 	String get showStatisticsHint => 'Compute size and type breakdowns when inspecting multiple items.';
+
+	/// en: 'Preview generators'
+	String get generatorsSection => 'Preview generators';
+
+	/// en: 'Preview generators'
+	String get generators => 'Preview generators';
+
+	/// en: 'External helper commands Quick Look runs to preview file types it can't render natively (e.g. video thumbnails, PDF pages). See docs/generators.md for the full config format.'
+	String get generatorsHint => 'External helper commands Quick Look runs to preview file types it can\'t render natively (e.g. video thumbnails, PDF pages). See docs/generators.md for the full config format.';
+
+	/// en: 'Loading generators…'
+	String get loadingGenerators => 'Loading generators…';
+
+	/// en: 'No preview generators configured yet.'
+	String get noGenerators => 'No preview generators configured yet.';
+
+	/// en: 'Add Generator'
+	String get addGenerator => 'Add Generator';
+
+	/// en: 'Reload'
+	String get reloadGenerators => 'Reload';
+
+	/// en: 'Preview generators reloaded'
+	String get generatorsReloaded => 'Preview generators reloaded';
+
+	/// en: 'Edit'
+	String get editGenerator => 'Edit';
+
+	/// en: 'Edit JSON'
+	String get editGeneratorJson => 'Edit JSON';
+
+	/// en: 'Delete'
+	String get deleteGenerator => 'Delete';
+
+	/// en: 'Delete generator?'
+	String get deleteGeneratorTitle => 'Delete generator?';
+
+	/// en: 'Delete the preview generator "$name"? Its cached previews will be cleared too.'
+	String deleteGeneratorMessage({required Object name}) => 'Delete the preview generator "${name}"? Its cached previews will be cleared too.';
+
+	/// en: 'Invalid'
+	String get invalidGenerator => 'Invalid';
+
+	/// en: 'A generator file named "$id.json" already exists.'
+	String generatorIdTaken({required Object id}) => 'A generator file named "${id}.json" already exists.';
+
+	/// en: 'Add Preview Generator'
+	String get addGeneratorTitle => 'Add Preview Generator';
+
+	/// en: 'Edit Preview Generator'
+	String get editGeneratorTitle => 'Edit Preview Generator';
+
+	/// en: 'Save'
+	String get saveGenerator => 'Save';
+
+	/// en: 'ID'
+	String get generatorIdLabel => 'ID';
+
+	/// en: 'Extensions (comma-separated)'
+	String get generatorExtensionsLabel => 'Extensions (comma-separated)';
+
+	/// en: 'Command'
+	String get generatorCmdLabel => 'Command';
+
+	/// en: 'Timeout in seconds (default 8, max 60)'
+	String get generatorTimeoutLabel => 'Timeout in seconds (default 8, max 60)';
+
+	/// en: 'Output image extension (default png)'
+	String get generatorOutputExtLabel => 'Output image extension (default png)';
+
+	/// en: 'Arguments, paging and probe settings aren't editable here yet — use "Edit JSON" for those (see docs/generators.md).'
+	String get generatorFormHint => 'Arguments, paging and probe settings aren\'t editable here yet — use "Edit JSON" for those (see docs/generators.md).';
 }
 
 // Path: preferences.appearance
@@ -4457,6 +4529,30 @@ extension on Translations {
 			'preferences.quickLook.vimModeHint' => 'Basic modal editing: movement, insert and simple edits.',
 			'preferences.quickLook.showStatistics' => 'Show statistics',
 			'preferences.quickLook.showStatisticsHint' => 'Compute size and type breakdowns when inspecting multiple items.',
+			'preferences.quickLook.generatorsSection' => 'Preview generators',
+			'preferences.quickLook.generators' => 'Preview generators',
+			'preferences.quickLook.generatorsHint' => 'External helper commands Quick Look runs to preview file types it can\'t render natively (e.g. video thumbnails, PDF pages). See docs/generators.md for the full config format.',
+			'preferences.quickLook.loadingGenerators' => 'Loading generators…',
+			'preferences.quickLook.noGenerators' => 'No preview generators configured yet.',
+			'preferences.quickLook.addGenerator' => 'Add Generator',
+			'preferences.quickLook.reloadGenerators' => 'Reload',
+			'preferences.quickLook.generatorsReloaded' => 'Preview generators reloaded',
+			'preferences.quickLook.editGenerator' => 'Edit',
+			'preferences.quickLook.editGeneratorJson' => 'Edit JSON',
+			'preferences.quickLook.deleteGenerator' => 'Delete',
+			'preferences.quickLook.deleteGeneratorTitle' => 'Delete generator?',
+			'preferences.quickLook.deleteGeneratorMessage' => ({required Object name}) => 'Delete the preview generator "${name}"? Its cached previews will be cleared too.',
+			'preferences.quickLook.invalidGenerator' => 'Invalid',
+			'preferences.quickLook.generatorIdTaken' => ({required Object id}) => 'A generator file named "${id}.json" already exists.',
+			'preferences.quickLook.addGeneratorTitle' => 'Add Preview Generator',
+			'preferences.quickLook.editGeneratorTitle' => 'Edit Preview Generator',
+			'preferences.quickLook.saveGenerator' => 'Save',
+			'preferences.quickLook.generatorIdLabel' => 'ID',
+			'preferences.quickLook.generatorExtensionsLabel' => 'Extensions (comma-separated)',
+			'preferences.quickLook.generatorCmdLabel' => 'Command',
+			'preferences.quickLook.generatorTimeoutLabel' => 'Timeout in seconds (default 8, max 60)',
+			'preferences.quickLook.generatorOutputExtLabel' => 'Output image extension (default png)',
+			'preferences.quickLook.generatorFormHint' => 'Arguments, paging and probe settings aren\'t editable here yet — use "Edit JSON" for those (see docs/generators.md).',
 			'preferences.appearance.title' => 'Appearance',
 			'preferences.appearance.subtitle' => 'Defaults for how files and the sidebar are displayed.',
 			'preferences.appearance.themeSection' => 'Theme',
@@ -4675,6 +4771,8 @@ extension on Translations {
 			'help.groups.resources.links.body' => 'More about Waydir and where to go next.\n\n- **Changelog** - what\'s new in each release (in the menu).\n- **Keyboard shortcuts** - the full reference in **Preferences -> Keyboard**.\n- **GitHub** - [source code, issues and releases](https://github.com/Waydir/Waydir).\n- **Plugin guide** - [how to write your own plugins](https://github.com/Waydir/Waydir/blob/main/docs/plugins.md).',
 			'tags.menuLabel' => 'Tags',
 			'tags.newTag' => 'New Tag',
+			_ => null,
+		} ?? switch (path) {
 			'tags.newTagDots' => 'New tag…',
 			'tags.editTag' => 'Edit Tag',
 			'tags.deleteTag' => 'Delete Tag',
@@ -4699,8 +4797,6 @@ extension on Translations {
 			'keybindings.pressShortcut' => 'Press a shortcut',
 			'keybindings.escapeToCancel' => 'Esc cancels',
 			'keybindings.conflict' => ({required Object action}) => 'Already used by ${action}',
-			_ => null,
-		} ?? switch (path) {
 			'keybindings.dualHint' => 'dual',
 			'keybindings.diredHint' => 'dired, off when type-ahead is on',
 			'keybindings.openItem' => 'Open',
@@ -5189,6 +5285,8 @@ extension on Translations {
 			'git.merging' => 'MERGING',
 			'git.rebasing' => 'REBASING',
 			'git.cherryPicking' => 'CHERRY-PICK',
+			_ => null,
+		} ?? switch (path) {
 			'git.reverting' => 'REVERTING',
 			'git.bisecting' => 'BISECTING',
 			'git.checkoutFailed' => ({required Object message}) => 'Checkout failed: ${message}',
@@ -5213,8 +5311,6 @@ extension on Translations {
 			'openWith.noApps' => 'No applications found for this file type.',
 			'openWith.setDefault' => 'Always use for this file type',
 			'openWith.setDefaultUnavailable' => 'Default cannot be changed on this platform',
-			_ => null,
-		} ?? switch (path) {
 			'openWith.moreApps' => 'More applications…',
 			'openWith.open' => 'Open',
 			'openWith.failed' => ({required Object app}) => 'Could not open the file with ${app}',

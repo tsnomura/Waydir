@@ -131,6 +131,11 @@ final preferenceNavSections = <PreferenceNavSection>[
     category: Category.quickLook,
     label: () => t.preferences.quickLook.editorSection,
   ),
+  PreferenceNavSection(
+    id: 'quickLook.generators',
+    category: Category.quickLook,
+    label: () => t.preferences.quickLook.generatorsSection,
+  ),
 ];
 
 const _visibleSettingIds = <String>{

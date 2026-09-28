@@ -29,7 +29,7 @@ class GeneratorPreview extends StatelessWidget {
   }
 }
 
-class _GeneratorPreviewBody extends StatelessWidget {
+class _GeneratorPreviewBody extends StatefulWidget {
   final FileEntry entry;
   final GeneratorPageController page;
   final int pageCount;
@@ -41,12 +41,48 @@ class _GeneratorPreviewBody extends StatelessWidget {
   });
 
   @override
+  State<_GeneratorPreviewBody> createState() => _GeneratorPreviewBodyState();
+}
+
+class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
+  bool _disposed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefetchRemainingPages();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  // Runs every page's generator ahead of time in the background, so paging
+  // through an mp4/pdf-style preview doesn't wait on ffmpeg/mutool per page.
+  // Sequential rather than concurrent to avoid bursting helper processes at
+  // once; GeneratorRunner.preview's in-flight memoization and on-disk cache
+  // mean this never duplicates whatever page is already being fetched
+  // on-demand for the currently displayed position.
+  Future<void> _prefetchRemainingPages() async {
+    if (widget.pageCount <= 1) return;
+    for (var i = 0; i < widget.pageCount; i++) {
+      if (_disposed) return;
+      await GeneratorRunner.preview(widget.entry, position: i);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    page.pageCount = pageCount;
+    widget.page.pageCount = widget.pageCount;
 
     return SignalBuilder(
       builder: (context) {
-        final position = page.position.value.clamp(0, pageCount - 1);
+        final position = widget.page.position.value.clamp(
+          0,
+          widget.pageCount - 1,
+        );
 
         return Container(
           color: AppColors.bg,
@@ -56,9 +92,10 @@ class _GeneratorPreviewBody extends StatelessWidget {
               Positioned.fill(
                 child: AsyncRetain<String?>(
                   cacheKey:
-                      '${entry.realPath}|${entry.modifiedMs}|${entry.size}|$position',
+                      '${widget.entry.realPath}|${widget.entry.modifiedMs}|'
+                      '${widget.entry.size}|$position',
                   loader: () =>
-                      GeneratorRunner.preview(entry, position: position),
+                      GeneratorRunner.preview(widget.entry, position: position),
                   loading: const QlCentered.spinner(),
                   builder: (path) {
                     if (path == null) {
@@ -72,7 +109,7 @@ class _GeneratorPreviewBody extends StatelessWidget {
                   },
                 ),
               ),
-              if (pageCount > 1)
+              if (widget.pageCount > 1)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -83,15 +120,15 @@ class _GeneratorPreviewBody extends StatelessWidget {
                       _PageButton(
                         icon: WaydirIconsRegular.caretLeft,
                         enabled: position > 0,
-                        onTap: page.prev,
+                        onTap: widget.page.prev,
                       ),
                       const SizedBox(width: 8),
-                      QlHudChip(text: '${position + 1} / $pageCount'),
+                      QlHudChip(text: '${position + 1} / ${widget.pageCount}'),
                       const SizedBox(width: 8),
                       _PageButton(
                         icon: WaydirIconsRegular.caretRight,
-                        enabled: position < pageCount - 1,
-                        onTap: page.next,
+                        enabled: position < widget.pageCount - 1,
+                        onTap: widget.page.next,
                       ),
                     ],
                   ),

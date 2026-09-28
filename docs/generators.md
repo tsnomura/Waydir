@@ -6,13 +6,23 @@ A configured generator always takes priority over Waydir's built-in previews (im
 
 ## Where Config Lives
 
-Generators are loaded from `.json` files in the `generators` folder inside Waydir's application support directory (the same place custom themes live, next to it):
+Generators are loaded from `.json` files in the `generators` folder inside Waydir's application support directory (the same place custom themes live, next to it). The exact path is shown live in **Preferences → Quick Look → Preview generators** (the safest way to find it, since it can't drift out of sync with the app the way a hardcoded path in this doc can) — as of writing:
 
 - Linux: `$XDG_CONFIG_HOME/waydir/generators/` (or `~/.config/waydir/generators/`)
-- Windows: `%APPDATA%\Waydir\generators\`
-- macOS: `~/Library/Application Support/Waydir/generators/`
+- Windows: `%APPDATA%\dev.waydir\Waydir\generators\` — note the `dev.waydir\` segment (the app's configured `CompanyName`, `windows/runner/Runner.rc`), easy to miss if you're constructing the path by hand instead of copying it from Preferences.
+- macOS: `~/Library/Application Support/Waydir/generators/`, though this may also nest under the app's bundle identifier (`dev.waydir.app`) depending on how `path_provider` resolves it on macOS — unverified, check Preferences for the actual path.
 
-One file per generator, any filename, `.json` extension. Reloaded on startup.
+One file per generator, any filename, `.json` extension. Reloaded on
+startup — or on demand from **Preferences → Quick Look → Preview
+generators**, which also lets you add/edit/delete generators without
+leaving the app.
+
+Preferences only edits the simple scalar fields (`id`, `extensions`, `cmd`,
+`timeoutSeconds`, `outputExt`) through a small form; `args`, paging and
+probe settings still need hand-editing the JSON (an "Edit JSON" button
+opens the file in your default editor). A generator added through
+Preferences starts with empty `args`, so fill those in via "Edit JSON"
+before it does anything useful.
 
 ## Config Format
 
@@ -55,7 +65,7 @@ Substituted in every element of `args`:
 
 ## Paging
 
-Quick Look shows prev/next controls and a page indicator over a paged preview; each page is generated and cached independently, on demand, the first time it's viewed. `PageUp`/`PageDown` step through pages too, whenever a paged generator is the active preview (otherwise they scroll content as usual). There are two paging modes, depending on whether "page" means a point in time or a real per-file unit:
+Quick Look shows prev/next controls and a page indicator over a paged preview. Opening Quick Look on a paged file starts generating every page in the background, one at a time, so paging forward is usually instant by the time you get there instead of waiting on ffmpeg/mutool per page; this stops if you close Quick Look or move to a different file before it finishes. `PageUp`/`PageDown` step through pages too, whenever a paged generator is the active preview (otherwise they scroll content as usual). There are two paging modes, depending on whether "page" means a point in time or a real per-file unit:
 
 **`"time"`** — a fixed `pageCount` of evenly-spaced samples across the file's duration, from 0% up to but excluding 100% (decoders can't extract a frame at the exact end of a file). `probeCmd` reports the duration in seconds, used to compute `%SEEK%`:
 

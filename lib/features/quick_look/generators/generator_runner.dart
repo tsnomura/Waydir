@@ -37,10 +37,55 @@ class GeneratorRunner {
     return count.round().clamp(1, 100000);
   }
 
-  static Future<String?> preview(FileEntry entry, {int position = 0}) async {
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
-    if (def == null) return null;
+  /// Wipes every cached preview image, for use after a generator is added,
+  /// edited or deleted from Preferences — editing fields outside the cache
+  /// key (`outputExt`, `timeoutSeconds`, paging/probe fields) wouldn't
+  /// otherwise invalidate a stale cached image, and deleting a generator
+  /// would otherwise leave its cache entries as permanent orphans.
+  static Future<void> clearCache() async {
+    final dir = Directory(await AppDirs.generatorCache());
+    if (!await dir.exists()) return;
+    await for (final entity in dir.list()) {
+      if (entity is File) {
+        try {
+          await entity.delete();
+        } catch (_) {}
+      }
+    }
+  }
 
+  // Background prefetch and the on-demand fetch for whichever page is
+  // currently shown can both ask for the same page at once; memoize
+  // in-flight requests so they share one run instead of racing to generate
+  // and write the same cache file.
+  static final _previewInFlight = <String, Future<String?>>{};
+
+  static Future<String?> preview(FileEntry entry, {int position = 0}) {
+    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    if (def == null) return Future.value(null);
+
+    final key = [
+      entry.realPath,
+      entry.modifiedMs,
+      entry.size,
+      def.id,
+      position,
+    ].join('|');
+
+    return _previewInFlight.putIfAbsent(key, () async {
+      try {
+        return await _generatePreview(entry, def, position);
+      } finally {
+        _previewInFlight.remove(key);
+      }
+    });
+  }
+
+  static Future<String?> _generatePreview(
+    FileEntry entry,
+    GeneratorDef def,
+    int position,
+  ) async {
     var page = position < 0 ? 0 : position;
     var seek = '00:00:00.000';
     if (def.pagingMode == PagingMode.time) {
