@@ -2887,8 +2887,11 @@ class Translations$preferences$quickLook$en {
 	/// en: 'Preview generators'
 	String get generators => 'Preview generators';
 
-	/// en: 'External helper commands Quick Look runs to preview file types it can't render natively (e.g. video thumbnails, PDF pages). See docs/generators.md for the full config format.'
-	String get generatorsHint => 'External helper commands Quick Look runs to preview file types it can\'t render natively (e.g. video thumbnails, PDF pages). See docs/generators.md for the full config format.';
+	/// en: 'External helper commands Quick Look runs to preview file types it can't render natively (e.g. video thumbnails, PDF pages).'
+	String get generatorsHint => 'External helper commands Quick Look runs to preview file types it can\'t render natively (e.g. video thumbnails, PDF pages).';
+
+	/// en: 'View the full config guide (docs/generators.md)'
+	String get generatorsGuideLink => 'View the full config guide (docs/generators.md)';
 
 	/// en: 'Loading generators…'
 	String get loadingGenerators => 'Loading generators…';
@@ -4531,7 +4534,8 @@ extension on Translations {
 			'preferences.quickLook.showStatisticsHint' => 'Compute size and type breakdowns when inspecting multiple items.',
 			'preferences.quickLook.generatorsSection' => 'Preview generators',
 			'preferences.quickLook.generators' => 'Preview generators',
-			'preferences.quickLook.generatorsHint' => 'External helper commands Quick Look runs to preview file types it can\'t render natively (e.g. video thumbnails, PDF pages). See docs/generators.md for the full config format.',
+			'preferences.quickLook.generatorsHint' => 'External helper commands Quick Look runs to preview file types it can\'t render natively (e.g. video thumbnails, PDF pages).',
+			'preferences.quickLook.generatorsGuideLink' => 'View the full config guide (docs/generators.md)',
 			'preferences.quickLook.loadingGenerators' => 'Loading generators…',
 			'preferences.quickLook.noGenerators' => 'No preview generators configured yet.',
 			'preferences.quickLook.addGenerator' => 'Add Generator',
@@ -4770,9 +4774,9 @@ extension on Translations {
 			'help.groups.resources.links.title' => 'Links & Resources',
 			'help.groups.resources.links.body' => 'More about Waydir and where to go next.\n\n- **Changelog** - what\'s new in each release (in the menu).\n- **Keyboard shortcuts** - the full reference in **Preferences -> Keyboard**.\n- **GitHub** - [source code, issues and releases](https://github.com/Waydir/Waydir).\n- **Plugin guide** - [how to write your own plugins](https://github.com/Waydir/Waydir/blob/main/docs/plugins.md).',
 			'tags.menuLabel' => 'Tags',
-			'tags.newTag' => 'New Tag',
 			_ => null,
 		} ?? switch (path) {
+			'tags.newTag' => 'New Tag',
 			'tags.newTagDots' => 'New tag…',
 			'tags.editTag' => 'Edit Tag',
 			'tags.deleteTag' => 'Delete Tag',
@@ -5284,9 +5288,9 @@ extension on Translations {
 			'git.detachedHead' => 'detached HEAD',
 			'git.merging' => 'MERGING',
 			'git.rebasing' => 'REBASING',
-			'git.cherryPicking' => 'CHERRY-PICK',
 			_ => null,
 		} ?? switch (path) {
+			'git.cherryPicking' => 'CHERRY-PICK',
 			'git.reverting' => 'REVERTING',
 			'git.bisecting' => 'BISECTING',
 			'git.checkoutFailed' => ({required Object message}) => 'Checkout failed: ${message}',

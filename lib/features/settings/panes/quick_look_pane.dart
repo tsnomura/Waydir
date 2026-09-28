@@ -214,6 +214,22 @@ class _QuickLookPaneState extends State<QuickLookPane> {
     Navigator.of(context).pop();
   }
 
+  Future<void> _openGeneratorsGuide() async {
+    const url =
+        'https://github.com/tsnomura/Waydir/blob/personal/docs/generators.md';
+    if (Platform.isLinux) {
+      await Process.start('xdg-open', [url], mode: ProcessStartMode.detached);
+    } else if (Platform.isMacOS) {
+      await Process.start('open', [url], mode: ProcessStartMode.detached);
+    } else if (Platform.isWindows) {
+      await Process.start('cmd', [
+        '/c',
+        'start',
+        url,
+      ], mode: ProcessStartMode.detached);
+    }
+  }
+
   Future<void> _deleteGenerator(String path, String name) async {
     final result = await showCustomDialog<String>(
       context: context,
@@ -312,6 +328,7 @@ class _QuickLookPaneState extends State<QuickLookPane> {
                   onOpenFolder: state == null
                       ? null
                       : () => _openGeneratorsFolder(state.dirPath),
+                  onOpenGuide: _openGeneratorsGuide,
                   onEdit: _editGenerator,
                   onEditJson: _editGeneratorJson,
                   onDelete: _deleteGenerator,
@@ -529,24 +546,28 @@ class _GeneratorFormDialogState extends State<_GeneratorFormDialog> {
   }
 }
 
-class _FolderPathLink extends StatefulWidget {
-  final String? path;
+class _HoverLink extends StatefulWidget {
+  final String text;
   final VoidCallback? onTap;
+  final TextStyle baseStyle;
 
-  const _FolderPathLink({required this.path, required this.onTap});
+  const _HoverLink({
+    required this.text,
+    required this.onTap,
+    required this.baseStyle,
+  });
 
   @override
-  State<_FolderPathLink> createState() => _FolderPathLinkState();
+  State<_HoverLink> createState() => _HoverLinkState();
 }
 
-class _FolderPathLinkState extends State<_FolderPathLink> {
+class _HoverLinkState extends State<_HoverLink> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final path = widget.path;
-    final enabled = path != null && widget.onTap != null;
-    final color = _hovered ? AppColors.fgAccent : AppColors.fgMuted;
+    final enabled = widget.text.isNotEmpty && widget.onTap != null;
+    final color = _hovered ? AppColors.fgAccent : widget.baseStyle.color;
 
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
@@ -555,8 +576,8 @@ class _FolderPathLinkState extends State<_FolderPathLink> {
       child: GestureDetector(
         onTap: enabled ? widget.onTap : null,
         child: Text(
-          path ?? '',
-          style: context.txt.code.copyWith(
+          widget.text,
+          style: widget.baseStyle.copyWith(
             color: color,
             decoration: enabled && _hovered
                 ? TextDecoration.underline
@@ -574,6 +595,7 @@ class _GeneratorsRow extends StatelessWidget {
   final VoidCallback? onAdd;
   final VoidCallback? onReload;
   final VoidCallback? onOpenFolder;
+  final VoidCallback onOpenGuide;
   final ValueChanged<_GeneratorFile> onEdit;
   final ValueChanged<String> onEditJson;
   final void Function(String path, String name) onDelete;
@@ -583,6 +605,7 @@ class _GeneratorsRow extends StatelessWidget {
     required this.onAdd,
     required this.onReload,
     required this.onOpenFolder,
+    required this.onOpenGuide,
     required this.onEdit,
     required this.onEditJson,
     required this.onDelete,
@@ -611,7 +634,19 @@ class _GeneratorsRow extends StatelessWidget {
                   style: context.txt.muted,
                 ),
                 const SizedBox(height: 4),
-                _FolderPathLink(path: state?.dirPath, onTap: onOpenFolder),
+                _HoverLink(
+                  text: state?.dirPath ?? '',
+                  onTap: onOpenFolder,
+                  baseStyle: context.txt.code.copyWith(
+                    color: AppColors.fgMuted,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _HoverLink(
+                  text: t.preferences.quickLook.generatorsGuideLink,
+                  onTap: onOpenGuide,
+                  baseStyle: context.txt.muted,
+                ),
                 const SizedBox(height: 8),
                 if (state == null)
                   Text(
