@@ -87,6 +87,11 @@ final preferenceNavSections = <PreferenceNavSection>[
     label: () => t.preferences.general.fileOpsSection,
   ),
   PreferenceNavSection(
+    id: 'general.keyboard',
+    category: Category.general,
+    label: () => t.preferences.general.keyboardSection,
+  ),
+  PreferenceNavSection(
     id: 'appearance.theme',
     category: Category.appearance,
     label: () => t.preferences.appearance.themeSection,
@@ -139,6 +144,7 @@ const _visibleSettingIds = <String>{
   'general.rememberFolderSort',
   'general.typeAheadBuffer',
   'general.deleteKeyBehavior',
+  'general.keyboardScheme',
   'terminal.shell',
   'terminal.external',
   'terminal.externalCustomCommand',
@@ -194,6 +200,7 @@ String? _sectionIdForSetting(String id) {
     'general.confirmCopy' ||
     'general.confirmMove' ||
     'general.dragMovesByDefault' => 'general.fileOps',
+    'general.keyboardScheme' => 'general.keyboard',
     'appearance.theme' => 'appearance.theme',
     'appearance.showHiddenDefault' ||
     'appearance.rowDensity' ||

@@ -1408,6 +1408,9 @@ class Translations$toast$en {
 	/// en: 'Terminal is unavailable: native core not loaded'
 	String get terminalUnavailable => 'Terminal is unavailable: native core not loaded';
 
+	/// en: 'Restart Waydir for this change to take effect'
+	String get restartRequired => 'Restart Waydir for this change to take effect';
+
 	/// en: 'Terminal is not open'
 	String get terminalNotVisible => 'Terminal is not open';
 
@@ -2629,6 +2632,9 @@ class Translations$preferences$general$en {
 	/// en: 'File operations'
 	String get fileOpsSection => 'File operations';
 
+	/// en: 'Keyboard & Mouse'
+	String get keyboardSection => 'Keyboard & Mouse';
+
 	/// en: 'Confirm before delete'
 	String get confirmDelete => 'Confirm before delete';
 
@@ -2676,6 +2682,18 @@ class Translations$preferences$general$en {
 
 	/// en: 'Shift+Delete always deletes permanently. This setting doesn't yet change what the bare Delete key does — it currently always moves items to Trash.'
 	String get deleteKeyBehaviorHint => 'Shift+Delete always deletes permanently. This setting doesn\'t yet change what the bare Delete key does — it currently always moves items to Trash.';
+
+	/// en: 'Keyboard & mouse selection scheme'
+	String get keyboardScheme => 'Keyboard & mouse selection scheme';
+
+	/// en: 'Which cursor/mark model the file list uses for arrow keys, click, Shift/Ctrl and rubber-band drag. Takes effect after restarting Waydir.'
+	String get keyboardSchemeHint => 'Which cursor/mark model the file list uses for arrow keys, click, Shift/Ctrl and rubber-band drag. Takes effect after restarting Waydir.';
+
+	/// en: 'Personal (redesigned)'
+	String get keyboardSchemePersonal => 'Personal (redesigned)';
+
+	/// en: 'Upstream (classic)'
+	String get keyboardSchemeUpstream => 'Upstream (classic)';
 
 	/// en: 'Move to Trash'
 	String get deleteKeyTrash => 'Move to Trash';
@@ -4362,6 +4380,7 @@ extension on Translations {
 			'preferences.general.browse' => 'Browse…',
 			'preferences.general.foldersSection' => 'Folders',
 			'preferences.general.fileOpsSection' => 'File operations',
+			'preferences.general.keyboardSection' => 'Keyboard & Mouse',
 			'preferences.general.confirmDelete' => 'Confirm before delete',
 			'preferences.general.confirmDeleteHint' => 'Show a dialog before removing files or folders.',
 			'preferences.general.confirmCopy' => 'Confirm before copy',
@@ -4378,6 +4397,10 @@ extension on Translations {
 			'preferences.general.typeAheadBufferHint' => 'When on, typing a letter jumps to files starting with it (quickly typed letters combine into a search string; pausing resets it). When off, letters no longer jump — m/u/t/U/C/R/D become dired-style mark/unmark/invert/deselect/copy/move/delete commands instead.',
 			'preferences.general.deleteKeyBehavior' => 'Delete key behavior',
 			'preferences.general.deleteKeyBehaviorHint' => 'Shift+Delete always deletes permanently. This setting doesn\'t yet change what the bare Delete key does — it currently always moves items to Trash.',
+			'preferences.general.keyboardScheme' => 'Keyboard & mouse selection scheme',
+			'preferences.general.keyboardSchemeHint' => 'Which cursor/mark model the file list uses for arrow keys, click, Shift/Ctrl and rubber-band drag. Takes effect after restarting Waydir.',
+			'preferences.general.keyboardSchemePersonal' => 'Personal (redesigned)',
+			'preferences.general.keyboardSchemeUpstream' => 'Upstream (classic)',
 			'preferences.general.deleteKeyTrash' => 'Move to Trash',
 			'preferences.general.deleteKeyPermanent' => 'Delete Permanently',
 			'preferences.general.terminalSection' => 'Terminal',
@@ -4676,13 +4699,13 @@ extension on Translations {
 			'keybindings.pressShortcut' => 'Press a shortcut',
 			'keybindings.escapeToCancel' => 'Esc cancels',
 			'keybindings.conflict' => ({required Object action}) => 'Already used by ${action}',
+			_ => null,
+		} ?? switch (path) {
 			'keybindings.dualHint' => 'dual',
 			'keybindings.diredHint' => 'dired, off when type-ahead is on',
 			'keybindings.openItem' => 'Open',
 			'keybindings.goUp' => 'Go up',
 			'keybindings.goBack' => 'Go back',
-			_ => null,
-		} ?? switch (path) {
 			'keybindings.goForward' => 'Go forward',
 			'keybindings.refresh' => 'Refresh',
 			'keybindings.focusPath' => 'Focus path bar',
@@ -4840,6 +4863,7 @@ extension on Translations {
 			'toast.selectionLoaded' => ({required Object count}) => 'Selected ${count} visible items',
 			'toast.selectionLoadEmpty' => 'No visible items matched',
 			'toast.terminalUnavailable' => 'Terminal is unavailable: native core not loaded',
+			'toast.restartRequired' => 'Restart Waydir for this change to take effect',
 			'toast.terminalNotVisible' => 'Terminal is not open',
 			'toast.selectionFileError' => ({required Object message}) => 'Selection file error: ${message}',
 			'toast.taskErrors' => ({required Object label, required Object count}) => '${label} - ${count} errors',
@@ -5189,14 +5213,14 @@ extension on Translations {
 			'openWith.noApps' => 'No applications found for this file type.',
 			'openWith.setDefault' => 'Always use for this file type',
 			'openWith.setDefaultUnavailable' => 'Default cannot be changed on this platform',
+			_ => null,
+		} ?? switch (path) {
 			'openWith.moreApps' => 'More applications…',
 			'openWith.open' => 'Open',
 			'openWith.failed' => ({required Object app}) => 'Could not open the file with ${app}',
 			'openWith.setDefaultFailed' => 'Could not set the default application',
 			'openWith.unsupportedPlatform' => 'Unsupported platform',
 			'openWith.xdgMimeFailed' => 'xdg-mime failed',
-			_ => null,
-		} ?? switch (path) {
 			'openWith.dutiRequired' => 'Setting the default app on macOS requires the "duti" tool',
 			'openWith.bundleIdReadFailed' => 'Could not read app bundle id',
 			'openWith.windowsDefaultDialogRequired' => 'Use the system "Open with" dialog to change the default on Windows',

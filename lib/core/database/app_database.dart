@@ -60,6 +60,8 @@ class AppSettings extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get typeAheadBuffer =>
       boolean().withDefault(const Constant(true))();
+  TextColumn get keyboardScheme =>
+      text().withDefault(const Constant('personal'))();
   RealColumn get fileListScale => real().withDefault(const Constant(1.0))();
   TextColumn get fileViewMode => text().withDefault(const Constant('list'))();
   BoolColumn get showColumnSize =>
@@ -252,7 +254,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 44;
+  int get schemaVersion => 45;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -459,6 +461,9 @@ class AppDatabase extends _$AppDatabase {
         await addSettingColumn(appSettings.windowWidth);
         await addSettingColumn(appSettings.windowHeight);
         await addSettingColumn(appSettings.windowMaximized);
+      }
+      if (from < 45) {
+        await addSettingColumn(appSettings.keyboardScheme);
       }
     },
   );

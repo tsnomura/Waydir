@@ -1,12 +1,14 @@
+import 'package:flutter/services.dart';
 import 'package:signals/signals.dart';
 
 import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/settings/settings_store.dart';
 
-class SelectionController {
+abstract class SelectionController {
   final Signal<Set<String>> selectedPaths;
   final Signal<int> cursorIndex;
+  final Signal<int> anchorIndex;
   final Signal<int> gridColumns;
   final List<FileEntry> Function() visibleFiles;
 
@@ -15,43 +17,16 @@ class SelectionController {
   SelectionController({
     required this.selectedPaths,
     required this.cursorIndex,
+    required this.anchorIndex,
     required this.gridColumns,
     required this.visibleFiles,
   });
 
   List<FileEntry> get _vf => visibleFiles();
 
-  /// Click (and Ctrl+click, a deliberate alias) toggles the clicked item's
-  /// mark in place and moves the cursor there — every other mark is left
-  /// untouched. Shift+click toggles the inclusive range from the cursor's
-  /// position *before this click* to the clicked item (both endpoints), then
-  /// moves the cursor. Neither depends on any state beyond what's currently
-  /// visible (the existing marks, the current cursor).
-  void onSelect(FileSelectionEvent event) {
-    final shift = AppShortcuts.isShift;
+  int get pageStep => (_pageRows * 0.8).floor().clamp(1, _pageRows);
 
-    batch(() {
-      if (shift) {
-        final start = cursorIndex.value >= 0 && cursorIndex.value < _vf.length
-            ? cursorIndex.value
-            : event.index;
-        final end = event.index;
-        final lo = start < end ? start : end;
-        final hi = start < end ? end : start;
-        final paths = Set<String>.from(selectedPaths.value);
-        for (int i = lo; i <= hi; i++) {
-          final p = _vf[i].path;
-          if (!paths.remove(p)) paths.add(p);
-        }
-        selectedPaths.value = paths;
-      } else {
-        final paths = Set<String>.from(selectedPaths.value);
-        if (!paths.remove(event.entry.path)) paths.add(event.entry.path);
-        selectedPaths.value = paths;
-      }
-      cursorIndex.value = event.index;
-    });
-  }
+  void onSelect(FileSelectionEvent event);
 
   void selectAll() {
     selectedPaths.value = Set<String>.from(_vf.map((f) => f.path));
@@ -67,35 +42,7 @@ class SelectionController {
     ];
   }
 
-  int selectNamesFromFile(Iterable<String> names) {
-    final wanted = names
-        .map(
-          (name) =>
-              name.endsWith('\r') ? name.substring(0, name.length - 1) : name,
-        )
-        .map((name) => name.startsWith('\uFEFF') ? name.substring(1) : name)
-        .where((name) => name.isNotEmpty)
-        .toSet();
-    if (wanted.isEmpty) {
-      deselectAll();
-
-      return 0;
-    }
-    final matched = <String>{};
-    var cursor = -1;
-    for (var i = 0; i < _vf.length; i++) {
-      final entry = _vf[i];
-      if (!wanted.contains(entry.name)) continue;
-      matched.add(entry.path);
-      cursor = cursor < 0 ? i : cursor;
-    }
-    batch(() {
-      selectedPaths.value = matched;
-      cursorIndex.value = cursor;
-    });
-
-    return matched.length;
-  }
+  int selectNamesFromFile(Iterable<String> names);
 
   int selectByPattern(String pattern) {
     final globs = pattern
@@ -134,9 +81,7 @@ class SelectionController {
     return matched.length;
   }
 
-  void deselectAll() {
-    selectedPaths.value = {};
-  }
+  void deselectAll();
 
   void invertSelection() {
     final selected = selectedPaths.value;
@@ -145,19 +90,7 @@ class SelectionController {
     );
   }
 
-  void toggleSelectAndAdvance() {
-    batch(() {
-      if (cursorIndex.value >= 0 && cursorIndex.value < _vf.length) {
-        final path = _vf[cursorIndex.value].path;
-        final paths = Set<String>.from(selectedPaths.value);
-        if (!paths.remove(path)) paths.add(path);
-        selectedPaths.value = paths;
-      }
-      if (cursorIndex.value < _vf.length - 1) {
-        cursorIndex.value++;
-      }
-    });
-  }
+  void toggleSelectAndAdvance();
 
   void markCursorAndAdvance() {
     batch(() {
@@ -187,10 +120,137 @@ class SelectionController {
     });
   }
 
+  void onRectSelect(Set<String> paths, {bool additive = false});
+
+  List<FileEntry> get selectedEntries {
+    final paths = selectedPaths.value;
+
+    return _vf.where((f) => paths.contains(f.path)).toList();
+  }
+
+  void onContextMenu(FileSelectionEvent event);
+
+  void jumpToIndex(int index);
+
+  void setPageRows(int rows) {
+    if (rows > 0) _pageRows = rows;
+  }
+
+  void moveCursorHorizontally(int delta, {bool isRepeat = false});
+
+  void moveCursor(int delta, {bool isRepeat = false});
+
+  void moveCursorByPage(int dir, {bool isRepeat = false});
+
+  void moveCursorToStart({bool isRepeat = false});
+
+  void moveCursorToEnd({bool isRepeat = false});
+}
+
+class PersonalSelectionController extends SelectionController {
+  PersonalSelectionController({
+    required super.selectedPaths,
+    required super.cursorIndex,
+    required super.anchorIndex,
+    required super.gridColumns,
+    required super.visibleFiles,
+  });
+
+  /// Click (and Ctrl+click, a deliberate alias) toggles the clicked item's
+  /// mark in place and moves the cursor there — every other mark is left
+  /// untouched. Shift+click toggles the inclusive range from the cursor's
+  /// position *before this click* to the clicked item (both endpoints), then
+  /// moves the cursor. Neither depends on any state beyond what's currently
+  /// visible (the existing marks, the current cursor).
+  @override
+  void onSelect(FileSelectionEvent event) {
+    final shift = AppShortcuts.isShift;
+
+    batch(() {
+      if (shift) {
+        final start = cursorIndex.value >= 0 && cursorIndex.value < _vf.length
+            ? cursorIndex.value
+            : event.index;
+        final end = event.index;
+        final lo = start < end ? start : end;
+        final hi = start < end ? end : start;
+        final paths = Set<String>.from(selectedPaths.value);
+        for (int i = lo; i <= hi; i++) {
+          final p = _vf[i].path;
+          if (!paths.remove(p)) paths.add(p);
+        }
+        selectedPaths.value = paths;
+      } else {
+        final paths = Set<String>.from(selectedPaths.value);
+        if (!paths.remove(event.entry.path)) paths.add(event.entry.path);
+        selectedPaths.value = paths;
+      }
+      cursorIndex.value = event.index;
+    });
+  }
+
+  @override
+  int selectNamesFromFile(Iterable<String> names) {
+    final wanted = names
+        .map(
+          (name) =>
+              name.endsWith('\r') ? name.substring(0, name.length - 1) : name,
+        )
+        .map(
+          (name) => name.startsWith(String.fromCharCode(0xFEFF))
+              ? name.substring(1)
+              : name,
+        )
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    if (wanted.isEmpty) {
+      deselectAll();
+
+      return 0;
+    }
+    final matched = <String>{};
+    var cursor = -1;
+    for (var i = 0; i < _vf.length; i++) {
+      final entry = _vf[i];
+      if (!wanted.contains(entry.name)) continue;
+      matched.add(entry.path);
+      cursor = cursor < 0 ? i : cursor;
+    }
+    batch(() {
+      selectedPaths.value = matched;
+      cursorIndex.value = cursor;
+    });
+
+    return matched.length;
+  }
+
+  @override
+  void deselectAll() {
+    selectedPaths.value = {};
+  }
+
+  @override
+  void toggleSelectAndAdvance() {
+    batch(() {
+      if (cursorIndex.value >= 0 && cursorIndex.value < _vf.length) {
+        final path = _vf[cursorIndex.value].path;
+        final paths = Set<String>.from(selectedPaths.value);
+        if (!paths.remove(path)) paths.add(path);
+        selectedPaths.value = paths;
+      }
+      if (cursorIndex.value < _vf.length - 1) {
+        cursorIndex.value++;
+      }
+    });
+  }
+
   /// Rubber-band result: [paths] is the complete resulting mark set to
   /// apply — a wholesale replace, not a delta — since the rubber-band layer
-  /// already computed it as a snapshot-XOR-rectangle each frame.
-  void onRectSelect(Set<String> paths) {
+  /// already computed it as a snapshot-XOR-rectangle each frame. [additive]
+  /// is ignored: the personal scheme never reads it (the rubber-band layer
+  /// only takes that path under the upstream scheme).
+  @override
+  void onRectSelect(Set<String> paths, {bool additive = false}) {
     batch(() {
       selectedPaths.value = paths;
       if (paths.isNotEmpty) {
@@ -200,12 +260,7 @@ class SelectionController {
     });
   }
 
-  List<FileEntry> get selectedEntries {
-    final paths = selectedPaths.value;
-
-    return _vf.where((f) => paths.contains(f.path)).toList();
-  }
-
+  @override
   void onContextMenu(FileSelectionEvent event) {
     batch(() {
       if (!selectedPaths.value.contains(event.entry.path)) {
@@ -215,6 +270,7 @@ class SelectionController {
     });
   }
 
+  @override
   void jumpToIndex(int index) {
     batch(() {
       if (_vf.isEmpty) return;
@@ -222,10 +278,6 @@ class SelectionController {
       cursorIndex.value = index;
       selectedPaths.value = {_vf[index].path};
     });
-  }
-
-  void setPageRows(int rows) {
-    if (rows > 0) _pageRows = rows;
   }
 
   /// [cursorIndex] as-is when valid, otherwise resolved from the single
@@ -249,8 +301,7 @@ class SelectionController {
     return -1;
   }
 
-  int get _pageStep => (_pageRows * 0.8).floor().clamp(1, _pageRows);
-
+  @override
   void moveCursorHorizontally(int delta, {bool isRepeat = false}) {
     final settings = SettingsStore.instance;
     if (settings.fileViewMode.value != 'grid') {
@@ -281,9 +332,10 @@ class SelectionController {
     _applyCursorMove(next.clamp(0, _vf.length - 1));
   }
 
+  @override
   void moveCursor(int delta, {bool isRepeat = false}) {
     final settings = SettingsStore.instance;
-    final rowStep = AppShortcuts.isControl ? _pageStep : 1;
+    final rowStep = AppShortcuts.isControl ? pageStep : 1;
     final step = settings.fileViewMode.value == 'grid' && delta.abs() == 1
         ? delta * gridColumns.value.clamp(1, 1000) * rowStep
         : delta * rowStep;
@@ -299,6 +351,7 @@ class SelectionController {
     _applyCursorMove(next);
   }
 
+  @override
   void moveCursorByPage(int dir, {bool isRepeat = false}) {
     if (_vf.isEmpty) return;
     final current = _resolvedCursorIndex();
@@ -307,11 +360,12 @@ class SelectionController {
 
       return;
     }
-    final next = (current + dir * _pageStep).clamp(0, _vf.length - 1);
+    final next = (current + dir * pageStep).clamp(0, _vf.length - 1);
     if (isRepeat && next == current) return;
     _applyCursorMove(next);
   }
 
+  @override
   void moveCursorToStart({bool isRepeat = false}) {
     if (_vf.isEmpty) return;
     if (cursorIndex.value < 0) {
@@ -323,6 +377,7 @@ class SelectionController {
     _applyCursorMove(0);
   }
 
+  @override
   void moveCursorToEnd({bool isRepeat = false}) {
     if (_vf.isEmpty) return;
     final last = _vf.length - 1;
@@ -383,6 +438,305 @@ class SelectionController {
           }
         }
         selectedPaths.value = paths;
+      }
+      cursorIndex.value = next;
+    });
+  }
+}
+
+/// Reproduces `origin/main`'s classic anchor-based selection model, for
+/// users who prefer it over [PersonalSelectionController]'s redesign.
+/// Ported near-verbatim from upstream so its quirks (e.g. [_applyCursorMove]
+/// reading `HardwareKeyboard` directly instead of [AppShortcuts], or a
+/// Shift+move that extends the selection without moving the cursor when the
+/// current cursor cell isn't marked) are preserved exactly, not "improved."
+class UpstreamSelectionController extends SelectionController {
+  UpstreamSelectionController({
+    required super.selectedPaths,
+    required super.cursorIndex,
+    required super.anchorIndex,
+    required super.gridColumns,
+    required super.visibleFiles,
+  });
+
+  @override
+  void onSelect(FileSelectionEvent event) {
+    final ctrl = AppShortcuts.isControl;
+    final shift = AppShortcuts.isShift;
+
+    batch(() {
+      if (ctrl && !shift) {
+        final paths = Set<String>.from(selectedPaths.value);
+        if (paths.contains(event.entry.path)) {
+          paths.remove(event.entry.path);
+          if (paths.isNotEmpty) {
+            final lastSelected = _vf.lastWhere(
+              (f) => paths.contains(f.path),
+              orElse: () => event.entry,
+            );
+            anchorIndex.value = _vf.indexOf(lastSelected);
+          } else {
+            anchorIndex.value = -1;
+          }
+        } else {
+          paths.add(event.entry.path);
+          anchorIndex.value = event.index;
+        }
+        selectedPaths.value = paths;
+        cursorIndex.value = event.index;
+      } else if (shift && !ctrl) {
+        int start;
+        if (anchorIndex.value >= 0 &&
+            anchorIndex.value < _vf.length &&
+            selectedPaths.value.contains(_vf[anchorIndex.value].path)) {
+          start = anchorIndex.value;
+        } else if (cursorIndex.value >= 0 &&
+            cursorIndex.value < _vf.length &&
+            selectedPaths.value.contains(_vf[cursorIndex.value].path)) {
+          start = cursorIndex.value;
+          anchorIndex.value = start;
+        } else {
+          start = event.index;
+          anchorIndex.value = event.index;
+        }
+        final end = event.index;
+        final lo = start < end ? start : end;
+        final hi = start < end ? end : start;
+        final paths = <String>{};
+        for (int i = lo; i <= hi; i++) {
+          paths.add(_vf[i].path);
+        }
+        selectedPaths.value = paths;
+        cursorIndex.value = event.index;
+      } else {
+        selectedPaths.value = {event.entry.path};
+        cursorIndex.value = event.index;
+        anchorIndex.value = event.index;
+      }
+    });
+  }
+
+  @override
+  int selectNamesFromFile(Iterable<String> names) {
+    final wanted = names
+        .map(
+          (name) =>
+              name.endsWith('\r') ? name.substring(0, name.length - 1) : name,
+        )
+        .map(
+          (name) => name.startsWith(String.fromCharCode(0xFEFF))
+              ? name.substring(1)
+              : name,
+        )
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    if (wanted.isEmpty) {
+      deselectAll();
+
+      return 0;
+    }
+    final matched = <String>{};
+    var cursor = -1;
+    for (var i = 0; i < _vf.length; i++) {
+      final entry = _vf[i];
+      if (!wanted.contains(entry.name)) continue;
+      matched.add(entry.path);
+      cursor = cursor < 0 ? i : cursor;
+    }
+    batch(() {
+      selectedPaths.value = matched;
+      cursorIndex.value = cursor;
+      anchorIndex.value = cursor;
+    });
+
+    return matched.length;
+  }
+
+  @override
+  void deselectAll() {
+    batch(() {
+      selectedPaths.value = {};
+      cursorIndex.value = -1;
+      anchorIndex.value = -1;
+    });
+  }
+
+  @override
+  void toggleSelectAndAdvance() {
+    batch(() {
+      if (cursorIndex.value >= 0 && cursorIndex.value < _vf.length) {
+        final path = _vf[cursorIndex.value].path;
+        final paths = Set<String>.from(selectedPaths.value);
+        if (paths.contains(path) && paths.length > 1) {
+          paths.remove(path);
+        } else {
+          paths.add(path);
+        }
+        selectedPaths.value = paths;
+      }
+      if (cursorIndex.value < _vf.length - 1) {
+        cursorIndex.value++;
+      }
+    });
+  }
+
+  @override
+  void onRectSelect(Set<String> paths, {bool additive = false}) {
+    batch(() {
+      if (additive) {
+        selectedPaths.value = {...selectedPaths.value, ...paths};
+      } else {
+        selectedPaths.value = paths;
+      }
+      if (paths.isNotEmpty) {
+        final idx = _vf.indexWhere((f) => paths.contains(f.path));
+        if (idx >= 0) cursorIndex.value = idx;
+      } else if (!additive) {
+        cursorIndex.value = -1;
+        anchorIndex.value = -1;
+      }
+    });
+  }
+
+  @override
+  void onContextMenu(FileSelectionEvent event) {
+    if (!selectedPaths.value.contains(event.entry.path)) {
+      batch(() {
+        selectedPaths.value = {event.entry.path};
+        cursorIndex.value = event.index;
+        anchorIndex.value = event.index;
+      });
+    }
+  }
+
+  @override
+  void jumpToIndex(int index) {
+    batch(() {
+      if (_vf.isEmpty) return;
+      if (index < 0 || index >= _vf.length) return;
+      cursorIndex.value = index;
+      anchorIndex.value = index;
+      selectedPaths.value = {_vf[index].path};
+    });
+  }
+
+  @override
+  void moveCursorHorizontally(int delta, {bool isRepeat = false}) {
+    final settings = SettingsStore.instance;
+    if (settings.fileViewMode.value != 'grid') {
+      moveCursor(delta);
+
+      return;
+    }
+    if (_vf.isEmpty || delta == 0) return;
+    if (cursorIndex.value < 0) {
+      _initCursor(delta > 0 ? 0 : _vf.length - 1);
+
+      return;
+    }
+    final columns = gridColumns.value.clamp(1, 1000);
+    final col = cursorIndex.value % columns;
+    if (delta < 0 && col == 0) return;
+    if (delta > 0 && col == columns - 1) return;
+    final next = cursorIndex.value + delta;
+    if (next < 0 || next >= _vf.length) return;
+    _applyCursorMove(next);
+  }
+
+  @override
+  void moveCursor(int delta, {bool isRepeat = false}) {
+    final settings = SettingsStore.instance;
+    final step = settings.fileViewMode.value == 'grid' && delta.abs() == 1
+        ? delta * gridColumns.value.clamp(1, 1000)
+        : delta;
+    if (_vf.isEmpty) return;
+    if (cursorIndex.value < 0) {
+      _initCursor(step > 0 ? 0 : _vf.length - 1);
+
+      return;
+    }
+    final next = cursorIndex.value + step;
+    if (next < 0 || next >= _vf.length) return;
+    _applyCursorMove(next);
+  }
+
+  @override
+  void moveCursorByPage(int dir, {bool isRepeat = false}) {
+    if (_vf.isEmpty) return;
+    if (cursorIndex.value < 0) {
+      _initCursor(dir > 0 ? 0 : _vf.length - 1);
+
+      return;
+    }
+    final next = (cursorIndex.value + dir * pageStep).clamp(0, _vf.length - 1);
+    if (next == cursorIndex.value) return;
+    _applyCursorMove(next);
+  }
+
+  @override
+  void moveCursorToStart({bool isRepeat = false}) {
+    if (_vf.isEmpty) return;
+    if (cursorIndex.value < 0) {
+      _initCursor(0);
+
+      return;
+    }
+    _applyCursorMove(0);
+  }
+
+  @override
+  void moveCursorToEnd({bool isRepeat = false}) {
+    if (_vf.isEmpty) return;
+    final last = _vf.length - 1;
+    if (cursorIndex.value < 0) {
+      _initCursor(last);
+
+      return;
+    }
+    _applyCursorMove(last);
+  }
+
+  void _initCursor(int index) {
+    batch(() {
+      cursorIndex.value = index;
+      anchorIndex.value = index;
+      selectedPaths.value = {_vf[index].path};
+    });
+  }
+
+  void _applyCursorMove(int next) {
+    final shift = HardwareKeyboard.instance.isShiftPressed;
+    batch(() {
+      if (shift) {
+        final anchor = anchorIndex.value >= 0 && anchorIndex.value < _vf.length
+            ? anchorIndex.value
+            : cursorIndex.value;
+        final cur = cursorIndex.value;
+        final extending = (next - anchor).abs() > (cur - anchor).abs();
+        if (cur >= 0 &&
+            cur < _vf.length &&
+            !selectedPaths.value.contains(_vf[cur].path) &&
+            extending) {
+          final lo = cur < anchor ? cur : anchor;
+          final hi = cur < anchor ? anchor : cur;
+          final paths = Set<String>.from(selectedPaths.value);
+          for (int i = lo; i <= hi; i++) {
+            paths.add(_vf[i].path);
+          }
+          selectedPaths.value = paths;
+
+          return;
+        }
+        final lo = next < anchor ? next : anchor;
+        final hi = next < anchor ? anchor : next;
+        final paths = <String>{};
+        for (int i = lo; i <= hi; i++) {
+          paths.add(_vf[i].path);
+        }
+        selectedPaths.value = paths;
+      } else {
+        selectedPaths.value = {_vf[next].path};
+        anchorIndex.value = next;
       }
       cursorIndex.value = next;
     });

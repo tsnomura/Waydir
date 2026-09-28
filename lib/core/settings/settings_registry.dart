@@ -211,6 +211,33 @@ class SettingsRegistry {
       ],
     ),
     ChoiceSetting<String>(
+      id: 'general.keyboardScheme',
+      category: SettingsCategory.general,
+      label: () => t.preferences.general.keyboardScheme,
+      hint: () => t.preferences.general.keyboardSchemeHint,
+      searchTerms: const [
+        'keyboard',
+        'mouse',
+        'selection',
+        'scheme',
+        'upstream',
+        'anchor',
+      ],
+      signal: SettingsStore.instance.keyboardScheme,
+      choices: [
+        SettingChoice(
+          value: 'personal',
+          label: () => t.preferences.general.keyboardSchemePersonal,
+          icon: WaydirIconsRegular.keyboard,
+        ),
+        SettingChoice(
+          value: 'upstream',
+          label: () => t.preferences.general.keyboardSchemeUpstream,
+          icon: WaydirIconsRegular.keyboard,
+        ),
+      ],
+    ),
+    ChoiceSetting<String>(
       id: 'terminal.shell',
       category: SettingsCategory.terminal,
       label: () => t.preferences.terminal.shellLabel,

@@ -41,6 +41,7 @@ class NavigationStore {
   final showHidden = signal(false);
   final selectedPaths = signal<Set<String>>({});
   final cursorIndex = signal(-1);
+  final anchorIndex = signal(-1);
   final history = signal<List<String>>([]);
   final historyIndex = signal(0);
   final isLoading = signal(false);
@@ -141,13 +142,24 @@ class NavigationStore {
     resolvePhysicalDestination: _resolvePhysicalDestination,
     filterByTags: _filterByTags,
     cursorIndex: cursorIndex,
+    anchorIndex: anchorIndex,
   );
-  late final SelectionController _selectionController = SelectionController(
-    selectedPaths: selectedPaths,
-    cursorIndex: cursorIndex,
-    gridColumns: gridColumns,
-    visibleFiles: () => _selectionFiles,
-  );
+  late final SelectionController _selectionController =
+      SettingsStore.instance.keyboardScheme.value == 'upstream'
+      ? UpstreamSelectionController(
+          selectedPaths: selectedPaths,
+          cursorIndex: cursorIndex,
+          anchorIndex: anchorIndex,
+          gridColumns: gridColumns,
+          visibleFiles: () => _selectionFiles,
+        )
+      : PersonalSelectionController(
+          selectedPaths: selectedPaths,
+          cursorIndex: cursorIndex,
+          anchorIndex: anchorIndex,
+          gridColumns: gridColumns,
+          visibleFiles: () => _selectionFiles,
+        );
 
   void Function()? _showHiddenDisposer;
 
@@ -705,6 +717,7 @@ class NavigationStore {
     batch(() {
       selectedPaths.value = {};
       cursorIndex.value = -1;
+      anchorIndex.value = -1;
       currentPath.value = normalized;
     });
     _loadSortFor(normalized);
@@ -764,6 +777,7 @@ class NavigationStore {
       selectedPaths.value = {target};
       if (idx >= 0) {
         cursorIndex.value = idx;
+        anchorIndex.value = idx;
       }
     });
   }
@@ -831,6 +845,7 @@ class NavigationStore {
       if (restored.isNotEmpty) selectedPaths.value = restored;
       if (cursor >= 0) {
         cursorIndex.value = cursor;
+        anchorIndex.value = cursor;
       }
     });
   }
@@ -1224,6 +1239,7 @@ class NavigationStore {
     batch(() {
       selectedPaths.value = {};
       cursorIndex.value = -1;
+      anchorIndex.value = -1;
     });
   }
 
@@ -1457,11 +1473,18 @@ class NavigationStore {
     if (newCursor < 0 && oldCursor >= 0 && visible.isNotEmpty) {
       newCursor = oldCursor.clamp(0, visible.length - 1);
     }
+    int newAnchor = -1;
+    if (anchorIndex.value >= 0 && anchorIndex.value < _vf.length) {
+      final anchorPath = _vf[anchorIndex.value].path;
+      newAnchor = visible.indexWhere((e) => e.path == anchorPath);
+    }
+    if (newAnchor < 0) newAnchor = newCursor;
 
     batch(() {
       files.value = newEntries;
       selectedPaths.value = filteredSelected;
       cursorIndex.value = newCursor;
+      anchorIndex.value = newAnchor;
     });
   }
 
@@ -1563,11 +1586,17 @@ class NavigationStore {
           }).toList();
           searchResults.value = updated;
           final idx = updated.indexWhere((f) => f.path == logicalNew);
-          if (idx >= 0) cursorIndex.value = idx;
+          if (idx >= 0) {
+            cursorIndex.value = idx;
+            anchorIndex.value = idx;
+          }
         } else {
           await refresh();
           final idx = _vf.indexWhere((f) => f.path == logicalNew);
-          if (idx >= 0) cursorIndex.value = idx;
+          if (idx >= 0) {
+            cursorIndex.value = idx;
+            anchorIndex.value = idx;
+          }
         }
         fileListFocusRequest.value++;
       case RenameAlreadyExists():
@@ -1626,7 +1655,10 @@ class NavigationStore {
     });
     await refresh();
     final idx = _vf.indexWhere((f) => f.path == newPath);
-    if (idx >= 0) cursorIndex.value = idx;
+    if (idx >= 0) {
+      cursorIndex.value = idx;
+      anchorIndex.value = idx;
+    }
   }
 
   Future<MultiRenameOutcome> multiRename(
@@ -1698,6 +1730,7 @@ class NavigationStore {
         selectedPaths.value = remaining;
         if (remaining.isEmpty) {
           cursorIndex.value = -1;
+          anchorIndex.value = -1;
         }
       });
     }
@@ -1992,6 +2025,7 @@ class NavigationStore {
       batch(() {
         selectedPaths.value = {logicalNewPath};
         cursorIndex.value = idx;
+        anchorIndex.value = idx;
       });
     }
     fileListFocusRequest.value++;
@@ -2045,6 +2079,7 @@ class NavigationStore {
       batch(() {
         selectedPaths.value = {entry.path};
         cursorIndex.value = idx;
+        anchorIndex.value = idx;
       });
     } else {
       _pendingInitialSelect = entry.path;
@@ -2120,8 +2155,8 @@ class NavigationStore {
 
   void onBackgroundTap() => deselectAll();
 
-  void onRectSelect(Set<String> paths) =>
-      _selectionController.onRectSelect(paths);
+  void onRectSelect(Set<String> paths, {bool additive = false}) =>
+      _selectionController.onRectSelect(paths, additive: additive);
 
   List<FileEntry> get selectedEntries => _selectionController.selectedEntries;
 
@@ -2133,6 +2168,7 @@ class NavigationStore {
     batch(() {
       selectedPaths.value = {};
       cursorIndex.value = -1;
+      anchorIndex.value = -1;
     });
     final archiveLoc = await _archiveLocationFor(currentPath.value);
     if (archiveLoc != null) {

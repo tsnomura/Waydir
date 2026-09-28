@@ -142,8 +142,9 @@ class PaneView extends StatelessWidget {
                             onMenuAction: onMenuAction,
                             onOpenInNewTab: onOpenInNewTab,
                             onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
-                            onRectSelect: (paths) =>
-                                tab.store.onRectSelect(paths),
+                            onRectSelect: (paths, {additive = false}) => tab
+                                .store
+                                .onRectSelect(paths, additive: additive),
                           ),
                       ],
                     );

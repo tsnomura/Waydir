@@ -50,6 +50,7 @@ class SettingsStore {
   final rememberFolderState = signal<bool>(true);
   final rememberFolderSort = signal<bool>(true);
   final typeAheadBuffer = signal<bool>(true);
+  final keyboardScheme = signal<String>('personal');
   final fileListScale = signal<double>(1.0);
   final fileViewMode = signal<String>('list');
   final showColumnSize = signal<bool>(true);
@@ -141,6 +142,7 @@ class SettingsStore {
     rememberFolderState.value = row.rememberFolderState;
     rememberFolderSort.value = row.rememberFolderSort;
     typeAheadBuffer.value = row.typeAheadBuffer;
+    keyboardScheme.value = row.keyboardScheme;
     fileListScale.value = row.fileListScale;
     fileViewMode.value = row.fileViewMode;
     showColumnSize.value = row.showColumnSize;
@@ -259,6 +261,7 @@ class SettingsStore {
         rememberFolderState.value;
         rememberFolderSort.value;
         typeAheadBuffer.value;
+        keyboardScheme.value;
         fileListScale.value;
         fileViewMode.value;
         showColumnSize.value;
@@ -334,6 +337,7 @@ class SettingsStore {
           rememberFolderState: Value(rememberFolderState.value),
           rememberFolderSort: Value(rememberFolderSort.value),
           typeAheadBuffer: Value(typeAheadBuffer.value),
+          keyboardScheme: Value(keyboardScheme.value),
           fileListScale: Value(fileListScale.value),
           fileViewMode: Value(fileViewMode.value),
           showColumnSize: Value(showColumnSize.value),

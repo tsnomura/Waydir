@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/settings/settings_store.dart';
 import '../../ui/theme/app_theme.dart';
 
-typedef RubberBandSelectCallback = void Function(Set<String> paths);
+typedef RubberBandSelectCallback =
+    void Function(Set<String> paths, {bool additive});
 typedef RubberBandStartPredicate = bool Function(Offset localPosition);
 typedef RubberBandRectResolver = Set<String> Function(Rect contentRect);
 typedef RubberBandSnapshotResolver = Set<String> Function();
@@ -60,6 +62,8 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
   Set<String> _lastPaths = const {};
   Set<String> _dragStartSnapshot = const {};
   bool _paintAdd = true;
+  final bool _isUpstream =
+      SettingsStore.instance.keyboardScheme.value == 'upstream';
 
   Rect get _contentRect {
     if (_startContent == null || _currentContent == null) return Rect.zero;
@@ -104,6 +108,14 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
     final inRect = _pathsInRect(_contentRect);
     if (_setsEqual(inRect, _lastPaths)) return;
     _lastPaths = inRect;
+    if (_isUpstream) {
+      widget.onSelectionChanged?.call(
+        inRect,
+        additive: HardwareKeyboard.instance.isControlPressed,
+      );
+
+      return;
+    }
     final result = _paintAdd
         ? _dragStartSnapshot.union(inRect)
         : _dragStartSnapshot.difference(inRect);
@@ -158,6 +170,7 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
       return;
     }
     _downRowIndex = widget.rowAt(event.localPosition);
+    if (_isUpstream && _downRowIndex >= 0) return;
     final content = _toContent(event.localPosition);
     _startContent = content;
     _currentContent = content;
@@ -175,17 +188,19 @@ class _RubberBandLayerState extends State<RubberBandLayer> {
       final dx = (content.dx - _startContent!.dx).abs();
       final dy = (content.dy - _startContent!.dy).abs();
       if (dx < _kThreshold && dy < _kThreshold) return;
-      if (!HardwareKeyboard.instance.isShiftPressed) {
+      if (!_isUpstream && !HardwareKeyboard.instance.isShiftPressed) {
         _startContent = null;
         _currentContent = null;
 
         return;
       }
       _active = true;
-      _dragStartSnapshot = widget.currentSelection();
-      _paintAdd = _downRowIndex < 0
-          ? true
-          : !_dragStartSnapshot.contains(widget.pathAt(_downRowIndex));
+      if (!_isUpstream) {
+        _dragStartSnapshot = widget.currentSelection();
+        _paintAdd = _downRowIndex < 0
+            ? true
+            : !_dragStartSnapshot.contains(widget.pathAt(_downRowIndex));
+      }
       _startAutoScroll(viewportHeight);
     }
     _fireSelection();

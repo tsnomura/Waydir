@@ -18,8 +18,9 @@ void main() {
   late List<FileEntry> files;
   late Signal<Set<String>> selectedPaths;
   late Signal<int> cursorIndex;
+  late Signal<int> anchorIndex;
   late Signal<int> gridColumns;
-  late SelectionController controller;
+  late PersonalSelectionController controller;
 
   setUp(() {
     files = [
@@ -31,10 +32,12 @@ void main() {
     ];
     selectedPaths = signal(<String>{});
     cursorIndex = signal(-1);
+    anchorIndex = signal(-1);
     gridColumns = signal(4);
-    controller = SelectionController(
+    controller = PersonalSelectionController(
       selectedPaths: selectedPaths,
       cursorIndex: cursorIndex,
+      anchorIndex: anchorIndex,
       gridColumns: gridColumns,
       visibleFiles: () => files,
     );
