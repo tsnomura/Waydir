@@ -555,3 +555,44 @@ unseen history.
   list instead of stepping from wherever the cursor visibly was.
 
 Relevant commits: `64a9187`, `efa780a`.
+
+## Runtime-switchable keyboard/mouse selection scheme
+
+Preferences → General → "Keyboard & Mouse" → "Keyboard & mouse selection
+scheme" switches the file list between the personal redesign above and a
+faithful reproduction of `origin/main`'s original anchor-based model —
+useful for comparing the two, or just falling back if the redesign ever
+gets in the way. Takes effect after restarting Waydir (changing it shows a
+toast saying so); a live switch would need every relevant method threaded
+with a scheme check, which is a real ongoing maintenance cost for no benefit
+over "pick a mode and restart."
+
+- `SelectionController` is now an abstract base with two concrete
+  implementations, `PersonalSelectionController` and
+  `UpstreamSelectionController`, chosen once when `NavigationStore`
+  constructs its controller. `UpstreamSelectionController` is ported
+  near-verbatim from `git show origin/main:lib/features/navigation/selection_controller.dart`,
+  including its quirks — e.g. `_applyCursorMove` reads `HardwareKeyboard`
+  directly instead of the app's own `AppShortcuts` modifier helpers (an
+  existing upstream inconsistency, not "fixed" here since the whole point
+  is fidelity), and a Shift+move that extends the selection from an
+  *unmarked* cursor cell can grow the mark set without actually moving the
+  cursor (upstream returns from inside a `batch()` before reaching the
+  `cursorIndex.value = next` line in that specific case).
+- The `anchorIndex` signal the original redesign removed is back on
+  `NavigationStore`/`SearchController`, unconditionally maintained
+  alongside `cursorIndex` everywhere it used to be — harmless under the
+  personal scheme (nothing reads it), required under upstream's. The one
+  exception is `closeSearch()`: upstream resets the cursor to "none" there,
+  but the personal scheme deliberately doesn't (a fixed bug, see above), so
+  that one specific reset stays scheme-gated instead of unconditional.
+- `RubberBandLayer` also branches per-scheme (checked once at build, not
+  read live): upstream's drag can't start on top of a row and has no
+  Shift requirement at all, reading Ctrl at fire-time for additive-vs-replace
+  against the live rectangle; the personal scheme keeps its Shift-gated,
+  snapshot-based paint model.
+- dired commands (`m`/`u`/`t`/etc.) and the type-ahead-setting gating that
+  gives them a keyboard slot are unaffected by this toggle — they work the
+  same regardless of which arrow-key scheme is active.
+
+Relevant commit: `281790b`.
