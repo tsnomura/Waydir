@@ -127,13 +127,59 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   (otherwise they scroll content as usual).
 - Intentionally stops at paging through still frames — a scrubber or
   playback controls are a job for an embedded video player, not Quick Look.
-- Installed locally: `video-thumbnail` (`ffmpeg`/`ffprobe`, `"time"` paging)
-  and `pdf-page` (`mutool`, `"discrete"` paging) in the `generators` support
-  directory — not committed, since generator config is local/personal by
-  design (see the trust model in `docs/generators.md`).
+- Installed locally: `video-thumbnail` (`ffmpeg`/`ffprobe`, `"time"` paging),
+  `pdf-page` (`mutool`, `"discrete"` paging) and `svg-preview` (`resvg`, no
+  paging) in the `generators` support directory — not committed, since
+  generator config is local/personal by design (see the trust model in
+  `docs/generators.md`).
+- Opening Quick Look on a paged file (mp4/pdf-style) now generates every
+  remaining page in the background, one at a time, so paging forward is
+  usually instant instead of waiting per page — stops if you close Quick
+  Look or move to a different file first.
+- **Preferences → Quick Look → Preview generators**: list/add/edit/delete
+  generators without leaving the app, plus a "Reload" button and a clickable
+  path to the generators folder (opens it as a new tab) and a link to the
+  full `docs/generators.md` guide. The add/edit form only covers the simple
+  scalar fields (`id`/`extensions`/`cmd`/`timeoutSeconds`/`outputExt`) —
+  `args`/paging/probe fields stay hand-edited via an "Edit JSON" button that
+  opens the file in the OS default editor, and are preserved untouched
+  across a form-based edit of the basic fields. A generator created through
+  the form gets `_help`/`_help_*` string fields (JSON has no comment syntax;
+  Waydir ignores any key starting with `_`) explaining each field.
+- **The file grid also shows a generator's output as a thumbnail** (always
+  on, no separate setting — reuses the same cache Quick Look does), first
+  page/frame only. A ~200ms per-tile settle delay avoids generating for
+  tiles only ever flashed past while scrolling, and an app-wide concurrency
+  gate (`Platform.numberOfProcessors.clamp(2, 4)`) caps how many
+  generator/probe processes run at once so scrolling a folder full of
+  matching files doesn't spawn a burst of them. A genuinely failed
+  page/probe (bad command, no output) is remembered so it isn't retried
+  every time its tile scrolls back into view; a *timeout* deliberately isn't
+  remembered the same way, since under concurrent load it can be transient
+  rather than a real, permanent failure.
+- Fixed while building grid thumbnails: the temp file each generation wrote
+  to before renaming into the cache was named from a wall-clock timestamp —
+  fine when at most one generation ever ran at a time (Quick Look previews
+  one file, and its own page-prefetch is sequential), but once the grid
+  could request thumbnails for many *different* files concurrently, two
+  generations landing on the same low-resolution timestamp could race to
+  rename each other's rendered output onto the wrong file's cache path —
+  a real, persistent (survives restarts) cross-file mixup, not just a
+  transient display glitch. Fixed by naming the temp file after the same
+  cache key used for the final path (unique per in-flight generation by
+  construction, since in-flight requests are already deduped by that key).
+- Fixed while building grid thumbnails: `_GridTile`'s items in the
+  `GridView.builder` have no per-file `Key`, so Flutter can reuse a
+  thumbnail widget's State (including an already-resolved generator preview
+  path) for a different file entirely when the grid's list changes
+  underneath it (sort, refresh, filter) — the new tile then kept showing
+  the old file's image until something else forced a full remount. Fixed by
+  detecting the entry's identity changing in `didUpdateWidget` and resetting
+  the resolved path there, the same pattern `AsyncRetain` already uses
+  elsewhere in Quick Look.
 
 Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`,
-`32b9119`, `7abfac6`.
+`32b9119`, `7abfac6`, `8a0c945`, `7fb56ac`, `2337131`.
 
 ## LaTeX math in the Markdown preview
 
