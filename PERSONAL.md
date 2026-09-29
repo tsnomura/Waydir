@@ -642,3 +642,40 @@ over "pick a mode and restart."
   same regardless of which arrow-key scheme is active.
 
 Relevant commit: `281790b`.
+
+## Quick Look: cursor vs. marked targeting, tree view arrow-key expand/collapse
+
+Quick Look used to decide what to show from an inconsistent mix of the
+marked selection and the cursor position (marks took priority for "2+
+marked" and "1 marked folder", silently falling back to the cursor
+otherwise) — confusing under the anchor-free cursor/mark model above, where
+the cursor and the marks can legitimately point at different rows.
+
+- **Space** always previews whatever the cursor is on, regardless of marks.
+- **Shift+Space** previews the marked selection instead (one marked file
+  shows that file; 2+ shows the multi-file properties view); a no-op with
+  nothing marked.
+- Either key also closes Quick Look while it's already open (previously
+  only plain Space did).
+- Right-click "Properties" is unaffected — still selection-based, now via
+  an explicit `useMarkedSelection` flag on `showQuickLook` instead of
+  relying on the same implicit priority Space/Shift+Space used to share.
+
+Tree view (`fileViewMode: 'tree'`) also gained the standard VSCode/Explorer
+arrow convention, alongside the existing `Ctrl+Enter` toggle
+(`toggleTreeCursorFolder`): **Right** expands a collapsed folder at the
+cursor, or — if already expanded — moves the cursor down into its first
+child; **Left** collapses an expanded folder, or — if already collapsed, or
+the cursor is on a file — moves the cursor up to its parent folder.
+
+Found and fixed while testing the above: `NavigationStore.cursorEntry` read
+the flat, non-tree `visibleFiles` list directly instead of the tree-aware
+`_selectionFiles` getter every other cursor-consuming path already used
+(the tree's own visual highlight, `SelectionController`). Harmless while
+Quick Look mostly targeted marks, but once Space always targets the
+cursor, opening Quick Look in tree view with any folder expanded could show
+a completely unrelated file — `cursorIndex` was being read against two
+different lists (the flat top-level list vs. the tree's flattened rows)
+depending on which code path touched it.
+
+Relevant commit: `94334d0`.
