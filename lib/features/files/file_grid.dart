@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -16,6 +17,8 @@ import '../../ui/theme/app_text_styles.dart';
 import '../../utils/drag_drop.dart';
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
+import '../quick_look/generators/generator_registry.dart';
+import '../quick_look/generators/generator_runner.dart';
 import 'file_icons.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart' show RubberBandLayer, RubberBandSelectCallback;
@@ -874,20 +877,25 @@ class _GridPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFolder = entry.type == FileItemType.folder;
-    final thumbnail = !isFolder && _isThumbnailable(entry)
+    final fallbackIcon = buildFileIcon(
+      name: entry.name,
+      ext: entry.extension,
+      isFolder: isFolder,
+      size: thumbSize * (isFolder ? 0.78 : 0.7),
+    );
+    final thumbnail = isFolder
+        ? null
+        : _isThumbnailable(entry)
         ? _ImageThumbnail(entry: entry, thumbSize: thumbSize)
+        : _isGeneratorThumbnailable(entry)
+        ? _GeneratorThumbnail(
+            entry: entry,
+            thumbSize: thumbSize,
+            fallback: fallbackIcon,
+          )
         : null;
 
-    return Center(
-      child:
-          thumbnail ??
-          buildFileIcon(
-            name: entry.name,
-            ext: entry.extension,
-            isFolder: isFolder,
-            size: thumbSize * (isFolder ? 0.78 : 0.7),
-          ),
-    );
+    return Center(child: thumbnail ?? fallbackIcon);
   }
 }
 
@@ -919,6 +927,94 @@ class _ImageThumbnail extends StatelessWidget {
             isFolder: false,
             size: thumbSize * 0.7,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+const _kGeneratorThumbnailSettleDelay = Duration(milliseconds: 200);
+
+class _GeneratorThumbnail extends StatefulWidget {
+  final FileEntry entry;
+  final double thumbSize;
+  final Widget fallback;
+
+  const _GeneratorThumbnail({
+    required this.entry,
+    required this.thumbSize,
+    required this.fallback,
+  });
+
+  @override
+  State<_GeneratorThumbnail> createState() => _GeneratorThumbnailState();
+}
+
+class _GeneratorThumbnailState extends State<_GeneratorThumbnail> {
+  bool _disposed = false;
+  Timer? _settleTimer;
+  String? _path;
+  int _gen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startGeneration();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GeneratorThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // GridView.builder reuses this State at the same tree position when the
+    // grid's file list changes underneath it (sort, refresh, filter) without
+    // a per-file key — without this check, a resolved thumbnail path from
+    // the old file would keep rendering under the new one's tile.
+    if (oldWidget.entry.realPath != widget.entry.realPath ||
+        oldWidget.entry.modifiedMs != widget.entry.modifiedMs ||
+        oldWidget.entry.size != widget.entry.size) {
+      _path = null;
+      _startGeneration();
+    }
+  }
+
+  void _startGeneration() {
+    _settleTimer?.cancel();
+    final gen = ++_gen;
+    _settleTimer = Timer(_kGeneratorThumbnailSettleDelay, () => _generate(gen));
+  }
+
+  Future<void> _generate(int gen) async {
+    final path = await GeneratorRunner.preview(widget.entry, position: 0);
+    if (_disposed || !mounted || gen != _gen) return;
+    setState(() => _path = path);
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _settleTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _path;
+    if (path == null) return widget.fallback;
+
+    final cache = (widget.thumbSize * 2.2).round().clamp(96, 360);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border.all(color: AppColors.bgDivider)),
+      child: ClipRect(
+        child: Image.file(
+          File(path),
+          width: widget.thumbSize,
+          height: widget.thumbSize,
+          cacheWidth: cache,
+          cacheHeight: cache,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (context, error, stackTrace) => widget.fallback,
         ),
       ),
     );
@@ -986,4 +1082,10 @@ bool _isThumbnailable(FileEntry entry) {
     default:
       return false;
   }
+}
+
+bool _isGeneratorThumbnailable(FileEntry entry) {
+  if (PlatformPaths.isRemoteUri(entry.realPath)) return false;
+
+  return GeneratorRegistry.instance.forExtension(entry.extension) != null;
 }

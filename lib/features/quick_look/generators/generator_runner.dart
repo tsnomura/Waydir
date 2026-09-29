@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -19,9 +20,13 @@ class GeneratorRunner {
 
   static const _stderrTailLimit = 4096;
 
-  // Probes are cheap but not free; memoize per file+generator for the
-  // lifetime of the app so paging back and forth doesn't re-probe.
-  static final _probeCache = <String, Future<double?>>{};
+  // Probes are cheap but not free; memoize a deterministic outcome (success,
+  // or a genuine failure) per file+generator for the lifetime of the app so
+  // paging back and forth doesn't re-probe. A timed-out probe is NOT stored
+  // here — under load (e.g. many grid thumbnails probing at once) a timeout
+  // can be transient, so it's left retryable rather than stuck forever.
+  static final _probeCache = <String, double?>{};
+  static final _probeInFlight = <String, Future<double?>>{};
 
   /// The number of pages [entry]'s matched generator offers: the fixed
   /// [GeneratorDef.pageCount] for [PagingMode.time], the file's own probed
@@ -43,6 +48,8 @@ class GeneratorRunner {
   /// otherwise invalidate a stale cached image, and deleting a generator
   /// would otherwise leave its cache entries as permanent orphans.
   static Future<void> clearCache() async {
+    _failedKeys.clear();
+    _probeCache.clear();
     final dir = Directory(await AppDirs.generatorCache());
     if (!await dir.exists()) return;
     await for (final entity in dir.list()) {
@@ -60,6 +67,15 @@ class GeneratorRunner {
   // and write the same cache file.
   static final _previewInFlight = <String, Future<String?>>{};
 
+  // A page that genuinely failed (bad command/args, no output produced)
+  // would otherwise be retried in full every time it's requested again —
+  // costly for a grid tile that can scroll in and out of view repeatedly.
+  // A timeout is NOT recorded here — it's left retryable, for the same
+  // "may just be transient load" reason as _probeCache above. Cleared by
+  // clearCache() so fixing a broken generator and reloading allows an
+  // immediate retry.
+  static final _failedKeys = <String>{};
+
   static Future<String?> preview(FileEntry entry, {int position = 0}) {
     final def = GeneratorRegistry.instance.forExtension(entry.extension);
     if (def == null) return Future.value(null);
@@ -71,10 +87,11 @@ class GeneratorRunner {
       def.id,
       position,
     ].join('|');
+    if (_failedKeys.contains(key)) return Future.value(null);
 
     return _previewInFlight.putIfAbsent(key, () async {
       try {
-        return await _generatePreview(entry, def, position);
+        return await _generatePreview(entry, def, position, key);
       } finally {
         _previewInFlight.remove(key);
       }
@@ -85,6 +102,7 @@ class GeneratorRunner {
     FileEntry entry,
     GeneratorDef def,
     int position,
+    String failureKey,
   ) async {
     var page = position < 0 ? 0 : position;
     var seek = '00:00:00.000';
@@ -99,20 +117,20 @@ class GeneratorRunner {
     }
 
     final cacheDir = await AppDirs.generatorCache();
-    final cachePath = p.join(
-      cacheDir,
-      '${_cacheKey(entry, def, page)}.${def.outputExt}',
-    );
+    final key = _cacheKey(entry, def, page);
+    final cachePath = p.join(cacheDir, '$key.${def.outputExt}');
     if (await File(cachePath).exists()) return cachePath;
 
     // Must keep the real output extension at the end (not appended after
     // it) — tools like ffmpeg infer the output format/muxer from the
     // filename extension, so "*.png.tmp-123" fails while "tmp-123.png"
-    // works.
-    final tmpPath = p.join(
-      cacheDir,
-      'tmp-${DateTime.now().microsecondsSinceEpoch}.${def.outputExt}',
-    );
+    // works. Named after the cache key (unique per in-flight generation,
+    // guaranteed by _previewInFlight's dedup) rather than a wall-clock
+    // timestamp — concurrent generations for different files (now possible
+    // since the grid can request many at once) could otherwise land on the
+    // same low-resolution timestamp and race to rename each other's output
+    // onto the wrong file's cache path.
+    final tmpPath = p.join(cacheDir, 'tmp-$key.${def.outputExt}');
     final args = _substitute(
       def.args,
       entry: entry,
@@ -124,19 +142,33 @@ class GeneratorRunner {
 
     try {
       final result = await _run(def.cmd, args, def.timeout);
-      if (result.timedOut || result.exitCode != 0) {
+      if (result.timedOut) {
         log.warn(
           'quick-look',
-          'generator "${def.id}" failed (exit ${result.exitCode}'
-              '${result.timedOut ? ', timed out' : ''}) for '
-              '${entry.realPath}: ${result.stderrTail}',
+          'generator "${def.id}" timed out for ${entry.realPath}: '
+              '${result.stderrTail}',
         );
         await _tryDelete(tmpPath);
 
         return null;
       }
+      if (result.exitCode != 0) {
+        log.warn(
+          'quick-look',
+          'generator "${def.id}" failed (exit ${result.exitCode}) for '
+              '${entry.realPath}: ${result.stderrTail}',
+        );
+        await _tryDelete(tmpPath);
+        _failedKeys.add(failureKey);
+
+        return null;
+      }
       final tmpFile = File(tmpPath);
-      if (!await tmpFile.exists()) return null;
+      if (!await tmpFile.exists()) {
+        _failedKeys.add(failureKey);
+
+        return null;
+      }
       await tmpFile.rename(cachePath);
 
       return cachePath;
@@ -148,6 +180,7 @@ class GeneratorRunner {
         stack: stack,
       );
       await _tryDelete(tmpPath);
+      _failedKeys.add(failureKey);
 
       return null;
     }
@@ -165,23 +198,43 @@ class GeneratorRunner {
       def.probeArgs.join(' '),
       def.probePattern,
     ].join('|');
+    if (_probeCache.containsKey(key)) return Future.value(_probeCache[key]);
 
-    return _probeCache.putIfAbsent(key, () => _runProbe(entry, def));
+    return _probeInFlight.putIfAbsent(key, () async {
+      try {
+        return await _runProbe(entry, def, key);
+      } finally {
+        _probeInFlight.remove(key);
+      }
+    });
   }
 
-  static Future<double?> _runProbe(FileEntry entry, GeneratorDef def) async {
+  static Future<double?> _runProbe(
+    FileEntry entry,
+    GeneratorDef def,
+    String key,
+  ) async {
     final args = def.probeArgs
         .map((arg) => arg.replaceAll('%INPUT%', entry.realPath))
         .toList();
     try {
       final result = await _run(def.probeCmd!, args, def.timeout);
-      if (result.timedOut || result.exitCode != 0) {
+      if (result.timedOut) {
         log.warn(
           'quick-look',
-          'generator "${def.id}" probe failed (exit '
-              '${result.exitCode}${result.timedOut ? ', timed out' : ''}) for '
+          'generator "${def.id}" probe timed out for ${entry.realPath}: '
+              '${result.stderrTail}',
+        );
+
+        return null;
+      }
+      if (result.exitCode != 0) {
+        log.warn(
+          'quick-look',
+          'generator "${def.id}" probe failed (exit ${result.exitCode}) for '
               '${entry.realPath}: ${result.stderrTail}',
         );
+        _probeCache[key] = null;
 
         return null;
       }
@@ -193,6 +246,7 @@ class GeneratorRunner {
               '${entry.realPath}: ${result.stdout}',
         );
       }
+      _probeCache[key] = number;
 
       return number;
     } catch (error, stack) {
@@ -202,6 +256,7 @@ class GeneratorRunner {
         error: error,
         stack: stack,
       );
+      _probeCache[key] = null;
 
       return null;
     }
@@ -285,6 +340,39 @@ class _ProcessResult {
   );
 }
 
+/// Caps how many generator/probe processes run at once app-wide — without
+/// this, the grid requesting thumbnails for many different files at once
+/// (e.g. scrolling through a folder of videos) would spawn a burst of
+/// ffmpeg/mutool processes concurrently.
+class _ConcurrencyGate {
+  int _available;
+  final _waitQueue = <Completer<void>>[];
+
+  _ConcurrencyGate(int permits) : _available = permits;
+
+  Future<void> acquire() {
+    if (_available > 0) {
+      _available--;
+
+      return Future.value();
+    }
+    final completer = Completer<void>();
+    _waitQueue.add(completer);
+
+    return completer.future;
+  }
+
+  void release() {
+    if (_waitQueue.isNotEmpty) {
+      _waitQueue.removeAt(0).complete();
+    } else {
+      _available++;
+    }
+  }
+}
+
+final _processGate = _ConcurrencyGate(Platform.numberOfProcessors.clamp(2, 4));
+
 /// Spawns [cmd], draining stdout/stderr as they're produced. Not draining
 /// them is not an option: a chatty command (ffmpeg logs per-frame progress
 /// to stderr) fills the pipe buffer and blocks the child process forever
@@ -294,35 +382,40 @@ Future<_ProcessResult> _run(
   List<String> args,
   Duration timeout,
 ) async {
-  final process = await Process.start(cmd, args);
-  final stdoutBuf = StringBuffer();
-  final stderrTail = StringBuffer();
-  process.stdout
-      .transform(const SystemEncoding().decoder)
-      .listen(stdoutBuf.write);
-  process.stderr.transform(const SystemEncoding().decoder).listen((chunk) {
-    stderrTail.write(chunk);
-    if (stderrTail.length <= GeneratorRunner._stderrTailLimit) return;
-    final text = stderrTail.toString();
-    stderrTail
-      ..clear()
-      ..write(text.substring(text.length - GeneratorRunner._stderrTailLimit));
-  });
-  var timedOut = false;
-  final exitCode = await process.exitCode.timeout(
-    timeout,
-    onTimeout: () {
-      timedOut = true;
-      process.kill();
+  await _processGate.acquire();
+  try {
+    final process = await Process.start(cmd, args);
+    final stdoutBuf = StringBuffer();
+    final stderrTail = StringBuffer();
+    process.stdout
+        .transform(const SystemEncoding().decoder)
+        .listen(stdoutBuf.write);
+    process.stderr.transform(const SystemEncoding().decoder).listen((chunk) {
+      stderrTail.write(chunk);
+      if (stderrTail.length <= GeneratorRunner._stderrTailLimit) return;
+      final text = stderrTail.toString();
+      stderrTail
+        ..clear()
+        ..write(text.substring(text.length - GeneratorRunner._stderrTailLimit));
+    });
+    var timedOut = false;
+    final exitCode = await process.exitCode.timeout(
+      timeout,
+      onTimeout: () {
+        timedOut = true;
+        process.kill();
 
-      return -1;
-    },
-  );
+        return -1;
+      },
+    );
 
-  return _ProcessResult(
-    exitCode,
-    timedOut,
-    stdoutBuf.toString(),
-    stderrTail.toString(),
-  );
+    return _ProcessResult(
+      exitCode,
+      timedOut,
+      stdoutBuf.toString(),
+      stderrTail.toString(),
+    );
+  } finally {
+    _processGate.release();
+  }
 }

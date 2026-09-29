@@ -4,6 +4,8 @@ Preview generators let Quick Look show a raster preview for file types Waydir ha
 
 A configured generator always takes priority over Waydir's built-in previews (images, PDF, Markdown) for the extensions it claims — adding one is a deliberate, explicit choice to handle that extension your own way, so it wins even where a built-in would otherwise apply.
 
+The file grid also shows a generator's output as a thumbnail (always on, no separate setting) for any matching file, using the first page/frame only — the same cached image Quick Look uses. This is throttled app-wide so scrolling through a folder full of matching files doesn't spawn a burst of helper processes at once, and a file whose generator fails isn't retried on every scroll back into view.
+
 ## Where Config Lives
 
 Generators are loaded from `.json` files in the `generators` folder inside Waydir's application support directory (the same place custom themes live, next to it). The exact path is shown live in **Preferences → Quick Look → Preview generators** (the safest way to find it, since it can't drift out of sync with the app the way a hardcoded path in this doc can) — as of writing:
