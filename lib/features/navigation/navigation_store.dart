@@ -315,7 +315,12 @@ class NavigationStore {
   );
   late final totalItems = computed(() => visibleFiles.value.length);
   late final cursorEntry = computed<FileEntry?>(() {
-    final files = visibleFiles.value;
+    // Must track tree mode's flattened rows, not the flat top-level list —
+    // cursorIndex is an index into whichever one the current view mode
+    // actually renders (see _selectionFiles), and every other cursor-aware
+    // path (the tree's own visual highlight, SelectionController) already
+    // agrees on that.
+    final files = _selectionFiles;
     final idx = cursorIndex.value;
     if (idx >= 0 && idx < files.length) return files[idx];
     final sel = selectedPaths.value;
@@ -1318,6 +1323,44 @@ class NavigationStore {
     toggleTreeFolder(entry);
 
     return true;
+  }
+
+  bool expandOrDescendTreeCursor() {
+    if (SettingsStore.instance.fileViewMode.value != 'tree') return false;
+    final idx = cursorIndex.value;
+    final rows = treeRows.value;
+    if (idx < 0 || idx >= rows.length) return false;
+    final row = rows[idx];
+    if (row.entry.type != FileItemType.folder) return false;
+    if (!row.expanded) {
+      toggleTreeFolder(row.entry);
+    } else {
+      moveCursor(1);
+    }
+
+    return true;
+  }
+
+  bool collapseOrAscendTreeCursor() {
+    if (SettingsStore.instance.fileViewMode.value != 'tree') return false;
+    final idx = cursorIndex.value;
+    final rows = treeRows.value;
+    if (idx < 0 || idx >= rows.length) return false;
+    final row = rows[idx];
+    if (row.entry.type == FileItemType.folder && row.expanded) {
+      toggleTreeFolder(row.entry);
+
+      return true;
+    }
+    for (var i = idx - 1; i >= 0; i--) {
+      if (rows[i].depth < row.depth) {
+        jumpToIndex(i);
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
   void toggleTreeFolder(FileEntry entry) {

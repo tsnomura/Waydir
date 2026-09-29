@@ -120,7 +120,11 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
 
       return;
     }
-    showQuickLook(context: context, store: store).then((_) => _restoreFocus());
+    showQuickLook(
+      context: context,
+      store: store,
+      useMarkedSelection: true,
+    ).then((_) => _restoreFocus());
   }
 
   void _openFolderProperties(String path) {
@@ -377,6 +381,17 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     showQuickLook(
       context: context,
       store: _active,
+      diffPair: _compareDiffPair(),
+    ).then((_) => _restoreFocus());
+  }
+
+  void _openQuickLookMarked() {
+    if (_isModalRouteOnTop()) return;
+    if (_active.selectedPaths.value.isEmpty) return;
+    showQuickLook(
+      context: context,
+      store: _active,
+      useMarkedSelection: true,
       diffPair: _compareDiffPair(),
     ).then((_) => _restoreFocus());
   }

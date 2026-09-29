@@ -53,6 +53,7 @@ mixin _WaydirCommandPaletteMixin
       _cmd('focus_path', _active.focusPathBar),
       _cmd('open_item', store.openSelected, enabled: hasTarget),
       _cmd('quick_look', _openQuickLook, enabled: hasTarget),
+      _cmd('quick_look_marked', _openQuickLookMarked, enabled: selected > 0),
       _cmd('search', store.openSearch),
       _cmd('recursive_search', () => store.openSearch(recursive: true)),
       _cmd('new_folder', store.startCreate),

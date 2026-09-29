@@ -62,6 +62,7 @@ String shortcutLabel(ShortcutDef s) => switch (s.id) {
   'refresh' => t.keybindings.refresh,
   'focus_path' => t.keybindings.focusPath,
   'quick_look' => t.keybindings.quickLook,
+  'quick_look_marked' => t.keybindings.quickLookMarked,
   'quick_look_close' => t.keybindings.quickLookClose,
   'quick_look_prev_file' => t.keybindings.quickLookPrevFile,
   'quick_look_next_file' => t.keybindings.quickLookNextFile,

@@ -30,6 +30,7 @@ Future<void> showQuickLook({
   required NavigationStore store,
   FileEntry? explicitEntry,
   (FileEntry, FileEntry)? diffPair,
+  bool useMarkedSelection = false,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -42,6 +43,7 @@ Future<void> showQuickLook({
         store: store,
         explicitEntry: explicitEntry,
         diffPair: diffPair,
+        useMarkedSelection: useMarkedSelection,
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -62,8 +64,14 @@ class _QuickLook extends StatefulWidget {
   final NavigationStore store;
   final FileEntry? explicitEntry;
   final (FileEntry, FileEntry)? diffPair;
+  final bool useMarkedSelection;
 
-  const _QuickLook({required this.store, this.explicitEntry, this.diffPair});
+  const _QuickLook({
+    required this.store,
+    this.explicitEntry,
+    this.diffPair,
+    this.useMarkedSelection = false,
+  });
 
   @override
   State<_QuickLook> createState() => _QuickLookState();
@@ -356,7 +364,9 @@ class _QuickLookState extends State<_QuickLook> {
       return KeyEventResult.ignored;
     }
 
-    if (!isRepeat && AppShortcuts.matches('quick_look_close', key)) {
+    if (!isRepeat &&
+        (AppShortcuts.matches('quick_look_close', key) ||
+            AppShortcuts.matches('quick_look_marked', key))) {
       _requestClose();
 
       return KeyEventResult.handled;
@@ -579,46 +589,18 @@ class _QuickLookState extends State<_QuickLook> {
             ],
           );
         }
-        final selected = widget.store.selectedPaths.value;
-        if (selected.length > 1) {
-          final entries = widget.store.selectedEntries;
-
-          return Column(
-            children: [
-              _Header(
-                entry: null,
-                compact: true,
-                showInfo: _showInfo,
-                multiCount: entries.length,
-                onToggleInfo: () {},
-                onClose: _requestClose,
-                editorController: _editorController,
-                onHeaderPanStart: _handleDragStart,
-                onHeaderPanUpdate: _handleDragUpdate,
-              ),
-              Container(height: 1, color: AppColors.bgDivider),
-              Expanded(
-                child: MultiProperties(
-                  entries: entries,
-                  onSelect: _selectFromStats,
-                ),
-              ),
-            ],
-          );
-        }
-        if (selected.length == 1) {
-          final entries = widget.store.selectedEntries;
-          if (entries.length == 1 &&
-              entries.first.type == FileItemType.folder) {
-            final entry = entries.first;
-            _syncPresentation(entry);
+        if (widget.useMarkedSelection) {
+          final selected = widget.store.selectedPaths.value;
+          if (selected.length > 1) {
+            final entries = widget.store.selectedEntries;
 
             return Column(
               children: [
                 _Header(
-                  entry: entry,
+                  entry: null,
                   compact: true,
-                  showInfo: true,
+                  showInfo: _showInfo,
+                  multiCount: entries.length,
                   onToggleInfo: () {},
                   onClose: _requestClose,
                   editorController: _editorController,
@@ -635,62 +617,102 @@ class _QuickLookState extends State<_QuickLook> {
               ],
             );
           }
+          if (selected.length == 1) {
+            final entries = widget.store.selectedEntries;
+            if (entries.length == 1) {
+              final entry = entries.first;
+              if (entry.type == FileItemType.folder) {
+                _syncPresentation(entry);
+
+                return Column(
+                  children: [
+                    _Header(
+                      entry: entry,
+                      compact: true,
+                      showInfo: true,
+                      onToggleInfo: () {},
+                      onClose: _requestClose,
+                      editorController: _editorController,
+                      onHeaderPanStart: _handleDragStart,
+                      onHeaderPanUpdate: _handleDragUpdate,
+                    ),
+                    Container(height: 1, color: AppColors.bgDivider),
+                    Expanded(
+                      child: MultiProperties(
+                        entries: entries,
+                        onSelect: _selectFromStats,
+                      ),
+                    ),
+                  ],
+                );
+              }
+              _syncPresentation(entry);
+
+              return _singleFilePreview(entry);
+            }
+          }
         }
+
         final entry = widget.store.cursorEntry.value;
         _syncPresentation(entry);
-        final diffPair = widget.diffPair;
-        final showDiff =
-            diffPair != null &&
-            (entry?.realPath == diffPair.$1.realPath ||
-                entry?.realPath == diffPair.$2.realPath);
 
-        return Column(
-          children: [
-            _Header(
-              entry: entry,
-              compact: _compact,
-              showInfo: _showInfo,
-              onToggleInfo: () => setState(() => _showInfo = !_showInfo),
-              onClose: _requestClose,
-              editorController: _editorController,
-              markdownRendered: _markdownRendered,
-              onToggleMarkdownView: _toggleMarkdownRendered,
-              onHeaderPanStart: _handleDragStart,
-              onHeaderPanUpdate: _handleDragUpdate,
-            ),
-            Container(height: 1, color: AppColors.bgDivider),
-            Expanded(
-              child: showDiff
-                  ? _DiffAttempt(
-                      left: diffPair.$1,
-                      right: diffPair.$2,
-                      editorActive: _editorActive,
-                      onCompactChanged: _setCompact,
-                      fallback: (context) => _Body(
-                        entry: entry,
-                        editorActive: _editorActive,
-                        editorController: _editorController,
-                        showInfo: _showInfo,
-                        onCompactChanged: _setCompact,
-                        markdownRendered: _markdownRendered,
-                        scrollController: _contentScroll,
-                        generatorPage: _generatorPage,
-                      ),
-                    )
-                  : _Body(
-                      entry: entry,
-                      editorActive: _editorActive,
-                      editorController: _editorController,
-                      showInfo: _showInfo,
-                      onCompactChanged: _setCompact,
-                      markdownRendered: _markdownRendered,
-                      scrollController: _contentScroll,
-                      generatorPage: _generatorPage,
-                    ),
-            ),
-          ],
-        );
+        return _singleFilePreview(entry);
       },
+    );
+  }
+
+  Widget _singleFilePreview(FileEntry? entry) {
+    final diffPair = widget.diffPair;
+    final showDiff =
+        diffPair != null &&
+        (entry?.realPath == diffPair.$1.realPath ||
+            entry?.realPath == diffPair.$2.realPath);
+
+    return Column(
+      children: [
+        _Header(
+          entry: entry,
+          compact: _compact,
+          showInfo: _showInfo,
+          onToggleInfo: () => setState(() => _showInfo = !_showInfo),
+          onClose: _requestClose,
+          editorController: _editorController,
+          markdownRendered: _markdownRendered,
+          onToggleMarkdownView: _toggleMarkdownRendered,
+          onHeaderPanStart: _handleDragStart,
+          onHeaderPanUpdate: _handleDragUpdate,
+        ),
+        Container(height: 1, color: AppColors.bgDivider),
+        Expanded(
+          child: showDiff
+              ? _DiffAttempt(
+                  left: diffPair.$1,
+                  right: diffPair.$2,
+                  editorActive: _editorActive,
+                  onCompactChanged: _setCompact,
+                  fallback: (context) => _Body(
+                    entry: entry,
+                    editorActive: _editorActive,
+                    editorController: _editorController,
+                    showInfo: _showInfo,
+                    onCompactChanged: _setCompact,
+                    markdownRendered: _markdownRendered,
+                    scrollController: _contentScroll,
+                    generatorPage: _generatorPage,
+                  ),
+                )
+              : _Body(
+                  entry: entry,
+                  editorActive: _editorActive,
+                  editorController: _editorController,
+                  showInfo: _showInfo,
+                  onCompactChanged: _setCompact,
+                  markdownRendered: _markdownRendered,
+                  scrollController: _contentScroll,
+                  generatorPage: _generatorPage,
+                ),
+        ),
+      ],
     );
   }
 }

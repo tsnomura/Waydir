@@ -1,4 +1,4 @@
-﻿part of '../waydir_shell.dart';
+part of '../waydir_shell.dart';
 
 const _digitKeys = [
   LogicalKeyboardKey.digit1,
@@ -225,6 +225,7 @@ mixin _WaydirKeyboardMixin
 
     final store = _active;
     final gridMode = SettingsStore.instance.fileViewMode.value == 'grid';
+    final treeMode = SettingsStore.instance.fileViewMode.value == 'tree';
     final gridHorizontalBlocked =
         SettingsStore.instance.keyboardScheme.value == 'upstream' && ctrl;
 
@@ -245,6 +246,28 @@ mixin _WaydirKeyboardMixin
           key == LogicalKeyboardKey.arrowLeft) {
         if (!_acceptCursorRepeat()) return KeyEventResult.handled;
         store.moveCursorHorizontally(-1, isRepeat: true);
+
+        return KeyEventResult.handled;
+      }
+
+      if (treeMode &&
+          !ctrl &&
+          !alt &&
+          !shift &&
+          key == LogicalKeyboardKey.arrowRight) {
+        if (!_acceptCursorRepeat()) return KeyEventResult.handled;
+        store.expandOrDescendTreeCursor();
+
+        return KeyEventResult.handled;
+      }
+
+      if (treeMode &&
+          !ctrl &&
+          !alt &&
+          !shift &&
+          key == LogicalKeyboardKey.arrowLeft) {
+        if (!_acceptCursorRepeat()) return KeyEventResult.handled;
+        store.collapseOrAscendTreeCursor();
 
         return KeyEventResult.handled;
       }
@@ -292,6 +315,12 @@ mixin _WaydirKeyboardMixin
       }
 
       return KeyEventResult.ignored;
+    }
+
+    if (AppShortcuts.matches('quick_look_marked', key)) {
+      _openQuickLookMarked();
+
+      return KeyEventResult.handled;
     }
 
     if (AppShortcuts.matches('quick_look', key)) {
@@ -493,6 +522,28 @@ mixin _WaydirKeyboardMixin
         key == LogicalKeyboardKey.arrowLeft) {
       _lastCursorRepeatAt = null;
       store.moveCursorHorizontally(-1);
+
+      return KeyEventResult.handled;
+    }
+
+    if (treeMode &&
+        !ctrl &&
+        !alt &&
+        !shift &&
+        key == LogicalKeyboardKey.arrowRight) {
+      _lastCursorRepeatAt = null;
+      store.expandOrDescendTreeCursor();
+
+      return KeyEventResult.handled;
+    }
+
+    if (treeMode &&
+        !ctrl &&
+        !alt &&
+        !shift &&
+        key == LogicalKeyboardKey.arrowLeft) {
+      _lastCursorRepeatAt = null;
+      store.collapseOrAscendTreeCursor();
 
       return KeyEventResult.handled;
     }

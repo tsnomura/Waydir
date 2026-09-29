@@ -919,8 +919,11 @@ class Translations$keybindings$en {
 	/// en: 'Focus path bar'
 	String get focusPath => 'Focus path bar';
 
-	/// en: 'Open Quick Look'
-	String get quickLook => 'Open Quick Look';
+	/// en: 'Open Quick Look (cursor)'
+	String get quickLook => 'Open Quick Look (cursor)';
+
+	/// en: 'Open Quick Look (marked)'
+	String get quickLookMarked => 'Open Quick Look (marked)';
 
 	/// en: 'Close Quick Look'
 	String get quickLookClose => 'Close Quick Look';
@@ -4809,7 +4812,8 @@ extension on Translations {
 			'keybindings.goForward' => 'Go forward',
 			'keybindings.refresh' => 'Refresh',
 			'keybindings.focusPath' => 'Focus path bar',
-			'keybindings.quickLook' => 'Open Quick Look',
+			'keybindings.quickLook' => 'Open Quick Look (cursor)',
+			'keybindings.quickLookMarked' => 'Open Quick Look (marked)',
 			'keybindings.quickLookClose' => 'Close Quick Look',
 			'keybindings.quickLookPrevFile' => 'Previous file',
 			'keybindings.quickLookNextFile' => 'Next file',
@@ -5287,9 +5291,9 @@ extension on Translations {
 			'git.clean' => 'clean',
 			'git.detachedHead' => 'detached HEAD',
 			'git.merging' => 'MERGING',
-			'git.rebasing' => 'REBASING',
 			_ => null,
 		} ?? switch (path) {
+			'git.rebasing' => 'REBASING',
 			'git.cherryPicking' => 'CHERRY-PICK',
 			'git.reverting' => 'REVERTING',
 			'git.bisecting' => 'BISECTING',
