@@ -554,12 +554,12 @@ unseen history.
   list; holding the key down doesn't keep re-applying it once stuck (only a
   fresh, non-repeat press does, and it's a no-op anyway since the mode is
   already locked).
-- **Mouse**: click toggles the clicked item in place (`Ctrl`+click is a
-  deliberate alias); `Shift`+click toggles the *inclusive* range between the
-  cursor and the click (both endpoints — a different rule from keyboard
-  Shift+move on purpose, since a click names two points directly rather than
-  sweeping through them). Right-click always moves the cursor to the target
-  now (previously did nothing when the target was already marked).
+- **Mouse** (superseded — see "Mouse click model" below for the current
+  behavior): click originally toggled the clicked item in place (`Ctrl`+click
+  a deliberate alias); `Shift`+click toggled the *inclusive* range between
+  the cursor and the click. Right-click always moves the cursor to the
+  target (previously did nothing when the target was already marked) —
+  this part is unchanged.
 - **Rubber-band**: `Shift`+drag only (can start even on top of an item — the
   row's own drag-and-drop recognizer backs off via a `HardwareKeyboard`
   Shift-check so it doesn't compete for the gesture). Also paints rather
@@ -679,3 +679,37 @@ different lists (the flat top-level list vs. the tree's flattened rows)
 depending on which code path touched it.
 
 Relevant commit: `94334d0`.
+
+## Mouse click model: click moves the cursor, Ctrl+click marks
+
+Plain click no longer toggles a mark at all — it's now the mouse equivalent
+of an arrow key, moving only the cursor and leaving every mark untouched.
+Ctrl+click takes over the old plain-click behavior (toggle the clicked
+item's mark in place); Shift+click is now a deliberate no-op, since it's
+just the zero-drag case of Shift+drag's existing paint-based rubber-band
+(`RubberBandLayer`) — that layer already tracks the gesture independently of
+the row's own tap handler, so a Shift+click that never crosses the drag
+threshold simply never fires a selection change (cursor included).
+
+This was a deliberate follow-up after living with the original click-toggles
+model: a first click most often means "look at this," not "mark this," and
+having it move the cursor only — consistent with every keyboard cursor
+move — turned out to feel more natural than the original toggle. Right-click
+and dired commands (`m`/`u`/`t`/etc.) are unaffected.
+
+Relevant commit: `5ec5722`.
+
+## Grid thumbnails preserve aspect ratio
+
+Both image thumbnails and generator-produced thumbnails in the file grid
+used `BoxFit.cover` inside a fixed square tile, center-cropping anything
+that wasn't already square. Switched to `BoxFit.contain` — but that alone
+wasn't enough: `cacheWidth`/`cacheHeight` were both set to the same square
+value, which forces `Image`'s decoder to squish the source to that exact
+(non-aspect-preserving) pixel size *before* `fit` ever gets a chance to lay
+it out, so the image would still look distorted despite `contain`. Fixed by
+dropping `cacheHeight` and keeping only `cacheWidth` as a decode-size cap —
+letting the decoder scale the other axis proportionally, preserving the
+source's real aspect ratio all the way through.
+
+Relevant commit: `e9af4e5`.
