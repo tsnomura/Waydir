@@ -912,21 +912,18 @@ class _ImageThumbnail extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(border: Border.all(color: AppColors.bgDivider)),
-      child: ClipRect(
-        child: Image.file(
-          file,
-          width: thumbSize,
-          height: thumbSize,
-          cacheWidth: cache,
-          cacheHeight: cache,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.medium,
-          errorBuilder: (context, error, stackTrace) => buildFileIcon(
-            name: entry.name,
-            ext: entry.extension,
-            isFolder: false,
-            size: thumbSize * 0.7,
-          ),
+      child: Image.file(
+        file,
+        width: thumbSize,
+        height: thumbSize,
+        cacheWidth: cache,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (context, error, stackTrace) => buildFileIcon(
+          name: entry.name,
+          ext: entry.extension,
+          isFolder: false,
+          size: thumbSize * 0.7,
         ),
       ),
     );
@@ -1005,17 +1002,14 @@ class _GeneratorThumbnailState extends State<_GeneratorThumbnail> {
 
     return DecoratedBox(
       decoration: BoxDecoration(border: Border.all(color: AppColors.bgDivider)),
-      child: ClipRect(
-        child: Image.file(
-          File(path),
-          width: widget.thumbSize,
-          height: widget.thumbSize,
-          cacheWidth: cache,
-          cacheHeight: cache,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.medium,
-          errorBuilder: (context, error, stackTrace) => widget.fallback,
-        ),
+      child: Image.file(
+        File(path),
+        width: widget.thumbSize,
+        height: widget.thumbSize,
+        cacheWidth: cache,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (context, error, stackTrace) => widget.fallback,
       ),
     );
   }
