@@ -156,31 +156,21 @@ class PersonalSelectionController extends SelectionController {
     required super.visibleFiles,
   });
 
-  /// Click (and Ctrl+click, a deliberate alias) toggles the clicked item's
-  /// mark in place and moves the cursor there — every other mark is left
-  /// untouched. Shift+click toggles the inclusive range from the cursor's
-  /// position *before this click* to the clicked item (both endpoints), then
-  /// moves the cursor. Neither depends on any state beyond what's currently
+  /// Click just moves the cursor, touching no marks at all — the mouse
+  /// equivalent of an arrow key. Ctrl+click toggles the clicked item's mark
+  /// in place and moves the cursor there, every other mark left untouched.
+  /// Shift+click does nothing here at all — it's the zero-drag case of
+  /// Shift+drag's paint-based rubber-band (`RubberBandLayer`), which tracks
+  /// the gesture independently and already handles a plain Shift+click as a
+  /// no-op rectangle. Neither depends on any state beyond what's currently
   /// visible (the existing marks, the current cursor).
   @override
   void onSelect(FileSelectionEvent event) {
-    final shift = AppShortcuts.isShift;
+    if (AppShortcuts.isShift) return;
+    final ctrl = AppShortcuts.isControl;
 
     batch(() {
-      if (shift) {
-        final start = cursorIndex.value >= 0 && cursorIndex.value < _vf.length
-            ? cursorIndex.value
-            : event.index;
-        final end = event.index;
-        final lo = start < end ? start : end;
-        final hi = start < end ? end : start;
-        final paths = Set<String>.from(selectedPaths.value);
-        for (int i = lo; i <= hi; i++) {
-          final p = _vf[i].path;
-          if (!paths.remove(p)) paths.add(p);
-        }
-        selectedPaths.value = paths;
-      } else {
+      if (ctrl) {
         final paths = Set<String>.from(selectedPaths.value);
         if (!paths.remove(event.entry.path)) paths.add(event.entry.path);
         selectedPaths.value = paths;

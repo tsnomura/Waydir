@@ -111,57 +111,56 @@ void main() {
   });
 
   group('SelectionController.onSelect', () {
-    testWidgets('plain click toggles the clicked mark in place, preserving '
-        'every other mark', (tester) async {
+    testWidgets('plain click just moves the cursor, touching no marks at '
+        'all', (tester) async {
       selectedPaths.value = {'/dir/a.txt', '/dir/c.txt'};
       cursorIndex.value = 0;
 
       controller.onSelect(FileSelectionEvent(entry: files[1], index: 1));
+
       expect(selectedPaths.value, {
         '/dir/a.txt',
-        '/dir/b.txt',
         '/dir/c.txt',
-      }, reason: 'clicking an unmarked item adds it without disturbing others');
+      }, reason: 'a plain click is the mouse equivalent of an arrow key');
+      expect(cursorIndex.value, 1);
+    });
+
+    testWidgets('Ctrl+click toggles the clicked mark in place, preserving '
+        'every other mark', (tester) async {
+      selectedPaths.value = {'/dir/a.txt', '/dir/c.txt'};
+      cursorIndex.value = 0;
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+
+      controller.onSelect(FileSelectionEvent(entry: files[1], index: 1));
+      expect(
+        selectedPaths.value,
+        {'/dir/a.txt', '/dir/b.txt', '/dir/c.txt'},
+        reason:
+            'ctrl+clicking an unmarked item adds it without disturbing others',
+      );
       expect(cursorIndex.value, 1);
 
       controller.onSelect(FileSelectionEvent(entry: files[1], index: 1));
       expect(selectedPaths.value, {
         '/dir/a.txt',
         '/dir/c.txt',
-      }, reason: 'clicking an already-marked item removes just that one');
-    });
-
-    testWidgets('Ctrl+click behaves identically to plain click (pure alias)', (
-      tester,
-    ) async {
-      selectedPaths.value = {'/dir/a.txt'};
-      cursorIndex.value = 0;
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-
-      controller.onSelect(FileSelectionEvent(entry: files[2], index: 2));
-
-      expect(selectedPaths.value, {'/dir/a.txt', '/dir/c.txt'});
-      expect(cursorIndex.value, 2);
+      }, reason: 'ctrl+clicking an already-marked item removes just that one');
 
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     });
 
-    testWidgets('Shift+click toggles the inclusive cursor..click range '
-        '(both endpoints), unlike keyboard Shift+move', (tester) async {
+    testWidgets('Shift+click is a no-op — it is the zero-drag case of '
+        "Shift+drag's rubber-band, handled entirely by RubberBandLayer", (
+      tester,
+    ) async {
       selectedPaths.value = {'/dir/c.txt', '/dir/e.txt'};
       cursorIndex.value = 1; // b.txt
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
 
       controller.onSelect(FileSelectionEvent(entry: files[3], index: 3));
 
-      expect(
-        selectedPaths.value,
-        {'/dir/b.txt', '/dir/d.txt', '/dir/e.txt'},
-        reason:
-            'toggles [cursor..click] = {b,c,d}: b and d (unmarked) turn on, '
-            'c (already marked) turns off; e survives outside the range',
-      );
-      expect(cursorIndex.value, 3);
+      expect(selectedPaths.value, {'/dir/c.txt', '/dir/e.txt'});
+      expect(cursorIndex.value, 1, reason: 'the cursor does not move either');
 
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     });
