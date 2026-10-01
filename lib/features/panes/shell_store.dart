@@ -60,6 +60,7 @@ class ShellStore {
     return activePane.value?.tabs.activeTab.value.store;
   });
 
+  PaneStore? _parkedPane;
   void Function()? _persistDisposer;
   void Function()? _paneDirDisposer;
   Timer? _tabPersistDebounce;
@@ -228,8 +229,9 @@ class ShellStore {
 
       final wantDual = s.sessionIsDual.value && restored.length >= 2;
       final activeIdx = s.sessionActivePaneIndex.value;
+      if (!wantDual && restored.length >= 2) _parkedPane = restored[1];
       batch(() {
-        panes.value = restored;
+        panes.value = wantDual ? restored : [restored.first];
         isDual.value = wantDual;
         splitRatio.value = s.sessionSplitRatio.value.clamp(0.2, 0.8);
         activePaneIndex.value = wantDual
@@ -302,7 +304,8 @@ class ShellStore {
   Future<void> _persistTabs() async {
     try {
       final db = SettingsStore.instance.db;
-      final paneList = panes.value;
+      final parked = _parkedPane;
+      final paneList = [...panes.value, ?parked];
       final rows = <SessionTabsCompanion>[];
       for (int p = 0; p < paneList.length; p++) {
         final tabs = paneList[p].tabs.tabs.value;
@@ -334,11 +337,14 @@ class ShellStore {
 
   void enterDual() {
     if (isDual.value) return;
-    final currentPath = activeStore.value!.currentPath.value;
-    final secondPane = PaneStore(
-      operationStore: operationStore,
-      initialPath: currentPath,
-    );
+    final parked = _parkedPane;
+    _parkedPane = null;
+    final secondPane =
+        parked ??
+        PaneStore(
+          operationStore: operationStore,
+          initialPath: activeStore.value!.currentPath.value,
+        );
     final active = TerminalLayout.reassignForDual(activeTerminalId.value, [
       for (final t in terminals.value) TerminalRef(t.id, t.originPane),
     ]);
@@ -352,7 +358,7 @@ class ShellStore {
 
   void exitDual() {
     if (!isDual.value) return;
-    final closing = panes.value[1];
+    _parkedPane = panes.value[1];
     final visible = terminalVisible.value;
     final active = TerminalLayout.mergeForSingle(activeTerminalId.value, [
       for (final t in terminals.value) t.id,
@@ -364,7 +370,6 @@ class ShellStore {
       activeTerminalId.value = active;
       isDual.value = false;
     });
-    closing.dispose();
   }
 
   void setActivePane(int index) {
@@ -593,5 +598,7 @@ class ShellStore {
     for (final pane in panes.value) {
       pane.dispose();
     }
+    _parkedPane?.dispose();
+    _parkedPane = null;
   }
 }
