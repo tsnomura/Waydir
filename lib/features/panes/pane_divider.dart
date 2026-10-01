@@ -6,7 +6,15 @@ class PaneDivider extends StatefulWidget {
   final ShellStore shell;
   final double totalWidth;
 
-  static const double hitWidth = 18;
+  // No reach into the left pane at all — any reach there would overlap
+  // that pane's own vertical scrollbar gutter (_kScrollbarGutterWidth in
+  // file_view.dart), which sits flush against this same boundary and would
+  // otherwise get swallowed by this divider's opaque hit area before the
+  // scrollbar ever sees the pointer. The right pane has no scrollbar near
+  // its left edge, so the full grab width goes there instead.
+  static const double leftReach = 0.0;
+  static const double rightReach = 18.0;
+  static const double hitWidth = leftReach + rightReach;
 
   const PaneDivider({super.key, required this.shell, required this.totalWidth});
 
@@ -23,6 +31,8 @@ class _PaneDividerState extends State<PaneDivider> {
 
   @override
   Widget build(BuildContext context) {
+    final lineWidth = _hovered ? 3.0 : _lineWidth;
+
     return MouseRegion(
       cursor: SystemMouseCursors.resizeColumn,
       hitTestBehavior: HitTestBehavior.opaque,
@@ -43,11 +53,19 @@ class _PaneDividerState extends State<PaneDivider> {
         },
         child: SizedBox(
           width: PaneDivider.hitWidth,
-          child: Center(
-            child: Container(
-              width: _hovered ? 3 : _lineWidth,
-              color: _hovered ? AppColors.accent : AppColors.bgDivider,
-            ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: PaneDivider.leftReach - lineWidth / 2,
+                top: 0,
+                bottom: 0,
+                width: lineWidth,
+                child: ColoredBox(
+                  color: _hovered ? AppColors.accent : AppColors.bgDivider,
+                ),
+              ),
+            ],
           ),
         ),
       ),

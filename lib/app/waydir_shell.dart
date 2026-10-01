@@ -335,7 +335,7 @@ class _WaydirShellState extends State<WaydirShell>
                   ),
                 ),
                 Positioned(
-                  left: leftWidth - PaneDivider.hitWidth / 2,
+                  left: leftWidth - PaneDivider.leftReach,
                   top: 0,
                   bottom: 0,
                   child: PaneDivider(
@@ -603,7 +603,12 @@ class _SidebarResizeHandle extends StatefulWidget {
   final GestureDragUpdateCallback onDragUpdate;
   final VoidCallback onDragEnd;
 
-  static const double hitWidth = 16;
+  // Entirely on the sidebar's own side (this handle can't reach into the
+  // pane area the way PaneDivider does, since it lives in a local Stack
+  // inside the Row's sidebar slot, not an outer Stack spanning both sides)
+  // — kept narrow so it doesn't swallow the sidebar's own vertical
+  // scrollbar, which sits flush against this same boundary.
+  static const double hitWidth = 4;
 
   const _SidebarResizeHandle({
     required this.onDragStart,

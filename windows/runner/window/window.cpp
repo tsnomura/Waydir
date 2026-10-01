@@ -22,6 +22,18 @@ BOOL g_window_can_be_shown = FALSE;
 BOOL g_during_minimize = FALSE;
 SIZE g_min_size = {0, 0};
 constexpr int kResizeMargin = 6;
+// The left/right straight edges only resize when the cursor is roughly
+// level with the title bar or the status bar - both full-width,
+// scrollbar-free, fixed-height bands pinned to the window's true top/bottom
+// edges. The file list body in between can have a vertical scrollbar
+// flush against the same edge; without this, a wide resize margin there
+// would swallow every click meant for that scrollbar.
+constexpr int kTitleBarHeight = 32;   // lib/ui/chrome/title_bar.dart _TitleBarRow
+constexpr int kTabStripHeight = 30;   // lib/features/tabs/tab_strip.dart
+constexpr int kToolbarHeight = 38;    // lib/features/navigation/toolbar.dart PaneLocationBar
+constexpr int kTopSafeHeight =
+    kTitleBarHeight + kTabStripHeight + kToolbarHeight;
+constexpr int kStatusBarHeight = 22;  // lib/features/navigation/status_bar.dart
 
 LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wparam,
                                 LPARAM lparam, UINT_PTR subclass_id,
@@ -75,6 +87,11 @@ int GetResizeMargin(HWND window) {
   return MulDiv(kResizeMargin, dpi, 96);
 }
 
+int ScaledPixels(HWND window, int logical_pixels) {
+  UINT dpi = GetDpiForWindow(window);
+  return MulDiv(logical_pixels, dpi, 96);
+}
+
 void ExtendIntoClientArea(HWND hwnd) {
   MARGINS margins = {0, 0, 1, 0};
   DwmExtendFrameIntoClientArea(hwnd, &margins);
@@ -97,8 +114,14 @@ LRESULT HandleHitTest(HWND window, LPARAM lparam) {
     if (pt.x >= rc.right - margin) return HTBOTTOMRIGHT;
     return HTBOTTOM;
   }
-  if (pt.x < margin) return HTLEFT;
-  if (pt.x >= rc.right - margin) return HTRIGHT;
+  int top_safe_height = ScaledPixels(window, kTopSafeHeight);
+  int status_bar_height = ScaledPixels(window, kStatusBarHeight);
+  bool in_safe_band =
+      pt.y < top_safe_height || pt.y >= rc.bottom - status_bar_height;
+  if (in_safe_band) {
+    if (pt.x < margin) return HTLEFT;
+    if (pt.x >= rc.right - margin) return HTRIGHT;
+  }
   return HTCLIENT;
 }
 
