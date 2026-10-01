@@ -237,7 +237,9 @@ Relevant commit: `6ee9177`.
   obvious which pane is active without relying on the more subtle overlay
   the two panes already had (a light dark tint over whichever pane is
   *inactive* — unchanged, this is additive to that).
-- Window/pane resize edge hit areas were widened so they're easier to grab.
+- Window/pane resize edge hit areas were widened so they're easier to grab
+  (later reshaped where that widening swallowed adjacent scrollbars — see
+  "Resize edges no longer swallow scrollbars" below).
 - `F8` compare now toasts an explanation when it can't start (not in dual-pane
   mode, or one side isn't a local folder) instead of silently doing nothing.
 
@@ -713,3 +715,58 @@ letting the decoder scale the other axis proportionally, preserving the
 source's real aspect ratio all the way through.
 
 Relevant commit: `e9af4e5`.
+
+## Resize edges no longer swallow scrollbars
+
+The widened resize hit areas (`bf84058`, above) overlapped the vertical
+scrollbars sitting flush against the same edges, so grabbing a scrollbar
+near a boundary often started a resize instead. Three separate edges, three
+different fixes:
+
+- **Dual-pane divider** (`PaneDivider`): its 18px hit area was centered on
+  the boundary, reaching 9px into the left pane — fully covering that
+  pane's 6px scrollbar gutter, and since the divider is the topmost `Stack`
+  child with an opaque hit-test, the scrollbar underneath never saw the
+  pointer. The reach is now asymmetric: 0px into the left pane, all 18px
+  into the right pane (which has no scrollbar near its left edge), so the
+  total grab width is unchanged.
+- **Sidebar resize handle**: its whole hit area sits on the sidebar's own
+  side, right over the sidebar's scrollbar, and it lives in a local `Stack`
+  inside the `Row`'s sidebar slot, so it can't reach into the pane area the
+  way the divider does without lifting its drag state up a level. Narrowed
+  from 16px to 4px instead.
+- **Window's left/right outer edges**: these are resolved natively
+  (`WM_NCHITTEST` in `windows/runner/window/window.cpp`) before Flutter
+  ever sees the click, so no Flutter-side change can let a scrollbar win.
+  Rather than narrowing the margin's width (a compromise that still
+  partially overlaps), the left/right straight edges now only resize when
+  the cursor is level with the fixed-height, scrollbar-free chrome: the top
+  100px (title bar 32 + tab strip 30 + location bar 38) or the bottom 22px
+  (status bar). In between — the file list body, where scrollbars live —
+  the click falls through to Flutter. Corners and top/bottom edges are
+  unchanged. Those heights are hardcoded in the C++ to mirror the Dart
+  widgets, so they need updating if those bars' heights ever change.
+- Found while doing this: the native file must stay pure ASCII — an em dash
+  in a comment tripped MSVC's C4819 (code page 932) warning, which this
+  build treats as an error.
+
+Relevant commit: `aac3153`.
+
+## Right pane survives toggling dual-pane mode
+
+Turning dual-pane mode off (`F9`) used to dispose the right pane outright,
+and turning it back on created a fresh one at the left pane's current path —
+losing its tabs, history, selection and scroll position every time. The
+right `PaneStore` is now parked instead of disposed and reused on the next
+`enterDual()`, so it comes back exactly as it was. This also applies when
+dual-pane mode is entered implicitly (opening in, or moving a tab to, the
+other pane): the new tab joins the right pane's existing tabs.
+
+The parked pane is also included in session persistence, so restarting
+while in single-pane mode keeps the right pane's tabs too (paths only, like
+every restored tab — not history or selection). On restore, saved right-pane
+tabs with dual-pane mode off are parked rather than loaded into the visible
+pane list. A parked pane keeps watching its folders, same as when it's
+visible.
+
+Relevant commit: `9d35bd0`.
