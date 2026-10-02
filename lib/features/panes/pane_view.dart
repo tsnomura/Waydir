@@ -306,6 +306,7 @@ class _TabContent extends StatelessWidget {
                 onGridColumns: store.setGridColumns,
                 onRectSelect: onRectSelect,
                 rowDecorations: rowDecorations,
+                remoteThumbnails: store.remoteThumbnails.value,
               );
             }
 

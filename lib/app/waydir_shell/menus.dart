@@ -1476,6 +1476,7 @@ mixin _WaydirMenuMixin
         final store = _active;
         final selectedCount = store.selectedCount.value;
         final hasVisibleFiles = store.visibleFiles.value.isNotEmpty;
+        final onSftp = PlatformPaths.isSftpUri(store.currentPath.value);
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -1523,6 +1524,14 @@ mixin _WaydirMenuMixin
                   isToggle: true,
                   toggleSignal: SettingsStore.instance.showHiddenDefault,
                 ),
+                ContextMenuItem(
+                  icon: WaydirIconsRegular.image,
+                  label: t.menu.remoteThumbnails,
+                  action: 'toggle_remote_thumbnails',
+                  isToggle: true,
+                  enabled: onSftp,
+                  toggleSignal: store.remoteThumbnails,
+                ),
               ],
               onSelect: (action) {
                 switch (action) {
@@ -1536,6 +1545,8 @@ mixin _WaydirMenuMixin
                     SettingsStore.instance.fileViewMode.value = 'grid';
                   case 'toggle_hidden':
                     _toggleShowHiddenGlobal();
+                  case 'toggle_remote_thumbnails':
+                    _active.toggleRemoteThumbnails();
                 }
               },
             ),
@@ -1698,6 +1709,14 @@ mixin _WaydirMenuMixin
           PlatformMenuItem(
             label: t.menu.showHidden,
             onSelected: _toggleShowHiddenGlobal,
+          ),
+          PlatformMenuItem(
+            label: t.menu.remoteThumbnails,
+            onSelected:
+                store != null &&
+                    PlatformPaths.isSftpUri(store.currentPath.value)
+                ? store.toggleRemoteThumbnails
+                : null,
           ),
         ],
       ),

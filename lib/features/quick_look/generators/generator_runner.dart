@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../../core/logging/app_logger.dart';
 import '../../../core/models/file_entry.dart';
 import '../../../core/platform/app_dirs.dart';
+import '../../../utils/concurrency_gate.dart';
 import 'generator_def.dart';
 import 'generator_registry.dart';
 
@@ -340,38 +341,7 @@ class _ProcessResult {
   );
 }
 
-/// Caps how many generator/probe processes run at once app-wide — without
-/// this, the grid requesting thumbnails for many different files at once
-/// (e.g. scrolling through a folder of videos) would spawn a burst of
-/// ffmpeg/mutool processes concurrently.
-class _ConcurrencyGate {
-  int _available;
-  final _waitQueue = <Completer<void>>[];
-
-  _ConcurrencyGate(int permits) : _available = permits;
-
-  Future<void> acquire() {
-    if (_available > 0) {
-      _available--;
-
-      return Future.value();
-    }
-    final completer = Completer<void>();
-    _waitQueue.add(completer);
-
-    return completer.future;
-  }
-
-  void release() {
-    if (_waitQueue.isNotEmpty) {
-      _waitQueue.removeAt(0).complete();
-    } else {
-      _available++;
-    }
-  }
-}
-
-final _processGate = _ConcurrencyGate(Platform.numberOfProcessors.clamp(2, 4));
+final _processGate = ConcurrencyGate(Platform.numberOfProcessors.clamp(2, 4));
 
 /// Spawns [cmd], draining stdout/stderr as they're produced. Not draining
 /// them is not an option: a chatty command (ffmpeg logs per-frame progress

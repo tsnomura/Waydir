@@ -71,6 +71,8 @@ class _TabChipState extends State<TabChip> {
 
   void _showContextMenu(Offset position) {
     final canMove = widget.tabsStore.tabs.value.length > 1;
+    final store = widget.tab.store;
+    final onSftp = PlatformPaths.isSftpUri(store.currentPath.value);
     showContextMenu(
       context: context,
       position: position,
@@ -81,10 +83,21 @@ class _TabChipState extends State<TabChip> {
           action: 'move_to_other_pane',
           enabled: canMove && widget.onMoveToOtherPane != null,
         ),
+        if (onSftp)
+          ContextMenuItem(
+            icon: WaydirIconsRegular.image,
+            label: t.menu.remoteThumbnails,
+            action: 'toggle_remote_thumbnails',
+            isToggle: true,
+            toggleSignal: store.remoteThumbnails,
+          ),
       ],
       onSelect: (action) {
-        if (action == 'move_to_other_pane') {
-          widget.onMoveToOtherPane?.call(widget.tab.id);
+        switch (action) {
+          case 'move_to_other_pane':
+            widget.onMoveToOtherPane?.call(widget.tab.id);
+          case 'toggle_remote_thumbnails':
+            store.toggleRemoteThumbnails();
         }
       },
     );

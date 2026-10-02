@@ -39,6 +39,7 @@ class NavigationStore {
   final currentPath = signal('');
   final files = signal<List<FileEntry>>([]);
   final showHidden = signal(false);
+  final remoteThumbnails = signal(false);
   final selectedPaths = signal<Set<String>>({});
   final cursorIndex = signal(-1);
   final anchorIndex = signal(-1);
@@ -1324,6 +1325,9 @@ class NavigationStore {
 
     return true;
   }
+
+  void toggleRemoteThumbnails() =>
+      remoteThumbnails.value = !remoteThumbnails.value;
 
   bool expandOrDescendTreeCursor() {
     if (SettingsStore.instance.fileViewMode.value != 'tree') return false;

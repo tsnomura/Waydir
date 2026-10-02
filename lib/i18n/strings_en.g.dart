@@ -170,6 +170,9 @@ class Translations$menu$en {
 	/// en: 'Show Hidden Files'
 	String get showHidden => 'Show Hidden Files';
 
+	/// en: 'Remote Thumbnails (This Tab)'
+	String get remoteThumbnails => 'Remote Thumbnails (This Tab)';
+
 	/// en: 'Select All'
 	String get selectAll => 'Select All';
 
@@ -4286,6 +4289,7 @@ extension on Translations {
 			'menu.restore' => 'Restore',
 			'menu.restoreItems' => ({required Object count}) => 'Restore ${count} Items',
 			'menu.showHidden' => 'Show Hidden Files',
+			'menu.remoteThumbnails' => 'Remote Thumbnails (This Tab)',
 			'menu.selectAll' => 'Select All',
 			'menu.selectByPattern' => 'Select by Pattern…',
 			'menu.deselectAll' => 'Deselect All',
@@ -4776,9 +4780,9 @@ extension on Translations {
 			'help.groups.resources.title' => 'Resources',
 			'help.groups.resources.links.title' => 'Links & Resources',
 			'help.groups.resources.links.body' => 'More about Waydir and where to go next.\n\n- **Changelog** - what\'s new in each release (in the menu).\n- **Keyboard shortcuts** - the full reference in **Preferences -> Keyboard**.\n- **GitHub** - [source code, issues and releases](https://github.com/Waydir/Waydir).\n- **Plugin guide** - [how to write your own plugins](https://github.com/Waydir/Waydir/blob/main/docs/plugins.md).',
-			'tags.menuLabel' => 'Tags',
 			_ => null,
 		} ?? switch (path) {
+			'tags.menuLabel' => 'Tags',
 			'tags.newTag' => 'New Tag',
 			'tags.newTagDots' => 'New tag…',
 			'tags.editTag' => 'Edit Tag',
@@ -5290,9 +5294,9 @@ extension on Translations {
 			'tasks.status.cancelled' => 'Cancelled',
 			'git.clean' => 'clean',
 			'git.detachedHead' => 'detached HEAD',
-			'git.merging' => 'MERGING',
 			_ => null,
 		} ?? switch (path) {
+			'git.merging' => 'MERGING',
 			'git.rebasing' => 'REBASING',
 			'git.cherryPicking' => 'CHERRY-PICK',
 			'git.reverting' => 'REVERTING',

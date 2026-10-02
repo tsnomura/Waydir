@@ -6,6 +6,12 @@ A configured generator always takes priority over Waydir's built-in previews (im
 
 The file grid also shows a generator's output as a thumbnail (always on, no separate setting) for any matching file, using the first page/frame only — the same cached image Quick Look uses. This is throttled app-wide so scrolling through a folder full of matching files doesn't spawn a burst of helper processes at once, and a file whose generator fails isn't retried on every scroll back into view.
 
+## Remote (SFTP) Files
+
+For a file in an `sftp://` folder, `%INPUT%` is the `sftp://user@host:port/path` URI itself — Waydir doesn't download the file first. So a generator only works remotely if its tool can read `sftp://` URLs directly, authenticating on its own (SSH keys or an agent; Waydir's own login isn't shared with it). `ffmpeg` builds with libssh can, and only fetch the byte ranges they actually need; `mutool` and `resvg` can't, so those fall back to the file icon on remote files.
+
+Grid thumbnails in remote folders are off by default, since each one costs network traffic. Turn them on per tab with **View → Remote Thumbnails (This Tab)** (or the command palette) — it lasts for that tab only and isn't saved. Remote image thumbnails are downloaded in the background (files up to 20 MB) and cached alongside generator output.
+
 ## Where Config Lives
 
 Generators are loaded from `.json` files in the `generators` folder inside Waydir's application support directory (the same place custom themes live, next to it). The exact path is shown live in **Preferences → Quick Look → Preview generators** (the safest way to find it, since it can't drift out of sync with the app the way a hardcoded path in this doc can) — as of writing:

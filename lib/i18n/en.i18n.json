@@ -30,6 +30,7 @@
     "restoreItems(one)": "Restore 1 Item",
     "restoreItems(other)": "Restore $count Items",
     "showHidden": "Show Hidden Files",
+    "remoteThumbnails": "Remote Thumbnails (This Tab)",
     "selectAll": "Select All",
     "selectByPattern": "Select by Pattern…",
     "deselectAll": "Deselect All",

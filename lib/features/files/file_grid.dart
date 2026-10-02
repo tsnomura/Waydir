@@ -20,6 +20,7 @@ import '../operations/drag_hint.dart';
 import '../quick_look/generators/generator_registry.dart';
 import '../quick_look/generators/generator_runner.dart';
 import 'file_icons.dart';
+import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart' show RubberBandLayer, RubberBandSelectCallback;
 import 'file_view.dart'
@@ -97,6 +98,7 @@ class FileGrid extends StatefulWidget {
   final VoidCallback? onBackgroundTap;
   final RubberBandSelectCallback? onRectSelect;
   final Map<String, RowDecoration> rowDecorations;
+  final bool remoteThumbnails;
 
   const FileGrid({
     super.key,
@@ -123,6 +125,7 @@ class FileGrid extends StatefulWidget {
     this.onBackgroundTap,
     this.onRectSelect,
     this.rowDecorations = const {},
+    this.remoteThumbnails = false,
   });
 
   @override
@@ -399,6 +402,7 @@ class _FileGridState extends State<FileGrid> {
                             onOpenInNewTab: widget.onOpenInNewTab,
                             onOpenInOtherPaneNewTab:
                                 widget.onOpenInOtherPaneNewTab,
+                            remoteThumbnails: widget.remoteThumbnails,
                           );
                         },
                       ),
@@ -464,6 +468,7 @@ class _GridTile extends StatefulWidget {
   final FileContextMenuCallback? onContextMenu;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
+  final bool remoteThumbnails;
 
   const _GridTile({
     required this.entry,
@@ -490,6 +495,7 @@ class _GridTile extends StatefulWidget {
     this.onContextMenu,
     this.onOpenInNewTab,
     this.onOpenInOtherPaneNewTab,
+    required this.remoteThumbnails,
   });
 
   @override
@@ -749,7 +755,11 @@ class _GridTileState extends State<_GridTile> {
                     SizedBox(
                       width: thumbSize,
                       height: thumbSize,
-                      child: _GridPreview(entry: entry, thumbSize: thumbSize),
+                      child: _GridPreview(
+                        entry: entry,
+                        thumbSize: thumbSize,
+                        remoteThumbnails: widget.remoteThumbnails,
+                      ),
                     ),
                     if (widget.rowDecoration?.badge case final badge?)
                       Positioned(
@@ -871,8 +881,13 @@ class _GridTileState extends State<_GridTile> {
 class _GridPreview extends StatelessWidget {
   final FileEntry entry;
   final double thumbSize;
+  final bool remoteThumbnails;
 
-  const _GridPreview({required this.entry, required this.thumbSize});
+  const _GridPreview({
+    required this.entry,
+    required this.thumbSize,
+    required this.remoteThumbnails,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -883,21 +898,42 @@ class _GridPreview extends StatelessWidget {
       isFolder: isFolder,
       size: thumbSize * (isFolder ? 0.78 : 0.7),
     );
-    final thumbnail = isFolder
-        ? null
-        : _isThumbnailable(entry)
-        ? _ImageThumbnail(entry: entry, thumbSize: thumbSize)
-        : _isGeneratorThumbnailable(entry)
-        ? _GeneratorThumbnail(
-            entry: entry,
-            thumbSize: thumbSize,
-            fallback: fallbackIcon,
-          )
-        : null;
 
-    return Center(child: thumbnail ?? fallbackIcon);
+    return Center(child: _thumbnail(isFolder, fallbackIcon) ?? fallbackIcon);
+  }
+
+  Widget? _thumbnail(bool isFolder, Widget fallbackIcon) {
+    if (isFolder) return null;
+    final remote = PlatformPaths.isRemoteUri(entry.realPath);
+    if (remote &&
+        !(remoteThumbnails && PlatformPaths.isSftpUri(entry.realPath))) {
+      return null;
+    }
+    if (_isImageExtension(entry.extension)) {
+      return remote
+          ? _ResolvedThumbnail(
+              entry: entry,
+              thumbSize: thumbSize,
+              fallback: fallbackIcon,
+              resolve: RemoteThumbnailCache.fetch,
+            )
+          : _ImageThumbnail(entry: entry, thumbSize: thumbSize);
+    }
+    if (GeneratorRegistry.instance.forExtension(entry.extension) != null) {
+      return _ResolvedThumbnail(
+        entry: entry,
+        thumbSize: thumbSize,
+        fallback: fallbackIcon,
+        resolve: _generatorThumbnail,
+      );
+    }
+
+    return null;
   }
 }
+
+Future<String?> _generatorThumbnail(FileEntry entry) =>
+    GeneratorRunner.preview(entry, position: 0);
 
 class _ImageThumbnail extends StatelessWidget {
   final FileEntry entry;
@@ -930,24 +966,26 @@ class _ImageThumbnail extends StatelessWidget {
   }
 }
 
-const _kGeneratorThumbnailSettleDelay = Duration(milliseconds: 200);
+const _kResolvedThumbnailSettleDelay = Duration(milliseconds: 200);
 
-class _GeneratorThumbnail extends StatefulWidget {
+class _ResolvedThumbnail extends StatefulWidget {
   final FileEntry entry;
   final double thumbSize;
   final Widget fallback;
+  final Future<String?> Function(FileEntry entry) resolve;
 
-  const _GeneratorThumbnail({
+  const _ResolvedThumbnail({
     required this.entry,
     required this.thumbSize,
     required this.fallback,
+    required this.resolve,
   });
 
   @override
-  State<_GeneratorThumbnail> createState() => _GeneratorThumbnailState();
+  State<_ResolvedThumbnail> createState() => _ResolvedThumbnailState();
 }
 
-class _GeneratorThumbnailState extends State<_GeneratorThumbnail> {
+class _ResolvedThumbnailState extends State<_ResolvedThumbnail> {
   bool _disposed = false;
   Timer? _settleTimer;
   String? _path;
@@ -960,7 +998,7 @@ class _GeneratorThumbnailState extends State<_GeneratorThumbnail> {
   }
 
   @override
-  void didUpdateWidget(covariant _GeneratorThumbnail oldWidget) {
+  void didUpdateWidget(covariant _ResolvedThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
     // GridView.builder reuses this State at the same tree position when the
     // grid's file list changes underneath it (sort, refresh, filter) without
@@ -977,11 +1015,11 @@ class _GeneratorThumbnailState extends State<_GeneratorThumbnail> {
   void _startGeneration() {
     _settleTimer?.cancel();
     final gen = ++_gen;
-    _settleTimer = Timer(_kGeneratorThumbnailSettleDelay, () => _generate(gen));
+    _settleTimer = Timer(_kResolvedThumbnailSettleDelay, () => _generate(gen));
   }
 
   Future<void> _generate(int gen) async {
-    final path = await GeneratorRunner.preview(widget.entry, position: 0);
+    final path = await widget.resolve(widget.entry);
     if (_disposed || !mounted || gen != _gen) return;
     setState(() => _path = path);
   }
@@ -1063,23 +1101,7 @@ class _GridEmptyState extends StatelessWidget {
   }
 }
 
-bool _isThumbnailable(FileEntry entry) {
-  if (PlatformPaths.isRemoteUri(entry.realPath)) return false;
-  switch (entry.extension) {
-    case 'jpg':
-    case 'jpeg':
-    case 'png':
-    case 'gif':
-    case 'webp':
-    case 'bmp':
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool _isGeneratorThumbnailable(FileEntry entry) {
-  if (PlatformPaths.isRemoteUri(entry.realPath)) return false;
-
-  return GeneratorRegistry.instance.forExtension(entry.extension) != null;
-}
+bool _isImageExtension(String extension) => switch (extension) {
+  'jpg' || 'jpeg' || 'png' || 'gif' || 'webp' || 'bmp' => true,
+  _ => false,
+};
