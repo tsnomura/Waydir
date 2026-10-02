@@ -102,6 +102,9 @@ class FileSystemService {
     return FsWorkerPool.instance.listDirectory(path);
   }
 
+  static Future<List<FileEntry>> listRecursive(String root) =>
+      FsWorkerPool.instance.listRecursive(root);
+
   static Future<bool> directoryExists(String path) =>
       FsWorkerPool.instance.directoryExists(path);
 

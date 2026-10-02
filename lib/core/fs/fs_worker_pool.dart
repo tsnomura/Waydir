@@ -13,6 +13,7 @@ import 'waydir_core_loader.dart';
 
 enum _Op {
   list,
+  walk,
   exists,
   mkdir,
   stat,
@@ -213,6 +214,13 @@ class FsWorkerPool {
     return r as List<FileEntry>;
   }
 
+  Future<List<FileEntry>> listRecursive(String root) async {
+    final r = await _run<dynamic>(_Op.walk, [PlatformPaths.listablePath(root)]);
+    if (r is Uint8List) return FileEntryCodec.decode(r);
+
+    return r as List<FileEntry>;
+  }
+
   Future<bool> directoryExists(String path) async {
     if (PlatformPaths.isSftpUri(path)) {
       return const SftpFs().exists(path);
@@ -312,6 +320,21 @@ class FsWorkerPool {
         final native = WaydirCoreLoader.listDir(path);
         if (native == null) {
           throw FileSystemException(t.errors.directoryNotReadable, path);
+        }
+        if (FileEntryCodec.countOf(native) >= FileEntryCodec.threshold) {
+          return native;
+        }
+
+        return FileEntryCodec.decode(native);
+      case _Op.walk:
+        final root = args.first as String;
+        final native = WaydirCoreLoader.enumerate(
+          root,
+          postorder: false,
+          withStat: true,
+        );
+        if (native == null) {
+          throw FileSystemException(t.errors.directoryNotReadable, root);
         }
         if (FileEntryCodec.countOf(native) >= FileEntryCodec.threshold) {
           return native;

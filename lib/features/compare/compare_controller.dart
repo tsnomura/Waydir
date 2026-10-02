@@ -202,24 +202,20 @@ class CompareController {
     }
   }
 
-  // Deliberately not using WaydirCoreLoader.enumerate() here: that native
-  // walker is built for delete pre-scans, where only the path matters, and
-  // always reports size/mtime as zero — every file would then compare as
-  // identical (0 == 0, |0-0| within tolerance) no matter its real content,
-  // and unique-only-on-one-side would be the only status compare could
-  // ever detect correctly. It's also not scheme-aware: given an sftp://
-  // root it just fails to find anything, "succeeding" with zero entries
-  // instead of falling through to the fallback below, which is the only
-  // one of the two that can actually talk to sftp. The per-directory walk
-  // below is slower for large local trees but is the only one that's
-  // actually correct.
   Future<List<FileEntry>> _entriesFor(
     String root,
     int run,
     bool recursive,
   ) async {
     if (!recursive) return FileSystemService.listDirectory(root);
+    if (!PlatformPaths.isRemoteUri(root)) {
+      return FileSystemService.listRecursive(root);
+    }
 
+    return _walkPerDirectory(root, run);
+  }
+
+  Future<List<FileEntry>> _walkPerDirectory(String root, int run) async {
     final out = <FileEntry>[];
     final pending = <String>[root];
     final visited = <String>{root};
