@@ -17,10 +17,16 @@ other their current directory, in either direction.
 Each terminal Waydir spawns gets `WAYDIR_TERMINAL_ID` and `WAYDIR_CWD_DIR` in
 its environment automatically. A shell opened *outside* Waydir has neither, so
 `wd`/`wcd` fall back to the currently active pane (terminal id `0`, origin
-pane `active`) — on Windows this works out of the box because `WAYDIR_CWD_DIR`
-is also persisted as a user environment variable.
+pane `active`) — this works out of the box because `WAYDIR_CWD_DIR` and
+`WAYDIR_PANE_DIR_ROOT` are also persisted: as user environment variables in
+the registry on Windows (`WindowsEnvVars`), or via a sourced script wired
+into `~/.bashrc` / `~/.zshrc` / `~/.bash_profile` / `~/.zprofile` /
+`~/.profile` on Linux/macOS (`UnixEnvVars`). Either way, only shells opened
+*after* Waydir has run at least once pick it up.
 
-One-time shell setup:
+One-time shell setup — the `wd`/`wcd` functions themselves still need adding
+once per shell (Waydir only persists the env vars they read, not the
+functions):
 
 **PowerShell**
 ```powershell
