@@ -140,16 +140,20 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   `comsol-mph` and `office-thumbnail` in the `generators` support
   directory — not committed, since generator config is local/personal by
   design (see the trust model in `docs/generators.md`).
-- The last two need no extra tools: COMSOL `.mph`, Office (pptx/docx/xlsx)
-  and OpenDocument files are zips that can carry a preview image, and a
-  PowerShell one-liner using .NET's `ZipFile` pulls out just that entry
-  (reading the zip's central directory, not the whole file). `.mph` has
-  `modelimage_large.png` (1024x768) / `modelimage.png` — always present in
-  COMSOL's Application Library samples, usually absent from users' own
-  models unless a thumbnail was set. pptx has `docProps/thumbnail.jpeg`
-  by default but only ~256x192 (blurry in Quick Look); docx/xlsx only when
-  "save thumbnail" was on; OpenDocument always has
-  `Thumbnails/thumbnail.png`.
+- The last two need no extra tools on Windows: COMSOL `.mph`, Office
+  (pptx/docx/xlsx) and OpenDocument files are zips that can carry a preview
+  image, and a PowerShell one-liner using .NET's `ZipFile` pulls out just
+  that entry (reading the zip's central directory, not the whole file). On
+  Linux/macOS, both use `unzip -p` instead (same one-entry read, via the
+  near-universally-installed `unzip`) — `office-thumbnail` tries each
+  candidate entry name in turn via a small `sh -c` loop and stops at the
+  first that exists, since which one is present depends on which app wrote
+  the file. `.mph` has `modelimage_large.png` (1024x768) / `modelimage.png`
+  — always present in COMSOL's Application Library samples, usually absent
+  from users' own models unless a thumbnail was set. pptx has
+  `docProps/thumbnail.jpeg` by default but only ~256x192 (blurry in Quick
+  Look); docx/xlsx only when "save thumbnail" was on; OpenDocument always
+  has `Thumbnails/thumbnail.png`.
 - Opening Quick Look on a paged file (mp4/pdf-style) now generates every
   remaining page in the background, one at a time, so paging forward is
   usually instant instead of waiting per page — stops if you close Quick
