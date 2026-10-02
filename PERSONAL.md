@@ -128,10 +128,22 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 - Intentionally stops at paging through still frames — a scrubber or
   playback controls are a job for an embedded video player, not Quick Look.
 - Installed locally: `video-thumbnail` (`ffmpeg`/`ffprobe`, `"time"` paging),
-  `pdf-page` (`mutool`, `"discrete"` paging) and `svg-preview` (`resvg`, no
-  paging) in the `generators` support directory — not committed, since
-  generator config is local/personal by design (see the trust model in
-  `docs/generators.md`).
+  `pdf-page` (`mutool`, `"discrete"` paging), `svg-preview` (`resvg`, no
+  paging), `3d-model` (`f3d` offscreen render of stl/obj/ply/gltf/glb/3mf/
+  fbx/dae/STEP/IGES/VTK etc., angled camera, transparent background),
+  `comsol-mph` and `office-thumbnail` in the `generators` support
+  directory — not committed, since generator config is local/personal by
+  design (see the trust model in `docs/generators.md`).
+- The last two need no extra tools: COMSOL `.mph`, Office (pptx/docx/xlsx)
+  and OpenDocument files are zips that can carry a preview image, and a
+  PowerShell one-liner using .NET's `ZipFile` pulls out just that entry
+  (reading the zip's central directory, not the whole file). `.mph` has
+  `modelimage_large.png` (1024x768) / `modelimage.png` — always present in
+  COMSOL's Application Library samples, usually absent from users' own
+  models unless a thumbnail was set. pptx has `docProps/thumbnail.jpeg`
+  by default but only ~256x192 (blurry in Quick Look); docx/xlsx only when
+  "save thumbnail" was on; OpenDocument always has
+  `Thumbnails/thumbnail.png`.
 - Opening Quick Look on a paged file (mp4/pdf-style) now generates every
   remaining page in the background, one at a time, so paging forward is
   usually instant instead of waiting per page — stops if you close Quick
@@ -318,14 +330,25 @@ still isn't — see below).
   unique-to-one-side detection (which doesn't depend on metadata) ever
   worked correctly under recursive compare. It also isn't scheme-aware, so
   for an sftp root it "succeeded" with zero entries instead of ever
-  reaching the sftp-capable fallback walk. Recursive compare now always
-  uses the plain per-directory walk (already correct, already
-  scheme-aware) — slower on huge local trees, but the native path was
-  never something merely slow, it was actively wrong. Caught by a
-  real-disk integration test that fails against the old code with
-  "Expected: older, Actual: identical".
+  reaching the sftp-capable fallback walk. Recursive compare switched to
+  the plain per-directory walk (already correct, already scheme-aware) —
+  slower on huge local trees, but the native path was never something
+  merely slow, it was actively wrong. Caught by a real-disk integration
+  test that fails against the old code with "Expected: older, Actual:
+  identical".
+- Later, once `waydir_enumerate` gained `with_stat` for copy pre-scans
+  (see "Directory copy" below), local recursive compare went back to the
+  native parallel walk — now with real size/mtime — run in an
+  `FsWorkerPool` isolate (a new `walk` op next to `list`) so it doesn't
+  block the UI. `sftp://` roots still use the per-directory walk. The same
+  integration test guards it: flipping `withStat` back off reproduces
+  "Expected: older, Actual: identical". Differences from the Dart walk:
+  the native walk can't be interrupted (Cancel clears the UI immediately,
+  but the scan finishes in the background and is discarded), unreadable
+  subfolders are skipped instead of failing the whole compare, and
+  symlink cycles terminate (cycles are tracked by file id).
 
-Relevant commits: `dec6776`, `bb6ef7f`, `a348b95`, `251abb3`.
+Relevant commits: `dec6776`, `bb6ef7f`, `a348b95`, `251abb3`, `660e3fd`.
 
 ## Windows Terminal integration
 
@@ -770,3 +793,35 @@ pane list. A parked pane keeps watching its folders, same as when it's
 visible.
 
 Relevant commit: `9d35bd0`.
+
+## Grid thumbnails in SFTP folders (per-tab toggle)
+
+Remote folders never showed grid thumbnails (each one costs network
+traffic). They can now be turned on per tab, on demand: **View → Remote
+Thumbnails (This Tab)**, the command palette, or the tab's own right-click
+menu (only shown on `sftp://` tabs, and toggles that tab even if it isn't
+active). It's a `remoteThumbnails` signal on the tab's `NavigationStore` —
+not persisted, so new tabs and restarts start with it off.
+
+- **Images**: downloaded by a new `RemoteThumbnailCache` into the
+  generator cache folder (so they survive across tabs and restarts, and
+  are wiped by the generators "Reload" button like the rest of that
+  cache). Up to 20 MB per file, at most 2 at a time.
+- **Generators**: get the `sftp://user@host:port/...` URI as `%INPUT%`,
+  exactly as Quick Look already did. Found while doing this: Quick Look's
+  video previews over SFTP were already working — scoop's ffmpeg is built
+  with libssh, reads `sftp://` URLs itself (authenticating with its own
+  keys/agent, not Waydir's session) and fetches only the byte ranges it
+  needs. Tools without sftp support (mutool, resvg, f3d, PowerShell)
+  fall back to the icon.
+- SFTP reads are synchronous FFI calls (`block_on` in Rust), so calling
+  them on the UI isolate would freeze the UI once per image. The download
+  runs in a background isolate instead, and in 1 MB range reads: the Rust
+  side holds the session lock for the whole of each read, so one big read
+  would make the UI's own SFTP listing calls wait behind it.
+- `_GeneratorThumbnail` became a generic `_ResolvedThumbnail` (settle
+  delay, `didUpdateWidget` identity reset) fed by either resolver, and the
+  generator runner's process gate moved to `lib/utils/concurrency_gate.dart`
+  so the downloads can reuse it.
+
+Relevant commit: `e392516`.
