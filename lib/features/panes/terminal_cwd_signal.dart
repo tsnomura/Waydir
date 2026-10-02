@@ -18,9 +18,9 @@ import '../../core/platform/app_dirs.dart';
 /// reserved and never assigned to a real terminal, so it always falls back
 /// to whichever pane is currently active — the id an *external* shell
 /// (one Waydir didn't spawn) should use, since it has no
-/// `WAYDIR_TERMINAL_ID` of its own. On Windows, persisting `WAYDIR_CWD_DIR`
-/// as a user env var (see `WindowsEnvVars`) makes it available there too, in
-/// newly-opened shells.
+/// `WAYDIR_TERMINAL_ID` of its own. Persisting `WAYDIR_CWD_DIR` as a user
+/// env var (see `WindowsEnvVars` on Windows, `UnixEnvVars` on Linux/macOS)
+/// makes it available there too, in newly-opened shells.
 ///
 /// The written path must be a native path Windows can resolve directly —
 /// [Directory.existsSync] rejects anything else and the signal is dropped

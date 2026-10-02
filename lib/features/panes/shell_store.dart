@@ -10,8 +10,10 @@ import 'package:signals/signals.dart';
 import '../../app/launch_args.dart';
 import '../../core/database/app_database.dart';
 import '../../core/logging/app_logger.dart';
+import '../../core/platform/app_dirs.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/platform/trash_location.dart';
+import '../../core/platform/unix_env_vars.dart';
 import '../../core/platform/windows_env_vars.dart';
 import '../../core/settings/settings_store.dart';
 import '../../core/terminal/pty_session.dart';
@@ -79,18 +81,22 @@ class ShellStore {
     Future.wait([
       TerminalCwdSignal.directory(),
       PaneDirPublisher.directory(),
+      AppDirs.support(),
     ]).then((dirs) {
       final cwdSignalDir = dirs[0];
       final paneDirRoot = dirs[1];
+      final supportDir = dirs[2];
       _cwdSignalDir = cwdSignalDir;
       _paneDirRoot = paneDirRoot;
       Directory(paneDirRoot).createSync(recursive: true);
       TerminalCwdSignal.start(_openFromTerminalSignal);
       _setupPaneDirEffect();
-      WindowsEnvVars.persist({
+      final envVars = {
         'WAYDIR_CWD_DIR': cwdSignalDir,
         'WAYDIR_PANE_DIR_ROOT': paneDirRoot,
-      });
+      };
+      WindowsEnvVars.persist(envVars);
+      UnixEnvVars.persist(supportDir, envVars);
     });
   }
 
