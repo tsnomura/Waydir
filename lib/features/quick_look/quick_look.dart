@@ -22,6 +22,7 @@ import 'image_preview.dart';
 import 'info_panel.dart';
 import 'markdown_preview.dart';
 import 'pdf_preview.dart';
+import 'player/quick_look_playback_controller.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 
@@ -82,12 +83,13 @@ enum _ResizeEdge { n, s, e, w, ne, nw, se, sw }
 const double _kMinWindowWidth = 420;
 const double _kMinWindowHeight = 320;
 
-class _QuickLookState extends State<_QuickLook> {
+class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   final _focus = FocusNode();
   final _editorActive = signal(false);
   final _editorController = CodeEditorController();
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
+  final _playback = QuickLookPlaybackController();
   bool _compact = true;
   bool _showInfo = true;
   bool _markdownRendered = true;
@@ -216,6 +218,8 @@ class _QuickLookState extends State<_QuickLook> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _generatorPage.onManualChange = _playback.onManualPageChange;
     final entry = widget.store.cursorEntry.value;
     _compact = _defaultCompact(entry);
     _presentationKey = entry?.realPath;
@@ -226,12 +230,23 @@ class _QuickLookState extends State<_QuickLook> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _playback.dispose();
     _focus.dispose();
     _editorActive.dispose();
     _editorController.dispose();
     _contentScroll.dispose();
     _generatorPage.dispose();
     super.dispose();
+  }
+
+  /// Stops audio playback the moment Waydir loses focus or is minimized —
+  /// Quick Look is for browsing with sound, not for leaving something
+  /// playing in the background. It never auto-resumes on its own; moving
+  /// the cursor or paging again picks playback back up as usual.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _playback.stopForLifecycle();
   }
 
   /// Closes the preview, prompting first when the editor has unsaved changes.
@@ -667,6 +682,7 @@ class _QuickLookState extends State<_QuickLook> {
         diffPair != null &&
         (entry?.realPath == diffPair.$1.realPath ||
             entry?.realPath == diffPair.$2.realPath);
+    _playback.sync(entry, _generatorPage, blocked: showDiff);
 
     return Column(
       children: [
