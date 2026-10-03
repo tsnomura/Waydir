@@ -131,8 +131,9 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   Quick Look shows prev/next controls and a page indicator either way, and
   `PageUp`/`PageDown` page through it too when a paged generator is active
   (otherwise they scroll content as usual).
-- Intentionally stops at paging through still frames — a scrubber or
+- Intentionally stops at paging through still frames — a scrubber or video
   playback controls are a job for an embedded video player, not Quick Look.
+  Audio playback is the one exception; see "Quick Look audio playback" below.
 - Installed locally: `video-thumbnail` (`ffmpeg`/`ffprobe`, `"time"` paging),
   `pdf-page` (`mutool`, `"discrete"` paging), `svg-preview` (`resvg`, no
   paging), `3d-model` (`f3d` offscreen render of stl/obj/ply/gltf/glb/3mf/
@@ -835,3 +836,48 @@ not persisted, so new tabs and restarts start with it off.
   so the downloads can reuse it.
 
 Relevant commit: `e392516`.
+
+## Quick Look audio playback
+
+Revised the "no playback, ever" stance from preview generators (above): Quick
+Look still won't draw a video's picture, but audio has no picture to draw in
+the first place, so it's in scope. A `"time"`-paging generator's file now
+auto-plays through an external command while browsing, muted videos excepted.
+
+- Opt-in, like the diff command: add `player.json` to the same application
+  support directory as `generators/` and `compare_diff.json`. No file, no
+  playback — there's no sensible universal default the way `diff -y` was for
+  the diff command. `cmd`/`args` with `%INPUT%`/`%START%` placeholders
+  (absolute `HH:MM:SS.mmm` seek position, the same format `%SEEK%` already
+  uses for generator pages), e.g. `ffplay -nodisp -vn -autoexit -nostats
+  -loglevel quiet -volume 50 -ss %START% %INPUT%`.
+- Eligibility: the cursor's file needs a matching generator paging by
+  `"time"` (so PDF-style `"discrete"` paging never plays anything) *and* an
+  actual audio stream — a quick dedicated `ffprobe` check, cached per file,
+  keeps a muted video silent instead of spawning a player that has nothing to
+  play.
+- Autoplay while browsing, no pause state: moving the cursor restarts
+  playback after a 250ms dwell (prevents chopped audio while flicking through
+  files with the key held down); moving to anything non-playable — or a
+  compare-mode diff appearing — kills the old process immediately, no wait.
+  `PageUp`/`PageDown` re-seeks after a 100ms debounce, from either the
+  keyboard handler or the on-screen page buttons (`GeneratorPageController`
+  gained an `onManualChange` hook so both go through the same path). Playing
+  through to the last page stops rather than looping.
+- The shown page advances on its own from elapsed wall-clock time
+  (`Timer.periodic`, 300ms) without restarting the player process — just
+  swaps which cached frame `GeneratorPreview` displays, same as a user
+  flipping pages manually.
+- Stops the moment Waydir loses focus or is minimized
+  (`WidgetsBindingObserver.didChangeAppLifecycleState`) and never
+  auto-resumes on its own — regaining focus needs an actual cursor/page move,
+  same as any other restart. Decided this way on the reasoning that anything
+  meant to keep playing in the background belongs in a real media player, not
+  Quick Look's browse-with-sound preview.
+- No extra work needed for SFTP: `entry.realPath` for a remote file is
+  already an `sftp://...` URI (see the grid-thumbnails entry above) and
+  ffplay is the same libssh-enabled ffmpeg build already reading those for
+  video thumbnails, so it should read them the same way.
+- Installed locally: `player.json` running `ffplay` — not committed, same
+  reasoning as generator config (local/personal, full-privileges trust
+  model).
