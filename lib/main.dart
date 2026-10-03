@@ -19,6 +19,7 @@ import 'features/plugins/plugin_settings_store.dart';
 import 'features/plugins/plugin_store.dart';
 import 'features/quick_look/diff/diff_command_registry.dart';
 import 'features/quick_look/generators/generator_registry.dart';
+import 'features/quick_look/player/player_registry.dart';
 import 'features/tags/tag_store.dart';
 import 'i18n/strings.g.dart';
 import 'ui/theme/app_theme_registry.dart';
@@ -81,6 +82,7 @@ void main(List<String> args) async {
       unawaited(PluginStore.instance.loadAll());
       unawaited(GeneratorRegistry.instance.load());
       unawaited(DiffCommandRegistry.instance.load());
+      unawaited(PlayerRegistry.instance.load());
       runApp(TranslationProvider(child: const WaydirApp()));
 
       if (isWindowChromeSupported) {
