@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:signals/signals.dart';
 
 /// Shared paging state between Quick Look's PageUp/PageDown handling and
@@ -10,12 +11,21 @@ class GeneratorPageController {
   final position = signal(0);
   int pageCount = 1;
 
+  /// Notified by [next]/[prev] — both the keyboard handler and the on-screen
+  /// page buttons go through these, so audio playback's re-seek-on-page-move
+  /// rule fires the same way regardless of which one moved the page.
+  VoidCallback? onManualChange;
+
   void next() {
-    if (position.value < pageCount - 1) position.value++;
+    if (position.value >= pageCount - 1) return;
+    position.value++;
+    onManualChange?.call();
   }
 
   void prev() {
-    if (position.value > 0) position.value--;
+    if (position.value <= 0) return;
+    position.value--;
+    onManualChange?.call();
   }
 
   void reset() {

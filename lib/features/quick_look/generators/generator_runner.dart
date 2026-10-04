@@ -43,6 +43,20 @@ class GeneratorRunner {
     return count.round().clamp(1, 100000);
   }
 
+  /// [entry]'s duration in seconds, via the same probe (and cache) used to
+  /// place each page's `%SEEK%` — only meaningful when its matched generator
+  /// pages by [PagingMode.time]; null otherwise, including when there's no
+  /// matching generator at all. Used by Quick Look's audio playback to turn
+  /// a page number into an absolute seek position.
+  static Future<double?> probeDurationSeconds(FileEntry entry) {
+    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    if (def == null || def.pagingMode != PagingMode.time) {
+      return Future.value(null);
+    }
+
+    return _probeNumber(entry, def);
+  }
+
   /// Wipes every cached preview image, for use after a generator is added,
   /// edited or deleted from Preferences — editing fields outside the cache
   /// key (`outputExt`, `timeoutSeconds`, paging/probe fields) wouldn't
@@ -114,7 +128,7 @@ class GeneratorRunner {
       // Never seek to the exact end of the file — ffmpeg (and most decoders)
       // can't extract a frame past the last one, so pageCount samples split
       // [0, duration) rather than [0, duration].
-      seek = _formatSeek(duration * page / def.pageCount);
+      seek = formatSeek(duration * page / def.pageCount);
     }
 
     final cacheDir = await AppDirs.generatorCache();
@@ -294,8 +308,8 @@ class GeneratorRunner {
   }
 
   /// Formats [totalSeconds] as `HH:MM:SS.mmm`, the timestamp form ffmpeg's
-  /// `-ss` (and most similar tools) accept.
-  static String _formatSeek(double totalSeconds) {
+  /// (and ffplay's) `-ss` accepts.
+  static String formatSeek(double totalSeconds) {
     final ms = (totalSeconds < 0 ? 0 : totalSeconds * 1000).round();
     final h = ms ~/ 3600000;
     final m = (ms % 3600000) ~/ 60000;
