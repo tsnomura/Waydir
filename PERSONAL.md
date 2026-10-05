@@ -721,11 +721,7 @@ Relevant commit: `94334d0`.
 Plain click no longer toggles a mark at all — it's now the mouse equivalent
 of an arrow key, moving only the cursor and leaving every mark untouched.
 Ctrl+click takes over the old plain-click behavior (toggle the clicked
-item's mark in place); Shift+click is now a deliberate no-op, since it's
-just the zero-drag case of Shift+drag's existing paint-based rubber-band
-(`RubberBandLayer`) — that layer already tracks the gesture independently of
-the row's own tap handler, so a Shift+click that never crosses the drag
-threshold simply never fires a selection change (cursor included).
+item's mark in place).
 
 This was a deliberate follow-up after living with the original click-toggles
 model: a first click most often means "look at this," not "mark this," and
@@ -733,7 +729,37 @@ having it move the cursor only — consistent with every keyboard cursor
 move — turned out to feel more natural than the original toggle. Right-click
 and dired commands (`m`/`u`/`t`/etc.) are unaffected.
 
-Relevant commit: `5ec5722`.
+**Shift+click: anchored range end.** Shift+click was first made a no-op (the
+zero-drag case of Shift+drag's rubber band), which turned out unintuitive —
+it should mean "end of a range". It now works like Explorer's, but in the
+same paint style as Shift+arrow and Shift+drag:
+
+- The first Shift+click of a session fixes the origin at the cursor and
+  snapshots the marks; mark vs. unmark is decided once, from the origin
+  cell. The range is inclusive of both ends, and the cursor moves to the
+  clicked item.
+- Each further Shift+click recomputes `snapshot ∪ [origin..click]` (or `−`
+  when unmarking) from that snapshot, so overshooting and then Shift+clicking
+  back toward the origin shrinks the range and restores what was outside it.
+- The session ends on anything else that changes the cursor or the marks (a
+  plain click, an arrow key, ...) — detected by checking the marks and cursor
+  are still exactly what the last Shift+click left, rather than hooking every
+  method — so the next Shift+click starts from wherever the cursor is.
+- Shift+drag's rubber band is unchanged: a drag never fires the row's tap.
+
+**Hover highlight yields to the keyboard.** In the list, grid and tree views,
+the mouse-hover highlight looked too much like the keyboard cursor, especially
+when the list scrolls under a stationary pointer. Any non-modifier key now
+hides it, and real pointer movement brings it back (`PointerHoverStore`,
+listening globally via `HardwareKeyboard` and a pointer-router global route).
+Modifier keys don't count, so holding Shift for a Shift+click keeps the
+highlight.
+
+Also fixed: tree view's Left (ascend to the parent folder) went through
+`jumpToIndex`, which in the personal scheme replaces the marks with the
+target — so it wiped your marks. It now only moves the cursor.
+
+Relevant commits: `5ec5722`, `3637e0b`.
 
 ## Grid thumbnails preserve aspect ratio
 
