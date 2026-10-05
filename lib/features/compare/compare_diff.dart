@@ -26,12 +26,14 @@ class CompareEntryResult {
   final String path;
   final FileItemType type;
   final CompareStatus status;
+  final FileEntry entry;
 
   const CompareEntryResult({
     required this.relativePath,
     required this.path,
     required this.type,
     required this.status,
+    required this.entry,
   });
 }
 
@@ -69,6 +71,7 @@ CompareDiffResult buildCompareDiff({
   required String rightRoot,
   required List<FileEntry> leftEntries,
   required List<FileEntry> rightEntries,
+  Set<String> contentEqual = const {},
 }) {
   final left = _mapByRelativePath(leftRoot, leftEntries);
   final right = _mapByRelativePath(rightRoot, rightEntries);
@@ -95,7 +98,8 @@ CompareDiffResult buildCompareDiff({
       leftStatuses[rel] = pair.$1;
       rightStatuses[rel] = pair.$2;
       _addDifferenceToParents(aggregates, rel, l.modifiedMs, r.modifiedMs);
-    } else if (_entriesIdentical(l, r)) {
+    } else if (_entriesIdentical(l, r) ||
+        (l.size == r.size && contentEqual.contains(rel))) {
       leftStatuses[rel] = CompareStatus.identical;
       rightStatuses[rel] = CompareStatus.identical;
     } else {
@@ -138,6 +142,7 @@ CompareDiffResult buildCompareDiff({
         path: l.path,
         type: l.type,
         status: ls,
+        entry: l,
       );
     }
     if (r != null && rs != null) {
@@ -146,6 +151,7 @@ CompareDiffResult buildCompareDiff({
         path: r.path,
         type: r.type,
         status: rs,
+        entry: r,
       );
     }
     if (l != null && r != null) {
@@ -171,6 +177,27 @@ CompareDiffResult buildCompareDiff({
       uniqueRight: uniqueRight,
     ),
   );
+}
+
+Map<String, (String, String)> contentCheckCandidates({
+  required String leftRoot,
+  required String rightRoot,
+  required List<FileEntry> leftEntries,
+  required List<FileEntry> rightEntries,
+}) {
+  final left = _mapByRelativePath(leftRoot, leftEntries);
+  final right = _mapByRelativePath(rightRoot, rightEntries);
+  final out = <String, (String, String)>{};
+  for (final item in left.values) {
+    final l = item.entry;
+    final r = right[item.relativePath]?.entry;
+    if (r == null) continue;
+    if (l.type != FileItemType.file || r.type != FileItemType.file) continue;
+    if (l.size != r.size || _entriesIdentical(l, r)) continue;
+    out[item.relativePath] = (l.path, r.path);
+  }
+
+  return out;
 }
 
 Map<String, _CompareItem> _mapByRelativePath(

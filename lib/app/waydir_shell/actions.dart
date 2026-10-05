@@ -381,7 +381,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     showQuickLook(
       context: context,
       store: _active,
-      diffPair: _compareDiffPair(),
+      diffPair: _compareDiffResolver(),
     ).then((_) => _restoreFocus());
   }
 
@@ -392,16 +392,33 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       context: context,
       store: _active,
       useMarkedSelection: true,
-      diffPair: _compareDiffPair(),
+      diffPair: _compareDiffResolver(),
     ).then((_) => _restoreFocus());
   }
 
-  /// The single file selected in each pane, left-then-right, when compare
-  /// mode is active and both sides have exactly one file selected — Quick
-  /// Look uses this pair to attempt a side-by-side diff instead of its
-  /// normal single-file preview. Null whenever that shape doesn't hold, so
-  /// Quick Look opens normally.
-  (FileEntry, FileEntry)? _compareDiffPair() {
+  QuickLookDiffResolver? _compareDiffResolver() {
+    if (!_shell.compare.active.value || !_shell.isDual.value) return null;
+    final marked = _markedDiffPair();
+
+    return (entry) {
+      if (entry == null) return null;
+      final pair =
+          marked != null &&
+              (entry.realPath == marked.$1.realPath ||
+                  entry.realPath == marked.$2.realPath)
+          ? marked
+          : _shell.compare.diffPairFor(entry.path);
+      if (pair == null) return null;
+      if (PlatformPaths.isRemoteUri(pair.$1.realPath) ||
+          PlatformPaths.isRemoteUri(pair.$2.realPath)) {
+        return null;
+      }
+
+      return pair;
+    };
+  }
+
+  (FileEntry, FileEntry)? _markedDiffPair() {
     if (!_shell.compare.active.value || !_shell.isDual.value) return null;
     final panes = _shell.panes.value;
     if (panes.length < 2) return null;

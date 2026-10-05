@@ -26,11 +26,14 @@ import 'player/quick_look_playback_controller.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 
+typedef QuickLookDiffResolver =
+    (FileEntry, FileEntry)? Function(FileEntry? entry);
+
 Future<void> showQuickLook({
   required BuildContext context,
   required NavigationStore store,
   FileEntry? explicitEntry,
-  (FileEntry, FileEntry)? diffPair,
+  QuickLookDiffResolver? diffPair,
   bool useMarkedSelection = false,
 }) {
   return showGeneralDialog<void>(
@@ -64,7 +67,7 @@ Future<void> showQuickLook({
 class _QuickLook extends StatefulWidget {
   final NavigationStore store;
   final FileEntry? explicitEntry;
-  final (FileEntry, FileEntry)? diffPair;
+  final QuickLookDiffResolver? diffPair;
   final bool useMarkedSelection;
 
   const _QuickLook({
@@ -105,7 +108,11 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   /// compare-mode diff, since a side-by-side diff needs more room than a
   /// normal single-file preview.
   Rect _initialRect(Size screen) {
-    final isDiff = widget.diffPair != null;
+    final isDiff =
+        widget.diffPair?.call(
+          widget.explicitEntry ?? widget.store.cursorEntry.value,
+        ) !=
+        null;
     final width = _clampSize(
       screen.width * (isDiff ? 0.92 : 0.7),
       _kMinWindowWidth,
@@ -677,11 +684,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   }
 
   Widget _singleFilePreview(FileEntry? entry) {
-    final diffPair = widget.diffPair;
-    final showDiff =
-        diffPair != null &&
-        (entry?.realPath == diffPair.$1.realPath ||
-            entry?.realPath == diffPair.$2.realPath);
+    final diffPair = widget.diffPair?.call(entry);
+    final showDiff = diffPair != null;
     _playback.sync(entry, _generatorPage, blocked: showDiff);
 
     return Column(

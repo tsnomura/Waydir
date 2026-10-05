@@ -23,6 +23,7 @@ import 'file_icons.dart';
 import 'pointer_hover_store.dart';
 import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
+import 'status_chip.dart';
 import 'rubber_band_layer.dart' show RubberBandLayer, RubberBandSelectCallback;
 import 'file_view.dart'
     show
@@ -711,7 +712,9 @@ class _GridTileState extends State<_GridTile> {
       color: AppColors.fgSubtle,
       height: 1.15,
     );
-    final tint = widget.rowDecoration?.tint;
+    final tint = widget.rowDecoration?.badge == null
+        ? widget.rowDecoration?.tint
+        : null;
     final isCursor = widget.isCursor;
     final bg = widget.isFolderDragOver
         ? AppColors.accent.withValues(alpha: 0.12)
@@ -766,13 +769,12 @@ class _GridTileState extends State<_GridTile> {
                     ),
                     if (widget.rowDecoration?.badge case final badge?)
                       Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Text(
-                          badge,
-                          style: context.txt.badge.copyWith(
-                            color: widget.rowDecoration!.tint,
-                          ),
+                        left: 0,
+                        top: 0,
+                        child: StatusChip(
+                          glyph: badge,
+                          color: widget.rowDecoration!.tint,
+                          size: 18 * scale,
                         ),
                       ),
                     if (widget.rowDecoration?.badgeColors case final colors?

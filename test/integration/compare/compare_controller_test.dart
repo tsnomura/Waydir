@@ -27,7 +27,7 @@ void main() {
       Directory(p.join(left.path, 'nested')).createSync();
       Directory(p.join(right.path, 'nested')).createSync();
 
-      // Same content/size on both sides, but the right copies are made
+      // Same size but different content on both sides, and the right copies are made
       // (and explicitly stamped) noticeably newer than the left copies, at
       // both the top level and one level of nesting — this is exactly the
       // shape that the metadata-free native `waydir_enumerate` fast path
@@ -40,13 +40,19 @@ void main() {
         ..writeAsStringSync('hello')
         ..setLastModifiedSync(older);
       File(p.join(right.path, 'top.txt'))
-        ..writeAsStringSync('hello')
+        ..writeAsStringSync('HELLO')
         ..setLastModifiedSync(newer);
       File(p.join(left.path, 'nested', 'deep.txt'))
         ..writeAsStringSync('world')
         ..setLastModifiedSync(older);
       File(p.join(right.path, 'nested', 'deep.txt'))
-        ..writeAsStringSync('world')
+        ..writeAsStringSync('WORLD')
+        ..setLastModifiedSync(newer);
+      File(p.join(left.path, 'copy.txt'))
+        ..writeAsStringSync('same')
+        ..setLastModifiedSync(older);
+      File(p.join(right.path, 'copy.txt'))
+        ..writeAsStringSync('same')
         ..setLastModifiedSync(newer);
 
       ops = OperationStore();
@@ -109,5 +115,52 @@ void main() {
         );
       },
     );
+
+    test(
+      'same content with skewed mtime is identical on local drives',
+      () async {
+        await controller.start();
+
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final leftCopy = p.join(leftStore.currentPath.value, 'copy.txt');
+        final rightCopy = p.join(rightStore.currentPath.value, 'copy.txt');
+
+        expect(
+          controller.leftResults.value[leftCopy]?.status,
+          CompareStatus.identical,
+        );
+        expect(
+          controller.rightResults.value[rightCopy]?.status,
+          CompareStatus.identical,
+        );
+      },
+    );
+
+    test('diffPairFor pairs files by relative path left then right', () async {
+      await controller.start();
+
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftDeep = p.join(
+        leftStore.currentPath.value,
+        'nested',
+        'deep.txt',
+      );
+      final rightDeep = p.join(
+        rightStore.currentPath.value,
+        'nested',
+        'deep.txt',
+      );
+
+      final fromRight = controller.diffPairFor(rightDeep);
+      expect(fromRight?.$1.path, leftDeep);
+      expect(fromRight?.$2.path, rightDeep);
+      expect(controller.diffPairFor(leftDeep)?.$2.path, rightDeep);
+      expect(
+        controller.diffPairFor(p.join(leftStore.currentPath.value, 'nested')),
+        isNull,
+      );
+    });
   });
 }

@@ -143,6 +143,7 @@
     "newer": "Newer",
     "older": "Older",
     "differ": "Different",
+    "sameTime": "Same time",
     "identical": "Identical",
     "syncRight": "Sync →",
     "syncLeft": "← Sync",
@@ -540,7 +541,7 @@
         },
         "compare": {
           "title": "Folder Compare & Sync",
-          "body": "Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Rows are colour-coded: unique, newer, older or identical.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits."
+          "body": "Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits."
         }
       },
       "selecting": {

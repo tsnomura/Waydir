@@ -111,11 +111,20 @@ class CompareController {
         _entriesFor(rightRoot, run, recursive),
       ]);
       if (run != _runId) return;
+      final contentEqual = await _contentEqual(
+        leftRoot,
+        rightRoot,
+        listed[0],
+        listed[1],
+        run,
+      );
+      if (run != _runId) return;
       final diff = buildCompareDiff(
         leftRoot: leftRoot,
         rightRoot: rightRoot,
         leftEntries: listed[0],
         rightEntries: listed[1],
+        contentEqual: contentEqual,
       );
       leftResults.value = diff.left;
       rightResults.value = diff.right;
@@ -128,6 +137,28 @@ class CompareController {
     } finally {
       if (run == _runId) running.value = false;
     }
+  }
+
+  (FileEntry, FileEntry)? diffPairFor(String path) {
+    if (!active.value) return null;
+    final left = leftResults.value;
+    final right = rightResults.value;
+    final fromLeft = left[path];
+    final source = fromLeft ?? right[path];
+    if (source == null || source.type != FileItemType.file) return null;
+    final others = fromLeft != null ? right : left;
+    CompareEntryResult? match;
+    for (final candidate in others.values) {
+      if (candidate.relativePath == source.relativePath) {
+        match = candidate;
+        break;
+      }
+    }
+    if (match == null || match.type != FileItemType.file) return null;
+
+    return fromLeft != null
+        ? (source.entry, match.entry)
+        : (match.entry, source.entry);
   }
 
   Future<void> syncLeftToRight() => _sync(leftToRight: true);
@@ -213,6 +244,47 @@ class CompareController {
     }
 
     return _walkPerDirectory(root, run);
+  }
+
+  Future<Set<String>> _contentEqual(
+    String leftRoot,
+    String rightRoot,
+    List<FileEntry> leftEntries,
+    List<FileEntry> rightEntries,
+    int run,
+  ) async {
+    if (PlatformPaths.isNetworkPath(leftRoot) ||
+        PlatformPaths.isNetworkPath(rightRoot)) {
+      return const {};
+    }
+    final candidates = contentCheckCandidates(
+      leftRoot: leftRoot,
+      rightRoot: rightRoot,
+      leftEntries: leftEntries,
+      rightEntries: rightEntries,
+    ).entries.toList();
+    final out = <String>{};
+    const chunk = 32;
+    for (var i = 0; i < candidates.length; i += chunk) {
+      if (run != _runId) return const {};
+      final slice = candidates.sublist(
+        i,
+        i + chunk > candidates.length ? candidates.length : i + chunk,
+      );
+      final List<bool?> results;
+      try {
+        results = await FileSystemService.filesEqual([
+          for (final c in slice) c.value,
+        ]);
+      } catch (_) {
+        return out;
+      }
+      for (var j = 0; j < slice.length && j < results.length; j++) {
+        if (results[j] == true) out.add(slice[j].key);
+      }
+    }
+
+    return out;
   }
 
   Future<List<FileEntry>> _walkPerDirectory(String root, int run) async {
@@ -310,11 +382,11 @@ class CompareController {
         badge: '+',
       ),
       CompareStatus.newer => RowDecoration(
-        tint: AppColors.compareNewer,
+        tint: AppColors.compareDiffer,
         badge: '↑',
       ),
       CompareStatus.older => RowDecoration(
-        tint: AppColors.compareOlder,
+        tint: AppColors.compareDiffer,
         badge: '↓',
       ),
       CompareStatus.differ => RowDecoration(

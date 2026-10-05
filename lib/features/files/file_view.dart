@@ -24,6 +24,7 @@ import 'file_icons.dart';
 import 'pointer_hover_store.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart';
+import 'status_chip.dart';
 
 typedef FileSelectCallback = void Function(FileSelectionEvent event);
 typedef FileOpenCallback = void Function(FileEntry entry);
@@ -669,7 +670,11 @@ class _FileListState extends State<FileList> {
             final treeLeading = widget.treeRows == null
                 ? 0.0
                 : maxTreeDepth * _kTreeIndentWidth + _kTreeDisclosureWidth;
-            final iconSlot = 16 * _scale + 6 + treeLeading;
+            final showStatus = widget.rowDecorations.values.any(
+              (d) => d.badge != null,
+            );
+            final statusSlot = showStatus ? 16 * _scale + 6 : 0.0;
+            final iconSlot = statusSlot + 16 * _scale + 6 + treeLeading;
             final rowChrome =
                 _listHorizontalPadding * 2 +
                 _kScrollbarGutterWidth +
@@ -925,6 +930,7 @@ class _FileListState extends State<FileList> {
                                                 onMenuAction:
                                                     widget.onMenuAction,
                                                 recursive: recursive,
+                                                showStatus: showStatus,
                                                 treeMode:
                                                     widget.treeRows != null,
                                                 treeDepth:
@@ -1482,6 +1488,7 @@ class _ListRow extends StatefulWidget {
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final int? folderSize;
   final RowDecoration? rowDecoration;
+  final bool showStatus;
   final bool treeMode;
   final int treeDepth;
   final bool treeExpanded;
@@ -1519,6 +1526,7 @@ class _ListRow extends StatefulWidget {
     this.location,
     this.onOpenInNewTab,
     this.onOpenInOtherPaneNewTab,
+    this.showStatus = false,
     this.treeMode = false,
     this.treeDepth = 0,
     this.treeExpanded = false,
@@ -1635,8 +1643,10 @@ class _ListRowState extends State<_ListRow> {
     if (_hovered && !PointerHoverStore.instance.suppressed.value) {
       return AppColors.bgHover;
     }
-    final tint = widget.rowDecoration?.tint;
-    if (tint != null) return tint.withValues(alpha: 0.18);
+    final decoration = widget.rowDecoration;
+    if (decoration != null && decoration.badge == null) {
+      return decoration.tint.withValues(alpha: 0.18);
+    }
 
     return Colors.transparent;
   }
@@ -1697,34 +1707,28 @@ class _ListRowState extends State<_ListRow> {
   }
 
   Widget _buildIconWithBadge(BuildContext context, FileEntry e, bool isFolder) {
-    final icon = buildFileIcon(
+    return buildFileIcon(
       name: e.name,
       ext: e.extension,
       isFolder: isFolder,
       size: widget.iconSize,
     );
-    final badge = widget.rowDecoration?.badge;
-    if (badge == null) return icon;
+  }
 
-    return SizedBox(
-      width: widget.iconSize,
-      height: widget.iconSize,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(child: Center(child: icon)),
-          Positioned(
-            right: -2,
-            top: -4,
-            child: Text(
-              badge,
-              style: context.txt.badge.copyWith(
-                color: widget.rowDecoration!.tint,
-              ),
+  Widget _buildStatusCell() {
+    if (!widget.showStatus) return const SizedBox.shrink();
+    final decoration = widget.rowDecoration;
+    final badge = decoration?.badge;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: badge == null
+          ? SizedBox(width: widget.iconSize)
+          : StatusChip(
+              glyph: badge,
+              color: decoration!.tint,
+              size: widget.iconSize,
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -2004,6 +2008,7 @@ class _ListRowState extends State<_ListRow> {
             opacity: opacity,
             child: Row(
               children: [
+                _buildStatusCell(),
                 _buildTreePrefix(isFolder),
                 _buildIconWithBadge(context, e, isFolder),
                 const SizedBox(width: 6),
@@ -2105,6 +2110,7 @@ class _ListRowState extends State<_ListRow> {
             opacity: opacity,
             child: Row(
               children: [
+                _buildStatusCell(),
                 _buildTreePrefix(isFolder),
                 _buildIconWithBadge(context, e, isFolder),
                 const SizedBox(width: 6),
