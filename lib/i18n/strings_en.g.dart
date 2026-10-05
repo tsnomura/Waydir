@@ -1210,6 +1210,9 @@ class Translations$quickLook$en {
 	/// en: 'No file selected'
 	String get noSelection => 'No file selected';
 
+	/// en: '(identical)'
+	String get identicalSuffix => '(identical)';
+
 	/// en: 'Folder'
 	String get folder => 'Folder';
 
@@ -4909,6 +4912,7 @@ extension on Translations {
 			'commandPalette.ready' => ({required Object count}) => '${count} results',
 			'quickLook.title' => 'Quick Look',
 			'quickLook.noSelection' => 'No file selected',
+			'quickLook.identicalSuffix' => '(identical)',
 			'quickLook.folder' => 'Folder',
 			'quickLook.noPreview' => 'No preview available',
 			'quickLook.binaryFile' => 'Binary file - no preview',
@@ -5296,9 +5300,9 @@ extension on Translations {
 			'tasks.status.completed' => 'Completed',
 			'tasks.status.failed' => 'Failed',
 			'tasks.status.cancelled' => 'Cancelled',
-			'git.clean' => 'clean',
 			_ => null,
 		} ?? switch (path) {
+			'git.clean' => 'clean',
 			'git.detachedHead' => 'detached HEAD',
 			'git.merging' => 'MERGING',
 			'git.rebasing' => 'REBASING',

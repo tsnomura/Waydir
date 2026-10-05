@@ -68,8 +68,15 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
   against its counterpart. Marking exactly one file in each pane still
   overrides the automatic pair (to diff two differently named files). Pairs
   where either side is on sftp get the normal preview, since the external
-  command can't read `sftp://` paths. Falls back to the normal single-file
-  preview whenever the diff command is unset, missing, errors or times out.
+  command can't read `sftp://` paths. Before running the diff command the
+  two files are compared byte for byte (the same native check compare uses,
+  skipped when sizes differ, stopping at the first difference); a
+  byte-identical pair gets the normal preview instead, titled
+  `name (identical)`, with editing and playback available as usual. The
+  verdict is cached per pair while Quick Look stays open. Cloud-only
+  (OneDrive placeholder) files aren't read, so they go straight to the diff.
+  Falls back to the normal single-file preview whenever the diff command is
+  unset, missing, errors or times out.
   Added/removed/changed lines are tinted using the same colors as compare
   mode's own row decorations.
 - Fixed: the scroll controller wasn't attached at all on Windows, so scrolling

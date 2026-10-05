@@ -790,6 +790,7 @@
   "quickLook": {
     "title": "Quick Look",
     "noSelection": "No file selected",
+    "identicalSuffix": "(identical)",
     "folder": "Folder",
     "noPreview": "No preview available",
     "binaryFile": "Binary file - no preview",

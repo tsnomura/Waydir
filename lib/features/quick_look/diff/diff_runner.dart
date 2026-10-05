@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../../core/fs/file_system_service.dart';
 import '../../../core/logging/app_logger.dart';
 import '../../../core/models/file_entry.dart';
 import 'diff_command_config.dart';
@@ -34,11 +35,24 @@ class DiffLine {
 
 class TextDiffResult {
   final bool available;
+  final bool identical;
   final List<DiffLine> lines;
 
-  const TextDiffResult({required this.available, required this.lines});
+  const TextDiffResult({
+    required this.available,
+    required this.lines,
+    this.identical = false,
+  });
 
-  const TextDiffResult.unavailable() : available = false, lines = const [];
+  const TextDiffResult.unavailable()
+    : available = false,
+      identical = false,
+      lines = const [];
+
+  const TextDiffResult.identical()
+    : available = false,
+      identical = true,
+      lines = const [];
 }
 
 /// Runs the configured compare-diff command (`diff -y` by default) and
@@ -57,6 +71,9 @@ class DiffRunner {
   ].join('|');
 
   static Future<TextDiffResult> run(FileEntry left, FileEntry right) async {
+    if (await _contentEqual(left, right)) {
+      return const TextDiffResult.identical();
+    }
     final def = DiffCommandRegistry.instance.config;
     final args = _substitute(def.args, left: left, right: right);
     try {
@@ -117,6 +134,26 @@ class DiffRunner {
       );
 
       return const TextDiffResult.unavailable();
+    }
+  }
+
+  static Future<bool> _contentEqual(FileEntry left, FileEntry right) async {
+    if (left.size != right.size) return false;
+    try {
+      final result = await FileSystemService.filesEqual([
+        (left.realPath, right.realPath),
+      ]);
+
+      return result.isNotEmpty && result.first == true;
+    } catch (error, stack) {
+      log.warn(
+        'quick-look',
+        'content check failed for ${left.realPath} vs ${right.realPath}',
+        error: error,
+        stack: stack,
+      );
+
+      return false;
     }
   }
 

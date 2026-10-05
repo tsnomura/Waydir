@@ -89,6 +89,7 @@ const double _kMinWindowHeight = 320;
 class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   final _focus = FocusNode();
   final _editorActive = signal(false);
+  final _identicalPairs = signal<Set<String>>(const {});
   final _editorController = CodeEditorController();
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
@@ -685,15 +686,29 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     );
   }
 
+  void _markIdentical(String key) {
+    if (_identicalPairs.value.contains(key)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _identicalPairs.value = {..._identicalPairs.value, key};
+    });
+  }
+
   Widget _singleFilePreview(FileEntry? entry) {
     final diffPair = widget.diffPair?.call(entry);
     final showDiff = diffPair != null;
-    _playback.sync(entry, _generatorPage, blocked: showDiff);
+    final diffKey = diffPair == null
+        ? null
+        : DiffRunner.cacheKeyFor(diffPair.$1, diffPair.$2);
+    final identical =
+        diffKey != null && _identicalPairs.value.contains(diffKey);
+    _playback.sync(entry, _generatorPage, blocked: showDiff && !identical);
 
     return Column(
       children: [
         _Header(
           entry: entry,
+          nameSuffix: identical ? t.quickLook.identicalSuffix : null,
           compact: _compact,
           showInfo: _showInfo,
           onToggleInfo: () => setState(() => _showInfo = !_showInfo),
@@ -712,6 +727,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                   right: diffPair.$2,
                   editorActive: _editorActive,
                   onCompactChanged: _setCompact,
+                  onIdentical: () => _markIdentical(diffKey!),
                   fallback: (context) => _Body(
                     entry: entry,
                     editorActive: _editorActive,
@@ -831,6 +847,7 @@ class _ShortcutHint extends StatelessWidget {
 
 class _Header extends StatelessWidget {
   final FileEntry? entry;
+  final String? nameSuffix;
   final bool compact;
   final bool showInfo;
   final VoidCallback onToggleInfo;
@@ -849,6 +866,7 @@ class _Header extends StatelessWidget {
     required this.onToggleInfo,
     required this.onClose,
     required this.editorController,
+    this.nameSuffix,
     this.multiCount,
     this.markdownRendered = true,
     this.onToggleMarkdownView,
@@ -860,9 +878,11 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final e = entry;
     final multi = multiCount != null;
-    final name = multi
+    final baseName = multi
         ? t.quickLook.items(count: multiCount!)
         : e?.name ?? t.quickLook.noSelection;
+    final suffix = nameSuffix;
+    final name = suffix == null ? baseName : '$baseName $suffix';
     final hasPreview = !multi && e != null && !compact;
     final isMarkdown =
         !multi &&
@@ -1177,6 +1197,7 @@ class _DiffAttempt extends StatelessWidget {
   final FileEntry right;
   final Signal<bool> editorActive;
   final ValueChanged<bool> onCompactChanged;
+  final VoidCallback onIdentical;
   final WidgetBuilder fallback;
 
   const _DiffAttempt({
@@ -1184,23 +1205,30 @@ class _DiffAttempt extends StatelessWidget {
     required this.right,
     required this.editorActive,
     required this.onCompactChanged,
+    required this.onIdentical,
     required this.fallback,
   });
 
   @override
   Widget build(BuildContext context) {
-    onCompactChanged(false);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => editorActive.value = false,
-    );
-
     return AsyncRetain<TextDiffResult>(
       cacheKey: DiffRunner.cacheKeyFor(left, right),
       loader: () => DiffRunner.run(left, right),
       loading: const QlCentered.spinner(),
-      builder: (result) => result.available
-          ? TextDiffView(left: left, right: right, result: result)
-          : fallback(context),
+      builder: (result) {
+        if (result.identical) {
+          onIdentical();
+
+          return fallback(context);
+        }
+        if (!result.available) return fallback(context);
+        onCompactChanged(false);
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => editorActive.value = false,
+        );
+
+        return TextDiffView(left: left, right: right, result: result);
+      },
     );
   }
 }
