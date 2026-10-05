@@ -156,17 +156,25 @@ class PersonalSelectionController extends SelectionController {
     required super.visibleFiles,
   });
 
+  String? _rangeOriginPath;
+  bool _rangeAdd = true;
+  Set<String> _rangeSnapshot = const {};
+  Set<String>? _rangeResult;
+  int _rangeCursor = -1;
+
   /// Click just moves the cursor, touching no marks at all — the mouse
   /// equivalent of an arrow key. Ctrl+click toggles the clicked item's mark
   /// in place and moves the cursor there, every other mark left untouched.
-  /// Shift+click does nothing here at all — it's the zero-drag case of
-  /// Shift+drag's paint-based rubber-band (`RubberBandLayer`), which tracks
-  /// the gesture independently and already handles a plain Shift+click as a
-  /// no-op rectangle. Neither depends on any state beyond what's currently
-  /// visible (the existing marks, the current cursor).
+  /// Shift+click paints the inclusive range from an origin to the clicked
+  /// item and moves the cursor there; see [_shiftClick].
   @override
   void onSelect(FileSelectionEvent event) {
-    if (AppShortcuts.isShift) return;
+    if (AppShortcuts.isShift) {
+      _shiftClick(event);
+
+      return;
+    }
+    _rangeOriginPath = null;
     final ctrl = AppShortcuts.isControl;
 
     batch(() {
@@ -175,6 +183,44 @@ class PersonalSelectionController extends SelectionController {
         if (!paths.remove(event.entry.path)) paths.add(event.entry.path);
         selectedPaths.value = paths;
       }
+      cursorIndex.value = event.index;
+    });
+  }
+
+  /// The first Shift+click of a session fixes the origin at the cursor and
+  /// snapshots the marks; mark vs. unmark is decided once, from the origin
+  /// cell. Each Shift+click in the same session recomputes
+  /// `snapshot ∪ [origin..click]` (or `−` when unmarking) from that
+  /// snapshot, so clicking back toward the origin shrinks the range and
+  /// restores whatever was outside it. Any other change to the cursor or
+  /// the marks in between (a plain click, an arrow key, ...) ends the
+  /// session, so the next Shift+click starts from wherever the cursor is.
+  void _shiftClick(FileSelectionEvent event) {
+    final files = _vf;
+    var origin = _rangeOriginPath == null
+        ? -1
+        : files.indexWhere((f) => f.path == _rangeOriginPath);
+    final continuing =
+        origin >= 0 &&
+        identical(selectedPaths.value, _rangeResult) &&
+        cursorIndex.value == _rangeCursor;
+    if (!continuing) {
+      final cursor = _resolvedCursorIndex();
+      origin = cursor >= 0 && cursor < files.length ? cursor : event.index;
+      _rangeOriginPath = files[origin].path;
+      _rangeSnapshot = selectedPaths.value;
+      _rangeAdd = !_rangeSnapshot.contains(_rangeOriginPath);
+    }
+    final lo = origin < event.index ? origin : event.index;
+    final hi = origin < event.index ? event.index : origin;
+    final range = {for (var i = lo; i <= hi; i++) files[i].path};
+    final result = _rangeAdd
+        ? _rangeSnapshot.union(range)
+        : _rangeSnapshot.difference(range);
+    _rangeResult = result;
+    _rangeCursor = event.index;
+    batch(() {
+      selectedPaths.value = result;
       cursorIndex.value = event.index;
     });
   }

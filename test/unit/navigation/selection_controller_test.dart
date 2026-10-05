@@ -149,18 +149,116 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     });
 
-    testWidgets('Shift+click is a no-op — it is the zero-drag case of '
-        "Shift+drag's rubber-band, handled entirely by RubberBandLayer", (
+    testWidgets('Shift+click marks the inclusive cursor..click range when '
+        'the cursor cell is unmarked, and moves the cursor to the click', (
       tester,
     ) async {
-      selectedPaths.value = {'/dir/c.txt', '/dir/e.txt'};
       cursorIndex.value = 1; // b.txt
       await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
 
       controller.onSelect(FileSelectionEvent(entry: files[3], index: 3));
 
-      expect(selectedPaths.value, {'/dir/c.txt', '/dir/e.txt'});
-      expect(cursorIndex.value, 1, reason: 'the cursor does not move either');
+      expect(selectedPaths.value, {'/dir/b.txt', '/dir/c.txt', '/dir/d.txt'});
+      expect(cursorIndex.value, 3);
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    });
+
+    testWidgets('Shift+click unmarks the range when the cursor cell is '
+        'marked', (tester) async {
+      selectedPaths.value = {
+        '/dir/a.txt',
+        '/dir/b.txt',
+        '/dir/c.txt',
+        '/dir/d.txt',
+        '/dir/e.txt',
+      };
+      cursorIndex.value = 1; // b.txt
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+
+      controller.onSelect(FileSelectionEvent(entry: files[3], index: 3));
+
+      expect(selectedPaths.value, {'/dir/a.txt', '/dir/e.txt'});
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    });
+
+    testWidgets('repeated Shift+clicks re-evaluate from the fixed origin, '
+        'restoring the original marks outside the new range', (tester) async {
+      selectedPaths.value = {'/dir/e.txt'};
+      cursorIndex.value = 1; // b.txt
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+
+      controller.onSelect(FileSelectionEvent(entry: files[3], index: 3));
+      expect(selectedPaths.value, {
+        '/dir/b.txt',
+        '/dir/c.txt',
+        '/dir/d.txt',
+        '/dir/e.txt',
+      });
+
+      controller.onSelect(FileSelectionEvent(entry: files[2], index: 2));
+      expect(selectedPaths.value, {
+        '/dir/b.txt',
+        '/dir/c.txt',
+        '/dir/e.txt',
+      }, reason: 'shrinking back toward the origin un-paints d');
+
+      controller.onSelect(FileSelectionEvent(entry: files[0], index: 0));
+      expect(selectedPaths.value, {
+        '/dir/a.txt',
+        '/dir/b.txt',
+        '/dir/e.txt',
+      }, reason: 'crossing to the other side of the origin');
+      expect(cursorIndex.value, 0);
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    });
+
+    testWidgets('a plain click ends the session, so the next Shift+click '
+        'starts from the new cursor', (tester) async {
+      cursorIndex.value = 1; // b.txt
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      controller.onSelect(FileSelectionEvent(entry: files[3], index: 3));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+
+      controller.onSelect(FileSelectionEvent(entry: files[4], index: 4));
+      expect(cursorIndex.value, 4);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      controller.onSelect(FileSelectionEvent(entry: files[2], index: 2));
+
+      expect(selectedPaths.value, {
+        '/dir/b.txt',
+        '/dir/c.txt',
+        '/dir/d.txt',
+        '/dir/e.txt',
+      }, reason: 'new origin e (unmarked) paints [c..e] on top of b..d');
+
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    });
+
+    testWidgets('a cursor move by keyboard also ends the session', (
+      tester,
+    ) async {
+      cursorIndex.value = 0; // a.txt
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      controller.onSelect(FileSelectionEvent(entry: files[1], index: 1));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      expect(selectedPaths.value, {'/dir/a.txt', '/dir/b.txt'});
+
+      controller.moveCursor(2);
+      expect(cursorIndex.value, 3);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      controller.onSelect(FileSelectionEvent(entry: files[4], index: 4));
+
+      expect(selectedPaths.value, {
+        '/dir/a.txt',
+        '/dir/b.txt',
+        '/dir/d.txt',
+        '/dir/e.txt',
+      }, reason: 'origin is now d, not a — the old range is left alone');
 
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     });

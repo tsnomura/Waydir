@@ -21,6 +21,7 @@ import 'package:path/path.dart' as p;
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
 import 'file_icons.dart';
+import 'pointer_hover_store.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart';
 
@@ -1631,7 +1632,9 @@ class _ListRowState extends State<_ListRow> {
     if (_dragging) return AppColors.accent.withValues(alpha: 0.08);
     if (widget.selected) return AppColors.bgSelectedMuted;
     if (widget.isCursor) return AppColors.bgHoverStrong;
-    if (_hovered) return AppColors.bgHover;
+    if (_hovered && !PointerHoverStore.instance.suppressed.value) {
+      return AppColors.bgHover;
+    }
     final tint = widget.rowDecoration?.tint;
     if (tint != null) return tint.withValues(alpha: 0.18);
 
@@ -1979,7 +1982,9 @@ class _ListRowState extends State<_ListRow> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SignalBuilder(builder: _build);
+
+  Widget _build(BuildContext context) {
     final e = widget.entry;
     final isFolder = e.type == FileItemType.folder;
     final opacity = widget.isCut ? 0.4 : (_dragging ? 0.4 : 1.0);

@@ -1358,7 +1358,7 @@ class NavigationStore {
     }
     for (var i = idx - 1; i >= 0; i--) {
       if (rows[i].depth < row.depth) {
-        jumpToIndex(i);
+        cursorIndex.value = i;
 
         return true;
       }

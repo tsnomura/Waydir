@@ -20,6 +20,7 @@ import '../operations/drag_hint.dart';
 import '../quick_look/generators/generator_registry.dart';
 import '../quick_look/generators/generator_runner.dart';
 import 'file_icons.dart';
+import 'pointer_hover_store.dart';
 import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart' show RubberBandLayer, RubberBandSelectCallback;
@@ -692,7 +693,9 @@ class _GridTileState extends State<_GridTile> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SignalBuilder(builder: _build);
+
+  Widget _build(BuildContext context) {
     final entry = widget.entry;
     final selected = widget.selected;
     final scale = widget.scale;
@@ -718,7 +721,7 @@ class _GridTileState extends State<_GridTile> {
         ? AppColors.bgSelectedMuted
         : isCursor
         ? AppColors.bgHoverStrong
-        : _hovered
+        : _hovered && !PointerHoverStore.instance.suppressed.value
         ? AppColors.bgHover
         : tint != null
         ? tint.withValues(alpha: 0.18)
