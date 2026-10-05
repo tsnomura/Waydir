@@ -76,6 +76,7 @@ class ShellStore {
       panes: panes,
       isDual: isDual,
       operationStore: operationStore,
+      activePaneIndex: activePaneIndex,
     );
     _restoreSession();
     Future.wait([

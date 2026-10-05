@@ -10,7 +10,8 @@ mixin _WaydirCommandPaletteMixin
   bool _hasTarget(NavigationStore s) {
     if (s.selectedCount.value > 0) return true;
     final idx = s.cursorIndex.value;
-    return idx >= 0 && idx < s.visibleFiles.value.length;
+    final files = s.visibleFiles.value;
+    return idx >= 0 && idx < files.length && !files[idx].isGhost;
   }
 
   AppCommand _cmd(
@@ -246,7 +247,8 @@ mixin _WaydirCommandPaletteMixin
 
   List<AppCommand> _fileCommands(NavigationStore store) {
     return [
-      for (final entry in store.visibleFiles.value) _fileCommand(store, entry),
+      for (final entry in store.visibleFiles.value)
+        if (!entry.isGhost) _fileCommand(store, entry),
     ];
   }
 

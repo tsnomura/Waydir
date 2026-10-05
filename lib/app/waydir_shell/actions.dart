@@ -542,7 +542,9 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     if (entries.isNotEmpty) return entries;
     final idx = store.cursorIndex.value;
     final files = store.visibleFiles.value;
-    if (idx >= 0 && idx < files.length) return [files[idx]];
+    if (idx >= 0 && idx < files.length && !files[idx].isGhost) {
+      return [files[idx]];
+    }
 
     return const [];
   }

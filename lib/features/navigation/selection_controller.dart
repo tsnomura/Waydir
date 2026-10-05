@@ -125,7 +125,7 @@ abstract class SelectionController {
   List<FileEntry> get selectedEntries {
     final paths = selectedPaths.value;
 
-    return _vf.where((f) => paths.contains(f.path)).toList();
+    return _vf.where((f) => !f.isGhost && paths.contains(f.path)).toList();
   }
 
   void onContextMenu(FileSelectionEvent event);
@@ -213,7 +213,10 @@ class PersonalSelectionController extends SelectionController {
     }
     final lo = origin < event.index ? origin : event.index;
     final hi = origin < event.index ? event.index : origin;
-    final range = {for (var i = lo; i <= hi; i++) files[i].path};
+    final range = {
+      for (var i = lo; i <= hi; i++)
+        if (!files[i].isGhost) files[i].path,
+    };
     final result = _rangeAdd
         ? _rangeSnapshot.union(range)
         : _rangeSnapshot.difference(range);

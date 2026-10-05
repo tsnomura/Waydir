@@ -23,6 +23,7 @@ import 'file_icons.dart';
 import 'pointer_hover_store.dart';
 import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
+import 'scroll_link.dart';
 import 'status_chip.dart';
 import 'rubber_band_layer.dart' show RubberBandLayer, RubberBandSelectCallback;
 import 'file_view.dart'
@@ -101,9 +102,11 @@ class FileGrid extends StatefulWidget {
   final RubberBandSelectCallback? onRectSelect;
   final Map<String, RowDecoration> rowDecorations;
   final bool remoteThumbnails;
+  final ScrollLink? scrollLink;
 
   const FileGrid({
     super.key,
+    this.scrollLink,
     required this.files,
     required this.currentPath,
     required this.onSelect,
@@ -134,8 +137,21 @@ class FileGrid extends StatefulWidget {
   State<FileGrid> createState() => _FileGridState();
 }
 
-class _FileGridState extends State<FileGrid> {
+class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
   final _scrollController = ScrollController();
+
+  @override
+  ScrollController get linkedScrollController => _scrollController;
+
+  @override
+  ScrollLink? get scrollLink => widget.scrollLink;
+
+  @override
+  void initState() {
+    super.initState();
+    initScrollLink();
+  }
+
   String? _lastRevealedKey;
   String? _hoveredFolderPath;
   bool _isDragOver = false;
@@ -150,6 +166,7 @@ class _FileGridState extends State<FileGrid> {
   @override
   void didUpdateWidget(covariant FileGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
+    updateScrollLink();
     if (oldWidget.cursorIndex != widget.cursorIndex ||
         oldWidget.files != widget.files) {
       _revealSelectedTile();
@@ -158,6 +175,7 @@ class _FileGridState extends State<FileGrid> {
 
   @override
   void dispose() {
+    disposeScrollLink();
     _scrollController.dispose();
     super.dispose();
   }
@@ -197,7 +215,9 @@ class _FileGridState extends State<FileGrid> {
     String? folder;
     if (index >= 0) {
       final entry = widget.files[index];
-      if (entry.type == FileItemType.folder) folder = entry.path;
+      if (entry.type == FileItemType.folder && !entry.isGhost) {
+        folder = entry.path;
+      }
     }
     if (folder != _hoveredFolderPath || !_isDragOver) {
       setState(() {
@@ -324,7 +344,8 @@ class _FileGridState extends State<FileGrid> {
                     final index = _indexAt(pos, columns);
                     String? target;
                     if (index >= 0 &&
-                        widget.files[index].type == FileItemType.folder) {
+                        widget.files[index].type == FileItemType.folder &&
+                        !widget.files[index].isGhost) {
                       target = widget.files[index].path;
                     }
                     final paths = await pathsFromSession(event.session);
@@ -587,7 +608,11 @@ class _GridTileState extends State<_GridTile> {
       _lastTap = null;
       final keys = HardwareKeyboard.instance;
       final isFolder = widget.entry.type == FileItemType.folder;
-      if (isFolder && keys.isShiftPressed) {
+      if (widget.entry.isGhost) {
+        widget.onSelect(
+          FileSelectionEvent(entry: widget.entry, index: widget.index),
+        );
+      } else if (isFolder && keys.isShiftPressed) {
         widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
       } else if (isFolder && keys.isControlPressed) {
         widget.onOpenInNewTab?.call(widget.entry.path);
@@ -604,6 +629,7 @@ class _GridTileState extends State<_GridTile> {
   }
 
   void _handleSecondaryTap(TapUpDetails details) {
+    if (widget.entry.isGhost) return;
     widget.onContextMenu?.call(
       FileSelectionEvent(entry: widget.entry, index: widget.index),
       details.globalPosition,
@@ -745,7 +771,11 @@ class _GridTileState extends State<_GridTile> {
         onTap: _handleTap,
         onSecondaryTapUp: _handleSecondaryTap,
         child: Opacity(
-          opacity: widget.isCut ? 0.45 : (_dragging ? 0.45 : 1),
+          opacity: entry.isGhost
+              ? 0.5
+              : widget.isCut
+              ? 0.45
+              : (_dragging ? 0.45 : 1),
           child: Container(
             padding: EdgeInsets.all(widget.tilePadding),
             decoration: BoxDecoration(
@@ -847,7 +877,13 @@ class _GridTileState extends State<_GridTile> {
                         maxLines: 2,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
-                        style: nameStyle,
+                        style: entry.isGhost
+                            ? nameStyle.copyWith(
+                                color: AppColors.fgSubtle,
+                                decoration: TextDecoration.lineThrough,
+                                decorationColor: AppColors.fgSubtle,
+                              )
+                            : nameStyle,
                       ),
                     ),
                   ),
@@ -871,7 +907,7 @@ class _GridTileState extends State<_GridTile> {
       ),
     );
 
-    if (widget.isRenaming) return tile;
+    if (widget.isRenaming || entry.isGhost) return tile;
 
     return DragItemWidget(
       dragItemProvider: _provideDragItem,
@@ -908,7 +944,7 @@ class _GridPreview extends StatelessWidget {
   }
 
   Widget? _thumbnail(bool isFolder, Widget fallbackIcon) {
-    if (isFolder) return null;
+    if (isFolder || entry.isGhost) return null;
     final remote = PlatformPaths.isRemoteUri(entry.realPath);
     if (remote &&
         !(remoteThumbnails && PlatformPaths.isSftpUri(entry.realPath))) {

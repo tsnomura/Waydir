@@ -206,7 +206,7 @@ Map<String, _CompareItem> _mapByRelativePath(
 ) {
   final out = <String, _CompareItem>{};
   for (final entry in entries) {
-    final rel = _relativePath(root, entry.path);
+    final rel = compareRelativePath(root, entry.path);
     if (rel.isEmpty) continue;
     out[rel] = _CompareItem(rel, entry);
   }
@@ -214,8 +214,8 @@ Map<String, _CompareItem> _mapByRelativePath(
   return out;
 }
 
-String _relativePath(String root, String path) {
-  // `package:path`'s relative()/normalize() assume a real OS path — on
+String compareRelativePath(String root, String path) {
+  // `package:path`'s relative()/normalize() assume a real OS path 窶・on
   // Windows in particular, the `:` in `sftp://host:port/...` gets
   // misparsed as a drive-letter separator. Scheme-aware roots split on
   // segments instead, the same way PlatformPaths.join/parentOf/segments

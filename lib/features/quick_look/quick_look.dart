@@ -227,7 +227,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
-    final entry = widget.store.cursorEntry.value;
+    final cursor = widget.store.cursorEntry.value;
+    final entry = cursor?.ghostOf ?? cursor;
     _compact = _defaultCompact(entry);
     _presentationKey = entry?.realPath;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -675,7 +676,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           }
         }
 
-        final entry = widget.store.cursorEntry.value;
+        final cursor = widget.store.cursorEntry.value;
+        final entry = cursor?.ghostOf ?? cursor;
         _syncPresentation(entry);
 
         return _singleFilePreview(entry);
