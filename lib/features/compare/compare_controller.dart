@@ -18,6 +18,7 @@ class CompareController {
   final Signal<List<PaneStore>> panes;
   final Signal<bool> isDual;
   final OperationStore operationStore;
+  final ReadonlySignal<int>? activePaneIndex;
 
   final active = signal(false);
   final running = signal(false);
@@ -29,6 +30,9 @@ class CompareController {
   int _runId = 0;
   void Function()? _taskDisposer;
   void Function()? _scopeDisposer;
+  void Function()? _ghostDisposer;
+  final _followDisposers = <void Function()>[];
+  final _linked = signal<(NavigationStore, NavigationStore)?>(null);
   String? _leftRoot;
   String? _rightRoot;
   NavigationStore? _leftDecorated;
@@ -38,6 +42,7 @@ class CompareController {
     required this.panes,
     required this.isDual,
     required this.operationStore,
+    this.activePaneIndex,
   }) {
     _taskDisposer = effect(() {
       final completed = operationStore.taskCompleted.value;
@@ -61,6 +66,156 @@ class CompareController {
         scheduleMicrotask(stop);
       }
     });
+    _ghostDisposer = effect(() {
+      final leftRes = leftResults.value;
+      final rightRes = rightResults.value;
+      final leftStore = _leftDecorated;
+      final rightStore = _rightDecorated;
+      final leftRoot = _leftRoot;
+      final rightRoot = _rightRoot;
+      if (leftStore == null ||
+          rightStore == null ||
+          leftRoot == null ||
+          rightRoot == null) {
+        return;
+      }
+      final leftGhosts = _ghostsFor(
+        leftRoot,
+        leftStore.currentPath.value,
+        rightRes,
+      );
+      final rightGhosts = _ghostsFor(
+        rightRoot,
+        rightStore.currentPath.value,
+        leftRes,
+      );
+      untracked(() {
+        leftStore.ghostFiles.value = leftGhosts;
+        rightStore.ghostFiles.value = rightGhosts;
+      });
+    });
+    _setupFollow(leftLeads: true);
+    _setupFollow(leftLeads: false);
+  }
+
+  void _setupFollow({required bool leftLeads}) {
+    (NavigationStore, NavigationStore)? ordered() {
+      final pair = _linked.value;
+      if (pair == null) return null;
+
+      return leftLeads ? pair : (pair.$2, pair.$1);
+    }
+
+    _followDisposers.add(
+      _skipFirst(leftLeads, () {
+        final pair = ordered();
+        if (pair == null) return null;
+        final offset = pair.$1.scrollLink.reported.value;
+
+        return () => pair.$2.scrollLink.request(offset);
+      }),
+    );
+    _followDisposers.add(
+      _skipFirst(leftLeads, () {
+        final pair = ordered();
+        if (pair == null) return null;
+        final name = pair.$1.cursorEntry.value?.name;
+        if (name == null || !_sameRelativeFolder(leftLeads, pair)) return null;
+
+        return () => pair.$2.moveCursorToName(name);
+      }),
+    );
+    _followDisposers.add(
+      _skipFirst(leftLeads, () {
+        final pair = ordered();
+        if (pair == null) return null;
+        final path = pair.$1.currentPath.value;
+
+        return () => _followFolder(leftLeads, path, pair.$2);
+      }),
+    );
+  }
+
+  void Function() _skipFirst(bool runFirst, void Function()? Function() track) {
+    (NavigationStore, NavigationStore)? seenPair;
+
+    return effect(() {
+      final action = track();
+      final pair = _linked.value;
+      final fresh = !identical(pair, seenPair);
+      seenPair = pair;
+      if (action == null || (fresh && !runFirst)) return;
+      untracked(action);
+    });
+  }
+
+  String? _relativeIn(String? root, String path) {
+    if (root == null) return null;
+    if (path != root && !p.isWithin(root, path)) return null;
+
+    return compareRelativePath(root, path);
+  }
+
+  bool _sameRelativeFolder(
+    bool leftLeads,
+    (NavigationStore, NavigationStore) pair,
+  ) {
+    final leaderRoot = leftLeads ? _leftRoot : _rightRoot;
+    final followerRoot = leftLeads ? _rightRoot : _leftRoot;
+    final a = _relativeIn(leaderRoot, pair.$1.currentPath.value);
+    final b = _relativeIn(followerRoot, pair.$2.currentPath.value);
+
+    return a != null && a == b;
+  }
+
+  void _followFolder(bool leftLeads, String leaderPath, NavigationStore to) {
+    final leaderRoot = leftLeads ? _leftRoot : _rightRoot;
+    final followerRoot = leftLeads ? _rightRoot : _leftRoot;
+    if (followerRoot == null) return;
+    final rel = _relativeIn(leaderRoot, leaderPath);
+    if (rel == null) return;
+    final target = rel.isEmpty
+        ? followerRoot
+        : rel.split('/').fold(followerRoot, PlatformPaths.join);
+    if (to.currentPath.value == target) return;
+    if (rel.isNotEmpty) {
+      final results = leftLeads ? rightResults.value : leftResults.value;
+      final exists = results.values.any(
+        (r) => r.relativePath == rel && r.type == FileItemType.folder,
+      );
+      if (!exists) return;
+    }
+    to.navigateTo(target);
+  }
+
+  List<FileEntry> _ghostsFor(
+    String root,
+    String dir,
+    Map<String, CompareEntryResult> other,
+  ) {
+    if (other.isEmpty || !_withinScope(root, dir)) return const [];
+    final rel = compareRelativePath(root, dir);
+    final out = <FileEntry>[];
+    for (final result in other.values) {
+      if (result.status != CompareStatus.unique) continue;
+      final parent = p.posix.dirname(result.relativePath);
+      if ((parent == '.' ? '' : parent) != rel) continue;
+      final source = result.entry;
+      out.add(
+        FileEntry.raw(
+          name: source.name,
+          path: PlatformPaths.join(dir, source.name),
+          type: source.type,
+          size: source.size,
+          modifiedMs: source.modifiedMs,
+          createdMs: source.createdMs,
+          addedMs: source.addedMs,
+          ghostOf: source,
+        ),
+      );
+    }
+
+    return out;
   }
 
   bool _withinScope(String root, String path) {
@@ -111,23 +266,63 @@ class CompareController {
         _entriesFor(rightRoot, run, recursive),
       ]);
       if (run != _runId) return;
+      final contentEqual = await _contentEqual(
+        leftRoot,
+        rightRoot,
+        listed[0],
+        listed[1],
+        run,
+      );
+      if (run != _runId) return;
       final diff = buildCompareDiff(
         leftRoot: leftRoot,
         rightRoot: rightRoot,
         leftEntries: listed[0],
         rightEntries: listed[1],
+        contentEqual: contentEqual,
       );
-      leftResults.value = diff.left;
-      rightResults.value = diff.right;
-      counts.value = diff.counts;
-      _clearDecorations();
-      _leftDecorated = leftStore;
-      _rightDecorated = rightStore;
-      leftStore.decorations.setLayer('compare', _decorationsFor(diff.left));
-      rightStore.decorations.setLayer('compare', _decorationsFor(diff.right));
+      batch(() {
+        _clearDecorations();
+        _leftDecorated = leftStore;
+        _rightDecorated = rightStore;
+        leftResults.value = diff.left;
+        rightResults.value = diff.right;
+        counts.value = diff.counts;
+        rightStore.sortLeader.value = leftStore;
+        final linked = _linked.value;
+        if (linked == null ||
+            !identical(linked.$1, leftStore) ||
+            !identical(linked.$2, rightStore)) {
+          _linked.value = (leftStore, rightStore);
+        }
+        leftStore.decorations.setLayer('compare', _decorationsFor(diff.left));
+        rightStore.decorations.setLayer('compare', _decorationsFor(diff.right));
+      });
     } finally {
       if (run == _runId) running.value = false;
     }
+  }
+
+  (FileEntry, FileEntry)? diffPairFor(String path) {
+    if (!active.value) return null;
+    final left = leftResults.value;
+    final right = rightResults.value;
+    final fromLeft = left[path];
+    final source = fromLeft ?? right[path];
+    if (source == null || source.type != FileItemType.file) return null;
+    final others = fromLeft != null ? right : left;
+    CompareEntryResult? match;
+    for (final candidate in others.values) {
+      if (candidate.relativePath == source.relativePath) {
+        match = candidate;
+        break;
+      }
+    }
+    if (match == null || match.type != FileItemType.file) return null;
+
+    return fromLeft != null
+        ? (source.entry, match.entry)
+        : (match.entry, source.entry);
   }
 
   Future<void> syncLeftToRight() => _sync(leftToRight: true);
@@ -149,12 +344,16 @@ class CompareController {
     counts.value = const CompareCounts();
     _leftRoot = null;
     _rightRoot = null;
+    _linked.value = null;
     _clearDecorations();
   }
 
   void _clearDecorations() {
     _leftDecorated?.decorations.clearLayer('compare');
     _rightDecorated?.decorations.clearLayer('compare');
+    _leftDecorated?.ghostFiles.value = const [];
+    _rightDecorated?.ghostFiles.value = const [];
+    _rightDecorated?.sortLeader.value = null;
     _leftDecorated = null;
     _rightDecorated = null;
   }
@@ -164,6 +363,12 @@ class CompareController {
     _taskDisposer = null;
     _scopeDisposer?.call();
     _scopeDisposer = null;
+    _ghostDisposer?.call();
+    _ghostDisposer = null;
+    for (final dispose in _followDisposers) {
+      dispose();
+    }
+    _followDisposers.clear();
     stop();
     active.dispose();
     running.dispose();
@@ -215,6 +420,47 @@ class CompareController {
     return _walkPerDirectory(root, run);
   }
 
+  Future<Set<String>> _contentEqual(
+    String leftRoot,
+    String rightRoot,
+    List<FileEntry> leftEntries,
+    List<FileEntry> rightEntries,
+    int run,
+  ) async {
+    if (PlatformPaths.isNetworkPath(leftRoot) ||
+        PlatformPaths.isNetworkPath(rightRoot)) {
+      return const {};
+    }
+    final candidates = contentCheckCandidates(
+      leftRoot: leftRoot,
+      rightRoot: rightRoot,
+      leftEntries: leftEntries,
+      rightEntries: rightEntries,
+    ).entries.toList();
+    final out = <String>{};
+    const chunk = 32;
+    for (var i = 0; i < candidates.length; i += chunk) {
+      if (run != _runId) return const {};
+      final slice = candidates.sublist(
+        i,
+        i + chunk > candidates.length ? candidates.length : i + chunk,
+      );
+      final List<bool?> results;
+      try {
+        results = await FileSystemService.filesEqual([
+          for (final c in slice) c.value,
+        ]);
+      } catch (_) {
+        return out;
+      }
+      for (var j = 0; j < slice.length && j < results.length; j++) {
+        if (results[j] == true) out.add(slice[j].key);
+      }
+    }
+
+    return out;
+  }
+
   Future<List<FileEntry>> _walkPerDirectory(String root, int run) async {
     final out = <FileEntry>[];
     final pending = <String>[root];
@@ -259,6 +505,14 @@ class CompareController {
     final selectedRel = <String>{};
     for (final path in selected) {
       final result = sourceResults[path];
+      if (result != null) selectedRel.add(result.relativePath);
+    }
+    final destinationIndex = leftToRight ? 1 : 0;
+    final ghost = destinationStore.cursorEntry.value?.ghostOf;
+    if (selectedRel.isEmpty &&
+        ghost != null &&
+        activePaneIndex?.value == destinationIndex) {
+      final result = sourceResults[ghost.path];
       if (result != null) selectedRel.add(result.relativePath);
     }
     final candidates = sourceResults.values.where((result) {
@@ -310,11 +564,11 @@ class CompareController {
         badge: '+',
       ),
       CompareStatus.newer => RowDecoration(
-        tint: AppColors.compareNewer,
+        tint: AppColors.compareDiffer,
         badge: '↑',
       ),
       CompareStatus.older => RowDecoration(
-        tint: AppColors.compareOlder,
+        tint: AppColors.compareDiffer,
         badge: '↓',
       ),
       CompareStatus.differ => RowDecoration(

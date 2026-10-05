@@ -14,6 +14,7 @@ import 'waydir_core_loader.dart';
 enum _Op {
   list,
   walk,
+  filesEqual,
   exists,
   mkdir,
   stat,
@@ -221,6 +222,16 @@ class FsWorkerPool {
     return r as List<FileEntry>;
   }
 
+  Future<List<bool?>> filesEqual(List<(String, String)> pairs) async {
+    if (pairs.isEmpty) return const [];
+    final flat = <String>[
+      for (final pair in pairs) ...[pair.$1, pair.$2],
+    ];
+    final r = await _run<List<dynamic>>(_Op.filesEqual, [flat]);
+
+    return r.cast<bool?>();
+  }
+
   Future<bool> directoryExists(String path) async {
     if (PlatformPaths.isSftpUri(path)) {
       return const SftpFs().exists(path);
@@ -341,6 +352,12 @@ class FsWorkerPool {
         }
 
         return FileEntryCodec.decode(native);
+      case _Op.filesEqual:
+        final flat = args.first as List<String>;
+
+        return WaydirCoreLoader.filesEqual([
+          for (var i = 0; i + 1 < flat.length; i += 2) (flat[i], flat[i + 1]),
+        ]);
       case _Op.exists:
         return Directory(args.first as String).existsSync();
       case _Op.mkdir:

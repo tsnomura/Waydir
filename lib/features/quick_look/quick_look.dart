@@ -26,11 +26,14 @@ import 'player/quick_look_playback_controller.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 
+typedef QuickLookDiffResolver =
+    (FileEntry, FileEntry)? Function(FileEntry? entry);
+
 Future<void> showQuickLook({
   required BuildContext context,
   required NavigationStore store,
   FileEntry? explicitEntry,
-  (FileEntry, FileEntry)? diffPair,
+  QuickLookDiffResolver? diffPair,
   bool useMarkedSelection = false,
 }) {
   return showGeneralDialog<void>(
@@ -64,7 +67,7 @@ Future<void> showQuickLook({
 class _QuickLook extends StatefulWidget {
   final NavigationStore store;
   final FileEntry? explicitEntry;
-  final (FileEntry, FileEntry)? diffPair;
+  final QuickLookDiffResolver? diffPair;
   final bool useMarkedSelection;
 
   const _QuickLook({
@@ -86,6 +89,7 @@ const double _kMinWindowHeight = 320;
 class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   final _focus = FocusNode();
   final _editorActive = signal(false);
+  final _identicalPairs = signal<Set<String>>(const {});
   final _editorController = CodeEditorController();
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
@@ -105,7 +109,11 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   /// compare-mode diff, since a side-by-side diff needs more room than a
   /// normal single-file preview.
   Rect _initialRect(Size screen) {
-    final isDiff = widget.diffPair != null;
+    final isDiff =
+        widget.diffPair?.call(
+          widget.explicitEntry ?? widget.store.cursorEntry.value,
+        ) !=
+        null;
     final width = _clampSize(
       screen.width * (isDiff ? 0.92 : 0.7),
       _kMinWindowWidth,
@@ -220,7 +228,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
-    final entry = widget.store.cursorEntry.value;
+    final cursor = widget.store.cursorEntry.value;
+    final entry = cursor?.ghostOf ?? cursor;
     _compact = _defaultCompact(entry);
     _presentationKey = entry?.realPath;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -668,7 +677,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           }
         }
 
-        final entry = widget.store.cursorEntry.value;
+        final cursor = widget.store.cursorEntry.value;
+        final entry = cursor?.ghostOf ?? cursor;
         _syncPresentation(entry);
 
         return _singleFilePreview(entry);
@@ -676,18 +686,29 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     );
   }
 
+  void _markIdentical(String key) {
+    if (_identicalPairs.value.contains(key)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _identicalPairs.value = {..._identicalPairs.value, key};
+    });
+  }
+
   Widget _singleFilePreview(FileEntry? entry) {
-    final diffPair = widget.diffPair;
-    final showDiff =
-        diffPair != null &&
-        (entry?.realPath == diffPair.$1.realPath ||
-            entry?.realPath == diffPair.$2.realPath);
-    _playback.sync(entry, _generatorPage, blocked: showDiff);
+    final diffPair = widget.diffPair?.call(entry);
+    final showDiff = diffPair != null;
+    final diffKey = diffPair == null
+        ? null
+        : DiffRunner.cacheKeyFor(diffPair.$1, diffPair.$2);
+    final identical =
+        diffKey != null && _identicalPairs.value.contains(diffKey);
+    _playback.sync(entry, _generatorPage, blocked: showDiff && !identical);
 
     return Column(
       children: [
         _Header(
           entry: entry,
+          nameSuffix: identical ? t.quickLook.identicalSuffix : null,
           compact: _compact,
           showInfo: _showInfo,
           onToggleInfo: () => setState(() => _showInfo = !_showInfo),
@@ -706,6 +727,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                   right: diffPair.$2,
                   editorActive: _editorActive,
                   onCompactChanged: _setCompact,
+                  onIdentical: () => _markIdentical(diffKey!),
                   fallback: (context) => _Body(
                     entry: entry,
                     editorActive: _editorActive,
@@ -825,6 +847,7 @@ class _ShortcutHint extends StatelessWidget {
 
 class _Header extends StatelessWidget {
   final FileEntry? entry;
+  final String? nameSuffix;
   final bool compact;
   final bool showInfo;
   final VoidCallback onToggleInfo;
@@ -843,6 +866,7 @@ class _Header extends StatelessWidget {
     required this.onToggleInfo,
     required this.onClose,
     required this.editorController,
+    this.nameSuffix,
     this.multiCount,
     this.markdownRendered = true,
     this.onToggleMarkdownView,
@@ -854,9 +878,11 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final e = entry;
     final multi = multiCount != null;
-    final name = multi
+    final baseName = multi
         ? t.quickLook.items(count: multiCount!)
         : e?.name ?? t.quickLook.noSelection;
+    final suffix = nameSuffix;
+    final name = suffix == null ? baseName : '$baseName $suffix';
     final hasPreview = !multi && e != null && !compact;
     final isMarkdown =
         !multi &&
@@ -1171,6 +1197,7 @@ class _DiffAttempt extends StatelessWidget {
   final FileEntry right;
   final Signal<bool> editorActive;
   final ValueChanged<bool> onCompactChanged;
+  final VoidCallback onIdentical;
   final WidgetBuilder fallback;
 
   const _DiffAttempt({
@@ -1178,23 +1205,30 @@ class _DiffAttempt extends StatelessWidget {
     required this.right,
     required this.editorActive,
     required this.onCompactChanged,
+    required this.onIdentical,
     required this.fallback,
   });
 
   @override
   Widget build(BuildContext context) {
-    onCompactChanged(false);
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => editorActive.value = false,
-    );
-
     return AsyncRetain<TextDiffResult>(
       cacheKey: DiffRunner.cacheKeyFor(left, right),
       loader: () => DiffRunner.run(left, right),
       loading: const QlCentered.spinner(),
-      builder: (result) => result.available
-          ? TextDiffView(left: left, right: right, result: result)
-          : fallback(context),
+      builder: (result) {
+        if (result.identical) {
+          onIdentical();
+
+          return fallback(context);
+        }
+        if (!result.available) return fallback(context);
+        onCompactChanged(false);
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => editorActive.value = false,
+        );
+
+        return TextDiffView(left: left, right: right, result: result);
+      },
     );
   }
 }

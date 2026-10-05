@@ -10,8 +10,8 @@ const sortAscendingAction = 'sort_dir:asc';
 const sortDescendingAction = 'sort_dir:desc';
 
 List<ContextMenuItem> buildSortMenuItems(NavigationStore store) {
-  final activeKey = store.sortKey.value;
-  final ascending = store.sortAscending.value;
+  final activeKey = store.effectiveSortKey;
+  final ascending = store.effectiveSortAscending;
   final c = t.fileView.columns;
   ContextMenuItem keyItem(String label, SortKey key) => ContextMenuItem(
     icon: activeKey == key

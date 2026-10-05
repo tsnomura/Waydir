@@ -515,6 +515,9 @@ class Translations$compare$en {
 	/// en: 'Different'
 	String get differ => 'Different';
 
+	/// en: 'Same time'
+	String get sameTime => 'Same time';
+
 	/// en: 'Identical'
 	String get identical => 'Identical';
 
@@ -1206,6 +1209,9 @@ class Translations$quickLook$en {
 
 	/// en: 'No file selected'
 	String get noSelection => 'No file selected';
+
+	/// en: '(identical)'
+	String get identicalSuffix => '(identical)';
 
 	/// en: 'Folder'
 	String get folder => 'Folder';
@@ -3926,8 +3932,8 @@ class Translations$help$groups$tabsPanes$compare$en {
 	/// en: 'Folder Compare & Sync'
 	String get title => 'Folder Compare & Sync';
 
-	/// en: 'Compare the two panes in dual mode to see what differs, then sync one side to the other. - `F8` turns compare on while dual pane is active. - Rows are colour-coded: unique, newer, older or identical. - Toggle **Recursive** to compare nested folders or just the top level. - `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. - Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.'
-	String get body => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Rows are colour-coded: unique, newer, older or identical.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.';
+	/// en: 'Compare the two panes in dual mode to see what differs, then sync one side to the other. - `F8` turns compare on while dual pane is active. - Colour shows the state: only here or different; identical rows stay plain. - The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here. - Files with the same size but different timestamps are compared by content when both sides are local drives. - In Quick Look, a file is diffed against the file at the same relative path in the other pane. - Toggle **Recursive** to compare nested folders or just the top level. - `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. - Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.'
+	String get body => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.';
 }
 
 // Path: help.groups.selecting.basics
@@ -4389,6 +4395,7 @@ extension on Translations {
 			'compare.newer' => 'Newer',
 			'compare.older' => 'Older',
 			'compare.differ' => 'Different',
+			'compare.sameTime' => 'Same time',
 			'compare.identical' => 'Identical',
 			'compare.syncRight' => 'Sync →',
 			'compare.syncLeft' => '← Sync',
@@ -4727,7 +4734,7 @@ extension on Translations {
 			'help.groups.tabsPanes.dualPane.title' => 'Dual Pane',
 			'help.groups.tabsPanes.dualPane.body' => 'Show a source and a destination side by side. The active pane owns keyboard focus, and the copy / move shortcuts target the opposite pane.\n\n- `F9` (or `Ctrl+D`) toggles dual pane mode.\n- `Tab` switches the active pane.\n- `F5` copies the selected files to the other pane.\n- `F6` moves the selected files to the other pane.\n- Drag the divider to change how the space is split.',
 			'help.groups.tabsPanes.compare.title' => 'Folder Compare & Sync',
-			'help.groups.tabsPanes.compare.body' => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Rows are colour-coded: unique, newer, older or identical.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.',
+			'help.groups.tabsPanes.compare.body' => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.',
 			'help.groups.selecting.title' => 'Selecting',
 			'help.groups.selecting.basics.title' => 'Selection Basics',
 			'help.groups.selecting.basics.body' => 'Build up exactly the set of files you want before acting on them.\n\n- `Ctrl+A` selects everything in the folder.\n- `Insert` toggles the current item and moves down.\n- `Esc` clears the selection.\n- Click, `Shift+Click` for a range and `Ctrl+Click` to add or remove single items.\n- `Ctrl+Shift+S` saves the current selection to a file; `Ctrl+Shift+L` loads it back.',
@@ -4779,9 +4786,9 @@ extension on Translations {
 			'help.groups.customization.plugins.body' => 'Extend Waydir with plugins written in Lua.\n\n- Plugins run through the native core and can add new actions.\n- Enable or disable installed plugins in **Preferences -> Plugins**.\n- See the plugin authoring guide in the project\'s docs to build your own.',
 			'help.groups.resources.title' => 'Resources',
 			'help.groups.resources.links.title' => 'Links & Resources',
-			'help.groups.resources.links.body' => 'More about Waydir and where to go next.\n\n- **Changelog** - what\'s new in each release (in the menu).\n- **Keyboard shortcuts** - the full reference in **Preferences -> Keyboard**.\n- **GitHub** - [source code, issues and releases](https://github.com/Waydir/Waydir).\n- **Plugin guide** - [how to write your own plugins](https://github.com/Waydir/Waydir/blob/main/docs/plugins.md).',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.resources.links.body' => 'More about Waydir and where to go next.\n\n- **Changelog** - what\'s new in each release (in the menu).\n- **Keyboard shortcuts** - the full reference in **Preferences -> Keyboard**.\n- **GitHub** - [source code, issues and releases](https://github.com/Waydir/Waydir).\n- **Plugin guide** - [how to write your own plugins](https://github.com/Waydir/Waydir/blob/main/docs/plugins.md).',
 			'tags.menuLabel' => 'Tags',
 			'tags.newTag' => 'New Tag',
 			'tags.newTagDots' => 'New tag…',
@@ -4905,6 +4912,7 @@ extension on Translations {
 			'commandPalette.ready' => ({required Object count}) => '${count} results',
 			'quickLook.title' => 'Quick Look',
 			'quickLook.noSelection' => 'No file selected',
+			'quickLook.identicalSuffix' => '(identical)',
 			'quickLook.folder' => 'Folder',
 			'quickLook.noPreview' => 'No preview available',
 			'quickLook.binaryFile' => 'Binary file - no preview',
@@ -5292,10 +5300,10 @@ extension on Translations {
 			'tasks.status.completed' => 'Completed',
 			'tasks.status.failed' => 'Failed',
 			'tasks.status.cancelled' => 'Cancelled',
-			'git.clean' => 'clean',
-			'git.detachedHead' => 'detached HEAD',
 			_ => null,
 		} ?? switch (path) {
+			'git.clean' => 'clean',
+			'git.detachedHead' => 'detached HEAD',
 			'git.merging' => 'MERGING',
 			'git.rebasing' => 'REBASING',
 			'git.cherryPicking' => 'CHERRY-PICK',

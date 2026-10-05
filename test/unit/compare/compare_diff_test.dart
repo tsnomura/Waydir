@@ -74,6 +74,46 @@ void main() {
     expect(diff.right['/right/file.txt']!.status, CompareStatus.differ);
   });
 
+  test('content check candidates are same size with skewed mtime only', () {
+    final candidates = contentCheckCandidates(
+      leftRoot: '/left',
+      rightRoot: '/right',
+      leftEntries: [
+        entry('/left/skew.txt', size: 4, ms: 10000),
+        entry('/left/sized.txt', size: 4, ms: 10000),
+        entry('/left/same.txt', size: 4, ms: 10000),
+      ],
+      rightEntries: [
+        entry('/right/skew.txt', size: 4, ms: 50000),
+        entry('/right/sized.txt', size: 5, ms: 50000),
+        entry('/right/same.txt', size: 4, ms: 10000),
+      ],
+    );
+
+    expect(candidates.keys, ['skew.txt']);
+    expect(candidates['skew.txt'], ('/left/skew.txt', '/right/skew.txt'));
+  });
+
+  test('content equal pairs are identical and do not mark parents', () {
+    final diff = buildCompareDiff(
+      leftRoot: '/left',
+      rightRoot: '/right',
+      leftEntries: [
+        entry('/left/dir', type: FileItemType.folder),
+        entry('/left/dir/file.txt', size: 4, ms: 10000),
+      ],
+      rightEntries: [
+        entry('/right/dir', type: FileItemType.folder),
+        entry('/right/dir/file.txt', size: 4, ms: 50000),
+      ],
+      contentEqual: {'dir/file.txt'},
+    );
+
+    expect(diff.left['/left/dir/file.txt']!.status, CompareStatus.identical);
+    expect(diff.left['/left/dir']!.status, CompareStatus.identical);
+    expect(diff.counts.differ, 0);
+  });
+
   test('recursive folder is marked differing from child differences', () {
     final diff = buildCompareDiff(
       leftRoot: '/left',

@@ -93,7 +93,8 @@ class FileEntry {
        _modified = modified,
        _created = created,
        _added = added,
-       _realPath = realPath;
+       _realPath = realPath,
+       ghostOf = null;
 
   FileEntry.raw({
     required this.name,
@@ -107,7 +108,12 @@ class FileEntry {
     this.uid = 0,
     this.gid = 0,
     String? realPath,
+    this.ghostOf,
   }) : _realPath = realPath;
+
+  final FileEntry? ghostOf;
+
+  bool get isGhost => ghostOf != null;
 
   factory FileEntry.fromFileSystemEntity(FileSystemEntity entity) {
     final stat = entity.statSync();
@@ -132,6 +138,8 @@ class FileEntry {
   }
 
   bool get isHidden {
+    final ghostOf = this.ghostOf;
+    if (ghostOf != null) return ghostOf.isHidden;
     if (PlatformPaths.isWindows) {
       return name.startsWith('.') || isHiddenOnWindows(path);
     }

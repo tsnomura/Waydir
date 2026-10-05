@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Color;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:signals/signals.dart';
 import '../../core/archive/archive_path.dart';
 import '../../core/archive/archive_reader.dart';
@@ -20,6 +21,7 @@ import '../locations/location_uri.dart';
 import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../files/row_decorations.dart';
+import '../files/scroll_link.dart';
 import '../git/git_status_store.dart';
 import '../operations/operation_store.dart';
 import '../tags/tag_path.dart';
@@ -38,6 +40,10 @@ const String kPendingCreatePath = '__pending_create__';
 class NavigationStore {
   final currentPath = signal('');
   final files = signal<List<FileEntry>>([]);
+  final ghostFiles = signal<List<FileEntry>>(const []);
+  late final ghostPaths = computed<Set<String>>(
+    () => {for (final g in ghostFiles.value) g.path},
+  );
   final showHidden = signal(false);
   final remoteThumbnails = signal(false);
   final selectedPaths = signal<Set<String>>({});
@@ -79,6 +85,15 @@ class NavigationStore {
   final sortKey = signal<SortKey>(SortKey.name);
   final sortAscending = signal<bool>(true);
   final foldersFirst = signal<bool>(true);
+  final sortLeader = signal<NavigationStore?>(null);
+  final scrollLink = ScrollLink();
+
+  SortKey get effectiveSortKey =>
+      sortLeader.value?.sortKey.value ?? sortKey.value;
+  bool get effectiveSortAscending =>
+      sortLeader.value?.sortAscending.value ?? sortAscending.value;
+  bool get effectiveFoldersFirst =>
+      sortLeader.value?.foldersFirst.value ?? foldersFirst.value;
   final folderSizes = FolderSizeScanner();
   final decorations = RowDecorationStore();
   final fileTags = signal<Map<String, Set<int>>>({});
@@ -163,6 +178,7 @@ class NavigationStore {
         );
 
   void Function()? _showHiddenDisposer;
+  void Function()? _ghostSelectionDisposer;
 
   late final canGoBack = computed(() => historyIndex.value > 0);
   late final canGoForward = computed(
@@ -221,9 +237,9 @@ class NavigationStore {
       }
       final sorted = sortEntries(
         _reconcileOrder(results, _previousSearchOrder),
-        key: sortKey.value,
-        ascending: sortAscending.value,
-        foldersFirst: foldersFirst.value,
+        key: effectiveSortKey,
+        ascending: effectiveSortAscending,
+        foldersFirst: effectiveFoldersFirst,
         naturalSort: SettingsStore.instance.naturalSort.value,
         sortFolders: SettingsStore.instance.sortFolders.value,
         folderSize: _folderSizeFor,
@@ -232,9 +248,11 @@ class NavigationStore {
 
       return pending != null ? [pending, ...sorted] : sorted;
     }
+    final ghosts = ghostFiles.value;
+    final base = ghosts.isEmpty ? files.value : [...files.value, ...ghosts];
     var list = showHidden.value
-        ? files.value
-        : files.value.where((f) => !f.isHidden).toList();
+        ? base
+        : base.where((f) => !f.isHidden).toList();
     final q = searchQuery.value.trim();
     if (searchActive.value && q.isNotEmpty) {
       if (SettingsStore.instance.searchMode.value == filterSearchMode) {
@@ -262,9 +280,9 @@ class NavigationStore {
     }
     list = sortEntries(
       _reconcileOrder(list, _previousBrowseOrder),
-      key: sortKey.value,
-      ascending: sortAscending.value,
-      foldersFirst: foldersFirst.value,
+      key: effectiveSortKey,
+      ascending: effectiveSortAscending,
+      foldersFirst: effectiveFoldersFirst,
       naturalSort: SettingsStore.instance.naturalSort.value,
       sortFolders: SettingsStore.instance.sortFolders.value,
       folderSize: _folderSizeFor,
@@ -363,6 +381,7 @@ class NavigationStore {
     _loadSortFor(startPath);
     loadDirectory(startPath);
     _setupShowHiddenEffect();
+    _setupGhostSelectionEffect();
     _setupSortDefaultsEffect();
     _setupGitStatusEffect();
     _setupTagsEffect();
@@ -492,12 +511,16 @@ class NavigationStore {
   }
 
   void setSortKey(SortKey key) {
+    final leader = sortLeader.value;
+    if (leader != null) return leader.setSortKey(key);
     if (sortKey.value == key) return;
     sortKey.value = key;
     _persistSort();
   }
 
   void setSortAscending(bool ascending) {
+    final leader = sortLeader.value;
+    if (leader != null) return leader.setSortAscending(ascending);
     if (sortAscending.value == ascending) return;
     sortAscending.value = ascending;
     _persistSort();
@@ -506,6 +529,8 @@ class NavigationStore {
   /// Toggles direction when [key] is already active, otherwise switches to
   /// [key] ascending. Persists the choice for the current folder.
   void cycleSortColumn(SortKey key) {
+    final leader = sortLeader.value;
+    if (leader != null) return leader.cycleSortColumn(key);
     batch(() {
       if (sortKey.value == key) {
         sortAscending.value = !sortAscending.value;
@@ -515,6 +540,19 @@ class NavigationStore {
       }
     });
     _persistSort();
+  }
+
+  void _setupGhostSelectionEffect() {
+    _ghostSelectionDisposer = effect(() {
+      final ghosts = ghostPaths.value;
+      final selected = selectedPaths.value;
+      if (ghosts.isEmpty || !selected.any(ghosts.contains)) return;
+      scheduleMicrotask(() {
+        final current = selectedPaths.value;
+        final cleaned = current.difference(ghostPaths.value);
+        if (cleaned.length != current.length) selectedPaths.value = cleaned;
+      });
+    });
   }
 
   void _setupShowHiddenEffect() {
@@ -1306,9 +1344,9 @@ class NavigationStore {
 
   List<FileEntry> sortCurrent(List<FileEntry> entries) => sortEntries(
     entries,
-    key: sortKey.value,
-    ascending: sortAscending.value,
-    foldersFirst: foldersFirst.value,
+    key: effectiveSortKey,
+    ascending: effectiveSortAscending,
+    foldersFirst: effectiveFoldersFirst,
     naturalSort: SettingsStore.instance.naturalSort.value,
     sortFolders: SettingsStore.instance.sortFolders.value,
     folderSize: _folderSizeFor,
@@ -1358,7 +1396,7 @@ class NavigationStore {
     }
     for (var i = idx - 1; i >= 0; i--) {
       if (rows[i].depth < row.depth) {
-        jumpToIndex(i);
+        cursorIndex.value = i;
 
         return true;
       }
@@ -1368,7 +1406,7 @@ class NavigationStore {
   }
 
   void toggleTreeFolder(FileEntry entry) {
-    if (entry.type != FileItemType.folder) return;
+    if (entry.type != FileItemType.folder || entry.isGhost) return;
     final path = entry.path;
     final expanded = Set<String>.from(treeExpandedPaths.value);
     if (expanded.remove(path)) {
@@ -1459,7 +1497,7 @@ class NavigationStore {
     final sel = selectedPaths.value;
     final targets = <String>[];
     void consider(FileEntry e) {
-      if (e.type != FileItemType.folder) return;
+      if (e.type != FileItemType.folder || e.isGhost) return;
       final path = e.realPath;
       if (PlatformPaths.isNetworkPath(path)) return;
       if (PlatformPaths.isSftpUri(path)) return;
@@ -1501,35 +1539,40 @@ class NavigationStore {
     }
   }
 
+  @visibleForTesting
+  void debugApplyExternalChanges(List<FileEntry> newEntries) =>
+      _applyExternalChanges(newEntries);
+
   void _applyExternalChanges(List<FileEntry> newEntries) {
     final newPaths = newEntries.map((e) => e.path).toSet();
     final filteredSelected = selectedPaths.value
         .where(newPaths.contains)
         .toSet();
 
-    final visible = showHidden.value
-        ? newEntries
-        : newEntries.where((f) => !f.isHidden).toList();
-
+    final oldList = _vf;
     final oldCursor = cursorIndex.value;
-    int newCursor = -1;
-    if (oldCursor >= 0 && oldCursor < _vf.length) {
-      final cursorPath = _vf[oldCursor].path;
-      newCursor = visible.indexWhere((e) => e.path == cursorPath);
-    }
-    if (newCursor < 0 && oldCursor >= 0 && visible.isNotEmpty) {
-      newCursor = oldCursor.clamp(0, visible.length - 1);
-    }
-    int newAnchor = -1;
-    if (anchorIndex.value >= 0 && anchorIndex.value < _vf.length) {
-      final anchorPath = _vf[anchorIndex.value].path;
-      newAnchor = visible.indexWhere((e) => e.path == anchorPath);
-    }
-    if (newAnchor < 0) newAnchor = newCursor;
+    final cursorPath = oldCursor >= 0 && oldCursor < oldList.length
+        ? oldList[oldCursor].path
+        : null;
+    final oldAnchor = anchorIndex.value;
+    final anchorPath = oldAnchor >= 0 && oldAnchor < oldList.length
+        ? oldList[oldAnchor].path
+        : null;
 
     batch(() {
       files.value = newEntries;
       selectedPaths.value = filteredSelected;
+      final list = _vf;
+      var newCursor = cursorPath == null
+          ? -1
+          : list.indexWhere((e) => e.path == cursorPath);
+      if (newCursor < 0 && oldCursor >= 0 && list.isNotEmpty) {
+        newCursor = oldCursor.clamp(0, list.length - 1);
+      }
+      var newAnchor = anchorPath == null
+          ? -1
+          : list.indexWhere((e) => e.path == anchorPath);
+      if (newAnchor < 0) newAnchor = newCursor;
       cursorIndex.value = newCursor;
       anchorIndex.value = newAnchor;
     });
@@ -2081,6 +2124,8 @@ class NavigationStore {
   void dispose() {
     _showHiddenDisposer?.call();
     _showHiddenDisposer = null;
+    _ghostSelectionDisposer?.call();
+    _ghostSelectionDisposer = null;
     _sortDefaultsDisposer?.call();
     _sortDefaultsDisposer = null;
     _gitStatusDisposer?.call();
@@ -2135,9 +2180,20 @@ class NavigationStore {
     fileListFocusRequest.value++;
   }
 
+  void moveCursorToName(String name) {
+    final files = _vf;
+    final current = cursorIndex.value;
+    if (current >= 0 && current < files.length && files[current].name == name) {
+      return;
+    }
+    final idx = files.indexWhere((f) => f.name == name);
+    if (idx >= 0) cursorIndex.value = idx;
+  }
+
   void onOpen(FileEntry entry) => unawaited(_openEntry(entry));
 
   Future<void> _openEntry(FileEntry entry) async {
+    if (entry.isGhost) return;
     if (entry.type == FileItemType.folder) {
       if (PlatformPaths.isWindows &&
           currentPath.value == kTrashPath &&

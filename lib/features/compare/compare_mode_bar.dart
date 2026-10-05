@@ -6,6 +6,7 @@ import '../../i18n/strings.g.dart';
 import '../../ui/icons/waydir_icons.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../files/status_chip.dart';
 import 'compare_controller.dart';
 
 class CompareModeBar extends StatelessWidget {
@@ -44,19 +45,21 @@ class CompareModeBar extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         _LegendDot(
-                          color: AppColors.compareNewer,
-                          label: t.compare.newer,
-                        ),
-                        const SizedBox(width: 12),
-                        _LegendDot(
-                          color: AppColors.compareOlder,
-                          label: t.compare.older,
-                        ),
-                        const SizedBox(width: 12),
-                        _LegendDot(
                           color: AppColors.compareDiffer,
                           label: t.compare.differ,
                         ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 1,
+                          height: 12,
+                          color: AppColors.bgDivider,
+                        ),
+                        const SizedBox(width: 12),
+                        _LegendGlyph(glyph: '↑', label: t.compare.newer),
+                        const SizedBox(width: 12),
+                        _LegendGlyph(glyph: '↓', label: t.compare.older),
+                        const SizedBox(width: 12),
+                        _LegendGlyph(glyph: '≠', label: t.compare.sameTime),
                         const SizedBox(width: 16),
                         if (running) ...[
                           Text(
@@ -164,8 +167,27 @@ class _LegendDot extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, color: color.withValues(alpha: 0.8)),
+        Container(width: 14, height: 14, color: color),
         const SizedBox(width: 5),
+        Text(label, style: context.txt.captionSmall),
+      ],
+    );
+  }
+}
+
+class _LegendGlyph extends StatelessWidget {
+  final String glyph;
+  final String label;
+
+  const _LegendGlyph({required this.glyph, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        StatusChip(glyph: glyph, color: AppColors.compareDiffer, size: 14),
+        const SizedBox(width: 4),
         Text(label, style: context.txt.captionSmall),
       ],
     );

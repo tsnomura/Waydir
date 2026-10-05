@@ -283,6 +283,7 @@ class _TabContent extends StatelessWidget {
             final viewMode = SettingsStore.instance.fileViewMode.value;
             if (viewMode == 'grid') {
               return FileGrid(
+                scrollLink: store.scrollLink,
                 files: files,
                 currentPath: currentPath,
                 recursiveResults: recursive,
@@ -312,6 +313,7 @@ class _TabContent extends StatelessWidget {
 
             if (viewMode == 'tree') {
               return FileTree(
+                scrollLink: store.scrollLink,
                 rows: store.treeRows.value,
                 currentPath: currentPath,
                 onSelect: store.onSelect,
@@ -333,8 +335,8 @@ class _TabContent extends StatelessWidget {
                 onOpenInNewTab: onOpenInNewTab,
                 onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
                 onRectSelect: onRectSelect,
-                sortColumn: store.sortKey.value,
-                sortAscending: store.sortAscending.value,
+                sortColumn: store.effectiveSortKey,
+                sortAscending: store.effectiveSortAscending,
                 onSortColumn: store.cycleSortColumn,
                 onPageRows: store.setPageRows,
                 folderSizes: store.folderSizes.displaySizes.value,
@@ -343,6 +345,7 @@ class _TabContent extends StatelessWidget {
             }
 
             return FileList(
+              scrollLink: store.scrollLink,
               files: files,
               currentPath: currentPath,
               recursiveResults: recursive,
@@ -364,8 +367,8 @@ class _TabContent extends StatelessWidget {
               onOpenInNewTab: onOpenInNewTab,
               onOpenInOtherPaneNewTab: onOpenInOtherPaneNewTab,
               onRectSelect: onRectSelect,
-              sortColumn: store.sortKey.value,
-              sortAscending: store.sortAscending.value,
+              sortColumn: store.effectiveSortKey,
+              sortAscending: store.effectiveSortAscending,
               onSortColumn: store.cycleSortColumn,
               onPageRows: store.setPageRows,
               folderSizes: store.folderSizes.displaySizes.value,

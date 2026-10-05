@@ -88,6 +88,9 @@ typedef _EnumNative =
 typedef _EnumDart =
     Pointer<Uint8> Function(Pointer<Utf8>, bool, bool, Pointer<IntPtr>);
 
+typedef _FilesEqualNative = Int32 Function(Pointer<Utf8>, Pointer<Utf8>);
+typedef _FilesEqualDart = int Function(Pointer<Utf8>, Pointer<Utf8>);
+
 typedef _TrashNative =
     Pointer<Uint8> Function(Pointer<Pointer<Utf8>>, IntPtr, Pointer<IntPtr>);
 typedef _TrashDart =
@@ -359,7 +362,7 @@ class NativeTrashItem {
 class WaydirCoreLoader {
   WaydirCoreLoader._();
 
-  static const int _requiredAbi = 17;
+  static const int _requiredAbi = 18;
 
   static DynamicLibrary? _cached;
   static bool _tried = false;
@@ -676,6 +679,31 @@ class WaydirCoreLoader {
       calloc.free(rootPtr);
       calloc.free(outLen);
     }
+  }
+
+  static List<bool?> filesEqual(List<(String, String)> pairs) {
+    if (pairs.isEmpty) return const [];
+    final lib = requireLib();
+    final fn = lib.lookupFunction<_FilesEqualNative, _FilesEqualDart>(
+      'waydir_files_equal',
+    );
+    final out = <bool?>[];
+    for (final pair in pairs) {
+      final left = pair.$1.toNativeUtf8();
+      final right = pair.$2.toNativeUtf8();
+      try {
+        final r = fn(left, right);
+        out.add(r < 0 ? null : r == 1);
+      } catch (e, st) {
+        _warnNative('files equal', e, st, once: true);
+        out.add(null);
+      } finally {
+        calloc.free(left);
+        calloc.free(right);
+      }
+    }
+
+    return out;
   }
 
   static List<WaydirTrashFailure> trash(List<String> paths) {

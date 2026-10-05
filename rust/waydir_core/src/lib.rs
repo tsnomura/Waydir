@@ -6,6 +6,7 @@
 use std::ffi::c_char;
 
 mod codec;
+mod content_compare;
 mod enumerate;
 mod folder_scan;
 mod list;
@@ -18,6 +19,7 @@ mod trash;
 mod util;
 mod walker;
 
+pub use content_compare::waydir_files_equal;
 pub use enumerate::waydir_enumerate;
 pub use folder_scan::{
     waydir_folder_scan_cancel, waydir_folder_scan_free, waydir_folder_scan_poll,
@@ -56,7 +58,7 @@ pub unsafe extern "C" fn waydir_free(ptr: *mut u8, len: usize) {
 
 #[no_mangle]
 pub extern "C" fn waydir_core_abi() -> u32 {
-    17
+    18
 }
 
 #[no_mangle]

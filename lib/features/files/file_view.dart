@@ -21,8 +21,11 @@ import 'package:path/path.dart' as p;
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
 import 'file_icons.dart';
+import 'pointer_hover_store.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart';
+import 'scroll_link.dart';
+import 'status_chip.dart';
 
 typedef FileSelectCallback = void Function(FileSelectionEvent event);
 typedef FileOpenCallback = void Function(FileEntry entry);
@@ -263,11 +266,13 @@ class FileList extends StatefulWidget {
   final Map<String, RowDecoration> rowDecorations;
   final List<FileTreeRow>? treeRows;
   final ValueChanged<FileEntry>? onToggleTreeFolder;
+  final ScrollLink? scrollLink;
 
   const FileList({
     super.key,
     required this.files,
     required this.currentPath,
+    this.scrollLink,
     this.folderSizes = const {},
     this.rowDecorations = const {},
     this.treeRows,
@@ -329,11 +334,13 @@ class FileTree extends StatelessWidget {
   final Map<String, int> folderSizes;
   final Map<String, RowDecoration> rowDecorations;
   final ValueChanged<FileEntry> onToggleFolder;
+  final ScrollLink? scrollLink;
 
   const FileTree({
     super.key,
     required this.rows,
     required this.currentPath,
+    this.scrollLink,
     required this.onSelect,
     required this.onOpen,
     required this.onToggleFolder,
@@ -392,11 +399,30 @@ class FileTree extends StatelessWidget {
       onPageRows: onPageRows,
       folderSizes: folderSizes,
       rowDecorations: rowDecorations,
+      scrollLink: scrollLink,
     );
   }
 }
 
-class _FileListState extends State<FileList> {
+class _FileListState extends State<FileList> with ScrollLinkBinding {
+  @override
+  ScrollController get linkedScrollController => _scrollController;
+
+  @override
+  ScrollLink? get scrollLink => widget.scrollLink;
+
+  @override
+  void initState() {
+    super.initState();
+    initScrollLink();
+  }
+
+  @override
+  void didUpdateWidget(covariant FileList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    updateScrollLink();
+  }
+
   final _scrollController = ScrollController();
   final _hScrollController = ScrollController();
   double _contentWidth = 0;
@@ -550,7 +576,9 @@ class _FileListState extends State<FileList> {
     String? folder;
     if (index >= 0) {
       final entry = _displayFiles[index];
-      if (entry.type == FileItemType.folder) folder = entry.path;
+      if (entry.type == FileItemType.folder && !entry.isGhost) {
+        folder = entry.path;
+      }
     }
     if (folder != _hoveredFolderPath || !_isDragOver) {
       setState(() {
@@ -611,6 +639,7 @@ class _FileListState extends State<FileList> {
 
   @override
   void dispose() {
+    disposeScrollLink();
     _scrollController.dispose();
     _hScrollController.dispose();
     super.dispose();
@@ -668,7 +697,11 @@ class _FileListState extends State<FileList> {
             final treeLeading = widget.treeRows == null
                 ? 0.0
                 : maxTreeDepth * _kTreeIndentWidth + _kTreeDisclosureWidth;
-            final iconSlot = 16 * _scale + 6 + treeLeading;
+            final showStatus = widget.rowDecorations.values.any(
+              (d) => d.badge != null,
+            );
+            final statusSlot = showStatus ? 16 * _scale + 6 : 0.0;
+            final iconSlot = statusSlot + 16 * _scale + 6 + treeLeading;
             final rowChrome =
                 _listHorizontalPadding * 2 +
                 _kScrollbarGutterWidth +
@@ -812,7 +845,8 @@ class _FileListState extends State<FileList> {
                                     String? target;
                                     if (index >= 0 &&
                                         displayFiles[index].type ==
-                                            FileItemType.folder) {
+                                            FileItemType.folder &&
+                                        !displayFiles[index].isGhost) {
                                       target = displayFiles[index].path;
                                     }
                                     final paths = await pathsFromSession(
@@ -924,6 +958,7 @@ class _FileListState extends State<FileList> {
                                                 onMenuAction:
                                                     widget.onMenuAction,
                                                 recursive: recursive,
+                                                showStatus: showStatus,
                                                 treeMode:
                                                     widget.treeRows != null,
                                                 treeDepth:
@@ -1481,6 +1516,7 @@ class _ListRow extends StatefulWidget {
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final int? folderSize;
   final RowDecoration? rowDecoration;
+  final bool showStatus;
   final bool treeMode;
   final int treeDepth;
   final bool treeExpanded;
@@ -1518,6 +1554,7 @@ class _ListRow extends StatefulWidget {
     this.location,
     this.onOpenInNewTab,
     this.onOpenInOtherPaneNewTab,
+    this.showStatus = false,
     this.treeMode = false,
     this.treeDepth = 0,
     this.treeExpanded = false,
@@ -1631,9 +1668,13 @@ class _ListRowState extends State<_ListRow> {
     if (_dragging) return AppColors.accent.withValues(alpha: 0.08);
     if (widget.selected) return AppColors.bgSelectedMuted;
     if (widget.isCursor) return AppColors.bgHoverStrong;
-    if (_hovered) return AppColors.bgHover;
-    final tint = widget.rowDecoration?.tint;
-    if (tint != null) return tint.withValues(alpha: 0.18);
+    if (_hovered && !PointerHoverStore.instance.suppressed.value) {
+      return AppColors.bgHover;
+    }
+    final decoration = widget.rowDecoration;
+    if (decoration != null && decoration.badge == null) {
+      return decoration.tint.withValues(alpha: 0.18);
+    }
 
     return Colors.transparent;
   }
@@ -1694,34 +1735,28 @@ class _ListRowState extends State<_ListRow> {
   }
 
   Widget _buildIconWithBadge(BuildContext context, FileEntry e, bool isFolder) {
-    final icon = buildFileIcon(
+    return buildFileIcon(
       name: e.name,
       ext: e.extension,
       isFolder: isFolder,
       size: widget.iconSize,
     );
-    final badge = widget.rowDecoration?.badge;
-    if (badge == null) return icon;
+  }
 
-    return SizedBox(
-      width: widget.iconSize,
-      height: widget.iconSize,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(child: Center(child: icon)),
-          Positioned(
-            right: -2,
-            top: -4,
-            child: Text(
-              badge,
-              style: context.txt.badge.copyWith(
-                color: widget.rowDecoration!.tint,
-              ),
+  Widget _buildStatusCell() {
+    if (!widget.showStatus) return const SizedBox.shrink();
+    final decoration = widget.rowDecoration;
+    final badge = decoration?.badge;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: badge == null
+          ? SizedBox(width: widget.iconSize)
+          : StatusChip(
+              glyph: badge,
+              color: decoration!.tint,
+              size: widget.iconSize,
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1819,7 +1854,11 @@ class _ListRowState extends State<_ListRow> {
       _lastTap = null;
       final keys = HardwareKeyboard.instance;
       final isFolder = widget.entry.type == FileItemType.folder;
-      if (isFolder && keys.isShiftPressed) {
+      if (widget.entry.isGhost) {
+        widget.onSelect(
+          FileSelectionEvent(entry: widget.entry, index: widget.index),
+        );
+      } else if (isFolder && keys.isShiftPressed) {
         widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
       } else if (isFolder && keys.isControlPressed) {
         widget.onOpenInNewTab?.call(widget.entry.path);
@@ -1836,6 +1875,7 @@ class _ListRowState extends State<_ListRow> {
   }
 
   void _handleSecondaryTap(TapUpDetails details) {
+    if (widget.entry.isGhost) return;
     widget.onContextMenu?.call(
       FileSelectionEvent(entry: widget.entry, index: widget.index),
       details.globalPosition,
@@ -1979,10 +2019,16 @@ class _ListRowState extends State<_ListRow> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SignalBuilder(builder: _build);
+
+  Widget _build(BuildContext context) {
     final e = widget.entry;
     final isFolder = e.type == FileItemType.folder;
-    final opacity = widget.isCut ? 0.4 : (_dragging ? 0.4 : 1.0);
+    final opacity = e.isGhost
+        ? 0.5
+        : widget.isCut
+        ? 0.4
+        : (_dragging ? 0.4 : 1.0);
 
     if (widget.isRenaming) {
       return MouseRegion(
@@ -1999,6 +2045,7 @@ class _ListRowState extends State<_ListRow> {
             opacity: opacity,
             child: Row(
               children: [
+                _buildStatusCell(),
                 _buildTreePrefix(isFolder),
                 _buildIconWithBadge(context, e, isFolder),
                 const SizedBox(width: 6),
@@ -2100,6 +2147,7 @@ class _ListRowState extends State<_ListRow> {
             opacity: opacity,
             child: Row(
               children: [
+                _buildStatusCell(),
                 _buildTreePrefix(isFolder),
                 _buildIconWithBadge(context, e, isFolder),
                 const SizedBox(width: 6),
@@ -2111,14 +2159,20 @@ class _ListRowState extends State<_ListRow> {
                         child: Text(
                           e.name,
                           overflow: TextOverflow.ellipsis,
-                          style: context.txt.body.copyWith(
-                            color: widget.selected
-                                ? AppColors.fg
-                                : AppColors.fg.withValues(alpha: 0.9),
-                            fontWeight: widget.selected
-                                ? FontWeight.w500
-                                : FontWeight.normal,
-                          ),
+                          style: e.isGhost
+                              ? context.txt.body.copyWith(
+                                  color: AppColors.fgSubtle,
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: AppColors.fgSubtle,
+                                )
+                              : context.txt.body.copyWith(
+                                  color: widget.selected
+                                      ? AppColors.fg
+                                      : AppColors.fg.withValues(alpha: 0.9),
+                                  fontWeight: widget.selected
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
+                                ),
                         ),
                       ),
                       _buildTagDots(),
@@ -2149,6 +2203,8 @@ class _ListRowState extends State<_ListRow> {
         ),
       ),
     );
+
+    if (e.isGhost) return row;
 
     return DragItemWidget(
       dragItemProvider: _provideDragItem,

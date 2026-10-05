@@ -59,14 +59,26 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
   and resized like a floating panel.
 - `PageUp`/`PageDown` scroll the preview (previously they paged left/right
   between files); this also works for the unfocused text preview.
-- In compare mode, opening Quick Look while exactly one file is selected in
-  each pane attempts a side-by-side text diff (via an external `diff -y`-style
-  command, config-driven like preview generators — see below) instead of the
-  normal single-file preview, opening wider to fit two columns. Falls back to
-  the normal single-file preview whenever the diff command is unset, missing,
-  errors or times out, or the selection stops being one-file-per-pane (e.g.
-  arrowing to a different file). Added/removed/changed lines are tinted using
-  the same colors as compare mode's own row decorations.
+- In compare mode, Quick Look on a file that exists on both sides attempts a
+  side-by-side text diff (via an external `diff -y`-style command,
+  config-driven like preview generators — see below) instead of the normal
+  single-file preview, opening wider to fit two columns. The pair is found
+  automatically by relative path — nothing needs to be marked — and follows
+  the cursor, so arrowing to another file inside Quick Look diffs that file
+  against its counterpart. Marking exactly one file in each pane still
+  overrides the automatic pair (to diff two differently named files). Pairs
+  where either side is on sftp get the normal preview, since the external
+  command can't read `sftp://` paths. Before running the diff command the
+  two files are compared byte for byte (the same native check compare uses,
+  skipped when sizes differ, stopping at the first difference); a
+  byte-identical pair gets the normal preview instead, titled
+  `name (identical)`, with editing and playback available as usual. The
+  verdict is cached per pair while Quick Look stays open. Cloud-only
+  (OneDrive placeholder) files aren't read, so they go straight to the diff.
+  Falls back to the normal single-file preview whenever the diff command is
+  unset, missing, errors or times out.
+  Added/removed/changed lines are tinted using the same colors as compare
+  mode's own row decorations.
 - Fixed: the scroll controller wasn't attached at all on Windows, so scrolling
   silently did nothing there.
 - Fixed: stepping the cursor with the arrow keys right after Quick Look opened
@@ -85,7 +97,7 @@ Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
 The command Quick Look runs for the compare-mode diff preview is configurable,
 the same way preview generators are: drop a `compare_diff.json` in Waydir's
 application support directory (next to `generators/`, e.g.
-`%APPDATA%\Waydir\compare_diff.json` on Windows) with `cmd`, `args`
+`%APPDATA%\dev.waydir\Waydir\compare_diff.json` on Windows) with `cmd`, `args`
 (`%LEFT%`/`%RIGHT%`/`%WIDTH%` placeholders) and an optional `timeoutSeconds`.
 Falls back to plain `diff -y --strip-trailing-cr` on `PATH` when the file is
 missing — `--strip-trailing-cr` matters whenever either file has Windows CRLF
@@ -103,7 +115,7 @@ content on non-English Windows installs, since `diff` just echoes the source
 files' own UTF-8 bytes back verbatim.
 
 Relevant commits: `9e82bb3`, `03bbfc7`, `070098a`, `a2aee71`, `cc1bdfd`,
-`6513cb6`, `8f36b93`, `f93b97d`.
+`6513cb6`, `8f36b93`, `f93b97d`, `1882923`.
 
 ## Quick Look preview generators
 
@@ -360,6 +372,103 @@ still isn't — see below).
   symlink cycles terminate (cycles are tracked by file id).
 
 Relevant commits: `dec6776`, `bb6ef7f`, `a348b95`, `251abb3`, `660e3fd`.
+
+## Compare: status column, content check, ghost rows, linked panes
+
+### Status: color for the state, glyph for the direction
+
+The old rendering mixed both into one faint cue — an 18% background tint
+plus a 9px glyph on the file icon's corner — and gave newer/older their own
+colors, so a file whose content had changed but whose mtime differed showed
+as "newer"/"older" and never as "different". In practice `≠` almost never
+fired: it required a size difference with mtimes within the 2s tolerance.
+
+- Color now says *what* the state is, the glyph says *which way*:
+  green `+` only on this side; orange `↑` newer, `↓` older, `≠` same
+  timestamp but different content; identical rows stay plain.
+- List view gets a dedicated status column left of the icon: a solid,
+  icon-sized chip with the glyph in bold. It stays visible on the cursor,
+  hovered and marked rows (the old tint vanished on all three). The column
+  only exists while some row carries a compare badge, and the header's
+  leading slot widens with it so the columns stay aligned. Compare rows no
+  longer get the background tint; tag tints are unchanged.
+- Grid view shows the same chip at the thumbnail's top-left corner.
+- The legend in the compare bar shows the two state swatches, a divider, and
+  the `↑`/`↓`/`≠` chips.
+
+### Content check for same-size, different-mtime pairs
+
+A size difference already proves the content differs, and same size plus
+mtimes within tolerance is treated as identical. The one case metadata can't
+decide — same size, different mtime (typically a copy that didn't preserve
+timestamps) — is now settled by reading the files, when both roots are local
+drives: identical content → `identical`, otherwise orange `↑`/`↓`.
+
+- Compared in the native core (`waydir_files_equal`, ABI 18) byte by byte in
+  1 MiB chunks, stopping at the first difference, called in batches of 32
+  from an `FsWorkerPool` isolate so the UI never blocks and Cancel takes
+  effect between batches.
+- Skipped (treated as different, as before) when either root is a network
+  path or sftp, and for cloud-only files — OneDrive placeholders with the
+  `OFFLINE`/`RECALL_ON_OPEN`/`RECALL_ON_DATA_ACCESS` attributes — since
+  reading them would trigger a download. A `subst` drive counts as local
+  when its target is (`GetDriveType` already reports the target's type).
+- On Linux, network detection is still only `/gvfs/`, so NFS/CIFS mounts
+  would still be read.
+
+### Ghost rows
+
+A file that exists on one side only shows up in the other pane as a ghost
+row: same name, greyed out and struck through, in the position it would
+sort into (size/dates borrowed from the real file, so with the same sort
+both panes list the same names in the same order). Ghosts are generated for
+whichever folder each pane is showing.
+
+- The cursor can land on a ghost. Quick Look there previews the real file
+  on the other side; Sync with the cursor on a ghost in the active pane and
+  nothing marked copies just that item.
+- Ghosts never act like files: they can't be marked (excluded from
+  `selectedEntries`, and any mark that reaches one is stripped
+  immediately), opened, renamed, dragged, dropped onto or context-menued,
+  and they're excluded from copy/move-to-other-pane's cursor fallback,
+  thumbnails, folder-size scans, the terminal path insert and the command
+  palette's file list.
+- Limits: a folder that exists on one side only shows just its own ghost
+  row — it can't be entered. In tree view ghosts appear at the top level
+  only.
+- Fixed while testing: a directory-watcher refresh re-derived the cursor
+  index from the raw listing, which has no ghosts, so on a busy folder
+  (OneDrive under a `subst` drive here) the cursor jumped back by the
+  number of ghosts above it. Cursor and anchor are now re-found by path in
+  the list that's actually displayed.
+
+### Linked panes
+
+While compare is active the panes move together:
+
+- Sort: the right pane uses the left pane's sort. Changing the sort from
+  either pane changes the left one; the right folder's remembered sort is
+  never overwritten, and the right pane goes back to its own sort when
+  compare ends.
+- Scroll (both ways): scrolling either pane moves the other to the same
+  offset. Offsets the view applies because of the link aren't reported
+  back, so the two can't fight.
+- Cursor (both ways): moving the cursor moves the other pane's cursor to the
+  row with the same name (ghosts included), without touching marks — only
+  while both panes show the same relative folder.
+- Folders (both ways): entering or leaving a subfolder takes the other pane
+  to the same relative path, if it exists there.
+- Limits: scroll follows by pixel offset, so rows can drift if only one
+  pane has a search filter or hidden files differ. Compare still re-runs
+  after a completed operation using the panes' current folders as the new
+  roots, so syncing from inside a subfolder makes it the new compare root.
+
+### Quick Look diff pairing
+
+Covered under Quick Look above: the pair is found by relative path from the
+cursor, with one marked file per pane as an explicit override.
+
+Relevant commits: `1882923`, `d63eb9d`.
 
 ## Windows Terminal integration
 
@@ -721,11 +830,7 @@ Relevant commit: `94334d0`.
 Plain click no longer toggles a mark at all — it's now the mouse equivalent
 of an arrow key, moving only the cursor and leaving every mark untouched.
 Ctrl+click takes over the old plain-click behavior (toggle the clicked
-item's mark in place); Shift+click is now a deliberate no-op, since it's
-just the zero-drag case of Shift+drag's existing paint-based rubber-band
-(`RubberBandLayer`) — that layer already tracks the gesture independently of
-the row's own tap handler, so a Shift+click that never crosses the drag
-threshold simply never fires a selection change (cursor included).
+item's mark in place).
 
 This was a deliberate follow-up after living with the original click-toggles
 model: a first click most often means "look at this," not "mark this," and
@@ -733,7 +838,37 @@ having it move the cursor only — consistent with every keyboard cursor
 move — turned out to feel more natural than the original toggle. Right-click
 and dired commands (`m`/`u`/`t`/etc.) are unaffected.
 
-Relevant commit: `5ec5722`.
+**Shift+click: anchored range end.** Shift+click was first made a no-op (the
+zero-drag case of Shift+drag's rubber band), which turned out unintuitive —
+it should mean "end of a range". It now works like Explorer's, but in the
+same paint style as Shift+arrow and Shift+drag:
+
+- The first Shift+click of a session fixes the origin at the cursor and
+  snapshots the marks; mark vs. unmark is decided once, from the origin
+  cell. The range is inclusive of both ends, and the cursor moves to the
+  clicked item.
+- Each further Shift+click recomputes `snapshot ∪ [origin..click]` (or `−`
+  when unmarking) from that snapshot, so overshooting and then Shift+clicking
+  back toward the origin shrinks the range and restores what was outside it.
+- The session ends on anything else that changes the cursor or the marks (a
+  plain click, an arrow key, ...) — detected by checking the marks and cursor
+  are still exactly what the last Shift+click left, rather than hooking every
+  method — so the next Shift+click starts from wherever the cursor is.
+- Shift+drag's rubber band is unchanged: a drag never fires the row's tap.
+
+**Hover highlight yields to the keyboard.** In the list, grid and tree views,
+the mouse-hover highlight looked too much like the keyboard cursor, especially
+when the list scrolls under a stationary pointer. Any non-modifier key now
+hides it, and real pointer movement brings it back (`PointerHoverStore`,
+listening globally via `HardwareKeyboard` and a pointer-router global route).
+Modifier keys don't count, so holding Shift for a Shift+click keeps the
+highlight.
+
+Also fixed: tree view's Left (ascend to the parent folder) went through
+`jumpToIndex`, which in the personal scheme replaces the marks with the
+target — so it wiped your marks. It now only moves the cursor.
+
+Relevant commits: `5ec5722`, `3637e0b`.
 
 ## Grid thumbnails preserve aspect ratio
 

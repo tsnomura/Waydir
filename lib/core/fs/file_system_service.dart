@@ -105,6 +105,9 @@ class FileSystemService {
   static Future<List<FileEntry>> listRecursive(String root) =>
       FsWorkerPool.instance.listRecursive(root);
 
+  static Future<List<bool?>> filesEqual(List<(String, String)> pairs) =>
+      FsWorkerPool.instance.filesEqual(pairs);
+
   static Future<bool> directoryExists(String path) =>
       FsWorkerPool.instance.directoryExists(path);
 

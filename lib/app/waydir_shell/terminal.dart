@@ -214,7 +214,10 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
     final selected = store.selectedEntries;
     final entries = selected.length > 1
         ? selected
-        : [if (store.cursorEntry.value != null) store.cursorEntry.value!];
+        : [
+            if (store.cursorEntry.value case final cursor? when !cursor.isGhost)
+              cursor,
+          ];
     if (entries.isEmpty) return;
 
     final values = entries
