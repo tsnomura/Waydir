@@ -12,7 +12,8 @@ class ArchiveService {
     List<ArchiveEntry> all,
     DateTime archiveModified,
   ) {
-    final prefix = innerPath.isEmpty ? '' : '$innerPath/';
+    final inner = innerPath.replaceAll('\\', '/');
+    final prefix = inner.isEmpty ? '' : '$inner/';
     final byName = <String, FileEntry>{};
     final dirNames = <String>{};
 

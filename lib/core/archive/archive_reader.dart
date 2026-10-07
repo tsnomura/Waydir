@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:archive/archive_io.dart';
+import 'package:path/path.dart' as p;
 
 import '../../i18n/strings.g.dart';
 
@@ -93,13 +94,33 @@ class ArchiveReader {
     }
   }
 
-  static Archive _readArchive(String archivePath) {
+  static T _useArchive<T>(String archivePath, T Function(Archive) body) {
+    InputFileStream? stream;
+    final Archive archive;
+    try {
+      final lower = archivePath.toLowerCase();
+      if (_isZipLike(archivePath) || lower.endsWith('.tar')) {
+        stream = InputFileStream(archivePath);
+      }
+      archive = _readArchive(archivePath, stream);
+    } catch (e) {
+      stream?.closeSync();
+      rethrow;
+    }
+    try {
+      return body(archive);
+    } finally {
+      stream?.closeSync();
+    }
+  }
+
+  static Archive _readArchive(String archivePath, InputFileStream? stream) {
     final lower = archivePath.toLowerCase();
     try {
       if (_isZipLike(archivePath)) {
-        return ZipDecoder().decodeStream(InputFileStream(archivePath));
+        return ZipDecoder().decodeStream(stream!);
       } else if (lower.endsWith('.tar')) {
-        return TarDecoder().decodeStream(InputFileStream(archivePath));
+        return TarDecoder().decodeStream(stream!);
       }
       final bytes = File(archivePath).readAsBytesSync();
       if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz')) {
@@ -123,8 +144,10 @@ class ArchiveReader {
     }
   }
 
-  static List<ArchiveEntry> listEntries(String archivePath) {
-    final archive = _readArchive(archivePath);
+  static List<ArchiveEntry> listEntries(String archivePath) =>
+      _useArchive(archivePath, (archive) => _listEntries(archivePath, archive));
+
+  static List<ArchiveEntry> _listEntries(String archivePath, Archive archive) {
     final entries = <ArchiveEntry>[];
     for (final entry in archive) {
       final raw = entry.name;
@@ -153,8 +176,17 @@ class ArchiveReader {
     String archivePath,
     String innerPath,
     String destPath,
+  ) => _useArchive(
+    archivePath,
+    (archive) => _extractEntry(archivePath, archive, innerPath, destPath),
+  );
+
+  static void _extractEntry(
+    String archivePath,
+    Archive archive,
+    String innerPath,
+    String destPath,
   ) {
-    final archive = _readArchive(archivePath);
     final target = _normalize(innerPath);
     var found = false;
 
@@ -183,13 +215,22 @@ class ArchiveReader {
     String archivePath,
     String innerPath,
     String stagingDir,
+  ) => _useArchive(
+    archivePath,
+    (archive) => _extractTree(archivePath, archive, innerPath, stagingDir),
+  );
+
+  static String _extractTree(
+    String archivePath,
+    Archive archive,
+    String innerPath,
+    String stagingDir,
   ) {
-    final archive = _readArchive(archivePath);
     final target = _normalize(innerPath);
     final baseName = target.contains('/')
         ? target.substring(target.lastIndexOf('/') + 1)
         : target;
-    final stagedRoot = '$stagingDir/$baseName';
+    final stagedRoot = p.join(stagingDir, baseName);
     var found = false;
 
     for (final entry in archive) {
@@ -200,7 +241,10 @@ class ArchiveReader {
       if (epath == target) {
         dest = stagedRoot;
       } else if (epath.startsWith('$target/')) {
-        dest = '$stagedRoot/${epath.substring(target.length + 1)}';
+        dest = p.joinAll([
+          stagedRoot,
+          ...epath.substring(target.length + 1).split('/'),
+        ]);
       } else {
         continue;
       }
@@ -248,9 +292,24 @@ class ArchiveReader {
     String? Function(String epath, bool isDir) resolveDest, {
     void Function(String name)? onEntry,
     bool Function()? isCancelled,
-  }) {
-    final archive = _readArchive(archivePath);
+  }) => _useArchive(
+    archivePath,
+    (archive) => _extractAllResolved(
+      archivePath,
+      archive,
+      resolveDest,
+      onEntry: onEntry,
+      isCancelled: isCancelled,
+    ),
+  );
 
+  static void _extractAllResolved(
+    String archivePath,
+    Archive archive,
+    String? Function(String epath, bool isDir) resolveDest, {
+    void Function(String name)? onEntry,
+    bool Function()? isCancelled,
+  }) {
     for (final entry in archive) {
       if (isCancelled != null && isCancelled()) break;
 
