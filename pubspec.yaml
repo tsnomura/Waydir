@@ -81,3 +81,7 @@ flutter:
     - family: DistroLogos
       fonts:
         - asset: assets/fonts/font-logos/font-logos.ttf
+
+dependency_overrides:
+  super_native_extensions:
+    path: third_party/super_native_extensions
