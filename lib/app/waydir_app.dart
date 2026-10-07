@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:signals/signals_flutter.dart';
+import '../core/archive/archive_temp.dart';
 import '../core/settings/settings_store.dart';
 import '../i18n/strings.g.dart';
 import '../ui/theme/app_theme.dart';
@@ -21,15 +23,24 @@ class WaydirApp extends StatefulWidget {
 
 class _WaydirAppState extends State<WaydirApp> with WidgetsBindingObserver {
   Timer? _windowSaveDebounce;
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
     if (isWindowChromeSupported) WidgetsBinding.instance.addObserver(this);
+    _lifecycle = AppLifecycleListener(onExitRequested: _onExitRequested);
+  }
+
+  Future<AppExitResponse> _onExitRequested() async {
+    ArchiveTemp.endSession();
+
+    return AppExitResponse.exit;
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     if (isWindowChromeSupported) WidgetsBinding.instance.removeObserver(this);
     _windowSaveDebounce?.cancel();
     super.dispose();

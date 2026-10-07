@@ -7,6 +7,7 @@ import 'ui/window/window.dart';
 import 'app/app_info.dart';
 import 'app/launch_args.dart';
 import 'app/waydir_app.dart';
+import 'core/archive/archive_temp.dart';
 import 'core/fs/fs_backend.dart';
 import 'core/fs/fs_worker_pool.dart';
 import 'core/fs/local_fs.dart';
@@ -62,6 +63,7 @@ void main(List<String> args) async {
       FsBackendRegistry.registerLocal(const LocalFs());
       FsBackendRegistry.register(const SftpFs());
       unawaited(FsWorkerPool.instance.ensureStarted());
+      unawaited(Future(ArchiveTemp.startSession));
       await AppThemeRegistry.instance.load();
       await SettingsStore.instance.load();
       await SidebarStore.instance.load();

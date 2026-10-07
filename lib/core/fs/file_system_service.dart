@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'package:path/path.dart' as p;
 import '../archive/archive_path.dart';
 import '../archive/archive_reader.dart';
+import '../archive/archive_temp.dart';
 import '../archive/archive_writer.dart';
 import '../logging/app_logger.dart';
 import '../models/file_entry.dart';
@@ -129,8 +130,7 @@ class FileSystemService {
     if (!sources.any(isInsideArchive)) return sources;
     final staging = Directory(
       p.join(
-        Directory.systemTemp.path,
-        'waydir-archive-stage',
+        ArchiveTemp.stageRoot,
         DateTime.now().microsecondsSinceEpoch.toString(),
       ),
     )..createSync(recursive: true);
@@ -188,11 +188,8 @@ class FileSystemService {
   }
 
   static Future<void> openArchiveEntry(ArchiveLocation loc) async {
-    final tempRoot = Directory(
-      p.join(Directory.systemTemp.path, 'waydir-archive'),
-    );
     final dest = p.join(
-      tempRoot.path,
+      ArchiveTemp.openRoot,
       p.basename(loc.archivePath),
       loc.innerPath,
     );
