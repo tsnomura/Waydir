@@ -668,6 +668,60 @@ runs in a worker and can't be interrupted, but nothing gets copied.
 
 Relevant commits: `35c52f9`.
 
+### Password-protected zips
+
+Browsing an encrypted zip always worked (its file list isn't encrypted), but
+copying, extracting or opening anything inside one failed with "Filter error,
+bad data" because no password was ever passed to the decoder.
+
+- Whenever an operation needs the contents — copy/move out (F5, F6, paste,
+  drag), Extract, opening an entry with Enter — each zip involved is checked
+  for the encryption flag, and a password dialog appears once per zip per
+  operation (copying ten files out of one zip asks once). The password is
+  checked before anything runs by decrypting the smallest encrypted entry
+  and comparing its CRC; a wrong one asks again, Cancel abandons the
+  operation. Passwords aren't kept after the operation.
+- ZipCrypto and AES both work (`archive` 4.x decodes them). 7z/rar aren't
+  supported by Waydir at all; Quick Look and editing inside an encrypted
+  zip (rename/delete/add) don't take a password yet.
+
+### Extract to the other pane
+
+In dual-pane mode the Extract submenu adds "Extract to Other Pane" and
+"Extract to `<name>/` in Other Pane" ("…Each to Its Own Folder in Other
+Pane" with several archives selected), extracting into the folder the
+other pane is showing.
+
+### Dropping from 7-Zip
+
+Dragging files out of 7-Zip File Manager into Waydir produced an empty
+`7zE…` folder instead of the files (and never asked for a password).
+7-Zip hands out a path inside a fresh temp folder during the drag and only
+extracts into it — prompting for a password if needed — when the drop
+target reads the data *after* the drop; once the drag ends it deletes the
+folder again. Two problems on Waydir's side:
+
+- `super_native_extensions` (the native half of `super_drag_and_drop`)
+  reads the dropped file list once on drag-enter and caches it in its
+  Windows data reader, so the drop reused the empty placeholder and 7-Zip
+  never extracted. It's now vendored in `third_party/super_native_extensions`
+  (via `dependency_overrides` in `pubspec.yaml`) with one change:
+  `PlatformDataReader::reset_cache()` (`rust/src/win32/reader.rs`) called
+  from `on_drop` (`rust/src/win32/drop.rs`), so the file list is read
+  fresh at drop time. Re-apply this when upgrading the package.
+- Waydir only queued the copy during the drop, and by the time it ran
+  7-Zip had deleted its temp folder. External drops whose paths are inside
+  the system temp folder are now copied into Waydir's own staging folder
+  (`waydir-archive-stage\<pid>\drop-…`) before the drop returns, and the
+  normal copy runs from there.
+
+Because the vendored crate no longer matches the upstream hash, cargokit
+can't use its precompiled binaries and builds it from source, which
+requires **rustup** (a bare `cargo` isn't enough). On Windows here the
+scoop `rust` package was replaced with `rustup` (stable toolchain).
+
+Relevant commits: `e850120`, `fd80553`.
+
 ## Fixed: renaming a file could select an unrelated file and scroll to it
 
 Waydir remembers each folder's selection/cursor across visits
