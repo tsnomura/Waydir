@@ -13,7 +13,11 @@ class CredentialsResult {
   const CredentialsResult({required this.username, required this.password});
 }
 
-Future<String?> showPasswordDialog(BuildContext context, {String? title}) {
+Future<String?> showPasswordDialog(
+  BuildContext context, {
+  String? title,
+  String? message,
+}) {
   return showGeneralDialog<String>(
     context: context,
     barrierColor: Colors.black54,
@@ -27,6 +31,7 @@ Future<String?> showPasswordDialog(BuildContext context, {String? title}) {
           scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
           child: _PasswordDialog(
             title: title ?? t.password.authenticationRequired,
+            message: message ?? t.password.mountPrompt,
           ),
         ),
       );
@@ -62,8 +67,9 @@ Future<CredentialsResult?> showSmbCredentialsDialog(
 
 class _PasswordDialog extends StatefulWidget {
   final String title;
+  final String message;
 
-  const _PasswordDialog({required this.title});
+  const _PasswordDialog({required this.title, required this.message});
 
   @override
   State<_PasswordDialog> createState() => _PasswordDialogState();
@@ -97,7 +103,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            t.password.mountPrompt,
+            widget.message,
             style: context.txt.body.copyWith(color: AppColors.fgMuted),
           ),
           const SizedBox(height: 16),

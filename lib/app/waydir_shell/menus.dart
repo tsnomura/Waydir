@@ -249,6 +249,25 @@ mixin _WaydirMenuMixin
                     : t.menu.extractEach,
                 action: 'extract_to_folder',
               ),
+              if (_shell.isDual.value) ...[
+                ContextMenuItem.divider,
+                ContextMenuItem(
+                  icon: WaydirIconsRegular.arrowLineDown,
+                  label: t.menu.extractToOtherPane,
+                  action: 'extract_other_pane',
+                ),
+                ContextMenuItem(
+                  icon: WaydirIconsRegular.folderPlus,
+                  label: count == 1
+                      ? t.menu.extractToFolderInOtherPane(
+                          name: FileSystemService.archiveBaseName(
+                            archiveEntries.first.name,
+                          ),
+                        )
+                      : t.menu.extractEachInOtherPane,
+                  action: 'extract_to_folder_other_pane',
+                ),
+              ],
             ],
           )
         : null;
@@ -1334,6 +1353,10 @@ mixin _WaydirMenuMixin
         _extractSelected(toOwnFolder: false);
       case 'extract_to_folder':
         _extractSelected(toOwnFolder: true);
+      case 'extract_other_pane':
+        _extractSelected(toOwnFolder: false, toOtherPane: true);
+      case 'extract_to_folder_other_pane':
+        _extractSelected(toOwnFolder: true, toOtherPane: true);
       case 'paste':
         store.paste();
       case 'duplicate':

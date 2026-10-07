@@ -254,6 +254,15 @@ class Translations$menu$en {
 	/// en: 'Extract Each to Its Own Folder'
 	String get extractEach => 'Extract Each to Its Own Folder';
 
+	/// en: 'Extract to Other Pane'
+	String get extractToOtherPane => 'Extract to Other Pane';
+
+	/// en: 'Extract to $name/ in Other Pane'
+	String extractToFolderInOtherPane({required Object name}) => 'Extract to ${name}/ in Other Pane';
+
+	/// en: 'Extract Each to Its Own Folder in Other Pane'
+	String get extractEachInOtherPane => 'Extract Each to Its Own Folder in Other Pane';
+
 	/// en: 'Compress'
 	String get compress => 'Compress';
 
@@ -1984,6 +1993,12 @@ class Translations$password$en {
 
 	/// en: 'Enter your password to mount this drive.'
 	String get mountPrompt => 'Enter your password to mount this drive.';
+
+	/// en: 'This archive is password-protected.'
+	String get archivePrompt => 'This archive is password-protected.';
+
+	/// en: 'Wrong password. Try again.'
+	String get archiveWrongPassword => 'Wrong password. Try again.';
 
 	/// en: 'Enter credentials for this network share.'
 	String get smbPrompt => 'Enter credentials for this network share.';
@@ -4326,6 +4341,9 @@ extension on Translations {
 			'menu.extractHere' => 'Extract Here',
 			'menu.extractToFolder' => ({required Object name}) => 'Extract to ${name}/',
 			'menu.extractEach' => 'Extract Each to Its Own Folder',
+			'menu.extractToOtherPane' => 'Extract to Other Pane',
+			'menu.extractToFolderInOtherPane' => ({required Object name}) => 'Extract to ${name}/ in Other Pane',
+			'menu.extractEachInOtherPane' => 'Extract Each to Its Own Folder in Other Pane',
 			'menu.compress' => 'Compress',
 			'menu.compressTo' => ({required Object name}) => 'Compress to ${name}',
 			'menu.compressOptions' => 'Add to Archive…',
@@ -4786,11 +4804,11 @@ extension on Translations {
 			'help.groups.customization.shortcuts.title' => 'Keyboard Shortcuts',
 			'help.groups.customization.shortcuts.body' => 'Almost every action can be rebound to a key of your choosing.\n\n- Open **Preferences -> Keyboard** to see and edit all shortcuts.\n- Conflicts are flagged so two actions never fight over a key.\n- Reset a single binding, or all of them, back to the defaults at any time.',
 			'help.groups.customization.plugins.title' => 'Plugins',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.customization.plugins.body' => 'Extend Waydir with plugins written in Lua.\n\n- Plugins run through the native core and can add new actions.\n- Enable or disable installed plugins in **Preferences -> Plugins**.\n- See the plugin authoring guide in the project\'s docs to build your own.',
 			'help.groups.resources.title' => 'Resources',
 			'help.groups.resources.links.title' => 'Links & Resources',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.resources.links.body' => 'More about Waydir and where to go next.\n\n- **Changelog** - what\'s new in each release (in the menu).\n- **Keyboard shortcuts** - the full reference in **Preferences -> Keyboard**.\n- **GitHub** - [source code, issues and releases](https://github.com/Waydir/Waydir).\n- **Plugin guide** - [how to write your own plugins](https://github.com/Waydir/Waydir/blob/main/docs/plugins.md).',
 			'tags.menuLabel' => 'Tags',
 			'tags.newTag' => 'New Tag',
@@ -5181,6 +5199,8 @@ extension on Translations {
 			'password.authenticationRequired' => 'Authentication Required',
 			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',
+			'password.archivePrompt' => 'This archive is password-protected.',
+			'password.archiveWrongPassword' => 'Wrong password. Try again.',
 			'password.smbPrompt' => 'Enter credentials for this network share.',
 			'password.sftpPrompt' => 'SSH/SFTP authentication',
 			'password.username' => 'Username',
@@ -5298,13 +5318,13 @@ extension on Translations {
 			'tasks.status.waiting' => 'Waiting...',
 			'tasks.status.scanning' => 'Scanning files...',
 			'tasks.status.conflicts' => ({required Object count}) => '${count} conflicts',
+			_ => null,
+		} ?? switch (path) {
 			'tasks.status.running' => ({required Object current, required Object processed, required Object total}) => '${current} (${processed}/${total})',
 			'tasks.status.cancelling' => 'Cancelling...',
 			'tasks.status.completedWithErrors' => ({required Object count}) => 'Completed with ${count} errors',
 			'tasks.status.completed' => 'Completed',
 			'tasks.status.failed' => 'Failed',
-			_ => null,
-		} ?? switch (path) {
 			'tasks.status.cancelled' => 'Cancelled',
 			'git.clean' => 'clean',
 			'git.detachedHead' => 'detached HEAD',

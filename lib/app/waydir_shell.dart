@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:waydir/ui/icons/distro_icons.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
+import '../core/archive/archive_passwords.dart';
 import '../core/archive/archive_path.dart';
 import '../core/archive/archive_writer.dart';
 import '../core/terminal/bulk_copy_command.dart';
@@ -66,6 +67,7 @@ import '../ui/dialogs/compress_dialog.dart';
 import '../ui/dialogs/dialog.dart';
 import '../ui/dialogs/multi_rename_dialog.dart';
 import '../ui/dialogs/open_with_dialog.dart';
+import '../ui/dialogs/password_dialog.dart';
 import '../ui/overlays/context_menu.dart';
 import '../ui/overlays/notification_overlay.dart';
 import '../ui/widgets/app_text_field.dart';
@@ -103,6 +105,7 @@ class _WaydirShellState extends State<WaydirShell>
   void initState() {
     super.initState();
     _operationStore.confirmTransfer = _confirmTransfer;
+    ArchivePasswords.prompt = _promptArchivePassword;
     _effectDisposers.add(
       effect(() {
         if (!_shell.ready.value) return;

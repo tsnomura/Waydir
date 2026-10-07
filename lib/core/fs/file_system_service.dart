@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:path/path.dart' as p;
+import '../archive/archive_passwords.dart';
 import '../archive/archive_path.dart';
 import '../archive/archive_reader.dart';
 import '../archive/archive_temp.dart';
@@ -124,9 +125,16 @@ class FileSystemService {
     return loc != null && !loc.isRoot;
   }
 
+  static Set<String> archivesOf(Iterable<String> sources) => {
+    for (final s in sources)
+      if (ArchivePath.resolve(s) case final loc? when !loc.isRoot)
+        loc.archivePath,
+  };
+
   static Future<List<String>> materializeArchiveSources(
-    List<String> sources,
-  ) async {
+    List<String> sources, {
+    Map<String, String> passwords = const {},
+  }) async {
     if (!sources.any(isInsideArchive)) return sources;
     final staging = Directory(
       p.join(
@@ -146,6 +154,7 @@ class FileSystemService {
           loc.archivePath,
           loc.innerPath,
           staging.path,
+          password: passwords[loc.archivePath],
         ),
       );
     }
@@ -188,6 +197,8 @@ class FileSystemService {
   }
 
   static Future<void> openArchiveEntry(ArchiveLocation loc) async {
+    final passwords = await ArchivePasswords.collect([loc.archivePath]);
+    if (passwords == null) return;
     final dest = p.join(
       ArchiveTemp.openRoot,
       p.basename(loc.archivePath),
@@ -197,6 +208,7 @@ class FileSystemService {
       loc.archivePath,
       loc.innerPath,
       dest,
+      password: passwords[loc.archivePath],
     );
     await OpenService.openDefault(dest);
   }
@@ -1497,6 +1509,7 @@ class FileSystemService {
     bool cancelled = false;
     List<String> sources = const [];
     String? destination;
+    var passwords = const <String, String>{};
     int totalFiles = 0;
     final errors = <TaskError>[];
     int processedFiles = 0;
@@ -1582,6 +1595,7 @@ class FileSystemService {
               processedFiles++;
               maybeReport(name.split('/').last);
             },
+            password: passwords[src],
           );
         } catch (e) {
           errors.add(TaskError(path: src, message: _friendlyError(e)));
@@ -1600,6 +1614,11 @@ class FileSystemService {
         if (msg is StartCommand) {
           sources = msg.sources;
           destination = msg.destination;
+          final encodedPasswords = msg.options['archivePasswords'];
+          if (encodedPasswords != null) {
+            passwords = (jsonDecode(encodedPasswords) as Map)
+                .cast<String, String>();
+          }
           final dest = destination!;
           for (final src in sources) {
             try {

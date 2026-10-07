@@ -94,7 +94,49 @@ class ArchiveReader {
     }
   }
 
-  static T _useArchive<T>(String archivePath, T Function(Archive) body) {
+  static bool isEncrypted(String archivePath) {
+    if (!_isZipLike(archivePath)) return false;
+    final stream = InputFileStream(archivePath);
+    try {
+      final dir = ZipDirectory()..read(stream);
+
+      return dir.fileHeaders.any((h) => h.generalPurposeBitFlag & 1 != 0);
+    } catch (_) {
+      return false;
+    } finally {
+      stream.closeSync();
+    }
+  }
+
+  static bool verifyPassword(String archivePath, String password) {
+    final stream = InputFileStream(archivePath);
+    try {
+      final dir = ZipDirectory()..read(stream, password: password);
+      final encrypted =
+          dir.fileHeaders
+              .where(
+                (h) =>
+                    h.generalPurposeBitFlag & 1 != 0 &&
+                    h.file != null &&
+                    h.uncompressedSize > 0,
+              )
+              .toList()
+            ..sort((a, b) => a.compressedSize.compareTo(b.compressedSize));
+      if (encrypted.isEmpty) return true;
+
+      return encrypted.first.file!.verifyCrc32();
+    } catch (_) {
+      return false;
+    } finally {
+      stream.closeSync();
+    }
+  }
+
+  static T _useArchive<T>(
+    String archivePath,
+    T Function(Archive) body, {
+    String? password,
+  }) {
     InputFileStream? stream;
     final Archive archive;
     try {
@@ -102,7 +144,7 @@ class ArchiveReader {
       if (_isZipLike(archivePath) || lower.endsWith('.tar')) {
         stream = InputFileStream(archivePath);
       }
-      archive = _readArchive(archivePath, stream);
+      archive = _readArchive(archivePath, stream, password);
     } catch (e) {
       stream?.closeSync();
       rethrow;
@@ -114,11 +156,15 @@ class ArchiveReader {
     }
   }
 
-  static Archive _readArchive(String archivePath, InputFileStream? stream) {
+  static Archive _readArchive(
+    String archivePath,
+    InputFileStream? stream,
+    String? password,
+  ) {
     final lower = archivePath.toLowerCase();
     try {
       if (_isZipLike(archivePath)) {
-        return ZipDecoder().decodeStream(stream!);
+        return ZipDecoder().decodeStream(stream!, password: password);
       } else if (lower.endsWith('.tar')) {
         return TarDecoder().decodeStream(stream!);
       }
@@ -175,10 +221,12 @@ class ArchiveReader {
   static void extractEntry(
     String archivePath,
     String innerPath,
-    String destPath,
-  ) => _useArchive(
+    String destPath, {
+    String? password,
+  }) => _useArchive(
     archivePath,
     (archive) => _extractEntry(archivePath, archive, innerPath, destPath),
+    password: password,
   );
 
   static void _extractEntry(
@@ -214,10 +262,12 @@ class ArchiveReader {
   static String extractTree(
     String archivePath,
     String innerPath,
-    String stagingDir,
-  ) => _useArchive(
+    String stagingDir, {
+    String? password,
+  }) => _useArchive(
     archivePath,
     (archive) => _extractTree(archivePath, archive, innerPath, stagingDir),
+    password: password,
   );
 
   static String _extractTree(
@@ -292,8 +342,10 @@ class ArchiveReader {
     String? Function(String epath, bool isDir) resolveDest, {
     void Function(String name)? onEntry,
     bool Function()? isCancelled,
+    String? password,
   }) => _useArchive(
     archivePath,
+    password: password,
     (archive) => _extractAllResolved(
       archivePath,
       archive,

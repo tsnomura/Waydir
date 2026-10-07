@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
+import '../../core/archive/archive_passwords.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/models/app_notification.dart';
 import '../../core/models/file_operation.dart';
@@ -234,8 +235,18 @@ class OperationStore {
       },
     );
     try {
+      final passwords = await ArchivePasswords.collect(
+        FileSystemService.archivesOf(sources),
+      );
+      if (cancelled) return null;
+      if (passwords == null) {
+        _dropTask(notice);
+
+        return null;
+      }
       final resolved = await FileSystemService.materializeArchiveSources(
         sources,
+        passwords: passwords,
       );
       if (cancelled) return null;
       _dropTask(notice);
@@ -349,7 +360,11 @@ class OperationStore {
     ]);
   }
 
-  void enqueueExtract(List<String> sources, String destination) {
+  void enqueueExtract(
+    List<String> sources,
+    String destination, {
+    Map<String, String> passwords = const {},
+  }) {
     if (sources.isEmpty) return;
 
     final task = FileTask(
@@ -357,6 +372,9 @@ class OperationStore {
       type: TaskType.extract,
       sources: sources,
       destination: destination,
+      options: {
+        if (passwords.isNotEmpty) 'archivePasswords': jsonEncode(passwords),
+      },
       startTime: DateTime.now(),
     );
     _enqueue(task);

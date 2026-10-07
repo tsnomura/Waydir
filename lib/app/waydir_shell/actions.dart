@@ -1,6 +1,23 @@
 part of '../waydir_shell.dart';
 
 mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
+  Future<String?> _promptArchivePassword(
+    String archivePath, {
+    required bool retry,
+  }) async {
+    if (!mounted) return null;
+    final password = await showPasswordDialog(
+      context,
+      title: p.basename(archivePath),
+      message: retry
+          ? t.password.archiveWrongPassword
+          : t.password.archivePrompt,
+    );
+    if (mounted) _restoreFocus();
+
+    return password;
+  }
+
   Future<bool> _confirmTransfer(
     TaskType type,
     List<String> sources,
@@ -333,9 +350,21 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     return parts.join(', ');
   }
 
-  void _extractSelected({required bool toOwnFolder}) async {
+  void _extractSelected({
+    required bool toOwnFolder,
+    bool toOtherPane = false,
+  }) async {
     final store = _active;
-    final base = await store.resolveForOperation(store.currentPath.value);
+    final NavigationStore target;
+    if (toOtherPane) {
+      final panes = _shell.panes.value;
+      if (!_shell.isDual.value || panes.length < 2) return;
+      target =
+          panes[1 - _shell.activePaneIndex.value].tabs.activeTab.value.store;
+    } else {
+      target = store;
+    }
+    final base = await target.resolveForOperation(target.currentPath.value);
     if (base == null) return;
     final archives = store.selectedEntries
         .where(
@@ -346,18 +375,27 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
         )
         .toList();
     if (archives.isEmpty) return;
+    final passwords = await ArchivePasswords.collect(
+      archives.map((e) => e.realPath),
+    );
+    if (passwords == null) return;
 
     if (toOwnFolder) {
       for (final entry in archives) {
         final dest = FileSystemService.uniquePath(
           p.join(base, FileSystemService.archiveBaseName(entry.name)),
         );
-        store.operationStore.enqueueExtract([entry.realPath], dest);
+        store.operationStore.enqueueExtract(
+          [entry.realPath],
+          dest,
+          passwords: {entry.realPath: ?passwords[entry.realPath]},
+        );
       }
     } else {
       store.operationStore.enqueueExtract(
         archives.map((e) => e.realPath).toList(),
         base,
+        passwords: passwords,
       );
     }
   }

@@ -21,6 +21,8 @@ enum _Op {
   archiveList,
   archiveExtract,
   archiveExtractTree,
+  archiveEncrypted,
+  archiveVerifyPassword,
 }
 
 class _Request {
@@ -262,18 +264,32 @@ class FsWorkerPool {
   Future<void> extractArchiveEntry(
     String archivePath,
     String innerPath,
-    String destPath,
-  ) => _run<void>(_Op.archiveExtract, [archivePath, innerPath, destPath]);
+    String destPath, {
+    String? password,
+  }) => _run<void>(_Op.archiveExtract, [
+    archivePath,
+    innerPath,
+    destPath,
+    password,
+  ]);
 
   Future<String> extractArchiveTree(
     String archivePath,
     String innerPath,
-    String stagingDir,
-  ) => _run<String>(_Op.archiveExtractTree, [
+    String stagingDir, {
+    String? password,
+  }) => _run<String>(_Op.archiveExtractTree, [
     archivePath,
     innerPath,
     stagingDir,
+    password,
   ]);
+
+  Future<bool> archiveIsEncrypted(String archivePath) =>
+      _run<bool>(_Op.archiveEncrypted, [archivePath]);
+
+  Future<bool> verifyArchivePassword(String archivePath, String password) =>
+      _run<bool>(_Op.archiveVerifyPassword, [archivePath, password]);
 
   void dispose() {
     for (var i = 0; i < _poolSize; i++) {
@@ -400,6 +416,7 @@ class FsWorkerPool {
           args.first as String,
           args[1] as String,
           args[2] as String,
+          password: args[3] as String?,
         );
 
         return null;
@@ -408,6 +425,14 @@ class FsWorkerPool {
           args.first as String,
           args[1] as String,
           args[2] as String,
+          password: args[3] as String?,
+        );
+      case _Op.archiveEncrypted:
+        return ArchiveReader.isEncrypted(args.first as String);
+      case _Op.archiveVerifyPassword:
+        return ArchiveReader.verifyPassword(
+          args.first as String,
+          args[1] as String,
         );
     }
   }
