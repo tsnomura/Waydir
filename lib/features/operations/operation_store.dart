@@ -143,19 +143,8 @@ class OperationStore {
       'callers must translate to a physical mount path before enqueueing.',
     );
     if (destination.startsWith('smb://')) return;
-    final List<String> resolved;
-    try {
-      resolved = await FileSystemService.materializeArchiveSources(sources);
-    } catch (e, st) {
-      log.error(
-        'operation',
-        'failed to materialize archive sources',
-        error: e,
-        stack: st,
-      );
-
-      return;
-    }
+    final resolved = await _materializeWithNotice(sources);
+    if (resolved == null) return;
     final rejected = <String>[];
     final filtered = <String>[];
     for (final s in resolved) {
@@ -198,19 +187,8 @@ class OperationStore {
       'callers must translate to a physical mount path before enqueueing.',
     );
     if (destination.startsWith('smb://')) return;
-    final List<String> resolved;
-    try {
-      resolved = await FileSystemService.materializeArchiveSources(sources);
-    } catch (e, st) {
-      log.error(
-        'operation',
-        'failed to materialize archive sources',
-        error: e,
-        stack: st,
-      );
-
-      return;
-    }
+    final resolved = await _materializeWithNotice(sources);
+    if (resolved == null) return;
     final sep = PlatformPaths.isSftpUri(destination)
         ? '/'
         : PlatformPaths.separator;
@@ -242,6 +220,53 @@ class OperationStore {
       startTime: DateTime.now(),
     );
     _enqueue(task);
+  }
+
+  Future<List<String>?> _materializeWithNotice(List<String> sources) async {
+    if (!sources.any(FileSystemService.isInsideArchive)) return sources;
+    var cancelled = false;
+    late final FileTask notice;
+    notice = beginPluginTask(
+      title: t.tasks.extractingFromArchive(count: sources.length),
+      onCancel: () {
+        cancelled = true;
+        finishPluginTask(notice.id, success: false, cancelled: true);
+      },
+    );
+    try {
+      final resolved = await FileSystemService.materializeArchiveSources(
+        sources,
+      );
+      if (cancelled) return null;
+      _dropTask(notice);
+
+      return resolved;
+    } catch (e, st) {
+      log.error(
+        'operation',
+        'failed to materialize archive sources',
+        error: e,
+        stack: st,
+      );
+      if (!cancelled) {
+        finishPluginTask(
+          notice.id,
+          success: false,
+          cancelled: false,
+          error: '$e',
+        );
+      }
+
+      return null;
+    }
+  }
+
+  void _dropTask(FileTask task) {
+    _pluginCancelHandlers.remove(task.id);
+    tasks.value = tasks.value.where((t) => t.id != task.id).toList();
+    final notifId = 'task_start_${task.id}';
+    notificationStore?.dismiss(notifId, force: true);
+    notificationStore?.removeFromHistory(notifId, force: true);
   }
 
   void enqueueDelete(List<String> sources) {

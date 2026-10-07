@@ -636,9 +636,37 @@ Three Windows-only bugs, all separator or handle related:
   locked (can't be deleted or overwritten elsewhere) and leaked a handle per
   listing/extraction. Every read now closes its stream when done.
 
-Not yet addressed: `waydir-archive-stage\` is never cleaned up after a copy.
-
 Relevant commits: `2841b3f`.
+
+### Archive temp cleanup
+
+Staged copies and opened entries used to stay in `%TEMP%` forever (about
+400 MB had piled up here). Each Waydir process now keeps them under its own
+PID subfolder — `waydir-archive-stage\<pid>\` and `waydir-archive\<pid>\` —
+and holds an exclusive lock on `waydir-archive-stage\<pid>\.session.lock`
+while it runs.
+
+- On exit (a normal window close, via `AppLifecycleListener.onExitRequested`)
+  the process deletes its own two folders. An entry still open in another
+  app may fail to delete; it's picked up by the next startup.
+- On startup, folders whose lock is no longer held (a crash, a killed
+  process, or the pre-PID layout) are deleted; folders of other instances
+  still running are left alone, so two Waydir windows can't delete each
+  other's in-flight staging.
+- A file opened from an archive is a temporary copy: edits to it were never
+  written back into the archive, and closing Waydir now deletes it.
+
+### Immediate notice when copying out of an archive
+
+Copy/move/duplicate sources inside an archive are extracted before the real
+task is queued, which on a large archive took long enough that F5 looked
+ignored. The operations panel now shows an "Extracting N items from
+archive" row (with a start notification) as soon as the command is issued;
+it's replaced by the normal copy/move task once staging finishes, or marked
+failed with the error. Cancelling it abandons the transfer — extraction
+runs in a worker and can't be interrupted, but nothing gets copied.
+
+Relevant commits: `35c52f9`.
 
 ## Fixed: renaming a file could select an unrelated file and scroll to it
 

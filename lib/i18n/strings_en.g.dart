@@ -2312,6 +2312,9 @@ class Translations$tasks$en {
 
 	// Translations
 
+	/// en: 'Extracting $count items from archive'
+	String extractingFromArchive({required Object count}) => 'Extracting ${count} items from archive';
+
 	/// en: 'Copying $name'
 	String copyingSingle({required Object name}) => 'Copying ${name}';
 
@@ -5275,6 +5278,7 @@ extension on Translations {
 			'errors.nativeTrashListFailed' => 'Native trash list failed',
 			'errors.nativeTrashListFailedWithMessage' => ({required Object message}) => 'Native trash list failed: ${message}',
 			'errors.smbNotSupportedOnPlatform' => 'Network shares (smb://) are not supported on this platform yet.',
+			'tasks.extractingFromArchive' => ({required Object count}) => 'Extracting ${count} items from archive',
 			'tasks.copyingSingle' => ({required Object name}) => 'Copying ${name}',
 			'tasks.copyingMultiple' => ({required Object count}) => 'Copying ${count} items',
 			'tasks.movingSingle' => ({required Object name}) => 'Moving ${name}',
@@ -5299,9 +5303,9 @@ extension on Translations {
 			'tasks.status.completedWithErrors' => ({required Object count}) => 'Completed with ${count} errors',
 			'tasks.status.completed' => 'Completed',
 			'tasks.status.failed' => 'Failed',
-			'tasks.status.cancelled' => 'Cancelled',
 			_ => null,
 		} ?? switch (path) {
+			'tasks.status.cancelled' => 'Cancelled',
 			'git.clean' => 'clean',
 			'git.detachedHead' => 'detached HEAD',
 			'git.merging' => 'MERGING',

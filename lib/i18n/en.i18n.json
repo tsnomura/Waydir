@@ -1240,6 +1240,8 @@
     "smbNotSupportedOnPlatform": "Network shares (smb://) are not supported on this platform yet."
   },
   "tasks": {
+    "extractingFromArchive(one)": "Extracting 1 item from archive",
+    "extractingFromArchive(other)": "Extracting $count items from archive",
     "copyingSingle": "Copying $name",
     "copyingMultiple(one)": "Copying 1 item",
     "copyingMultiple(other)": "Copying $count items",

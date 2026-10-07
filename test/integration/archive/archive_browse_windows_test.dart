@@ -47,9 +47,11 @@ void main() {
       p.join(zipPath, 'a', 'b'),
       p.join(zipPath, 'top.txt'),
     ], dest.path);
+    expect(ops.tasks.value.map((t) => t.type).toList(), [TaskType.plugin]);
     for (var i = 0; i < 200; i++) {
       final list = ops.tasks.value;
       if (list.isNotEmpty &&
+          list.every((t) => t.type != TaskType.plugin) &&
           list.every(
             (t) =>
                 t.status == TaskStatus.completed ||
