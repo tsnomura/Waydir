@@ -607,6 +607,39 @@ Relevant commits: `28cf621`.
 
 Relevant commits: `23459d7`.
 
+## Fixed: archive browsing and copying on Windows
+
+How archives work, for reference: browsing never extracts anything — each
+listing reads the archive's index in an `FsWorkerPool` isolate and builds
+virtual entries (tar.gz/bz2/xz are decompressed in memory each time).
+Extraction to `%TEMP%` happens only when real files are needed: opening an
+entry extracts just that file to `waydir-archive\`, copying/moving out
+stages the selection under `waydir-archive-stage\<timestamp>\` and then runs
+a normal copy, and editing inside an archive (rename/delete/add) extracts
+the whole thing, changes it and repacks. Formats: zip family (zip, jar,
+war, apk, xpi, whl, crx, epub), tar, tar.gz/tgz, tar.bz2/tbz, tar.xz/txz.
+
+Three Windows-only bugs, all separator or handle related:
+
+- Folders from the second level down listed as empty (e.g.
+  `mergers-windows-x86_64.zip\share\icons`): the path inside the archive is
+  built with `\`, while archive entries always use `/`, so the level filter
+  never matched once the inner path had a separator. The listing now
+  normalizes the inner path first.
+- F5 (and any copy/move out of an archive) failed: the staged source path
+  was built with `/` (`…\waydir-archive-stage\123/b`), and the copy engine
+  took everything after the last `\` — `123/b` — as the item name. Folders
+  landed inside an extra timestamp-named folder level; files failed. Staged
+  paths are now built with `package:path`.
+- The archive file stayed open: zip/tar were decoded from an
+  `InputFileStream` that was never closed, so Waydir kept the archive
+  locked (can't be deleted or overwritten elsewhere) and leaked a handle per
+  listing/extraction. Every read now closes its stream when done.
+
+Not yet addressed: `waydir-archive-stage\` is never cleaned up after a copy.
+
+Relevant commits: `2841b3f`.
+
 ## Fixed: renaming a file could select an unrelated file and scroll to it
 
 Waydir remembers each folder's selection/cursor across visits
