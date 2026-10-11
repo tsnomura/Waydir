@@ -16,6 +16,8 @@ enum PagingMode {
   /// count). `probeCmd` reports that count directly — there's no fixed
   /// `pageCount` in config, since it varies per file.
   discrete,
+
+  fixed,
 }
 
 class GeneratorDef {
@@ -86,9 +88,11 @@ class GeneratorDef {
     final pagingMode = switch (json['paging'] as String?) {
       'time' => PagingMode.time,
       'discrete' => PagingMode.discrete,
+      'fixed' => PagingMode.fixed,
       null => PagingMode.none,
       final other => throw FormatException(
-        'generator "paging" must be "time" or "discrete", got "$other"',
+        'generator "paging" must be "time", "discrete" or "fixed", got '
+        '"$other"',
       ),
     };
     final pageCount = (json['pageCount'] as num?)?.toInt() ?? 1;
@@ -96,15 +100,18 @@ class GeneratorDef {
     final probeArgs =
         (json['probeArgs'] as List?)?.whereType<String>().toList() ?? const [];
     final probePattern = json['probePattern'] as String?;
-    if (pagingMode == PagingMode.time && pageCount <= 1) {
+    final fixedCount =
+        pagingMode == PagingMode.time || pagingMode == PagingMode.fixed;
+    if (fixedCount && pageCount <= 1) {
       throw const FormatException(
-        'generator "pageCount" must be > 1 when "paging" is "time"',
+        'generator "pageCount" must be > 1 when "paging" is "time" or "fixed"',
       );
     }
-    if (pagingMode != PagingMode.none &&
+    if ((pagingMode == PagingMode.time || pagingMode == PagingMode.discrete) &&
         (probeCmd == null || probeCmd.isEmpty)) {
       throw const FormatException(
-        'generator "probeCmd" is required when "paging" is set',
+        'generator "probeCmd" is required when "paging" is "time" or '
+        '"discrete"',
       );
     }
 
@@ -118,7 +125,7 @@ class GeneratorDef {
       ),
       outputExt: outputExt,
       pagingMode: pagingMode,
-      pageCount: pagingMode == PagingMode.time ? pageCount : 1,
+      pageCount: fixedCount ? pageCount : 1,
       probeCmd: probeCmd,
       probeArgs: probeArgs,
       probePattern: probePattern,
