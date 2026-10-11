@@ -216,6 +216,66 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`,
 `32b9119`, `7abfac6`, `8a0c945`, `7fb56ac`, `2337131`.
 
+## Custom launchers
+
+Opening a file only ever looked at its type, so "this app, with these
+arguments, for these extensions" (f3d needs `--force-reader=STEP` for STEP
+files, just like the generator) couldn't be expressed — and reading every
+OS's and desktop environment's association rules to get there doesn't
+scale. Launchers are user-defined commands, one JSON file each in
+`<support dir>/launchers/` (`%APPDATA%\dev.waydir\Waydir\launchers` on
+Windows), in the same spirit as preview generators:
+
+```json
+{
+  "id": "f3d-step",
+  "name": "View in f3d (STEP)",
+  "extensions": ["step", "stp"],
+  "cmd": "f3d",
+  "args": ["--force-reader=STEP", "%FILE%"],
+  "default": true
+}
+```
+
+- `context`: `"open"` (default) or `"compare"`. `extensions` is required
+  for open launchers and optional for compare launchers (empty = every
+  file). Keys starting with `_` are ignored.
+- Placeholders: `%FILE%` runs one process per file, `%FILES%` (as its own
+  argument) passes every selected file to one process, `%DIR%` the
+  folder, `%LEFT%`/`%RIGHT%` the compare pair. No shell is involved.
+- `"default": true` makes Enter/double-click on those extensions run the
+  launcher instead of the OS association. Without a default, nothing
+  changes.
+- Compare mode: Enter on a file that exists on both sides runs the
+  matching compare launcher with the left/right files (paired by relative
+  path, or one marked file per pane) — e.g. WinXMerge,
+  `"args": ["%LEFT%", "%RIGHT%"]`. With no compare launcher, Enter opens
+  normally.
+- Matching launchers are listed at the top of the file context menu (compare
+  launchers only when the file has a pair). Files inside archives, on
+  sftp, and ghost rows are never handed to a launcher. A command that
+  can't start shows a toast.
+- Preferences → **Launchers** lists them (invalid files with the parse
+  error), with add/edit (a form for id, menu name, open/compare, extensions,
+  command, one argument per line, default), edit JSON, delete, open the
+  folder, and Reload — saves and Reload apply without restarting Waydir.
+
+Relevant commits: `9c2313d`.
+
+## Personal build version in About
+
+About now shows a **Personal build** row — `git describe --tags --always
+--dirty`, branch and build date, e.g. `v0.23.0-test4-25-g00fcbdd
+(personal, 2026-10-11)`, with a link to the commit on GitHub — and a
+**Personal fork** row for `tsnomura/Waydir`, next to the upstream version
+and repository. The values are baked in at build time through
+`--dart-define`, so build with `scripts/build_personal.ps1` (Windows) or
+`scripts/build_personal.sh` (Linux/macOS), which compute them and pass any
+extra arguments on to `flutter build`. A plain `flutter build` shows "not
+recorded".
+
+Relevant commits: `adda063`.
+
 ## LaTeX math in the Markdown preview
 
 `$...$` (inline) and `$$...$$` (block, one line or multi-line) render as
