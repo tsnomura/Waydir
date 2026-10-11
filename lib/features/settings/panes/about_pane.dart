@@ -54,6 +54,32 @@ class AboutPane extends StatelessWidget {
     }
   }
 
+  Widget _personalBuildRow(BuildContext context) {
+    const version = AppInfo.personalVersion;
+    if (version.isEmpty) {
+      return _InfoRow(
+        label: t.preferences.about.personalBuild,
+        value: t.preferences.about.personalUnknown,
+        valueColor: AppColors.fgMuted,
+      );
+    }
+    final details = [
+      if (AppInfo.personalBranch.isNotEmpty) AppInfo.personalBranch,
+      if (AppInfo.personalBuildDate.isNotEmpty) AppInfo.personalBuildDate,
+    ];
+    final value = details.isEmpty
+        ? version
+        : '$version  (${details.join(', ')})';
+    final commitUrl = AppInfo.personalCommitUrl;
+
+    return _InfoRow(
+      label: t.preferences.about.personalBuild,
+      value: value,
+      onCopy: () => _copy(context, value),
+      onOpen: commitUrl == null ? null : () => _openUrl(commitUrl),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SettingsPaneScaffold(
@@ -111,6 +137,15 @@ class AboutPane extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+              Container(height: 1, color: AppColors.bgDivider),
+              _personalBuildRow(context),
+              Container(height: 1, color: AppColors.bgDivider),
+              _InfoRow(
+                label: t.preferences.about.personalRepository,
+                value: AppInfo.personalRepository,
+                onCopy: () => _copy(context, AppInfo.personalRepository),
+                onOpen: () => _openUrl(AppInfo.personalHomepage),
               ),
               Container(height: 1, color: AppColors.bgDivider),
               _InfoRow(
