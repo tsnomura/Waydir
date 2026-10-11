@@ -1223,6 +1223,9 @@ class Translations$quickLook$en {
 	/// en: '(identical)'
 	String get identicalSuffix => '(identical)';
 
+	/// en: 'Open (Enter) · Shift+Enter to choose an app'
+	String get openInApp => 'Open (Enter) · Shift+Enter to choose an app';
+
 	/// en: 'Folder'
 	String get folder => 'Folder';
 
@@ -1390,6 +1393,12 @@ class Translations$quickLook$en {
 
 	/// en: 'Close'
 	String get hintClose => 'Close';
+
+	/// en: 'Open with application'
+	String get hintOpen => 'Open with application';
+
+	/// en: 'Choose application'
+	String get hintOpenWith => 'Choose application';
 
 	/// en: 'View source'
 	String get viewSource => 'View source';
@@ -5087,6 +5096,7 @@ extension on Translations {
 			'quickLook.title' => 'Quick Look',
 			'quickLook.noSelection' => 'No file selected',
 			'quickLook.identicalSuffix' => '(identical)',
+			'quickLook.openInApp' => 'Open (Enter) · Shift+Enter to choose an app',
 			'quickLook.folder' => 'Folder',
 			'quickLook.noPreview' => 'No preview available',
 			'quickLook.binaryFile' => 'Binary file - no preview',
@@ -5143,6 +5153,8 @@ extension on Translations {
 			'quickLook.sectionText' => 'Text',
 			'quickLook.hintSwitchFile' => 'Switch file',
 			'quickLook.hintClose' => 'Close',
+			'quickLook.hintOpen' => 'Open with application',
+			'quickLook.hintOpenWith' => 'Choose application',
 			'quickLook.viewSource' => 'View source',
 			'quickLook.viewRendered' => 'View rendered',
 			'quickLook.saveBeforePreview' => 'Save changes to preview',
@@ -5433,11 +5445,11 @@ extension on Translations {
 			'errors.sftpReadFailed' => 'SFTP read failed',
 			'errors.sftpWriteFailed' => 'SFTP write failed',
 			'errors.sftpMkdirFailed' => 'SFTP mkdir failed',
+			_ => null,
+		} ?? switch (path) {
 			'errors.sftpRemoveFailed' => 'SFTP remove failed',
 			'errors.sftpRenameFailed' => 'SFTP rename failed',
 			'errors.sftpOpenReaderFailed' => 'SFTP open reader failed',
-			_ => null,
-		} ?? switch (path) {
 			'errors.sftpOpenWriterFailed' => 'SFTP open writer failed',
 			'errors.sftpCloseFailed' => 'SFTP close failed',
 			'errors.directoryNotReadable' => 'Directory not readable',

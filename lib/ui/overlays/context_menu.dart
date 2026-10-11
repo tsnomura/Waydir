@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 import '../theme/app_theme.dart';
@@ -66,18 +67,25 @@ void showContextMenu({
   required Offset position,
   required List<ContextMenuItem> items,
   required void Function(String action) onSelect,
+  bool keyboard = false,
 }) {
   final overlay = Overlay.of(context);
   final entries = <OverlayEntry>[];
+  final previousFocus = keyboard ? FocusManager.instance.primaryFocus : null;
   Timer? pendingDismiss;
 
   void dismissAll() {
     pendingDismiss?.cancel();
     pendingDismiss = null;
+    final hadEntries = entries.isNotEmpty;
     for (final e in entries) {
       if (e.mounted) e.remove();
     }
     entries.clear();
+    final restore = previousFocus;
+    if (hadEntries && restore != null && restore.context != null) {
+      restore.requestFocus();
+    }
   }
 
   void dismissFrom(int depth) {
@@ -105,7 +113,13 @@ void showContextMenu({
     dismissFrom(depth);
   }
 
-  void openMenu(int depth, Offset pos, List<ContextMenuItem> menuItems) {
+  void openMenu(
+    int depth,
+    Offset pos,
+    List<ContextMenuItem> menuItems, {
+    FocusNode? parentFocus,
+    bool fromKeyboard = false,
+  }) {
     dismissFromNow(depth);
     late OverlayEntry entry;
     entry = OverlayEntry(
@@ -116,6 +130,14 @@ void showContextMenu({
         onDismiss: dismissAll,
         builder: (_) => _ContextMenuBody(
           items: menuItems,
+          keyboard: keyboard,
+          highlightFirst: depth == 0 || fromKeyboard,
+          onKeyboardBack: depth == 0
+              ? dismissAll
+              : () {
+                  dismissFromNow(depth);
+                  parentFocus?.requestFocus();
+                },
           onEnterMenu: depth == 0 ? () {} : cancelPendingDismiss,
           onExitMenu: () => dismissFromSoon(depth == 0 ? 1 : depth),
           onCloseSubmenus: () => dismissFromNow(depth + 1),
@@ -129,11 +151,14 @@ void showContextMenu({
             onSelect(action);
             if (!item.isToggle) dismissAll();
           },
-          onOpenSubmenu: (item, rect) => openMenu(
-            depth + 1,
-            Offset(rect.right - 4, rect.top),
-            item.children!,
-          ),
+          onOpenSubmenu: (item, rect, {fromFocus, fromKeyboard = false}) =>
+              openMenu(
+                depth + 1,
+                Offset(rect.right - 4, rect.top),
+                item.children!,
+                parentFocus: fromFocus,
+                fromKeyboard: fromKeyboard,
+              ),
         ),
       ),
     );
@@ -144,17 +169,31 @@ void showContextMenu({
   openMenu(0, position, items);
 }
 
-class _ContextMenuBody extends StatelessWidget {
+typedef _OpenSubmenu =
+    void Function(
+      ContextMenuItem item,
+      Rect tileRect, {
+      FocusNode? fromFocus,
+      bool fromKeyboard,
+    });
+
+class _ContextMenuBody extends StatefulWidget {
   final List<ContextMenuItem> items;
+  final bool keyboard;
+  final bool highlightFirst;
+  final VoidCallback onKeyboardBack;
   final VoidCallback onEnterMenu;
   final VoidCallback onExitMenu;
   final VoidCallback onCloseSubmenus;
   final VoidCallback onScheduleCloseSubmenus;
   final void Function(String action) onSelect;
-  final void Function(ContextMenuItem item, Rect tileRect) onOpenSubmenu;
+  final _OpenSubmenu onOpenSubmenu;
 
   const _ContextMenuBody({
     required this.items,
+    required this.keyboard,
+    required this.highlightFirst,
+    required this.onKeyboardBack,
     required this.onEnterMenu,
     required this.onExitMenu,
     required this.onCloseSubmenus,
@@ -164,10 +203,98 @@ class _ContextMenuBody extends StatelessWidget {
   });
 
   @override
+  State<_ContextMenuBody> createState() => _ContextMenuBodyState();
+}
+
+class _ContextMenuBodyState extends State<_ContextMenuBody> {
+  final _focus = FocusNode(debugLabel: 'context-menu');
+  late final _keys = [for (final _ in widget.items) GlobalKey()];
+  int _highlight = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.keyboard) return;
+    if (widget.highlightFirst) _highlight = _step(-1, 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  bool _selectable(int i) =>
+      !widget.items[i].isDivider && widget.items[i].enabled;
+
+  int _step(int from, int dir) {
+    final n = widget.items.length;
+    for (var k = 1; k <= n; k++) {
+      final i = ((from + dir * k) % n + n) % n;
+      if (_selectable(i)) return i;
+    }
+
+    return from;
+  }
+
+  void _openHighlightedSubmenu() {
+    final box =
+        _keys[_highlight].currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    widget.onOpenSubmenu(
+      widget.items[_highlight],
+      box.localToGlobal(Offset.zero) & box.size,
+      fromFocus: _focus,
+      fromKeyboard: true,
+    );
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.handled;
+    }
+    final key = event.logicalKey;
+    final item = _highlight >= 0 ? widget.items[_highlight] : null;
+    if (key == LogicalKeyboardKey.arrowDown) {
+      setState(() => _highlight = _step(_highlight, 1));
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      setState(() => _highlight = _step(_highlight < 0 ? 0 : _highlight, -1));
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      if (item != null && item.hasChildren) _openHighlightedSubmenu();
+    } else if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.escape) {
+      widget.onKeyboardBack();
+    } else if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.space) {
+      if (item == null) return KeyEventResult.handled;
+      if (item.hasChildren) {
+        _openHighlightedSubmenu();
+      } else {
+        widget.onSelect(item.action);
+      }
+    }
+
+    return KeyEventResult.handled;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final body = _buildBody(context);
+    if (!widget.keyboard) return body;
+
+    return Focus(focusNode: _focus, onKeyEvent: _onKey, child: body);
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final items = widget.items;
+
     return MouseRegion(
-      onEnter: (_) => onEnterMenu(),
-      onExit: (_) => onExitMenu(),
+      onEnter: (_) => widget.onEnterMenu(),
+      onExit: (_) => widget.onExitMenu(),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 180, maxWidth: 360),
         child: IntrinsicWidth(
@@ -206,11 +333,20 @@ class _ContextMenuBody extends StatelessWidget {
                   }
 
                   return _ContextMenuItemTile(
+                    key: _keys[e.key],
                     item: e.value,
-                    onTap: () => onSelect(e.value.action),
-                    onOpenSubmenu: onOpenSubmenu,
-                    onCloseSubmenus: onCloseSubmenus,
-                    onScheduleCloseSubmenus: onScheduleCloseSubmenus,
+                    highlighted: _highlight == e.key,
+                    onHovered: widget.keyboard
+                        ? () => setState(() => _highlight = e.key)
+                        : null,
+                    onTap: () => widget.onSelect(e.value.action),
+                    onOpenSubmenu: (item, rect) => widget.onOpenSubmenu(
+                      item,
+                      rect,
+                      fromFocus: widget.keyboard ? _focus : null,
+                    ),
+                    onCloseSubmenus: widget.onCloseSubmenus,
+                    onScheduleCloseSubmenus: widget.onScheduleCloseSubmenus,
                   );
                 }).toList(),
               ),
@@ -224,13 +360,18 @@ class _ContextMenuBody extends StatelessWidget {
 
 class _ContextMenuItemTile extends StatefulWidget {
   final ContextMenuItem item;
+  final bool highlighted;
+  final VoidCallback? onHovered;
   final VoidCallback onTap;
   final VoidCallback onCloseSubmenus;
   final VoidCallback onScheduleCloseSubmenus;
   final void Function(ContextMenuItem item, Rect tileRect) onOpenSubmenu;
 
   const _ContextMenuItemTile({
+    super.key,
     required this.item,
+    this.highlighted = false,
+    this.onHovered,
     required this.onTap,
     required this.onCloseSubmenus,
     required this.onScheduleCloseSubmenus,
@@ -262,6 +403,7 @@ class _ContextMenuItemTileState extends State<_ContextMenuItemTile> {
 
   void _handleEnter() {
     setState(() => _hovered = true);
+    widget.onHovered?.call();
     if (!widget.item.enabled) {
       widget.onCloseSubmenus();
 
@@ -288,9 +430,10 @@ class _ContextMenuItemTileState extends State<_ContextMenuItemTile> {
     final hoverBg = item.danger
         ? dangerColor.withValues(alpha: 0.12)
         : AppColors.bgHoverStrong;
+    final active = widget.onHovered != null ? widget.highlighted : _hovered;
     final fg = !item.enabled
         ? AppColors.fgMuted.withValues(alpha: 0.45)
-        : _hovered
+        : active
         ? (item.danger ? dangerColor : AppColors.fg)
         : AppColors.fgMuted;
 
@@ -307,7 +450,7 @@ class _ContextMenuItemTileState extends State<_ContextMenuItemTile> {
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: _hovered && item.enabled ? hoverBg : Colors.transparent,
+            color: active && item.enabled ? hoverBg : Colors.transparent,
             borderRadius: BorderRadius.zero,
           ),
           child: Row(

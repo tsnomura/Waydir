@@ -831,6 +831,7 @@
     "title": "Quick Look",
     "noSelection": "No file selected",
     "identicalSuffix": "(identical)",
+    "openInApp": "Open (Enter) · Shift+Enter to choose an app",
     "folder": "Folder",
     "noPreview": "No preview available",
     "binaryFile": "Binary file - no preview",
@@ -887,6 +888,8 @@
     "sectionText": "Text",
     "hintSwitchFile": "Switch file",
     "hintClose": "Close",
+    "hintOpen": "Open with application",
+    "hintOpenWith": "Choose application",
     "viewSource": "View source",
     "viewRendered": "View rendered",
     "saveBeforePreview": "Save changes to preview"

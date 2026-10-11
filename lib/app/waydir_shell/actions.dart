@@ -1,6 +1,10 @@
 part of '../waydir_shell.dart';
 
 mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
+  List<FileEntry> _launcherTargets = const [];
+
+  void _showOpenMenuFor(FileEntry entry, Offset position, VoidCallback done);
+
   bool _canLaunch(FileEntry entry) =>
       entry.type == FileItemType.file &&
       !entry.isGhost &&
@@ -60,6 +64,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   List<ContextMenuItem> _launcherItems(List<FileEntry> entries) {
+    _launcherTargets = entries;
     if (entries.isEmpty || !entries.every(_canLaunch)) return const [];
     final registry = LauncherRegistry.instance;
     final items = <ContextMenuItem>[];
@@ -91,7 +96,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   void _handleLauncherAction(String id) {
     final def = LauncherRegistry.instance.byId(id);
     if (def == null) return;
-    final entries = _active.selectedEntries.where(_canLaunch).toList();
+    final entries = _launcherTargets.where(_canLaunch).toList();
     if (entries.isEmpty) return;
     if (def.context == LauncherContext.compare) {
       final pair = _comparePairFor(entries.first);
@@ -245,6 +250,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       context: context,
       store: store,
       useMarkedSelection: true,
+      onOpenMenu: _showOpenMenuFor,
     ).then((_) => _restoreFocus());
   }
 
@@ -524,6 +530,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       context: context,
       store: _active,
       diffPair: _compareDiffResolver(),
+      onOpenMenu: _showOpenMenuFor,
     ).then((_) => _restoreFocus());
   }
 
@@ -535,6 +542,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       store: _active,
       useMarkedSelection: true,
       diffPair: _compareDiffResolver(),
+      onOpenMenu: _showOpenMenuFor,
     ).then((_) => _restoreFocus());
   }
 

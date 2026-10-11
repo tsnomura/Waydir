@@ -1279,6 +1279,29 @@ mixin _WaydirMenuMixin
     }
   }
 
+  @override
+  void _showOpenMenuFor(FileEntry entry, Offset position, VoidCallback done) {
+    final items = [
+      ..._launcherItems([entry]),
+      ..._openWithItemsFor(entry),
+    ];
+    if (items.isEmpty) return;
+    showContextMenu(
+      context: context,
+      position: position,
+      items: items,
+      keyboard: true,
+      onSelect: (action) {
+        done();
+        if (action == 'open') {
+          _active.onOpen(entry);
+        } else {
+          _handleMenuAction(action);
+        }
+      },
+    );
+  }
+
   void _handleMenuAction(String action) {
     final store = _active;
     if (action.startsWith('launcher:')) {

@@ -29,12 +29,16 @@ import 'quick_look_io.dart';
 typedef QuickLookDiffResolver =
     (FileEntry, FileEntry)? Function(FileEntry? entry);
 
+typedef QuickLookOpenMenu =
+    void Function(FileEntry entry, Offset position, VoidCallback done);
+
 Future<void> showQuickLook({
   required BuildContext context,
   required NavigationStore store,
   FileEntry? explicitEntry,
   QuickLookDiffResolver? diffPair,
   bool useMarkedSelection = false,
+  QuickLookOpenMenu? onOpenMenu,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -48,6 +52,7 @@ Future<void> showQuickLook({
         explicitEntry: explicitEntry,
         diffPair: diffPair,
         useMarkedSelection: useMarkedSelection,
+        onOpenMenu: onOpenMenu,
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -69,12 +74,14 @@ class _QuickLook extends StatefulWidget {
   final FileEntry? explicitEntry;
   final QuickLookDiffResolver? diffPair;
   final bool useMarkedSelection;
+  final QuickLookOpenMenu? onOpenMenu;
 
   const _QuickLook({
     required this.store,
     this.explicitEntry,
     this.diffPair,
     this.useMarkedSelection = false,
+    this.onOpenMenu,
   });
 
   @override
@@ -90,6 +97,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   final _focus = FocusNode();
   final _editorActive = signal(false);
   final _identicalPairs = signal<Set<String>>(const {});
+  FileEntry? _shownEntry;
   final _editorController = CodeEditorController();
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
@@ -363,6 +371,26 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     return KeyEventResult.handled;
   }
 
+  void _openShown() {
+    final entry = _shownEntry;
+    if (entry == null) return;
+    Navigator.of(context).pop();
+    widget.store.onOpen(entry);
+  }
+
+  void _openShownWithMenu() {
+    final entry = _shownEntry;
+    final menu = widget.onOpenMenu;
+    if (entry == null || menu == null) return;
+    final rect = _rect;
+    final position = rect == null
+        ? const Offset(80, 80)
+        : Offset(rect.left + 24, rect.top + 46);
+    menu(entry, position, () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
     final isRepeat = event is KeyRepeatEvent;
     if (event is! KeyDownEvent && !isRepeat) return KeyEventResult.ignored;
@@ -392,6 +420,17 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         (AppShortcuts.matches('quick_look_close', key) ||
             AppShortcuts.matches('quick_look_marked', key))) {
       _requestClose();
+
+      return KeyEventResult.handled;
+    }
+    if (!isRepeat &&
+        (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter)) {
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        _openShownWithMenu();
+      } else {
+        _openShown();
+      }
 
       return KeyEventResult.handled;
     }
@@ -451,6 +490,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
       setState(() => _markdownRendered = !_markdownRendered);
 
   void _syncPresentation(FileEntry? entry) {
+    _shownEntry = entry;
     final key = entry?.realPath;
     if (_presentationKey == key) return;
     _presentationKey = key;
@@ -590,8 +630,11 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   Widget _buildContent() {
     return SignalBuilder(
       builder: (_) {
+        _shownEntry = null;
         final override = widget.explicitEntry;
         if (override != null) {
+          _shownEntry = override;
+
           return Column(
             children: [
               _Header(
@@ -709,6 +752,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         _Header(
           entry: entry,
           nameSuffix: identical ? t.quickLook.identicalSuffix : null,
+          onOpen: entry == null ? null : _openShown,
           compact: _compact,
           showInfo: _showInfo,
           onToggleInfo: () => setState(() => _showInfo = !_showInfo),
@@ -797,6 +841,14 @@ class _ShortcutBar extends StatelessWidget {
                   caps: _capsOf('quick_look_close'),
                   label: t.quickLook.hintClose,
                 ),
+                _ShortcutHint(
+                  caps: const ['Enter'],
+                  label: t.quickLook.hintOpen,
+                ),
+                _ShortcutHint(
+                  caps: const ['Shift', 'Enter'],
+                  label: t.quickLook.hintOpenWith,
+                ),
               ];
 
         return Container(
@@ -848,6 +900,7 @@ class _ShortcutHint extends StatelessWidget {
 class _Header extends StatelessWidget {
   final FileEntry? entry;
   final String? nameSuffix;
+  final VoidCallback? onOpen;
   final bool compact;
   final bool showInfo;
   final VoidCallback onToggleInfo;
@@ -867,6 +920,7 @@ class _Header extends StatelessWidget {
     required this.onClose,
     required this.editorController,
     this.nameSuffix,
+    this.onOpen,
     this.multiCount,
     this.markdownRendered = true,
     this.onToggleMarkdownView,
@@ -940,6 +994,15 @@ class _Header extends StatelessWidget {
                     onTap: onToggleMarkdownView!,
                   );
                 },
+              ),
+              const SizedBox(width: 4),
+            ],
+            if (onOpen != null && !multi && e != null) ...[
+              _HeaderButton(
+                icon: WaydirIconsRegular.arrowSquareOut,
+                active: false,
+                tooltip: t.quickLook.openInApp,
+                onTap: onOpen!,
               ),
               const SizedBox(width: 4),
             ],
