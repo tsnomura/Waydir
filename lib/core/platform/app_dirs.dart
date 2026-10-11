@@ -16,6 +16,7 @@ class AppDirs {
   static Future<String>? _plugins;
   static Future<String>? _generators;
   static Future<String>? _generatorCache;
+  static Future<String>? _launchers;
 
   /// Base app-support dir. Matches the location the database has always used,
   /// so existing user data is never relocated.
@@ -53,6 +54,10 @@ class AppDirs {
 
   static Future<String> generators() {
     return _generators ??= _resolveChild('generators');
+  }
+
+  static Future<String> launchers() {
+    return _launchers ??= _resolveChild('launchers');
   }
 
   static Future<String> generatorCache() {

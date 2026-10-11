@@ -2192,8 +2192,12 @@ class NavigationStore {
 
   void onOpen(FileEntry entry) => unawaited(_openEntry(entry));
 
+  static Future<bool> Function(FileEntry entry)? openInterceptor;
+
   Future<void> _openEntry(FileEntry entry) async {
     if (entry.isGhost) return;
+    final intercept = openInterceptor;
+    if (intercept != null && await intercept(entry)) return;
     if (entry.type == FileItemType.folder) {
       if (PlatformPaths.isWindows &&
           currentPath.value == kTrashPath &&

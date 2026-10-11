@@ -38,6 +38,9 @@ import '../features/command_palette/command_usage_store.dart';
 import '../features/compare/compare_mode_bar.dart';
 import '../features/drives/drive_store.dart';
 import '../features/help/help_dialog.dart';
+import '../features/launchers/launcher_def.dart';
+import '../features/launchers/launcher_registry.dart';
+import '../features/launchers/launcher_runner.dart';
 import '../features/navigation/bookmark_store.dart';
 import '../features/navigation/navigation_store.dart';
 import '../features/navigation/sidebar.dart';
@@ -106,6 +109,7 @@ class _WaydirShellState extends State<WaydirShell>
     super.initState();
     _operationStore.confirmTransfer = _confirmTransfer;
     ArchivePasswords.prompt = _promptArchivePassword;
+    NavigationStore.openInterceptor = _interceptOpen;
     _effectDisposers.add(
       effect(() {
         if (!_shell.ready.value) return;

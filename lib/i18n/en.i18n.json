@@ -190,10 +190,44 @@
       "appearance": "Appearance",
       "terminal": "Terminal",
       "quickLook": "Quick Look",
+      "launchers": "Launchers",
       "bookmarks": "Bookmarks",
       "plugins": "Plugins",
       "diagnostics": "Diagnostics",
       "about": "About"
+    },
+    "launchers": {
+      "section": "Custom launchers",
+      "title": "Custom launchers",
+      "hint": "Commands Waydir runs to open files. A launcher marked default replaces Enter/double-click for its extensions; compare launchers run on Enter in compare mode with the left and right files.",
+      "loading": "Loading launchers…",
+      "empty": "No launchers yet.",
+      "invalid": "Invalid",
+      "add": "Add launcher",
+      "addTitle": "Add launcher",
+      "editTitle": "Edit launcher",
+      "edit": "Edit",
+      "editJson": "Edit JSON",
+      "delete": "Delete",
+      "save": "Save",
+      "reload": "Reload",
+      "reloaded": "Launchers reloaded",
+      "deleteTitle": "Delete launcher",
+      "deleteMessage": "Delete the launcher \"$name\"? Its JSON file will be removed.",
+      "idTaken": "A launcher with id \"$id\" already exists",
+      "idLabel": "ID",
+      "nameLabel": "Menu name",
+      "contextLabel": "When",
+      "contextOpen": "Open files",
+      "contextCompare": "Compare mode",
+      "extensionsLabel": "Extensions (comma separated)",
+      "extensionsCompareHint": "Leave empty to apply to every file",
+      "cmdLabel": "Command",
+      "argsLabel": "Arguments (one per line)",
+      "defaultLabel": "Use for Enter / double-click",
+      "placeholders": "Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).",
+      "defaultBadge": "default",
+      "compareBadge": "compare"
     },
     "plugins": {
       "title": "Plugins",
@@ -432,7 +466,10 @@
       "build": "Build",
       "repository": "Repository",
       "license": "License",
-      "copy": "Copy"
+      "copy": "Copy",
+      "personalBuild": "Personal build",
+      "personalRepository": "Personal fork",
+      "personalUnknown": "not recorded (build with scripts/build_personal)"
     }
   },
   "update": {
@@ -855,6 +892,7 @@
     "saveBeforePreview": "Save changes to preview"
   },
   "toast": {
+    "launcherFailed": "Couldn't start $name: $error",
     "copiedItems(one)": "Copied 1 item",
     "copiedItems(other)": "Copied $count items",
     "duplicatedItems(one)": "Duplicated 1 item",

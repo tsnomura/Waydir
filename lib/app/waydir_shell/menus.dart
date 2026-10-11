@@ -307,6 +307,7 @@ mixin _WaydirMenuMixin
       return;
     }
 
+    final launcherItems = _launcherItems(entries);
     final items = <ContextMenuItem>[
       if (count == 1 && !isSingleFile)
         ContextMenuItem(
@@ -314,6 +315,7 @@ mixin _WaydirMenuMixin
           label: t.menu.open,
           action: 'open',
         ),
+      ...launcherItems,
       ...openWithItems,
       ?extractItem,
       ?compressItem,
@@ -1279,6 +1281,11 @@ mixin _WaydirMenuMixin
 
   void _handleMenuAction(String action) {
     final store = _active;
+    if (action.startsWith('launcher:')) {
+      _handleLauncherAction(action.substring('launcher:'.length));
+
+      return;
+    }
     if (action.startsWith('tag_toggle:')) {
       final id = int.tryParse(action.substring('tag_toggle:'.length));
       if (id != null) {

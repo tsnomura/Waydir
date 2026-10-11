@@ -1,6 +1,110 @@
 part of '../waydir_shell.dart';
 
 mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
+  bool _canLaunch(FileEntry entry) =>
+      entry.type == FileItemType.file &&
+      !entry.isGhost &&
+      !FileSystemService.isInsideArchive(entry.realPath) &&
+      !PlatformPaths.isRemoteUri(entry.realPath);
+
+  (FileEntry, FileEntry)? _comparePairFor(FileEntry entry) {
+    if (!_shell.compare.active.value || !_shell.isDual.value) return null;
+    final marked = _markedDiffPair();
+    if (marked != null &&
+        (entry.realPath == marked.$1.realPath ||
+            entry.realPath == marked.$2.realPath)) {
+      return marked;
+    }
+
+    return _shell.compare.diffPairFor(entry.path);
+  }
+
+  Future<bool> _interceptOpen(FileEntry entry) async {
+    if (!_canLaunch(entry)) return false;
+    final pair = _comparePairFor(entry);
+    if (pair != null) {
+      final def = LauncherRegistry.instance.defaultForCompare(entry.extension);
+      if (def != null) {
+        await _runLauncher(
+          def,
+          left: pair.$1.realPath,
+          right: pair.$2.realPath,
+        );
+
+        return true;
+      }
+    }
+    final def = LauncherRegistry.instance.defaultForOpen(entry.extension);
+    if (def == null) return false;
+    await _runLauncher(def, files: [entry.realPath]);
+
+    return true;
+  }
+
+  Future<void> _runLauncher(
+    LauncherDef def, {
+    List<String> files = const [],
+    String? left,
+    String? right,
+  }) async {
+    try {
+      await LauncherRunner.run(def, files: files, left: left, right: right);
+    } on Exception catch (e, st) {
+      log.warn('launchers', 'launcher "${def.id}" failed', error: e, stack: st);
+      if (!mounted) return;
+      showToast(
+        context: context,
+        message: t.toast.launcherFailed(name: def.name, error: '$e'),
+      );
+    }
+  }
+
+  List<ContextMenuItem> _launcherItems(List<FileEntry> entries) {
+    if (entries.isEmpty || !entries.every(_canLaunch)) return const [];
+    final registry = LauncherRegistry.instance;
+    final items = <ContextMenuItem>[];
+    if (entries.length == 1 && _comparePairFor(entries.first) != null) {
+      for (final def in registry.forCompare(entries.first.extension)) {
+        items.add(
+          ContextMenuItem(
+            icon: WaydirIconsRegular.arrowsLeftRight,
+            label: def.name,
+            action: 'launcher:${def.id}',
+          ),
+        );
+      }
+    }
+    for (final def in registry.forOpen(entries.first.extension)) {
+      if (!entries.every((e) => def.matchesExtension(e.extension))) continue;
+      items.add(
+        ContextMenuItem(
+          icon: WaydirIconsRegular.appWindow,
+          label: def.name,
+          action: 'launcher:${def.id}',
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  void _handleLauncherAction(String id) {
+    final def = LauncherRegistry.instance.byId(id);
+    if (def == null) return;
+    final entries = _active.selectedEntries.where(_canLaunch).toList();
+    if (entries.isEmpty) return;
+    if (def.context == LauncherContext.compare) {
+      final pair = _comparePairFor(entries.first);
+      if (pair == null) return;
+      unawaited(
+        _runLauncher(def, left: pair.$1.realPath, right: pair.$2.realPath),
+      );
+
+      return;
+    }
+    unawaited(_runLauncher(def, files: [for (final e in entries) e.realPath]));
+  }
+
   Future<String?> _promptArchivePassword(
     String archivePath, {
     required bool retry,

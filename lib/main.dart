@@ -15,6 +15,7 @@ import 'core/fs/sftp_fs.dart';
 import 'core/logging/app_logger.dart';
 import 'core/settings/settings_store.dart';
 import 'core/update/update_store.dart';
+import 'features/launchers/launcher_registry.dart';
 import 'features/navigation/sidebar_store.dart';
 import 'features/plugins/plugin_settings_store.dart';
 import 'features/plugins/plugin_store.dart';
@@ -83,6 +84,7 @@ void main(List<String> args) async {
       unawaited(UpdateStore.instance.checkOnStartup());
       unawaited(PluginStore.instance.loadAll());
       unawaited(GeneratorRegistry.instance.load());
+      unawaited(LauncherRegistry.instance.load());
       unawaited(DiffCommandRegistry.instance.load());
       unawaited(PlayerRegistry.instance.load());
       runApp(TranslationProvider(child: const WaydirApp()));

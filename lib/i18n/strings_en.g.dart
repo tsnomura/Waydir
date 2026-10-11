@@ -642,6 +642,7 @@ class Translations$preferences$en {
 	String get comingSoon => 'Coming soon';
 
 	late final Translations$preferences$categories$en categories = Translations$preferences$categories$en.internal(_root);
+	late final Translations$preferences$launchers$en launchers = Translations$preferences$launchers$en.internal(_root);
 	late final Translations$preferences$plugins$en plugins = Translations$preferences$plugins$en.internal(_root);
 	late final Translations$preferences$general$en general = Translations$preferences$general$en.internal(_root);
 	late final Translations$preferences$terminal$en terminal = Translations$preferences$terminal$en.internal(_root);
@@ -1407,6 +1408,9 @@ class Translations$toast$en {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'Couldn't start $name: $error'
+	String launcherFailed({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}';
 
 	/// en: 'Copied $count items'
 	String copiedItems({required Object count}) => 'Copied ${count} items';
@@ -2533,6 +2537,9 @@ class Translations$preferences$categories$en {
 	/// en: 'Quick Look'
 	String get quickLook => 'Quick Look';
 
+	/// en: 'Launchers'
+	String get launchers => 'Launchers';
+
 	/// en: 'Bookmarks'
 	String get bookmarks => 'Bookmarks';
 
@@ -2544,6 +2551,108 @@ class Translations$preferences$categories$en {
 
 	/// en: 'About'
 	String get about => 'About';
+}
+
+// Path: preferences.launchers
+class Translations$preferences$launchers$en {
+	Translations$preferences$launchers$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Custom launchers'
+	String get section => 'Custom launchers';
+
+	/// en: 'Custom launchers'
+	String get title => 'Custom launchers';
+
+	/// en: 'Commands Waydir runs to open files. A launcher marked default replaces Enter/double-click for its extensions; compare launchers run on Enter in compare mode with the left and right files.'
+	String get hint => 'Commands Waydir runs to open files. A launcher marked default replaces Enter/double-click for its extensions; compare launchers run on Enter in compare mode with the left and right files.';
+
+	/// en: 'Loading launchers…'
+	String get loading => 'Loading launchers…';
+
+	/// en: 'No launchers yet.'
+	String get empty => 'No launchers yet.';
+
+	/// en: 'Invalid'
+	String get invalid => 'Invalid';
+
+	/// en: 'Add launcher'
+	String get add => 'Add launcher';
+
+	/// en: 'Add launcher'
+	String get addTitle => 'Add launcher';
+
+	/// en: 'Edit launcher'
+	String get editTitle => 'Edit launcher';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Edit JSON'
+	String get editJson => 'Edit JSON';
+
+	/// en: 'Delete'
+	String get delete => 'Delete';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Reload'
+	String get reload => 'Reload';
+
+	/// en: 'Launchers reloaded'
+	String get reloaded => 'Launchers reloaded';
+
+	/// en: 'Delete launcher'
+	String get deleteTitle => 'Delete launcher';
+
+	/// en: 'Delete the launcher "$name"? Its JSON file will be removed.'
+	String deleteMessage({required Object name}) => 'Delete the launcher "${name}"? Its JSON file will be removed.';
+
+	/// en: 'A launcher with id "$id" already exists'
+	String idTaken({required Object id}) => 'A launcher with id "${id}" already exists';
+
+	/// en: 'ID'
+	String get idLabel => 'ID';
+
+	/// en: 'Menu name'
+	String get nameLabel => 'Menu name';
+
+	/// en: 'When'
+	String get contextLabel => 'When';
+
+	/// en: 'Open files'
+	String get contextOpen => 'Open files';
+
+	/// en: 'Compare mode'
+	String get contextCompare => 'Compare mode';
+
+	/// en: 'Extensions (comma separated)'
+	String get extensionsLabel => 'Extensions (comma separated)';
+
+	/// en: 'Leave empty to apply to every file'
+	String get extensionsCompareHint => 'Leave empty to apply to every file';
+
+	/// en: 'Command'
+	String get cmdLabel => 'Command';
+
+	/// en: 'Arguments (one per line)'
+	String get argsLabel => 'Arguments (one per line)';
+
+	/// en: 'Use for Enter / double-click'
+	String get defaultLabel => 'Use for Enter / double-click';
+
+	/// en: 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).'
+	String get placeholders => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).';
+
+	/// en: 'default'
+	String get defaultBadge => 'default';
+
+	/// en: 'compare'
+	String get compareBadge => 'compare';
 }
 
 // Path: preferences.plugins
@@ -3285,6 +3394,15 @@ class Translations$preferences$about$en {
 
 	/// en: 'Copy'
 	String get copy => 'Copy';
+
+	/// en: 'Personal build'
+	String get personalBuild => 'Personal build';
+
+	/// en: 'Personal fork'
+	String get personalRepository => 'Personal fork';
+
+	/// en: 'not recorded (build with scripts/build_personal)'
+	String get personalUnknown => 'not recorded (build with scripts/build_personal)';
 }
 
 // Path: help.groups
@@ -4453,10 +4571,42 @@ extension on Translations {
 			'preferences.categories.appearance' => 'Appearance',
 			'preferences.categories.terminal' => 'Terminal',
 			'preferences.categories.quickLook' => 'Quick Look',
+			'preferences.categories.launchers' => 'Launchers',
 			'preferences.categories.bookmarks' => 'Bookmarks',
 			'preferences.categories.plugins' => 'Plugins',
 			'preferences.categories.diagnostics' => 'Diagnostics',
 			'preferences.categories.about' => 'About',
+			'preferences.launchers.section' => 'Custom launchers',
+			'preferences.launchers.title' => 'Custom launchers',
+			'preferences.launchers.hint' => 'Commands Waydir runs to open files. A launcher marked default replaces Enter/double-click for its extensions; compare launchers run on Enter in compare mode with the left and right files.',
+			'preferences.launchers.loading' => 'Loading launchers…',
+			'preferences.launchers.empty' => 'No launchers yet.',
+			'preferences.launchers.invalid' => 'Invalid',
+			'preferences.launchers.add' => 'Add launcher',
+			'preferences.launchers.addTitle' => 'Add launcher',
+			'preferences.launchers.editTitle' => 'Edit launcher',
+			'preferences.launchers.edit' => 'Edit',
+			'preferences.launchers.editJson' => 'Edit JSON',
+			'preferences.launchers.delete' => 'Delete',
+			'preferences.launchers.save' => 'Save',
+			'preferences.launchers.reload' => 'Reload',
+			'preferences.launchers.reloaded' => 'Launchers reloaded',
+			'preferences.launchers.deleteTitle' => 'Delete launcher',
+			'preferences.launchers.deleteMessage' => ({required Object name}) => 'Delete the launcher "${name}"? Its JSON file will be removed.',
+			'preferences.launchers.idTaken' => ({required Object id}) => 'A launcher with id "${id}" already exists',
+			'preferences.launchers.idLabel' => 'ID',
+			'preferences.launchers.nameLabel' => 'Menu name',
+			'preferences.launchers.contextLabel' => 'When',
+			'preferences.launchers.contextOpen' => 'Open files',
+			'preferences.launchers.contextCompare' => 'Compare mode',
+			'preferences.launchers.extensionsLabel' => 'Extensions (comma separated)',
+			'preferences.launchers.extensionsCompareHint' => 'Leave empty to apply to every file',
+			'preferences.launchers.cmdLabel' => 'Command',
+			'preferences.launchers.argsLabel' => 'Arguments (one per line)',
+			'preferences.launchers.defaultLabel' => 'Use for Enter / double-click',
+			'preferences.launchers.placeholders' => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).',
+			'preferences.launchers.defaultBadge' => 'default',
+			'preferences.launchers.compareBadge' => 'compare',
 			'preferences.plugins.title' => 'Plugins',
 			'preferences.plugins.subtitle' => 'Extend Waydir with Lua plugins. Each plugin is a folder with manifest.json and init.lua.',
 			'preferences.plugins.installedSection' => 'Installed',
@@ -4680,6 +4830,9 @@ extension on Translations {
 			'preferences.about.repository' => 'Repository',
 			'preferences.about.license' => 'License',
 			'preferences.about.copy' => 'Copy',
+			'preferences.about.personalBuild' => 'Personal build',
+			'preferences.about.personalRepository' => 'Personal fork',
+			'preferences.about.personalUnknown' => 'not recorded (build with scripts/build_personal)',
 			'update.title' => 'Updates',
 			'update.available' => 'Update available',
 			'update.downloading' => 'Downloading update',
@@ -4769,6 +4922,8 @@ extension on Translations {
 			'help.groups.files.multiRename.title' => 'Multi Rename',
 			'help.groups.files.multiRename.body' => 'Rename many files at once with a live before / after preview. Select several items, then choose **Multi Rename** from the context menu.\n\n- **Template** mode builds names from tokens: `{name}`, `{ext}`, `{n}` (sequence from 1), `{index}` (from 0) and `{date}`.\n- **Find & Replace** mode swaps text, with optional regular expressions and case sensitivity.\n- The preview lists every result before you commit, and *Show only changed* hides untouched rows.',
 			'help.groups.files.archives.title' => 'Archives',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.files.archives.body' => 'Archives behave like browsable folders, so you can look inside before extracting anything.\n\n- `Enter` opens a supported archive and lets you walk its contents.\n- The context menu can extract here, extract into a named folder, or extract each archive separately.\n- **Compress** builds a new archive from the selection - pick the format and compression level.\n- Extraction and compression run in the background, so the file list stays responsive.',
 			'help.groups.files.openWith.title' => 'Open With & Default Apps',
 			'help.groups.files.openWith.body' => 'Open a file in any installed application, not just the system default.\n\n- **Open With** from the context menu lists available apps.\n- Set a default app per file type so future opens go straight there.\n- Recently used apps appear at the top for quick access.',
@@ -4804,8 +4959,6 @@ extension on Translations {
 			'help.groups.customization.shortcuts.title' => 'Keyboard Shortcuts',
 			'help.groups.customization.shortcuts.body' => 'Almost every action can be rebound to a key of your choosing.\n\n- Open **Preferences -> Keyboard** to see and edit all shortcuts.\n- Conflicts are flagged so two actions never fight over a key.\n- Reset a single binding, or all of them, back to the defaults at any time.',
 			'help.groups.customization.plugins.title' => 'Plugins',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.customization.plugins.body' => 'Extend Waydir with plugins written in Lua.\n\n- Plugins run through the native core and can add new actions.\n- Enable or disable installed plugins in **Preferences -> Plugins**.\n- See the plugin authoring guide in the project\'s docs to build your own.',
 			'help.groups.resources.title' => 'Resources',
 			'help.groups.resources.links.title' => 'Links & Resources',
@@ -4993,6 +5146,7 @@ extension on Translations {
 			'quickLook.viewSource' => 'View source',
 			'quickLook.viewRendered' => 'View rendered',
 			'quickLook.saveBeforePreview' => 'Save changes to preview',
+			'toast.launcherFailed' => ({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}',
 			'toast.copiedItems' => ({required Object count}) => 'Copied ${count} items',
 			'toast.duplicatedItems' => ({required Object count}) => 'Duplicated ${count} items',
 			'toast.cutItems' => ({required Object count}) => 'Cut ${count} items',
@@ -5282,6 +5436,8 @@ extension on Translations {
 			'errors.sftpRemoveFailed' => 'SFTP remove failed',
 			'errors.sftpRenameFailed' => 'SFTP rename failed',
 			'errors.sftpOpenReaderFailed' => 'SFTP open reader failed',
+			_ => null,
+		} ?? switch (path) {
 			'errors.sftpOpenWriterFailed' => 'SFTP open writer failed',
 			'errors.sftpCloseFailed' => 'SFTP close failed',
 			'errors.directoryNotReadable' => 'Directory not readable',
@@ -5318,8 +5474,6 @@ extension on Translations {
 			'tasks.status.waiting' => 'Waiting...',
 			'tasks.status.scanning' => 'Scanning files...',
 			'tasks.status.conflicts' => ({required Object count}) => '${count} conflicts',
-			_ => null,
-		} ?? switch (path) {
 			'tasks.status.running' => ({required Object current, required Object processed, required Object total}) => '${current} (${processed}/${total})',
 			'tasks.status.cancelling' => 'Cancelling...',
 			'tasks.status.completedWithErrors' => ({required Object count}) => 'Completed with ${count} errors',
