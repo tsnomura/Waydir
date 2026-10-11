@@ -262,6 +262,28 @@ Windows), in the same spirit as preview generators:
 
 Relevant commits: `9c2313d`.
 
+### Opening the Quick Look file in an application
+
+- **Enter** in Quick Look opens the file being shown exactly like Enter in
+  the file list — a default launcher, the compare launcher (WinXMerge) when
+  the file has a pair in compare mode (including while Quick Look shows
+  the diff), otherwise the OS association; a ghost row opens the real
+  file on the other side — and closes Quick Look. While editing text,
+  Enter still inserts a newline.
+- **Shift+Enter** opens a menu at the top-left of the Quick Look window
+  with the matching launchers and the Open With entries; picking one
+  closes Quick Look and runs it. The header also has an Open button, and
+  the shortcut bar shows `Enter Open with application` /
+  `Shift Enter Choose application` next to `Space Close`.
+- That menu takes keyboard focus: ↑/↓ move (skipping dividers and disabled
+  items), Enter/Space choose, →/← open/close a submenu, Esc closes and
+  hands focus back to Quick Look; hovering moves the highlight too. This is
+  opt-in (`showContextMenu(keyboard: true)`) — other context menus are
+  unchanged, since grabbing focus everywhere would need each caller to get
+  focus back reliably.
+
+Relevant commits: `0b725c5`.
+
 ## Personal build version in About
 
 About now shows a **Personal build** row — `git describe --tags --always
