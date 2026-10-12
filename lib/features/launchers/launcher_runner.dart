@@ -7,12 +7,19 @@ import 'launcher_def.dart';
 class LauncherRunner {
   LauncherRunner._();
 
+  static String get waydirExecutable => Platform.resolvedExecutable;
+
+  static String resolveCommand(LauncherDef def, {String? waydir}) =>
+      def.cmd.replaceAll('%WAYDIR%', waydir ?? waydirExecutable);
+
   static List<List<String>> commandLines(
     LauncherDef def, {
     List<String> files = const [],
     String? left,
     String? right,
+    String? waydir,
   }) {
+    final self = waydir ?? waydirExecutable;
     List<String> substitute(String? file) {
       final out = <String>[];
       for (final arg in def.args) {
@@ -33,7 +40,8 @@ class LauncherRunner {
               .replaceAll('%FILE%', file ?? (files.isEmpty ? '' : files.first))
               .replaceAll('%DIR%', dir)
               .replaceAll('%LEFT%', left ?? '')
-              .replaceAll('%RIGHT%', right ?? ''),
+              .replaceAll('%RIGHT%', right ?? '')
+              .replaceAll('%WAYDIR%', self),
         );
       }
 
@@ -59,7 +67,11 @@ class LauncherRunner {
       left: left,
       right: right,
     )) {
-      await Process.start(def.cmd, args, mode: ProcessStartMode.detached);
+      await Process.start(
+        resolveCommand(def),
+        args,
+        mode: ProcessStartMode.detached,
+      );
     }
   }
 }

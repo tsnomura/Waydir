@@ -9,6 +9,7 @@ class LaunchOptions {
   final bool split;
   final bool showHelp;
   final bool showVersion;
+  final String? quickLookPath;
 
   const LaunchOptions({
     this.folders = const [],
@@ -16,7 +17,10 @@ class LaunchOptions {
     this.split = false,
     this.showHelp = false,
     this.showVersion = false,
+    this.quickLookPath,
   });
+
+  bool get isQuickLookWindow => quickLookPath != null;
 
   bool get opensLocation => folders.isNotEmpty || selectPath != null;
 }
@@ -38,6 +42,8 @@ Options:
   -s, --split           Open the first two paths side by side in split view.
   -r, --reveal <file>   Open the containing folder and select <file>.
       --select <file>   Alias for --reveal.
+      --quick-look <file>
+                        Open only <file> in a standalone Quick Look window.
   -v, --version         Print the version and exit.
   -h, --help            Show this help and exit.
 ''';
@@ -48,10 +54,15 @@ Options:
     var split = false;
     var showHelp = false;
     var showVersion = false;
+    String? quickLookPath;
 
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
       switch (arg) {
+        case '--quick-look':
+          if (i + 1 < args.length) {
+            quickLookPath = _resolveFile(args[++i]) ?? quickLookPath;
+          }
         case '-h':
         case '--help':
           showHelp = true;
@@ -69,7 +80,11 @@ Options:
             if (file != null) selectPath = file;
           }
         default:
-          if (arg.startsWith('--select=')) {
+          if (arg.startsWith('--quick-look=')) {
+            quickLookPath =
+                _resolveFile(arg.substring('--quick-look='.length)) ??
+                quickLookPath;
+          } else if (arg.startsWith('--select=')) {
             final file = _resolveFile(arg.substring('--select='.length));
             if (file != null) selectPath = file;
           } else if (arg.startsWith('--reveal=')) {
@@ -95,6 +110,7 @@ Options:
       split: split,
       showHelp: showHelp,
       showVersion: showVersion,
+      quickLookPath: quickLookPath,
     );
   }
 

@@ -3,9 +3,11 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:path/path.dart' as p;
 import 'ui/window/window.dart';
 import 'app/app_info.dart';
 import 'app/launch_args.dart';
+import 'app/quick_look_window_app.dart';
 import 'app/waydir_app.dart';
 import 'core/archive/archive_temp.dart';
 import 'core/fs/fs_backend.dart';
@@ -64,6 +66,12 @@ void main(List<String> args) async {
       FsBackendRegistry.registerLocal(const LocalFs());
       FsBackendRegistry.register(const SftpFs());
       unawaited(FsWorkerPool.instance.ensureStarted());
+      final quickLookPath = LaunchArgs.options.quickLookPath;
+      if (quickLookPath != null) {
+        await _runQuickLookWindow(quickLookPath);
+
+        return;
+      }
       unawaited(Future(ArchiveTemp.startSession));
       await AppThemeRegistry.instance.load();
       await SettingsStore.instance.load();
@@ -107,4 +115,21 @@ void main(List<String> args) async {
       log.error('zone', '$error', stack: stack);
     },
   );
+}
+
+Future<void> _runQuickLookWindow(String path) async {
+  await AppThemeRegistry.instance.load();
+  await SettingsStore.instance.load();
+  await GeneratorRegistry.instance.load();
+  unawaited(PlayerRegistry.instance.load());
+  runApp(TranslationProvider(child: QuickLookWindowApp(path: path)));
+
+  if (isWindowChromeSupported) {
+    const minSize = Size(420, 320);
+    appWindow.minSize = minSize;
+    appWindow.size = const Size(960, 720);
+    appWindow.alignment = Alignment.center;
+    appWindow.title = p.basename(path);
+    appWindow.show();
+  }
 }
