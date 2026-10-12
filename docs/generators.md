@@ -53,9 +53,9 @@ before it does anything useful.
 | `args` | yes | Argument list passed directly to the process — no shell involved, so no quoting or injection concerns. |
 | `timeoutSeconds` | no | Default 8, clamped to a maximum of 60. The process is killed if it runs longer. Also applies to `probeCmd`. |
 | `outputExt` | no | Extension of the generated image file. Default `png`. |
-| `paging` | no | `"time"` or `"discrete"` — see [Paging](#paging). Omit for a single, fixed preview. |
-| `pageCount` | required for `paging: "time"` | Fixed number of evenly-spaced samples across the file. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
-| `probeCmd` / `probeArgs` | required whenever `paging` is set | A command that prints a plain number to stdout — a duration in seconds for `"time"`, a page/unit count for `"discrete"`. |
+| `paging` | no | `"time"`, `"discrete"` or `"fixed"` — see [Paging](#paging). Omit for a single, fixed preview. |
+| `pageCount` | required for `paging: "time"` and `"fixed"` | Fixed number of pages (> 1): evenly-spaced samples across the file for `"time"`, a plain page count for `"fixed"`. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
+| `probeCmd` / `probeArgs` | required for `paging: "time"` and `"discrete"` | A command that prints a plain number to stdout — a duration in seconds for `"time"`, a page/unit count for `"discrete"`. |
 | `probePattern` | no | Regex to pull that number out of `probeCmd`'s output when it isn't already a bare number (first capture group, or the whole match if the pattern has none). |
 
 ## Placeholders
@@ -68,12 +68,13 @@ Substituted in every element of `args`:
 - `%SEEK%` — only meaningful for `paging: "time"`: the timestamp for the current page, as `HH:MM:SS.mmm`.
 - `%POSITION%` — the current page as a 0-based integer (`0` when not paging).
 - `%PAGE%` — the current page as a 1-based integer, for tools that count pages starting at 1 (e.g. `mutool draw`, `pdftoppm -f`/`-l`).
+- `%ANGLE%` — a full turn split across the pages: `360 × position ÷ pageCount` degrees (`0`, `36`, `72` … `324` for 10 pages; up to 3 decimals when it doesn't divide evenly, `0` when not paging). Meant for `paging: "fixed"` turntable previews.
 
 `%INPUT%` is also substituted in `probeArgs` (nothing else is — a probe only needs to read the file).
 
 ## Paging
 
-Quick Look shows prev/next controls and a page indicator over a paged preview. Opening Quick Look on a paged file starts generating every page in the background, one at a time, so paging forward is usually instant by the time you get there instead of waiting on ffmpeg/mutool per page; this stops if you close Quick Look or move to a different file before it finishes. `PageUp`/`PageDown` step through pages too, whenever a paged generator is the active preview (otherwise they scroll content as usual). There are two paging modes, depending on whether "page" means a point in time or a real per-file unit:
+Quick Look shows prev/next controls and a page indicator over a paged preview. Opening Quick Look on a paged file starts generating every page in the background, one at a time, so paging forward is usually instant by the time you get there instead of waiting on ffmpeg/mutool per page; this stops if you close Quick Look or move to a different file before it finishes. `PageUp`/`PageDown` step through pages too, whenever a paged generator is the active preview (otherwise they scroll content as usual). There are three paging modes, depending on whether "page" means a point in time, a real per-file unit, or just a fixed number of views:
 
 **`"time"`** — a fixed `pageCount` of evenly-spaced samples across the file's duration, from 0% up to but excluding 100% (decoders can't extract a frame at the exact end of a file). `probeCmd` reports the duration in seconds, used to compute `%SEEK%`:
 
@@ -108,6 +109,23 @@ Quick Look shows prev/next controls and a page indicator over a paged preview. O
 ```
 
 (`mutool info` prints several lines of metadata, including `Pages: N` — `probePattern` pulls just the number out of it. `mutool draw -o <exact-path> file.pdf <page>` renders straight to the given filename with no page-number suffix, matching `%OUTPUT%`'s contract; poppler's `pdftoppm` always appends its own suffix to the output prefix, which doesn't fit that contract without extra handling, so `mutool` is the simpler fit here despite `pdftoppm`/`pdfinfo` also being common.)
+
+**`"fixed"`** — a fixed `pageCount` of pages with nothing read from the file, so no `probeCmd`. Combine it with `%ANGLE%` (or `%POSITION%`/`%PAGE%`) to render different views of the same file, e.g. a 3D model turning around its Z axis with [F3D](https://f3d.app):
+
+```json
+{
+  "id": "3d-model",
+  "extensions": ["stl", "obj", "ply", "3mf"],
+  "cmd": "f3d",
+  "args": ["%INPUT%", "--output=%OUTPUT%", "--resolution=640,480", "--no-config",
+           "--up=+Z", "--camera-azimuth-angle=%ANGLE%", "--camera-elevation-angle=25"],
+  "paging": "fixed",
+  "pageCount": 10,
+  "timeoutSeconds": 30
+}
+```
+
+(`--up=+Z` makes Z the up axis, so the azimuth turns the model around Z; models authored Y-up, such as glTF, lie on their side with it. Every page is a separate F3D run, cached like any other page.)
 
 Waydir intentionally stops at paging through still frames — a scrubber or playback controls are a job for an embedded video player, not Quick Look.
 

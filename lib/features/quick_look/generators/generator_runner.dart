@@ -121,6 +121,9 @@ class GeneratorRunner {
   ) async {
     var page = position < 0 ? 0 : position;
     var seek = '00:00:00.000';
+    if (def.pagingMode == PagingMode.fixed) {
+      page = page.clamp(0, def.pageCount - 1);
+    }
     if (def.pagingMode == PagingMode.time) {
       page = page.clamp(0, def.pageCount - 1);
       final duration = await _probeNumber(entry, def);
@@ -153,6 +156,7 @@ class GeneratorRunner {
       cacheDir: cacheDir,
       seek: seek,
       position: page,
+      angle: formatAngle(page, def.pageCount),
     );
 
     try {
@@ -293,6 +297,7 @@ class GeneratorRunner {
     required String cacheDir,
     required String seek,
     required int position,
+    required String angle,
   }) {
     return args
         .map(
@@ -302,9 +307,18 @@ class GeneratorRunner {
               .replaceAll('%CACHE%', cacheDir)
               .replaceAll('%SEEK%', seek)
               .replaceAll('%POSITION%', position.toString())
-              .replaceAll('%PAGE%', (position + 1).toString()),
+              .replaceAll('%PAGE%', (position + 1).toString())
+              .replaceAll('%ANGLE%', angle),
         )
         .toList();
+  }
+
+  static String formatAngle(int page, int pageCount) {
+    if (pageCount <= 1) return '0';
+    final degrees = 360 * page / pageCount;
+    if (degrees == degrees.roundToDouble()) return degrees.round().toString();
+
+    return degrees.toStringAsFixed(3);
   }
 
   /// Formats [totalSeconds] as `HH:MM:SS.mmm`, the timestamp form ffmpeg's

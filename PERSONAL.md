@@ -216,6 +216,32 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 Relevant commits: `0907d8a`, `0522087`, `1208ae9`, `19485b1`, `68397a5`,
 `32b9119`, `7abfac6`, `8a0c945`, `7fb56ac`, `2337131`.
 
+### Fixed paging and `%ANGLE%` (turntable previews)
+
+A third paging mode next to `time` and `discrete`: `"paging": "fixed"`
+with a `pageCount` (> 1) and no probe, for previews that are just N views
+of the same file. The new `%ANGLE%` placeholder is
+`360 × position ÷ pageCount` degrees (`0, 36 … 324` for 10 pages, up to
+three decimals when it doesn't divide evenly). The F3D generators here use
+it to turn 3D models around their Z axis, 10 pages paged with
+PageUp/PageDown like a video:
+
+```json
+"args": ["%INPUT%", "--output=%OUTPUT%", "--resolution=640,480",
+         "--no-config", "--up=+Z", "--camera-azimuth-angle=%ANGLE%",
+         "--camera-elevation-angle=25"],
+"paging": "fixed",
+"pageCount": 10
+```
+
+`--up=+Z` makes Z the up axis (CAD convention), so Y-up formats such as
+glTF lie on their side; grid thumbnails use page 1 (0°). Each page is a
+separate F3D run, cached like any other page. Changing a generator's args
+doesn't invalidate cached images — use Reload in Preferences → Quick Look,
+which clears the cache. Documented in `docs/generators.md`.
+
+Relevant commits: `463660d`.
+
 ## Custom launchers
 
 Opening a file only ever looked at its type, so "this app, with these
