@@ -1278,3 +1278,5 @@ in the same area (header stays lit, terminal tabs remain clickable).
   paging, state not persisted across restarts, and the unsaved-changes guard
   is not yet hooked into *window* close (quitting the app with a dirty
   editor in the pane just exits, same as the floating panel).
+
+Relevant commits: `d0c1157`.
