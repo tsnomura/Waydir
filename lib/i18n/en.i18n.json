@@ -226,7 +226,7 @@
       "cmdLabel": "Command",
       "argsLabel": "Arguments (one per line)",
       "defaultLabel": "Use for Enter / double-click",
-      "placeholders": "Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).",
+      "placeholders": "Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode), %WAYDIR% (Waydir's own executable, e.g. with --quick-look %FILE%).",
       "defaultBadge": "default",
       "compareBadge": "compare"
     },

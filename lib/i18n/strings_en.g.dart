@@ -2663,8 +2663,8 @@ class Translations$preferences$launchers$en {
 	/// en: 'Use for Enter / double-click'
 	String get defaultLabel => 'Use for Enter / double-click';
 
-	/// en: 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).'
-	String get placeholders => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).';
+	/// en: 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode), %WAYDIR% (Waydir's own executable, e.g. with --quick-look %FILE%).'
+	String get placeholders => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode), %WAYDIR% (Waydir\'s own executable, e.g. with --quick-look %FILE%).';
 
 	/// en: 'default'
 	String get defaultBadge => 'default';
@@ -4623,7 +4623,7 @@ extension on Translations {
 			'preferences.launchers.cmdLabel' => 'Command',
 			'preferences.launchers.argsLabel' => 'Arguments (one per line)',
 			'preferences.launchers.defaultLabel' => 'Use for Enter / double-click',
-			'preferences.launchers.placeholders' => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode).',
+			'preferences.launchers.placeholders' => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode), %WAYDIR% (Waydir\'s own executable, e.g. with --quick-look %FILE%).',
 			'preferences.launchers.defaultBadge' => 'default',
 			'preferences.launchers.compareBadge' => 'compare',
 			'preferences.plugins.title' => 'Plugins',

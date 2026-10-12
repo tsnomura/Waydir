@@ -64,6 +64,24 @@ void main() {
     ]);
   });
 
+  test('%WAYDIR% resolves to the running executable', () {
+    final def = parse({
+      'id': 'ql',
+      'extensions': ['md'],
+      'cmd': '%WAYDIR%',
+      'args': ['--quick-look', '%FILE%'],
+    });
+
+    expect(
+      LauncherRunner.resolveCommand(def, waydir: '/opt/waydir'),
+      '/opt/waydir',
+    );
+    expect(LauncherRunner.commandLines(def, files: ['/n/a.md', '/n/b.md']), [
+      ['--quick-look', '/n/a.md'],
+      ['--quick-look', '/n/b.md'],
+    ]);
+  });
+
   test('compare launchers get the left and right paths', () {
     final def = parse({
       'id': 'merge',

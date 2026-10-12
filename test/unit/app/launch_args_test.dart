@@ -35,6 +35,20 @@ void main() {
       expect(LaunchArgs.options.selectPath, norm(file.path));
     });
 
+    test('--quick-look opens a standalone Quick Look window', () {
+      final file = File('${temp.path}/note.md')..writeAsStringSync('# hi');
+      LaunchArgs.parse(['--quick-look', file.path]);
+      expect(LaunchArgs.options.isQuickLookWindow, isTrue);
+      expect(LaunchArgs.options.quickLookPath, norm(file.path));
+      expect(LaunchArgs.options.selectPath, isNull);
+
+      LaunchArgs.parse(['--quick-look=${file.path}']);
+      expect(LaunchArgs.options.quickLookPath, norm(file.path));
+
+      LaunchArgs.parse(['--quick-look', temp.path]);
+      expect(LaunchArgs.options.isQuickLookWindow, isFalse);
+    });
+
     test('--reveal selects a file and --split sets dual pane', () {
       final file = File('${temp.path}/x.txt')..writeAsStringSync('x');
       LaunchArgs.parse(['--split', '--reveal', file.path, temp.path]);
