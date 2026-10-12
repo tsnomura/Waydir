@@ -25,6 +25,7 @@ import '../navigation/search_bar_widget.dart';
 import '../navigation/toolbar.dart';
 import '../plugins/plugin_bar.dart';
 import '../plugins/plugin_store.dart';
+import '../quick_look/quick_look_panel.dart';
 import '../tabs/tab_strip.dart';
 import '../../ui/icons/waydir_icons.dart';
 import '../../ui/theme/app_theme.dart';
@@ -62,6 +63,11 @@ class PaneView extends StatelessWidget {
   final void Function(int slot, int from, int to)? onReorderTerminalTab;
   final void Function(int slot, double height)? onTerminalHeightChanged;
   final VoidCallback? onReturnFocusToFiles;
+  final bool quickLookActive;
+  final void Function(int slot)? onSelectQuickLook;
+  final void Function(int slot)? onToggleQuickLook;
+  final void Function(int slot)? onCloseQuickLook;
+  final void Function(int slot, QuickLookCloseGuard?)? onRegisterQuickLookGuard;
 
   const PaneView({
     super.key,
@@ -92,6 +98,11 @@ class PaneView extends StatelessWidget {
     this.onReorderTerminalTab,
     this.onTerminalHeightChanged,
     this.onReturnFocusToFiles,
+    this.quickLookActive = false,
+    this.onSelectQuickLook,
+    this.onToggleQuickLook,
+    this.onCloseQuickLook,
+    this.onRegisterQuickLookGuard,
   });
 
   @override
@@ -187,23 +198,32 @@ class PaneView extends StatelessWidget {
                   return GitStatusBar(status: status, store: gitStore);
                 },
               ),
-              if (terminalVisible && activeTerminal != null)
-                _TerminalPanel(
-                  slot: terminalSlot,
-                  tabs: terminalTabs,
-                  active: activeTerminal!,
-                  height: terminalHeight,
-                  isSingleMode: isSingleMode,
-                  onToggleTerminal: onToggleTerminal,
-                  onActivate: onTerminalActivate,
-                  onSelectTab: onSelectTerminalTab,
-                  onCloseTab: onCloseTerminalTab,
-                  onNewTab: onNewTerminalTab,
-                  onNewTabMenu: onNewTerminalTabMenu,
-                  onCycleTab: onCycleTerminalTab,
-                  onReorderTab: onReorderTerminalTab,
-                  onHeightChanged: onTerminalHeightChanged,
-                  onReturnFocusToFiles: onReturnFocusToFiles,
+              if (terminalVisible &&
+                  (activeTerminal != null || quickLookActive))
+                SignalBuilder(
+                  builder: (_) => _TerminalPanel(
+                    slot: terminalSlot,
+                    tabs: terminalTabs,
+                    active: activeTerminal,
+                    quickLook: quickLookActive,
+                    quickLookStore: pane.tabs.activeTab.value.store,
+                    height: terminalHeight,
+                    isSingleMode: isSingleMode,
+                    onToggleTerminal: onToggleTerminal,
+                    onActivate: onTerminalActivate,
+                    onSelectTab: onSelectTerminalTab,
+                    onCloseTab: onCloseTerminalTab,
+                    onNewTab: onNewTerminalTab,
+                    onNewTabMenu: onNewTerminalTabMenu,
+                    onCycleTab: onCycleTerminalTab,
+                    onReorderTab: onReorderTerminalTab,
+                    onHeightChanged: onTerminalHeightChanged,
+                    onReturnFocusToFiles: onReturnFocusToFiles,
+                    onSelectQuickLook: onSelectQuickLook,
+                    onToggleQuickLook: onToggleQuickLook,
+                    onCloseQuickLook: onCloseQuickLook,
+                    onRegisterQuickLookGuard: onRegisterQuickLookGuard,
+                  ),
                 ),
             ],
           ),
@@ -384,7 +404,9 @@ class _TabContent extends StatelessWidget {
 class _TerminalPanel extends StatefulWidget {
   final int slot;
   final List<TerminalTab> tabs;
-  final TerminalTab active;
+  final TerminalTab? active;
+  final bool quickLook;
+  final NavigationStore quickLookStore;
   final double height;
   final bool isSingleMode;
   final void Function(int slot)? onToggleTerminal;
@@ -397,11 +419,17 @@ class _TerminalPanel extends StatefulWidget {
   final void Function(int slot, int from, int to)? onReorderTab;
   final void Function(int slot, double height)? onHeightChanged;
   final VoidCallback? onReturnFocusToFiles;
+  final void Function(int slot)? onSelectQuickLook;
+  final void Function(int slot)? onToggleQuickLook;
+  final void Function(int slot)? onCloseQuickLook;
+  final void Function(int slot, QuickLookCloseGuard?)? onRegisterQuickLookGuard;
 
   const _TerminalPanel({
     required this.slot,
     required this.tabs,
     required this.active,
+    required this.quickLook,
+    required this.quickLookStore,
     required this.height,
     required this.isSingleMode,
     this.onToggleTerminal,
@@ -414,6 +442,10 @@ class _TerminalPanel extends StatefulWidget {
     this.onReorderTab,
     this.onHeightChanged,
     this.onReturnFocusToFiles,
+    this.onSelectQuickLook,
+    this.onToggleQuickLook,
+    this.onCloseQuickLook,
+    this.onRegisterQuickLookGuard,
   });
 
   @override
@@ -440,8 +472,9 @@ class _TerminalPanelState extends State<_TerminalPanel> {
   @override
   void initState() {
     super.initState();
-    _focused = widget.active.focusNode.hasFocus;
-    widget.active.focusNode.addListener(_onFocusChange);
+    final node = widget.active?.focusNode;
+    _focused = node?.hasFocus ?? false;
+    node?.addListener(_onFocusChange);
   }
 
   @override
@@ -450,21 +483,23 @@ class _TerminalPanelState extends State<_TerminalPanel> {
     if (_dragHeight != null && widget.height == _dragHeight) {
       _dragHeight = null;
     }
-    if (oldWidget.active.id == widget.active.id) return;
-    oldWidget.active.focusNode.removeListener(_onFocusChange);
-    _focused = widget.active.focusNode.hasFocus;
-    widget.active.focusNode.addListener(_onFocusChange);
+    final oldNode = oldWidget.active?.focusNode;
+    final node = widget.active?.focusNode;
+    if (identical(oldNode, node)) return;
+    oldNode?.removeListener(_onFocusChange);
+    _focused = node?.hasFocus ?? false;
+    node?.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
-    widget.active.focusNode.removeListener(_onFocusChange);
+    widget.active?.focusNode.removeListener(_onFocusChange);
     _terminalController.dispose();
     super.dispose();
   }
 
   void _onFocusChange() {
-    final focused = widget.active.focusNode.hasFocus;
+    final focused = widget.active?.focusNode.hasFocus ?? false;
     if (focused != _focused) setState(() => _focused = focused);
   }
 
@@ -512,7 +547,19 @@ class _TerminalPanelState extends State<_TerminalPanel> {
         HardwareKeyboard.instance.isShiftPressed &&
         !HardwareKeyboard.instance.isAltPressed &&
         event.physicalKey == PhysicalKeyboardKey.keyW) {
-      widget.onCloseTab?.call(widget.active.id);
+      final tab = widget.active;
+      if (tab == null) return KeyEventResult.ignored;
+      widget.onCloseTab?.call(tab.id);
+
+      return KeyEventResult.handled;
+    }
+
+    if (event is KeyDownEvent &&
+        AppShortcuts.isControl &&
+        !HardwareKeyboard.instance.isShiftPressed &&
+        !HardwareKeyboard.instance.isAltPressed &&
+        event.physicalKey == PhysicalKeyboardKey.space) {
+      widget.onToggleQuickLook?.call(widget.slot);
 
       return KeyEventResult.handled;
     }
@@ -586,6 +633,9 @@ class _TerminalPanelState extends State<_TerminalPanel> {
   }
 
   KeyEventResult _handleTerminalCopy() {
+    final tab = widget.active;
+    if (tab == null) return KeyEventResult.ignored;
+
     final selection = _terminalController.selection;
     if (selection == null) {
       final mode = SettingsStore.instance.terminalCopyPasteMode.value;
@@ -595,7 +645,7 @@ class _TerminalPanelState extends State<_TerminalPanel> {
 
       return KeyEventResult.handled;
     }
-    final terminal = widget.active.session.terminal;
+    final terminal = tab.session.terminal;
     final text = terminal.buffer.getText(selection);
     _terminalController.clearSelection();
     unawaited(Clipboard.setData(ClipboardData(text: text)));
@@ -604,7 +654,9 @@ class _TerminalPanelState extends State<_TerminalPanel> {
   }
 
   void _terminalPaste() {
-    final terminal = widget.active.session.terminal;
+    final tab = widget.active;
+    if (tab == null) return;
+    final terminal = tab.session.terminal;
     _terminalController.clearSelection();
     Clipboard.getData(Clipboard.kTextPlain).then((data) {
       final text = data?.text;
@@ -617,7 +669,9 @@ class _TerminalPanelState extends State<_TerminalPanel> {
   }
 
   void _terminalSelectAll() {
-    final terminal = widget.active.session.terminal;
+    final tab = widget.active;
+    if (tab == null) return;
+    final terminal = tab.session.terminal;
     _terminalController.setSelection(
       terminal.buffer.createAnchor(
         0,
@@ -633,6 +687,9 @@ class _TerminalPanelState extends State<_TerminalPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final active = widget.active;
+    final quickLook = widget.quickLook;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -641,49 +698,61 @@ class _TerminalPanelState extends State<_TerminalPanel> {
           focused: _focused,
           slot: widget.slot,
           tabs: widget.tabs,
-          active: widget.active,
+          active: active,
+          quickLookActive: quickLook,
           isSingleMode: widget.isSingleMode,
           onSelectTab: widget.onSelectTab,
           onCloseTab: widget.onCloseTab,
           onNewTab: widget.onNewTab,
           onNewTabMenu: widget.onNewTabMenu,
+          onSelectQuickLook: quickLook
+              ? null
+              : () => widget.onSelectQuickLook?.call(widget.slot),
           onClose: widget.onToggleTerminal,
           onReorderTab: widget.onReorderTab,
         ),
         SizedBox(
           height: _effectiveHeight,
-          child: Listener(
-            onPointerDown: (_) =>
-                widget.onActivate?.call(widget.slot, widget.active.id),
-            child: SignalBuilder(
-              builder: (context) {
-                final settings = SettingsStore.instance;
-                final useSystem = settings.terminalUseSystemFont.value;
-                final family = settings.terminalFontFamily.value.trim();
+          child: quickLook
+              ? QuickLookPanel(
+                  key: ValueKey('quick-look:${widget.slot}'),
+                  store: widget.quickLookStore,
+                  onClose: () => widget.onCloseQuickLook?.call(widget.slot),
+                  onRegisterCloseGuard: (guard) =>
+                      widget.onRegisterQuickLookGuard?.call(widget.slot, guard),
+                )
+              : Listener(
+                  onPointerDown: (_) =>
+                      widget.onActivate?.call(widget.slot, active!.id),
+                  child: SignalBuilder(
+                    builder: (context) {
+                      final settings = SettingsStore.instance;
+                      final useSystem = settings.terminalUseSystemFont.value;
+                      final family = settings.terminalFontFamily.value.trim();
 
-                return TerminalView(
-                  widget.active.session.terminal,
-                  controller: _terminalController,
-                  shortcuts: const {},
-                  focusNode: widget.active.focusNode,
-                  theme: _appTerminalTheme(),
-                  textStyle: TerminalStyle(
-                    fontSize: settings.terminalFontSize.value.toDouble(),
-                    height: settings.terminalLineHeight.value,
-                    fontFamily: (useSystem || family.isEmpty)
-                        ? 'monospace'
-                        : family,
+                      return TerminalView(
+                        active!.session.terminal,
+                        controller: _terminalController,
+                        shortcuts: const {},
+                        focusNode: active.focusNode,
+                        theme: _appTerminalTheme(),
+                        textStyle: TerminalStyle(
+                          fontSize: settings.terminalFontSize.value.toDouble(),
+                          height: settings.terminalLineHeight.value,
+                          fontFamily: (useSystem || family.isEmpty)
+                              ? 'monospace'
+                              : family,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        onKeyEvent: _onKeyEvent,
+                        hardwareKeyboardOnly: Platform.isWindows,
+                      );
+                    },
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  onKeyEvent: _onKeyEvent,
-                  hardwareKeyboardOnly: Platform.isWindows,
-                );
-              },
-            ),
-          ),
+                ),
         ),
       ],
     );
@@ -724,12 +793,14 @@ class _TerminalHeader extends StatelessWidget {
   final bool focused;
   final int slot;
   final List<TerminalTab> tabs;
-  final TerminalTab active;
+  final TerminalTab? active;
+  final bool quickLookActive;
   final bool isSingleMode;
   final void Function(int slot, int id)? onSelectTab;
   final void Function(int id)? onCloseTab;
   final void Function(int slot)? onNewTab;
   final void Function(int slot, Offset position)? onNewTabMenu;
+  final VoidCallback? onSelectQuickLook;
   final void Function(int slot)? onClose;
   final void Function(int slot, int from, int to)? onReorderTab;
 
@@ -738,21 +809,24 @@ class _TerminalHeader extends StatelessWidget {
     required this.slot,
     required this.tabs,
     required this.active,
+    required this.quickLookActive,
     required this.isSingleMode,
     this.onSelectTab,
     this.onCloseTab,
     this.onNewTab,
     this.onNewTabMenu,
+    this.onSelectQuickLook,
     this.onClose,
     this.onReorderTab,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fg = focused ? AppColors.fg : AppColors.fgMuted;
+    final lit = focused || quickLookActive;
+    final fg = lit ? AppColors.fg : AppColors.fgMuted;
 
     return Opacity(
-      opacity: focused ? 1.0 : 0.55,
+      opacity: lit ? 1.0 : 0.55,
       child: Container(
         height: 28,
         padding: const EdgeInsets.only(left: 10, right: 4),
@@ -781,7 +855,7 @@ class _TerminalHeader extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 4),
                       child: _TerminalTabChip(
                         tab: tab,
-                        active: tab.id == active.id,
+                        active: !quickLookActive && tab.id == active?.id,
                         foreign: isSingleMode && tab.originPane == 1,
                         onSelect: () => onSelectTab?.call(slot, tab.id),
                         onClose: () => onCloseTab?.call(tab.id),
@@ -790,6 +864,11 @@ class _TerminalHeader extends StatelessWidget {
                   );
                 },
               ),
+            ),
+            const SizedBox(width: 4),
+            _QuickLookChip(
+              active: quickLookActive,
+              onSelect: onSelectQuickLook,
             ),
             const SizedBox(width: 4),
             if (onClose != null)
@@ -815,6 +894,58 @@ class _TerminalHeader extends StatelessWidget {
             if (onClose != null)
               AppCloseButton(onTap: () => onClose!(slot), size: 22),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickLookChip extends StatefulWidget {
+  final bool active;
+  final VoidCallback? onSelect;
+
+  const _QuickLookChip({required this.active, required this.onSelect});
+
+  @override
+  State<_QuickLookChip> createState() => _QuickLookChipState();
+}
+
+class _QuickLookChipState extends State<_QuickLookChip> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.active;
+    final fg = active ? AppColors.fg : AppColors.fgMuted;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onSelect,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 220),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: active || _hovered ? AppColors.bgHover : Colors.transparent,
+            borderRadius: BorderRadius.zero,
+            border: Border.all(
+              color: active ? AppColors.bgDivider : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(WaydirIconsRegular.eye, size: 12, color: fg),
+              const SizedBox(width: 5),
+              Text(
+                t.terminal.quickLookTab,
+                style: context.txt.row.copyWith(color: fg),
+              ),
+            ],
+          ),
         ),
       ),
     );

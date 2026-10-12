@@ -1239,3 +1239,42 @@ auto-plays through an external command while browsing, muted videos excepted.
 - Installed locally: `player.json` running `ffplay` — not committed, same
   reasoning as generator config (local/personal, full-privileges trust
   model).
+
+## Quick Look in the terminal area (bottom pane)
+
+OneCommander/Directory-Opus-style Quick Look: the preview shows in the
+pane's terminal strip instead of a floating panel. It's implemented as a
+terminal tab occupying the active terminal slot — the terminal tab bar gains
+an eye-icon "Quick Look" chip and the preview replaces the terminal content
+in the same area (header stays lit, terminal tabs remain clickable).
+
+- `Ctrl`+`Space` toggles it (rebindable, command palette entry "Toggle Quick
+  Look (bottom pane)"). The floating Quick Look's `Space`/`Shift`+`Space`
+  are untouched — the two coexist deliberately, since the floating panel
+  remains the wide-surface option. While the terminal has keyboard focus the
+  chord is matched by the terminal's own key handler (a literal key check,
+  because the terminal consumes the event before shell-level `AppShortcuts`
+  matching runs); once the preview is on screen the shell-level handler
+  takes over instead.
+- The preview shows the cursor's file in the active pane and follows the
+  cursor: the terminal widget leaves the tree, focus falls back to the file
+  list, and arrow keys step the cursor and swap the preview.
+  `PageUp`/`PageDown` keep their file-list meaning (page the cursor) —
+  scrolling the preview from the pane is a v1 non-goal.
+- Reuses the floating Quick Look's preview stack, extracted out of
+  `quick_look.dart` into `quick_look_content.dart` (header + body + all
+  renderers: image, text editor, Markdown, code, archive, generator pages,
+  audio playback) so both surfaces share one implementation.
+- Text files open in the same editor; closing while it has unsaved changes
+  asks Save / Discard / Cancel through a close-guard the panel registers
+  with the shell (Cancel keeps the pane open). Close paths: the header's
+  close button, `Ctrl`+`Space` again, or clicking a real terminal tab.
+- State lives in `ShellStore.quickLookActive`, one bool per slot. Activating
+  a terminal tab clears it; closing the last terminal in a slot clears it;
+  going back to single-pane merges the two slots (active if either was).
+  Dragging paths onto the terminal is refused with a toast while the Quick
+  Look tab is active, since there's no terminal to write to.
+- v1 limits: single cursor file only (no marked/multi-file view), no preview
+  paging, state not persisted across restarts, and the unsaved-changes guard
+  is not yet hooked into *window* close (quitting the app with a dirty
+  editor in the pane just exits, same as the floating panel).

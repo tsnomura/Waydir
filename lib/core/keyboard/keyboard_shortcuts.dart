@@ -327,6 +327,13 @@ class AppShortcuts {
       shift: true,
     ),
     ShortcutDef(
+      id: 'quick_look_bottom',
+      label: () => '',
+      group: ShortcutGroup.quickLook,
+      key: LogicalKeyboardKey.space,
+      ctrl: true,
+    ),
+    ShortcutDef(
       id: 'quick_look_close',
       label: () => '',
       group: ShortcutGroup.quickLook,

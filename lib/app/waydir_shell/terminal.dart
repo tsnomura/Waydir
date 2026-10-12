@@ -201,11 +201,63 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
     tab?.focusNode.requestFocus();
   }
 
+  final Map<int, Future<bool> Function()?> _quickLookGuards = {};
+
+  void _selectQuickLookTab(int slot) {
+    _terminalInteractionAt = DateTime.now();
+    if (_shell.isDual.value) _shell.setActivePane(slot);
+    _shell.activateQuickLook(slot);
+  }
+
+  Future<void> _toggleQuickLookPane(int slot) async {
+    _terminalInteractionAt = DateTime.now();
+    if (_shell.isDual.value) _shell.setActivePane(slot);
+    if (_shell.quickLookActive.value[slot]) {
+      await _closeQuickLookPane(slot);
+
+      return;
+    }
+    _shell.activateQuickLook(slot);
+  }
+
+  Future<void> _closeQuickLookPane(int slot) async {
+    final guard = _quickLookGuards[slot];
+    if (guard != null) {
+      final ok = await guard();
+      if (!ok) return;
+    }
+    _quickLookGuards.remove(slot);
+    _shell.deactivateQuickLook(slot);
+    final tab = _shell.activeTerminalForSlot(slot);
+    if (tab == null) {
+      _shell.setTerminalVisible(slot, false);
+
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      tab.focusNode.requestFocus();
+    });
+  }
+
+  void _registerQuickLookGuard(int slot, Future<bool> Function()? guard) {
+    if (guard == null) {
+      _quickLookGuards.remove(slot);
+    } else {
+      _quickLookGuards[slot] = guard;
+    }
+  }
+
   Future<void> _insertPathsIntoTerminal({required bool absolute}) async {
     final slot = _terminalSlotForActivePane();
     final tab = _shell.activeTerminalForSlot(slot);
     if (!_shell.terminalVisible.value[slot] || tab == null) {
       showToast(context: context, message: t.toast.terminalNotVisible);
+
+      return;
+    }
+    if (_shell.quickLookActive.value[slot]) {
+      showToast(context: context, message: t.toast.quickLookTabActive);
 
       return;
     }

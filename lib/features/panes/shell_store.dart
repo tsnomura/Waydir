@@ -44,6 +44,7 @@ class ShellStore {
   final activeTerminalId = signal<Map<int, int>>({});
   final terminalVisible = signal<List<bool>>([false, false]);
   final terminalHeight = signal<List<double>>([260, 260]);
+  final quickLookActive = signal<List<bool>>([false, false]);
   final OperationStore operationStore;
   final NotificationStore notificationStore;
   late final CompareController compare;
@@ -367,6 +368,7 @@ class ShellStore {
     if (!isDual.value) return;
     _parkedPane = panes.value[1];
     final visible = terminalVisible.value;
+    final quickLook = quickLookActive.value;
     final active = TerminalLayout.mergeForSingle(activeTerminalId.value, [
       for (final t in terminals.value) t.id,
     ], activePaneIndex.value);
@@ -374,6 +376,9 @@ class ShellStore {
       activePaneIndex.value = 0;
       panes.value = [panes.value.first];
       terminalVisible.value = TerminalLayout.mergeVisibilityForSingle(visible);
+      quickLookActive.value = TerminalLayout.mergeVisibilityForSingle(
+        quickLook,
+      );
       activeTerminalId.value = active;
       isDual.value = false;
     });
@@ -480,6 +485,7 @@ class ShellStore {
     final nextTabs = terminals.value.where((t) => t.id != id).toList();
     final active = Map<int, int>.from(activeTerminalId.value);
     final visible = [...terminalVisible.value];
+    final quickLook = [...quickLookActive.value];
     final replacement = TerminalLayout.replacementId(
       [for (final t in terminalsForSlot(slot)) t.id],
       id,
@@ -488,6 +494,7 @@ class ShellStore {
     if (replacement == null) {
       active.remove(slot);
       visible[slot] = false;
+      quickLook[slot] = false;
     } else {
       active[slot] = replacement;
     }
@@ -495,6 +502,7 @@ class ShellStore {
       terminals.value = nextTabs;
       activeTerminalId.value = active;
       terminalVisible.value = visible;
+      quickLookActive.value = quickLook;
     });
     closing.dispose();
   }
@@ -514,7 +522,16 @@ class ShellStore {
     }
     final active = Map<int, int>.from(activeTerminalId.value);
     active[slot] = id;
-    activeTerminalId.value = active;
+    if (quickLookActive.value[slot]) {
+      final quickLook = [...quickLookActive.value];
+      quickLook[slot] = false;
+      batch(() {
+        activeTerminalId.value = active;
+        quickLookActive.value = quickLook;
+      });
+    } else {
+      activeTerminalId.value = active;
+    }
   }
 
   void cycleTerminal(int slot, int dir) {
@@ -557,6 +574,23 @@ class ShellStore {
     final next = [...terminalHeight.value];
     next[slot] = height;
     terminalHeight.value = next;
+  }
+
+  void setQuickLookActive(int slot, bool active) {
+    final next = [...quickLookActive.value];
+    next[slot] = active;
+    quickLookActive.value = next;
+  }
+
+  void activateQuickLook(int slot) {
+    batch(() {
+      setTerminalVisible(slot, true);
+      setQuickLookActive(slot, true);
+    });
+  }
+
+  void deactivateQuickLook(int slot) {
+    setQuickLookActive(slot, false);
   }
 
   void _setTerminalLabel(int id, String title) {
