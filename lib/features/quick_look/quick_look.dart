@@ -6,25 +6,17 @@ import 'package:signals/signals_flutter.dart';
 import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/settings/settings_store.dart';
-import '../../features/files/file_icons.dart';
 import '../../features/navigation/navigation_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/dialogs/dialog.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'code_editor.dart';
-import 'diff/diff_preview.dart';
 import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
-import 'generators/generator_preview.dart';
-import 'generators/generator_registry.dart';
-import 'image_preview.dart';
 import 'info_panel.dart';
-import 'markdown_preview.dart';
-import 'pdf_preview.dart';
 import 'player/quick_look_playback_controller.dart';
-import 'quick_look_common.dart';
-import 'quick_look_io.dart';
+import 'quick_look_content.dart';
 
 typedef QuickLookDiffResolver =
     (FileEntry, FileEntry)? Function(FileEntry? entry);
@@ -238,7 +230,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     _generatorPage.onManualChange = _playback.onManualPageChange;
     final cursor = widget.store.cursorEntry.value;
     final entry = cursor?.ghostOf ?? cursor;
-    _compact = _defaultCompact(entry);
+    _compact = defaultCompactFor(entry);
     _presentationKey = entry?.realPath;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
@@ -469,15 +461,6 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     return KeyEventResult.ignored;
   }
 
-  static bool _defaultCompact(FileEntry? entry) {
-    if (entry == null || entry.type == FileItemType.folder) return true;
-    final ext = entry.extension;
-
-    return !imageExts.contains(ext) &&
-        !pdfExts.contains(ext) &&
-        !markdownExts.contains(ext);
-  }
-
   void _setCompact(bool value) {
     if (_compact == value) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -496,7 +479,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     _presentationKey = key;
     _markdownRendered = true;
     _generatorPage.reset();
-    _setCompact(_defaultCompact(entry));
+    _setCompact(defaultCompactFor(entry));
   }
 
   @override
@@ -637,7 +620,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
 
           return Column(
             children: [
-              _Header(
+              QuickLookHeader(
                 entry: override,
                 compact: true,
                 showInfo: true,
@@ -663,7 +646,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
 
             return Column(
               children: [
-                _Header(
+                QuickLookHeader(
                   entry: null,
                   compact: true,
                   showInfo: _showInfo,
@@ -693,7 +676,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
 
                 return Column(
                   children: [
-                    _Header(
+                    QuickLookHeader(
                       entry: entry,
                       compact: true,
                       showInfo: true,
@@ -749,7 +732,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
 
     return Column(
       children: [
-        _Header(
+        QuickLookHeader(
           entry: entry,
           nameSuffix: identical ? t.quickLook.identicalSuffix : null,
           onOpen: entry == null ? null : _openShown,
@@ -766,13 +749,13 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         Container(height: 1, color: AppColors.bgDivider),
         Expanded(
           child: showDiff
-              ? _DiffAttempt(
+              ? QuickLookDiffAttempt(
                   left: diffPair.$1,
                   right: diffPair.$2,
                   editorActive: _editorActive,
                   onCompactChanged: _setCompact,
                   onIdentical: () => _markIdentical(diffKey!),
-                  fallback: (context) => _Body(
+                  fallback: (context) => QuickLookBody(
                     entry: entry,
                     editorActive: _editorActive,
                     editorController: _editorController,
@@ -783,7 +766,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                     generatorPage: _generatorPage,
                   ),
                 )
-              : _Body(
+              : QuickLookBody(
                   entry: entry,
                   editorActive: _editorActive,
                   editorController: _editorController,
@@ -893,467 +876,6 @@ class _ShortcutHint extends StatelessWidget {
           style: context.txt.caption.copyWith(color: AppColors.fgMuted),
         ),
       ],
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final FileEntry? entry;
-  final String? nameSuffix;
-  final VoidCallback? onOpen;
-  final bool compact;
-  final bool showInfo;
-  final VoidCallback onToggleInfo;
-  final VoidCallback onClose;
-  final int? multiCount;
-  final CodeEditorController editorController;
-  final bool markdownRendered;
-  final VoidCallback? onToggleMarkdownView;
-  final GestureDragStartCallback? onHeaderPanStart;
-  final GestureDragUpdateCallback? onHeaderPanUpdate;
-
-  const _Header({
-    required this.entry,
-    required this.compact,
-    required this.showInfo,
-    required this.onToggleInfo,
-    required this.onClose,
-    required this.editorController,
-    this.nameSuffix,
-    this.onOpen,
-    this.multiCount,
-    this.markdownRendered = true,
-    this.onToggleMarkdownView,
-    this.onHeaderPanStart,
-    this.onHeaderPanUpdate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final e = entry;
-    final multi = multiCount != null;
-    final baseName = multi
-        ? t.quickLook.items(count: multiCount!)
-        : e?.name ?? t.quickLook.noSelection;
-    final suffix = nameSuffix;
-    final name = suffix == null ? baseName : '$baseName $suffix';
-    final hasPreview = !multi && e != null && !compact;
-    final isMarkdown =
-        !multi &&
-        e != null &&
-        markdownExts.contains(e.extension) &&
-        onToggleMarkdownView != null;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onPanStart: onHeaderPanStart,
-      onPanUpdate: onHeaderPanUpdate,
-      child: Container(
-        height: 46,
-        color: AppColors.bgSidebar,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: [
-            if (multi)
-              Icon(WaydirIconsRegular.copy, size: 18, color: AppColors.accent)
-            else if (e == null)
-              Icon(WaydirIconsRegular.file, size: 18, color: AppColors.fgMuted)
-            else
-              buildFileIcon(
-                name: e.name,
-                ext: e.extension,
-                isFolder: e.type == FileItemType.folder,
-                size: 18,
-              ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                name,
-                style: context.txt.bodyEmphasis,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (isMarkdown) ...[
-              SignalBuilder(
-                builder: (context) {
-                  final blocked =
-                      !markdownRendered && editorController.dirty.value;
-
-                  return _HeaderButton(
-                    icon: markdownRendered
-                        ? WaydirIconsRegular.code
-                        : WaydirIconsRegular.eye,
-                    active: false,
-                    enabled: !blocked,
-                    tooltip: blocked
-                        ? t.quickLook.saveBeforePreview
-                        : markdownRendered
-                        ? t.quickLook.viewSource
-                        : t.quickLook.viewRendered,
-                    onTap: onToggleMarkdownView!,
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
-            ],
-            if (onOpen != null && !multi && e != null) ...[
-              _HeaderButton(
-                icon: WaydirIconsRegular.arrowSquareOut,
-                active: false,
-                tooltip: t.quickLook.openInApp,
-                onTap: onOpen!,
-              ),
-              const SizedBox(width: 4),
-            ],
-            if (hasPreview) ...[
-              _HeaderButton(
-                icon: WaydirIconsRegular.info,
-                active: showInfo,
-                tooltip: t.menu.properties,
-                onTap: onToggleInfo,
-              ),
-              const SizedBox(width: 4),
-            ],
-            _CloseButton(onTap: onClose),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderButton extends StatefulWidget {
-  final IconData icon;
-  final bool active;
-  final String tooltip;
-  final VoidCallback onTap;
-  final bool enabled;
-
-  const _HeaderButton({
-    required this.icon,
-    required this.active,
-    required this.tooltip,
-    required this.onTap,
-    this.enabled = true,
-  });
-
-  @override
-  State<_HeaderButton> createState() => _HeaderButtonState();
-}
-
-class _HeaderButtonState extends State<_HeaderButton> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = widget.active;
-    final hovered = widget.enabled && _hover;
-    final bg = active
-        ? AppColors.accent.withValues(alpha: 0.16)
-        : hovered
-        ? AppColors.bgHover
-        : Colors.transparent;
-    final fg = !widget.enabled
-        ? AppColors.fgSubtle
-        : active
-        ? AppColors.accent
-        : hovered
-        ? AppColors.fg
-        : AppColors.fgMuted;
-
-    return Tooltip(
-      message: widget.tooltip,
-      waitDuration: const Duration(milliseconds: 450),
-      child: MouseRegion(
-        cursor: widget.enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.enabled ? widget.onTap : null,
-          child: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.zero,
-            ),
-            child: Icon(widget.icon, size: 16, color: fg),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CloseButton extends StatefulWidget {
-  final VoidCallback onTap;
-
-  const _CloseButton({required this.onTap});
-
-  @override
-  State<_CloseButton> createState() => _CloseButtonState();
-}
-
-class _CloseButtonState extends State<_CloseButton> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: _hover ? AppColors.bgHover : Colors.transparent,
-            borderRadius: BorderRadius.zero,
-          ),
-          child: Icon(
-            Icons.close,
-            size: 16,
-            color: _hover ? AppColors.fg : AppColors.fgMuted,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Widget _split(
-  Widget preview,
-  FileEntry entry, {
-  required bool showInfo,
-  ScrollController? scrollController,
-}) {
-  final scrollablePreview = scrollController == null
-      ? preview
-      : PrimaryScrollController(
-          controller: scrollController,
-          automaticallyInheritForPlatforms: TargetPlatform.values.toSet(),
-          child: preview,
-        );
-  if (!showInfo) return scrollablePreview;
-
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(child: scrollablePreview),
-      Container(width: 1, color: AppColors.bgDivider),
-      SizedBox(
-        width: panelWidth,
-        child: PrimaryScrollController.none(child: InfoPanel(entry: entry)),
-      ),
-    ],
-  );
-}
-
-class _Body extends StatelessWidget {
-  final FileEntry? entry;
-  final Signal<bool> editorActive;
-  final CodeEditorController editorController;
-  final bool showInfo;
-  final ValueChanged<bool> onCompactChanged;
-  final bool markdownRendered;
-  final ScrollController scrollController;
-  final GeneratorPageController generatorPage;
-
-  const _Body({
-    required this.entry,
-    required this.editorActive,
-    required this.editorController,
-    required this.showInfo,
-    required this.onCompactChanged,
-    required this.markdownRendered,
-    required this.scrollController,
-    required this.generatorPage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final e = entry;
-    void release() => WidgetsBinding.instance.addPostFrameCallback(
-      (_) => editorActive.value = false,
-    );
-
-    if (e == null || e.type == FileItemType.folder) {
-      release();
-      onCompactChanged(true);
-
-      return PropertiesOnly(entry: e);
-    }
-    // Checked first, ahead of every built-in preview: a configured generator
-    // is an explicit, deliberate choice to handle this extension a specific
-    // way, so it wins even over a built-in that would otherwise apply (e.g.
-    // pdf).
-    final generator = GeneratorRegistry.instance.forExtension(e.extension);
-    if (generator != null) {
-      release();
-      onCompactChanged(false);
-
-      return _split(
-        GeneratorPreview(entry: e, page: generatorPage),
-        e,
-        showInfo: showInfo,
-      );
-    }
-    if (imageExts.contains(e.extension)) {
-      release();
-      onCompactChanged(false);
-
-      return _split(ImagePreview(path: e.realPath), e, showInfo: showInfo);
-    }
-    if (pdfExts.contains(e.extension)) {
-      release();
-      onCompactChanged(false);
-
-      return _split(
-        PdfPreview(path: e.realPath),
-        e,
-        showInfo: showInfo,
-        scrollController: scrollController,
-      );
-    }
-    if (markdownExts.contains(e.extension) && markdownRendered) {
-      release();
-      onCompactChanged(false);
-
-      return _split(
-        MarkdownPreview(entry: e),
-        e,
-        showInfo: showInfo,
-        scrollController: scrollController,
-      );
-    }
-    if (binaryExts.contains(e.extension)) {
-      release();
-      onCompactChanged(true);
-
-      return PropertiesOnly(entry: e);
-    }
-
-    return _ProbeLoader(
-      entry: e,
-      editorActive: editorActive,
-      editorController: editorController,
-      showInfo: showInfo,
-      onCompactChanged: onCompactChanged,
-      scrollController: scrollController,
-    );
-  }
-}
-
-/// Attempts a side-by-side diff of [left] and [right] (the two files
-/// selected across panes in compare mode) and falls back to [fallback] —
-/// Quick Look's normal single-file preview — whenever the configured diff
-/// command is missing, errors, times out, or isn't set up at all.
-class _DiffAttempt extends StatelessWidget {
-  final FileEntry left;
-  final FileEntry right;
-  final Signal<bool> editorActive;
-  final ValueChanged<bool> onCompactChanged;
-  final VoidCallback onIdentical;
-  final WidgetBuilder fallback;
-
-  const _DiffAttempt({
-    required this.left,
-    required this.right,
-    required this.editorActive,
-    required this.onCompactChanged,
-    required this.onIdentical,
-    required this.fallback,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AsyncRetain<TextDiffResult>(
-      cacheKey: DiffRunner.cacheKeyFor(left, right),
-      loader: () => DiffRunner.run(left, right),
-      loading: const QlCentered.spinner(),
-      builder: (result) {
-        if (result.identical) {
-          onIdentical();
-
-          return fallback(context);
-        }
-        if (!result.available) return fallback(context);
-        onCompactChanged(false);
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => editorActive.value = false,
-        );
-
-        return TextDiffView(left: left, right: right, result: result);
-      },
-    );
-  }
-}
-
-class _ProbeLoader extends StatelessWidget {
-  final FileEntry entry;
-  final Signal<bool> editorActive;
-  final CodeEditorController editorController;
-  final bool showInfo;
-  final ValueChanged<bool> onCompactChanged;
-  final ScrollController scrollController;
-
-  const _ProbeLoader({
-    required this.entry,
-    required this.editorActive,
-    required this.editorController,
-    required this.showInfo,
-    required this.onCompactChanged,
-    required this.scrollController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    void release() => WidgetsBinding.instance.addPostFrameCallback(
-      (_) => editorActive.value = false,
-    );
-
-    return AsyncRetain<Probe>(
-      cacheKey: entry.realPath,
-      loader: () => probeFile(entry),
-      loading: const QlCentered.spinner(),
-      builder: (res) {
-        switch (res.kind) {
-          case QlKind.text:
-            onCompactChanged(false);
-
-            return _split(
-              CodeEditor(
-                key: ValueKey(entry.realPath),
-                path: entry.realPath,
-                extension: entry.extension,
-                initial: res.text,
-                editorActive: editorActive,
-                controller: editorController,
-                verticalScrollController: scrollController,
-              ),
-              entry,
-              showInfo: showInfo,
-            );
-          case QlKind.binary:
-          case QlKind.tooLarge:
-            release();
-            onCompactChanged(true);
-
-            return PropertiesOnly(entry: entry);
-          case QlKind.error:
-            release();
-            onCompactChanged(true);
-
-            return PropertiesOnly(entry: entry);
-        }
-      },
     );
   }
 }

@@ -291,4 +291,33 @@ void main() {
       expect(binding.alt, isFalse);
     });
   });
+
+  group('quick_look_bottom', () {
+    test('is registered in the quickLook group bound to ctrl+space', () {
+      final def = AppShortcuts.getById('quick_look_bottom');
+
+      expect(def.group, ShortcutGroup.quickLook);
+      expect(def.defaultBinding.key, LogicalKeyboardKey.space);
+      expect(def.defaultBinding.ctrl, isTrue);
+      expect(def.defaultBinding.shift, isFalse);
+      expect(def.defaultBinding.alt, isFalse);
+    });
+
+    test('coexists with the floating quick look chords', () {
+      final bottom = AppShortcuts.getById('quick_look_bottom').defaultBinding;
+      final plain = AppShortcuts.getById('quick_look').defaultBinding;
+      final marked = AppShortcuts.getById('quick_look_marked').defaultBinding;
+
+      expect(bottom.sameChord(plain), isFalse);
+      expect(bottom.sameChord(marked), isFalse);
+      expect(plain.sameChord(marked), isFalse);
+      expect(AppShortcuts.conflictFor(bottom, 'quick_look_bottom'), isNull);
+    });
+
+    test('is reported as a built-in chord', () {
+      final bottom = AppShortcuts.getById('quick_look_bottom').defaultBinding;
+
+      expect(AppShortcuts.isChordUsedByBuiltin(bottom), isTrue);
+    });
+  });
 }

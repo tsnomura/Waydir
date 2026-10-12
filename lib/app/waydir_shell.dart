@@ -292,6 +292,11 @@ class _WaydirShellState extends State<WaydirShell>
       onReorderTerminalTab: _shell.reorderTerminalTab,
       onTerminalHeightChanged: _setTerminalHeight,
       onReturnFocusToFiles: _focusFiles,
+      quickLookActive: _shell.quickLookActive.value[slot],
+      onSelectQuickLook: _selectQuickLookTab,
+      onToggleQuickLook: _toggleQuickLookPane,
+      onCloseQuickLook: _closeQuickLookPane,
+      onRegisterQuickLookGuard: _registerQuickLookGuard,
     );
   }
 

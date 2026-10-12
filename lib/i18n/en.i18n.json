@@ -5,7 +5,8 @@
     "description": "A fast, keyboard-driven desktop file manager built with Flutter."
   },
   "terminal": {
-    "title": "Terminal"
+    "title": "Terminal",
+    "quickLookTab": "Quick Look"
   },
   "menu": {
     "view": "View",
@@ -739,6 +740,7 @@
     "focusPath": "Focus path bar",
     "quickLook": "Open Quick Look (cursor)",
     "quickLookMarked": "Open Quick Look (marked)",
+    "quickLookBottomPane": "Toggle Quick Look (bottom pane)",
     "quickLookClose": "Close Quick Look",
     "quickLookPrevFile": "Previous file",
     "quickLookNextFile": "Next file",
@@ -910,6 +912,7 @@
     "terminalUnavailable": "Terminal is unavailable: native core not loaded",
     "restartRequired": "Restart Waydir for this change to take effect",
     "terminalNotVisible": "Terminal is not open",
+    "quickLookTabActive": "Quick Look tab is active — no terminal to write to",
     "selectionFileError": "Selection file error: $message",
     "taskErrors(one)": "$label - 1 error",
     "taskErrors(other)": "$label - $count errors",

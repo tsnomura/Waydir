@@ -109,6 +109,9 @@ class Translations$terminal$en {
 
 	/// en: 'Terminal'
 	String get title => 'Terminal';
+
+	/// en: 'Quick Look'
+	String get quickLookTab => 'Quick Look';
 }
 
 // Path: menu
@@ -941,6 +944,9 @@ class Translations$keybindings$en {
 	/// en: 'Open Quick Look (marked)'
 	String get quickLookMarked => 'Open Quick Look (marked)';
 
+	/// en: 'Toggle Quick Look (bottom pane)'
+	String get quickLookBottomPane => 'Toggle Quick Look (bottom pane)';
+
 	/// en: 'Close Quick Look'
 	String get quickLookClose => 'Close Quick Look';
 
@@ -1447,6 +1453,9 @@ class Translations$toast$en {
 
 	/// en: 'Terminal is not open'
 	String get terminalNotVisible => 'Terminal is not open';
+
+	/// en: 'Quick Look tab is active — no terminal to write to'
+	String get quickLookTabActive => 'Quick Look tab is active — no terminal to write to';
 
 	/// en: 'Selection file error: $message'
 	String selectionFileError({required Object message}) => 'Selection file error: ${message}';
@@ -4423,6 +4432,7 @@ extension on Translations {
 			'app.tagline' => 'Navigate your files. Your way.',
 			'app.description' => 'A fast, keyboard-driven desktop file manager built with Flutter.',
 			'terminal.title' => 'Terminal',
+			'terminal.quickLookTab' => 'Quick Look',
 			'menu.view' => 'View',
 			'menu.open' => 'Open',
 			'menu.openItems' => ({required Object count}) => 'Open ${count} Items',
@@ -4930,9 +4940,9 @@ extension on Translations {
 			'help.groups.files.dragDrop.body' => 'Drag files between panes, tabs and the sidebar - or in and out of other apps.\n\n- By default dragging **copies** files; hold `Alt` to **move** them.\n- Flip the default in **Preferences -> General** so dragging moves and `Alt` copies.\n- The drag hint shows whether the drop will copy or move.\n- Drop onto a folder to put files inside it, or onto empty space for the current folder.',
 			'help.groups.files.multiRename.title' => 'Multi Rename',
 			'help.groups.files.multiRename.body' => 'Rename many files at once with a live before / after preview. Select several items, then choose **Multi Rename** from the context menu.\n\n- **Template** mode builds names from tokens: `{name}`, `{ext}`, `{n}` (sequence from 1), `{index}` (from 0) and `{date}`.\n- **Find & Replace** mode swaps text, with optional regular expressions and case sensitivity.\n- The preview lists every result before you commit, and *Show only changed* hides untouched rows.',
-			'help.groups.files.archives.title' => 'Archives',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.files.archives.title' => 'Archives',
 			'help.groups.files.archives.body' => 'Archives behave like browsable folders, so you can look inside before extracting anything.\n\n- `Enter` opens a supported archive and lets you walk its contents.\n- The context menu can extract here, extract into a named folder, or extract each archive separately.\n- **Compress** builds a new archive from the selection - pick the format and compression level.\n- Extraction and compression run in the background, so the file list stays responsive.',
 			'help.groups.files.openWith.title' => 'Open With & Default Apps',
 			'help.groups.files.openWith.body' => 'Open a file in any installed application, not just the system default.\n\n- **Open With** from the context menu lists available apps.\n- Set a default app per file type so future opens go straight there.\n- Recently used apps appear at the top for quick access.',
@@ -5008,6 +5018,7 @@ extension on Translations {
 			'keybindings.focusPath' => 'Focus path bar',
 			'keybindings.quickLook' => 'Open Quick Look (cursor)',
 			'keybindings.quickLookMarked' => 'Open Quick Look (marked)',
+			'keybindings.quickLookBottomPane' => 'Toggle Quick Look (bottom pane)',
 			'keybindings.quickLookClose' => 'Close Quick Look',
 			'keybindings.quickLookPrevFile' => 'Previous file',
 			'keybindings.quickLookNextFile' => 'Next file',
@@ -5168,6 +5179,7 @@ extension on Translations {
 			'toast.terminalUnavailable' => 'Terminal is unavailable: native core not loaded',
 			'toast.restartRequired' => 'Restart Waydir for this change to take effect',
 			'toast.terminalNotVisible' => 'Terminal is not open',
+			'toast.quickLookTabActive' => 'Quick Look tab is active — no terminal to write to',
 			'toast.selectionFileError' => ({required Object message}) => 'Selection file error: ${message}',
 			'toast.taskErrors' => ({required Object label, required Object count}) => '${label} - ${count} errors',
 			'toast.renameAlreadyExists' => ({required Object name}) => 'An item named \'${name}\' already exists',
@@ -5442,11 +5454,11 @@ extension on Translations {
 			'errors.sftpNoActiveSession' => 'No active SFTP session',
 			'errors.sftpNoActiveSessionFor' => ({required Object path}) => 'No active SFTP session for ${path}',
 			'errors.sftpListingFailed' => 'SFTP listing failed',
+			_ => null,
+		} ?? switch (path) {
 			'errors.sftpReadFailed' => 'SFTP read failed',
 			'errors.sftpWriteFailed' => 'SFTP write failed',
 			'errors.sftpMkdirFailed' => 'SFTP mkdir failed',
-			_ => null,
-		} ?? switch (path) {
 			'errors.sftpRemoveFailed' => 'SFTP remove failed',
 			'errors.sftpRenameFailed' => 'SFTP rename failed',
 			'errors.sftpOpenReaderFailed' => 'SFTP open reader failed',

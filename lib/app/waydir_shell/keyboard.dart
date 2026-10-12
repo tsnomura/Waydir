@@ -317,6 +317,12 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.ignored;
     }
 
+    if (AppShortcuts.matches('quick_look_bottom', key)) {
+      unawaited(_toggleQuickLookPane(_terminalSlotForActivePane()));
+
+      return KeyEventResult.handled;
+    }
+
     if (AppShortcuts.matches('quick_look_marked', key)) {
       _openQuickLookMarked();
 
