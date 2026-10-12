@@ -1280,3 +1280,47 @@ in the same area (header stays lit, terminal tabs remain clickable).
   editor in the pane just exits, same as the floating panel).
 
 Relevant commits: `d0c1157`.
+
+## Standalone Quick Look window (`--quick-look`)
+
+`waydir --quick-look <file>` (or `--quick-look=<file>`) starts Waydir as a
+single Quick Look window for that one file, so several files can be opened
+side by side as separate processes — e.g. comparing Markdown notes —
+without Waydir having to manage extra windows itself. Motivation: existing
+Markdown viewers didn't hold up (marky's math is unimplemented in practice,
+MarkText was in a poor state on Linux), while Quick Look already renders
+Markdown with math, a rendered/source toggle and an editor.
+
+- Same exe, same display stack: the window hosts the shared
+  `QuickLookHeader`/`QuickLookBody` from `quick_look_content.dart`, like the
+  bottom pane does, but for a fixed file (↑/↓ don't step to other files).
+  Everything Quick Look previews works: Markdown + math, source toggle and
+  editing, images, PDF, generator pages, audio.
+- The header drags the window (double-click maximizes/restores); Esc, the
+  close button or closing the window ends it, going through the same
+  Save/Discard/Cancel prompt when the editor has unsaved changes (also on a
+  window close request, via `AppLifecycleListener.onExitRequested`). Opens
+  at 960×720, centred, titled with the file name.
+- Kept light and side-effect free: only settings, themes, generators and
+  audio players load — no plugins, update check, sidebar, tags, session
+  restore, window-geometry saving or archive temp session.
+- Launchers get a `%WAYDIR%` placeholder (in `cmd` and `args`) for the
+  running Waydir executable, so a launcher can open files in Quick Look
+  windows without hard-coding the install path:
+
+  ```json
+  {
+    "id": "quick-look-window",
+    "name": "Open in Quick Look window",
+    "extensions": ["md", "markdown"],
+    "cmd": "%WAYDIR%",
+    "args": ["--quick-look", "%FILE%"]
+  }
+  ```
+
+  With `%FILE%`, selecting several files opens one window each.
+- Considered and deferred: having the running instance open extra OS
+  windows (the runner creates a single native window and `window_api`
+  assumes it), a separate lightweight `mdview` app sharing the Markdown
+  renderer as a package, and a `wql` command that signals the running
+  instance like `wd`/`wcd`.
