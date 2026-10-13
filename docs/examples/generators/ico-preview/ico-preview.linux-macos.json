@@ -1,0 +1,9 @@
+{
+  "_help": "Linux/macOS counterpart of ico-preview.windows.json, using netpng's ico2png (github.com/tsnomura/netpng — cargo build or its install.sh; headless and cross-platform, so no path placeholder is needed as long as ico2png is on PATH). Extracts the largest size in the icon as PNG, including the PNG-compressed 256px entries that index-based extractors (icotool -i 0) can't be trusted to pick — an earlier icotool-based Linux example was dropped as untested, this one is verified on Linux. Waydir ignores every key starting with \"_\".",
+  "id": "ico-preview",
+  "extensions": ["ico"],
+  "cmd": "ico2png",
+  "args": ["--input", "%INPUT%", "--output", "%OUTPUT%"],
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

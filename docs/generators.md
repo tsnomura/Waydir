@@ -38,7 +38,7 @@ Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach ge
 | `svg-preview` | `resvg` | `rendersvg` (some distros package the same tool under this name — check which one you actually have) |
 | `office-thumbnail` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
 | `comsol-mph` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
-| `ico-preview` | a private `ico2png` build (`<ICO2PNG_PATH>` placeholder) | none — `.ico` is a Windows-specific format to begin with |
+| `ico-preview` | a private `ico2png` build (`<ICO2PNG_PATH>` placeholder) | netpng's `ico2png` (github.com/tsnomura/netpng, on PATH) |
 | `font-preview` | GDI+/WPF (see [Multi-File Generators](#multi-file-generators) below) | none — Windows-only API |
 
 The Linux/macOS `sh` scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (real argv entries after a `sh` placeholder for `$0`) instead of substituting them into the script text — the same fix `font-preview` applies on the PowerShell side: a path containing a single quote (or any other shell-special character) can't break the script's own quoting, because it's never textually inside it to begin with.

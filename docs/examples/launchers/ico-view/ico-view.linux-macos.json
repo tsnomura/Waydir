@@ -1,0 +1,10 @@
+{
+  "_help": "Linux/macOS only: .ico viewer built from netpng (github.com/tsnomura/netpng). Pipes the icon's largest size through ico2png into pngview, which shows it in its own window (wheel zooms, left-drag pans, Space cycles zoom, Enter re-centers, 0 resets, s saves a copy, c copies to the clipboard, q/Esc closes). Needs ico2png and pngview on PATH, and ico-view.sh next to this file, executable; edit <LAUNCHERS_DIR> to the launchers folder path shown in Preferences → Launchers. Waydir ignores every key starting with \"_\".",
+  "id": "ico-view",
+  "name": "View in pngview",
+  "extensions": ["ico"],
+  "cmd": "<LAUNCHERS_DIR>/ico-view.sh",
+  "args": ["%FILE%"],
+  "default": false,
+  "context": "open"
+}
