@@ -4,7 +4,7 @@ Preview generators let Quick Look show a raster preview for file types Waydir ha
 
 A configured generator always takes priority over Waydir's built-in previews (images, PDF, Markdown) for the extensions it claims — adding one is a deliberate, explicit choice to handle that extension your own way, so it wins even where a built-in would otherwise apply.
 
-The file grid also shows a generator's output as a thumbnail (always on, no separate setting) for any matching file, using the first page/frame only — the same cached image Quick Look uses. This is throttled app-wide so scrolling through a folder full of matching files doesn't spawn a burst of helper processes at once, and a file whose generator fails isn't retried on every scroll back into view.
+The file grid also shows a generator's output as a thumbnail (always on, no separate setting) for any matching file, using the first page/frame only — the same cached image Quick Look uses, unless `thumbnailArgs` says otherwise (see [Config Format](#config-format)). This is throttled app-wide so scrolling through a folder full of matching files doesn't spawn a burst of helper processes at once, and a file whose generator fails isn't retried on every scroll back into view.
 
 ## Remote (SFTP) Files
 
@@ -57,6 +57,7 @@ before it does anything useful.
 | `pageCount` | required for `paging: "time"` and `"fixed"` | Fixed number of pages (> 1): evenly-spaced samples across the file for `"time"`, a plain page count for `"fixed"`. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
 | `probeCmd` / `probeArgs` | required for `paging: "time"` and `"discrete"` | A command that prints a plain number to stdout — a duration in seconds for `"time"`, a page/unit count for `"discrete"`. |
 | `probePattern` | no | Regex to pull that number out of `probeCmd`'s output when it isn't already a bare number (first capture group, or the whole match if the pattern has none). |
+| `thumbnailArgs` | no | Overrides `args` for the file grid's thumbnail only — Quick Look always uses `args`. A separate cache entry from page 0 of `args`, so it doesn't have to be the same kind of image at all; see [Separate Thumbnail](#separate-thumbnail). |
 
 ## Placeholders
 
@@ -128,6 +129,24 @@ Quick Look shows prev/next controls and a page indicator over a paged preview. O
 (`--up=+Z` makes Z the up axis, so the azimuth turns the model around Z; models authored Y-up, such as glTF, lie on their side with it. Every page is a separate F3D run, cached like any other page.)
 
 Waydir intentionally stops at paging through still frames — a scrubber or playback controls are a job for an embedded video player, not Quick Look.
+
+## Separate Thumbnail
+
+The grid tile and Quick Look normally show the exact same image (page 0 of `args`), which is fine for most generators — a video frame or a 3D model render both read fine shrunk down. Some previews don't: a type specimen with a full sample paragraph plus the font's family name is legible in Quick Look but just noise at tile size. `thumbnailArgs` swaps in a different command for the grid only, always a single static image regardless of `paging` — the grid never pages:
+
+```json
+{
+  "id": "font-preview",
+  "extensions": ["ttf", "otf", "ttc"],
+  "cmd": "powershell",
+  "args": ["-NoProfile", "-NonInteractive", "-Command", "<render a sample paragraph + family name>"],
+  "paging": "fixed",
+  "pageCount": 4,
+  "thumbnailArgs": ["-NoProfile", "-NonInteractive", "-Command", "<render just two glyphs, nothing else>"]
+}
+```
+
+Omit it and the grid falls back to page 0 of `args` exactly as before — same cache entry, no extra work.
 
 ## Caching
 
