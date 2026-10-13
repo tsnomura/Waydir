@@ -148,6 +148,12 @@ The grid tile and Quick Look normally show the exact same image (page 0 of `args
 
 Omit it and the grid falls back to page 0 of `args` exactly as before — same cache entry, no extra work.
 
+## Multi-File Generators
+
+`cmd`/`args` don't have to be an inline one-liner — once a generator has real logic, point `args` at a saved script instead (`-File <path>` rather than `-Command "<huge string>"`), and have it `.`-dot-source a shared helper file via `$PSScriptRoot` (PowerShell resolves that to the running script's own folder, so a sibling file works without a hardcoded path). `probeCmd`/`probeArgs` and `thumbnailArgs` can point at their own small scripts the same way, all sharing that one helper.
+
+[`docs/examples/generators/font-preview/`](examples/generators/font-preview/) is a full worked example built this way: `font-preview-lib.ps1` (shared), `font-preview.ps1` (the paged Quick Look preview), `font-preview-count.ps1` (`probeCmd`, reporting a per-file page count via `"discrete"` paging), and `font-thumbnail.ps1` (`thumbnailArgs`). The shared library uses WPF's `GlyphTypeface` (`System.Windows.Media`, the `PresentationCore` assembly) to check which scripts a font actually has glyphs for — a Japanese-capable font gets a Japanese sample as page 1 and a kanji as its grid thumbnail instead of a fixed 'Ag', a Latin-only font never shows a blank/tofu Japanese page, and the page count itself varies per file since it's driven by `"discrete"` probing rather than a fixed `pageCount`. To use it: copy the four files into your generators folder, then edit `font-preview.json`'s three script paths (`<GENERATORS_DIR>` placeholders) to that same folder's real path before dropping it in alongside them.
+
 ## Caching
 
 Results are cached by a hash of the file's path, size and modified time, plus the generator's own id, command and page — so editing the source file invalidates the cache automatically, and changing the generator's command (e.g. upgrading a tool, tweaking flags) invalidates it too without needing to touch the file itself.
