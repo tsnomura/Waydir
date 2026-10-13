@@ -1,0 +1,13 @@
+{
+  "_help": "Cross-platform as-is: ffmpeg's CLI is identical across OSes. Renders a waveform image (showwavespic) for a 2-second window at each of 10 evenly-spaced points across the file's duration — pairs well with Quick Look's audio playback (see PERSONAL.md \"Quick Look audio playback\"), which auto-plays from the same position when paging through a \"time\"-paging generator's file. Waydir ignores every key starting with \"_\".",
+  "id": "audio-waveform",
+  "extensions": ["mp3", "flac", "wav", "m4a", "aac", "ogg", "opus"],
+  "cmd": "ffmpeg",
+  "args": ["-y", "-ss", "%SEEK%", "-t", "2", "-i", "%INPUT%", "-filter_complex", "aformat=channel_layouts=mono,showwavespic=s=1600x400", "-frames:v", "1", "%OUTPUT%"],
+  "paging": "time",
+  "pageCount": 10,
+  "probeCmd": "ffprobe",
+  "probeArgs": ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "%INPUT%"],
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

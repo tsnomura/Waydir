@@ -1,0 +1,23 @@
+{
+  "_help": "Windows version (10-page turntable) — see 3d-model.linux-macos.json for a simpler single-angle Linux/macOS version. Renders 3D models with F3D to a 640x480 PNG with a transparent background. --no-config ignores any personal f3d config so thumbnails stay consistent. STEP/IGES are handled by 3d-model-step.json / 3d-model-iges.json instead: f3d 3.5.0 can't auto-detect the occt reader from those extensions alone (fails with \"unknown format... use --force-reader\"), so they need their own --force-reader value, which can't be shared with the other extensions here. Waydir ignores every key starting with \"_\".",
+  "id": "3d-model",
+  "extensions": ["stl", "obj", "ply", "gltf", "glb", "3mf", "fbx", "dae", "3ds", "off", "vtk", "vtp", "vtu"],
+  "cmd": "f3d",
+  "args": [
+    "%INPUT%",
+    "--output=%OUTPUT%",
+    "--resolution=640,480",
+    "--no-config",
+    "--no-background",
+    "--anti-aliasing",
+    "--up=+Z",
+    "--camera-azimuth-angle=%ANGLE%",
+    "--camera-elevation-angle=25"
+  ],
+  "_help_args": "F3D can also read DXF (via assimp), but mostly 3D DXF, not 2D drawings, so dxf is left out here. Remote (sftp://) files can't be read by f3d and fall back to the icon.",
+  "timeoutSeconds": 30,
+  "outputExt": "png",
+  "_help_paging": "10 pages turning the model around its Z axis: --up=+Z makes Z the up axis, and %ANGLE% is 0, 36, 72 ... 324 degrees for pages 1-10 (PageUp/PageDown in Quick Look). Models authored Y-up (glTF by spec) will lie on their side with --up=+Z.",
+  "paging": "fixed",
+  "pageCount": 10
+}

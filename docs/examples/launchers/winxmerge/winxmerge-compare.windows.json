@@ -1,0 +1,8 @@
+{
+  "_help": "Windows-only: winxmerge here is a personal cargo-built binary, not a public tool — replace <WINXMERGE_PATH> with wherever your own copy actually lives (or swap \"cmd\" for any other diff/merge tool entirely). There's no direct Linux/macOS equivalent bundled alongside this one since the tool itself doesn't exist there; a cross-platform GUI merge tool like meld or kdiff3 slots into the same \"context\": \"compare\" + %LEFT%/%RIGHT% shape if you want one. Compare-mode launcher: Enter on a file that exists on both sides opens it in the configured tool. %LEFT%/%RIGHT% are the left/right pane files. Waydir ignores every key starting with \"_\".",
+  "id": "winxmerge",
+  "name": "Merge in WinXMerge",
+  "context": "compare",
+  "cmd": "<WINXMERGE_PATH>\\winxmerge.exe",
+  "args": ["%LEFT%", "%RIGHT%"]
+}

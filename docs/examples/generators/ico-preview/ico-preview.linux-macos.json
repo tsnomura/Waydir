@@ -1,0 +1,9 @@
+{
+  "_help": "UNTESTED — written from icotool's (icoutils package) documented CLI, not actually run against a real .ico on Linux/macOS; try it and adjust before trusting it. See ico-preview.windows.json for the Windows version (a different, private tool). icotool -x extracts one image from the .ico's internal directory by index; -i 0 is usually the first/largest entry but isn't guaranteed to be — ICO files don't have to list sizes in any particular order. If this consistently picks the wrong size for your icons, bump -i or write a small wrapper script that inspects `icotool -l` first and picks the largest WxH itself. Waydir ignores every key starting with \"_\".",
+  "id": "ico-preview",
+  "extensions": ["ico"],
+  "cmd": "icotool",
+  "args": ["-x", "-i", "0", "-o", "%OUTPUT%", "%INPUT%"],
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

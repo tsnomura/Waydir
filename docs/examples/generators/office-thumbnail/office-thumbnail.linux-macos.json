@@ -1,0 +1,16 @@
+{
+  "_help": "Linux/macOS version — see office-thumbnail.windows.json for the Windows (PowerShell) equivalent. Office/OpenDocument files are zip archives that can carry a preview image: PowerPoint writes docProps/thumbnail.jpeg (about 256x192) by default, Word/Excel only when 'save thumbnail' is on, and LibreOffice always writes Thumbnails/thumbnail.png. This extracts whichever exists via unzip -p (streams just that one entry out of the zip's central directory, no full extraction), trying each candidate name in turn and stopping at the first that's actually present. It's a small image, so it's fine as a grid thumbnail but blurry in Quick Look. Files without one keep the file icon. Waydir ignores every key starting with \"_\".",
+  "id": "office-thumbnail",
+  "extensions": ["pptx", "ppsx", "potx", "docx", "xlsx", "odp", "odt", "ods", "odg"],
+  "cmd": "sh",
+  "args": [
+    "-c",
+    "for n in \"docProps/thumbnail.jpeg\" \"docProps/thumbnail.png\" \"Thumbnails/thumbnail.png\"; do unzip -p \"$1\" \"$n\" > \"$2\" 2>/dev/null && exit 0; done; exit 1",
+    "sh",
+    "%INPUT%",
+    "%OUTPUT%"
+  ],
+  "_help_args": "The output may actually be a JPEG despite the .png name; Waydir detects the real format from the file contents. %INPUT%/%OUTPUT% are passed as $1/$2 (separate argv entries after the \"sh\" placeholder for $0), not interpolated into the script string, so paths with spaces or quotes are safe. Remote (sftp://) files can't be read by unzip and also fall back to the icon.",
+  "timeoutSeconds": 10,
+  "outputExt": "png"
+}

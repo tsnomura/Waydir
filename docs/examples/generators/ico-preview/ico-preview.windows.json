@@ -1,0 +1,9 @@
+{
+  "_help": "Windows: previews Windows .ico files with a private build of netpbm's ico2png, which extracts the largest size in the icon as PNG — not a publicly-downloadable tool, so replace <ICO2PNG_PATH> with wherever your own equivalent lives (or write your own: any command that turns an .ico into a PNG works). See ico-preview.linux-macos.json for an icotool-based alternative on Linux (untested here, built from its documented CLI rather than run). Waydir ignores every key starting with \"_\".",
+  "id": "ico-preview",
+  "extensions": ["ico"],
+  "cmd": "<ICO2PNG_PATH>\\ico2png.exe",
+  "args": ["--input", "%INPUT%", "--output", "%OUTPUT%"],
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

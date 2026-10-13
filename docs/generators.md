@@ -25,6 +25,24 @@ startup — or on demand from **Preferences → Quick Look → Preview
 generators**, which also lets you add/edit/delete generators without
 leaving the app.
 
+## Worked Examples
+
+[`docs/examples/generators/`](examples/generators/) has a ready-to-copy config for every generator this fork actually uses, one subfolder per id. Copy a subfolder's file(s) into your own generators folder (shown live in Preferences, above) and it works as-is — except a `<PLACEHOLDER>`-style token in `cmd`/`args`, called out in that file's own `_help`, which means the referenced tool or path is personal/private and needs pointing at your own copy first.
+
+Cross-platform as one file (same tool, same CLI, on every OS it's installed on): `video-thumbnail` (ffmpeg), `pdf-page` (mutool), `audio-waveform` (ffmpeg), `3d-model`/`3d-model-iges`/`3d-model-step` (F3D — Windows additionally pages through a 10-step turntable via `%ANGLE%`, Linux/macOS renders one fixed angle; swap either way freely, both are valid).
+
+Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach genuinely differs per OS:
+
+| Generator | Windows | Linux/macOS |
+|---|---|---|
+| `svg-preview` | `resvg` | `rendersvg` (some distros package the same tool under this name — check which one you actually have) |
+| `office-thumbnail` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
+| `comsol-mph` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
+| `ico-preview` | a private `ico2png` build (`<ICO2PNG_PATH>` placeholder) | `icotool` (icoutils) — **untested**, written from its documented CLI only |
+| `font-preview` | GDI+/WPF (see [Multi-File Generators](#multi-file-generators) below) | none — Windows-only API |
+
+The Linux/macOS `sh` scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (real argv entries after a `sh` placeholder for `$0`) instead of substituting them into the script text — the same fix `font-preview` applies on the PowerShell side: a path containing a single quote (or any other shell-special character) can't break the script's own quoting, because it's never textually inside it to begin with.
+
 Preferences only edits the simple scalar fields (`id`, `extensions`, `cmd`,
 `timeoutSeconds`, `outputExt`) through a small form; `args`, paging and
 probe settings still need hand-editing the JSON (an "Edit JSON" button

@@ -1,0 +1,10 @@
+{
+  "_help": "Windows-only: see winxmerge-compare.windows.json for why there's no Linux/macOS version bundled alongside this one. Mark 2 files for a 2-way compare or 3 files for a 3-way merge (base, left, right in list order), then pick this from the context menu. Replace <WINXMERGE_PATH> with wherever your own copy of the tool lives. Waydir ignores every key starting with \"_\".",
+  "id": "winxmerge-files",
+  "name": "Compare in WinXMerge",
+  "extensions": ["*"],
+  "cmd": "<WINXMERGE_PATH>\\winxmerge.exe",
+  "args": ["%FILES%"],
+  "minFiles": 2,
+  "maxFiles": 3
+}

@@ -1,0 +1,16 @@
+{
+  "_help": "Linux/macOS version — see comsol-mph.windows.json for the Windows (PowerShell) equivalent. COMSOL .mph files are zip archives; models saved with a thumbnail (all COMSOL Application Library samples, and user models whose thumbnail was set) carry modelimage_large.png (1024x768) and modelimage.png inside. This extracts the large one, falling back to the small one, using unzip -p (streams just that one entry out of the zip's central directory, no full extraction) - no extra tools beyond unzip, which ships on virtually every Linux distro. Models saved without a thumbnail simply keep the file icon. Waydir ignores every key starting with \"_\".",
+  "id": "comsol-mph",
+  "extensions": ["mph"],
+  "cmd": "sh",
+  "args": [
+    "-c",
+    "unzip -p \"$1\" modelimage_large.png 2>/dev/null > \"$2\" || unzip -p \"$1\" modelimage.png > \"$2\"",
+    "sh",
+    "%INPUT%",
+    "%OUTPUT%"
+  ],
+  "_help_args": "%INPUT%/%OUTPUT% are passed as $1/$2 (separate argv entries after the \"sh\" placeholder for $0), not interpolated into the script string, so paths with spaces or quotes are safe. unzip exits non-zero when neither entry is found, which Waydir correctly reads as failure (falls back to the icon) even though the redirect still creates an empty %OUTPUT% file first. Remote (sftp://) files can't be read by unzip and also fall back to the icon.",
+  "timeoutSeconds": 10,
+  "outputExt": "png"
+}

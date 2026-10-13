@@ -1,0 +1,10 @@
+{
+  "_help": "Cross-platform as-is: %WAYDIR% resolves to the running Waydir executable on any OS, so this launcher needs no path of its own. Opens each selected file in its own standalone Quick Look window (waydir --quick-look), e.g. to compare several notes side by side. %FILE% runs one window per file.",
+  "id": "quick-look-window",
+  "name": "Open in Quick Look window",
+  "extensions": ["*"],
+  "cmd": "%WAYDIR%",
+  "args": ["--quick-look", "%FILE%"],
+  "default": false,
+  "context": "open"
+}
