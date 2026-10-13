@@ -312,7 +312,7 @@ class _LauncherFormDialogState extends State<_LauncherFormDialog> {
         _id.text.trim().isNotEmpty &&
         _cmd.text.trim().isNotEmpty &&
         (_context == LauncherContext.compare || _parsedExtensions().isNotEmpty);
-    if (valid != _valid) setState(() => _valid = valid);
+    setState(() => _valid = valid);
   }
 
   void _setContext(LauncherContext value) {
@@ -331,10 +331,14 @@ class _LauncherFormDialogState extends State<_LauncherFormDialog> {
         extensions: _parsedExtensions(),
         cmd: _cmd.text.trim(),
         args: _parsedArgs(),
-        isDefault: _isDefault,
+        isDefault: _isDefault && !_openWildcard,
       ),
     );
   }
+
+  bool get _openWildcard =>
+      _context == LauncherContext.open &&
+      _parsedExtensions().contains(LauncherDef.wildcard);
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 4),
@@ -406,7 +410,7 @@ class _LauncherFormDialogState extends State<_LauncherFormDialog> {
           _field(
             s.extensionsLabel,
             _extensions,
-            hint: compare ? s.extensionsCompareHint : 'step, stp',
+            hint: compare ? s.extensionsCompareHint : s.extensionsOpenHint,
           ),
           _field(s.cmdLabel, _cmd, hint: 'f3d'),
           _label(s.argsLabel),
@@ -422,16 +426,19 @@ class _LauncherFormDialogState extends State<_LauncherFormDialog> {
           const SizedBox(height: 6),
           Text(s.placeholders, style: context.txt.muted),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              SettingsToggle(
-                value: _isDefault,
-                onChanged: (v) => setState(() => _isDefault = v),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(s.defaultLabel, style: context.txt.body)),
-            ],
-          ),
+          if (_openWildcard)
+            Text(s.wildcardNoDefault, style: context.txt.muted)
+          else
+            Row(
+              children: [
+                SettingsToggle(
+                  value: _isDefault,
+                  onChanged: (v) => setState(() => _isDefault = v),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(s.defaultLabel, style: context.txt.body)),
+              ],
+            ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -583,7 +590,17 @@ class _LauncherFileRow extends StatelessWidget {
       final tags = [
         if (def.context == LauncherContext.compare) s.compareBadge,
         if (def.isDefault) s.defaultBadge,
-        if (def.extensions.isNotEmpty) '.${def.extensions.join(', .')}',
+        if (def.minFiles > 1 || def.maxFiles != null)
+          s.filesBadge(
+            range: def.minFiles == def.maxFiles
+                ? '${def.minFiles}'
+                : '${def.minFiles}–${def.maxFiles ?? '∞'}',
+          ),
+        if (def.extensions.isNotEmpty)
+          [
+            for (final e in def.extensions)
+              e == LauncherDef.wildcard ? e : '.$e',
+          ].join(', '),
       ];
       subtitle = '${tags.join(' · ')} — ${def.cmd} ${def.args.join(' ')}';
     }

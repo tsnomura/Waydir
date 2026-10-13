@@ -222,12 +222,15 @@
       "contextOpen": "Open files",
       "contextCompare": "Compare mode",
       "extensionsLabel": "Extensions (comma separated)",
-      "extensionsCompareHint": "Leave empty to apply to every file",
+      "extensionsCompareHint": "Leave empty or use * to apply to every file",
+      "extensionsOpenHint": "step, stp (or * for every file)",
+      "wildcardNoDefault": "Launchers for * only appear in the context menu; Enter / double-click keeps the system default app.",
       "cmdLabel": "Command",
       "argsLabel": "Arguments (one per line)",
       "defaultLabel": "Use for Enter / double-click",
       "placeholders": "Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode), %WAYDIR% (Waydir's own executable, e.g. with --quick-look %FILE%).",
       "defaultBadge": "default",
+      "filesBadge": "$range files",
       "compareBadge": "compare"
     },
     "plugins": {

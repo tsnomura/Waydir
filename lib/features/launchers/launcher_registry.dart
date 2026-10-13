@@ -14,9 +14,12 @@ class LauncherRegistry {
 
   final _launchers = <LauncherDef>[];
 
-  List<LauncherDef> forOpen(String extension) => [
+  List<LauncherDef> forOpen(String extension, {int count = 1}) => [
     for (final l in _launchers)
-      if (l.context == LauncherContext.open && l.matchesExtension(extension)) l,
+      if (l.context == LauncherContext.open &&
+          l.matchesExtension(extension) &&
+          l.acceptsCount(count))
+        l,
   ];
 
   LauncherDef? defaultForOpen(String extension) {
@@ -35,11 +38,13 @@ class LauncherRegistry {
 
   LauncherDef? defaultForCompare(String extension) {
     final matches = forCompare(extension);
+    int rank(LauncherDef l) => (l.isDefault ? 0 : 2) + (l.matchesAll ? 1 : 0);
+    LauncherDef? best;
     for (final l in matches) {
-      if (l.isDefault) return l;
+      if (best == null || rank(l) < rank(best)) best = l;
     }
 
-    return matches.isEmpty ? null : matches.first;
+    return best;
   }
 
   LauncherDef? byId(String id) {

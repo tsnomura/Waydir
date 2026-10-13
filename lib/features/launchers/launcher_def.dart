@@ -8,6 +8,8 @@ class LauncherDef {
   final String cmd;
   final List<String> args;
   final bool isDefault;
+  final int minFiles;
+  final int? maxFiles;
 
   const LauncherDef({
     required this.id,
@@ -17,10 +19,19 @@ class LauncherDef {
     required this.cmd,
     required this.args,
     required this.isDefault,
+    this.minFiles = 1,
+    this.maxFiles,
   });
 
+  bool acceptsCount(int count) =>
+      count >= minFiles && (maxFiles == null || count <= maxFiles!);
+
+  static const wildcard = '*';
+
+  bool get matchesAll => extensions.isEmpty || extensions.contains(wildcard);
+
   bool matchesExtension(String extension) =>
-      extensions.isEmpty || extensions.contains(extension.toLowerCase());
+      matchesAll || extensions.contains(extension.toLowerCase());
 
   bool get takesAllFiles => args.any((a) => a.contains('%FILES%'));
 
@@ -55,6 +66,25 @@ class LauncherDef {
         'launcher "extensions" must be a non-empty list for "open" launchers',
       );
     }
+    final isDefault = json['default'] == true;
+    if (context == LauncherContext.open &&
+        isDefault &&
+        extensions.contains(wildcard)) {
+      throw const FormatException(
+        'launcher "default" cannot be used with the "*" extension for "open" '
+        'launchers',
+      );
+    }
+    final minFiles = json['minFiles'] ?? 1;
+    final maxFiles = json['maxFiles'];
+    if (minFiles is! int || minFiles < 1) {
+      throw const FormatException('launcher "minFiles" must be at least 1');
+    }
+    if (maxFiles != null && (maxFiles is! int || maxFiles < minFiles)) {
+      throw const FormatException(
+        'launcher "maxFiles" must be an integer not less than "minFiles"',
+      );
+    }
 
     return LauncherDef(
       id: id,
@@ -65,7 +95,9 @@ class LauncherDef {
       extensions: extensions,
       cmd: cmd,
       args: args,
-      isDefault: json['default'] == true,
+      isDefault: isDefault,
+      minFiles: minFiles,
+      maxFiles: maxFiles as int?,
     );
   }
 }

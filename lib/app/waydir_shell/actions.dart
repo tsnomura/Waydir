@@ -45,6 +45,23 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     return true;
   }
 
+  void _openAll(List<FileEntry> entries) {
+    final grouped = <LauncherDef, List<String>>{};
+    for (final entry in entries) {
+      final def = _canLaunch(entry)
+          ? LauncherRegistry.instance.defaultForOpen(entry.extension)
+          : null;
+      if (def == null) {
+        _active.onOpen(entry);
+      } else {
+        grouped.putIfAbsent(def, () => []).add(entry.realPath);
+      }
+    }
+    for (final MapEntry(key: def, value: files) in grouped.entries) {
+      unawaited(_runLauncher(def, files: files));
+    }
+  }
+
   Future<void> _runLauncher(
     LauncherDef def, {
     List<String> files = const [],
@@ -79,7 +96,10 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
         );
       }
     }
-    for (final def in registry.forOpen(entries.first.extension)) {
+    for (final def in registry.forOpen(
+      entries.first.extension,
+      count: entries.length,
+    )) {
       if (!entries.every((e) => def.matchesExtension(e.extension))) continue;
       items.add(
         ContextMenuItem(
