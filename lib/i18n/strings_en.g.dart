@@ -2651,8 +2651,14 @@ class Translations$preferences$launchers$en {
 	/// en: 'Extensions (comma separated)'
 	String get extensionsLabel => 'Extensions (comma separated)';
 
-	/// en: 'Leave empty to apply to every file'
-	String get extensionsCompareHint => 'Leave empty to apply to every file';
+	/// en: 'Leave empty or use * to apply to every file'
+	String get extensionsCompareHint => 'Leave empty or use * to apply to every file';
+
+	/// en: 'step, stp (or * for every file)'
+	String get extensionsOpenHint => 'step, stp (or * for every file)';
+
+	/// en: 'Launchers for * only appear in the context menu; Enter / double-click keeps the system default app.'
+	String get wildcardNoDefault => 'Launchers for * only appear in the context menu; Enter / double-click keeps the system default app.';
 
 	/// en: 'Command'
 	String get cmdLabel => 'Command';
@@ -2668,6 +2674,9 @@ class Translations$preferences$launchers$en {
 
 	/// en: 'default'
 	String get defaultBadge => 'default';
+
+	/// en: '$range files'
+	String filesBadge({required Object range}) => '${range} files';
 
 	/// en: 'compare'
 	String get compareBadge => 'compare';
@@ -4619,12 +4628,15 @@ extension on Translations {
 			'preferences.launchers.contextOpen' => 'Open files',
 			'preferences.launchers.contextCompare' => 'Compare mode',
 			'preferences.launchers.extensionsLabel' => 'Extensions (comma separated)',
-			'preferences.launchers.extensionsCompareHint' => 'Leave empty to apply to every file',
+			'preferences.launchers.extensionsCompareHint' => 'Leave empty or use * to apply to every file',
+			'preferences.launchers.extensionsOpenHint' => 'step, stp (or * for every file)',
+			'preferences.launchers.wildcardNoDefault' => 'Launchers for * only appear in the context menu; Enter / double-click keeps the system default app.',
 			'preferences.launchers.cmdLabel' => 'Command',
 			'preferences.launchers.argsLabel' => 'Arguments (one per line)',
 			'preferences.launchers.defaultLabel' => 'Use for Enter / double-click',
 			'preferences.launchers.placeholders' => 'Placeholders: %FILE% (once per file), %FILES% (all selected files, one process), %DIR%, %LEFT% / %RIGHT% (compare mode), %WAYDIR% (Waydir\'s own executable, e.g. with --quick-look %FILE%).',
 			'preferences.launchers.defaultBadge' => 'default',
+			'preferences.launchers.filesBadge' => ({required Object range}) => '${range} files',
 			'preferences.launchers.compareBadge' => 'compare',
 			'preferences.plugins.title' => 'Plugins',
 			'preferences.plugins.subtitle' => 'Extend Waydir with Lua plugins. Each plugin is a folder with manifest.json and init.lua.',
@@ -4937,11 +4949,11 @@ extension on Translations {
 			'help.groups.files.operations.title' => 'Copy, Move & Delete',
 			'help.groups.files.operations.body' => 'Standard clipboard and file actions work everywhere, including across panes and tabs.\n\n- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy, cut and paste.\n- `F2` renames the current item; `F7` creates a new folder.\n- `Delete` moves the selection to the Trash; use the context menu to delete permanently.\n- Long copies, moves and deletes run in the background, and a conflict prompt appears when names collide.',
 			'help.groups.files.dragDrop.title' => 'Drag & Drop',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.files.dragDrop.body' => 'Drag files between panes, tabs and the sidebar - or in and out of other apps.\n\n- By default dragging **copies** files; hold `Alt` to **move** them.\n- Flip the default in **Preferences -> General** so dragging moves and `Alt` copies.\n- The drag hint shows whether the drop will copy or move.\n- Drop onto a folder to put files inside it, or onto empty space for the current folder.',
 			'help.groups.files.multiRename.title' => 'Multi Rename',
 			'help.groups.files.multiRename.body' => 'Rename many files at once with a live before / after preview. Select several items, then choose **Multi Rename** from the context menu.\n\n- **Template** mode builds names from tokens: `{name}`, `{ext}`, `{n}` (sequence from 1), `{index}` (from 0) and `{date}`.\n- **Find & Replace** mode swaps text, with optional regular expressions and case sensitivity.\n- The preview lists every result before you commit, and *Show only changed* hides untouched rows.',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.files.archives.title' => 'Archives',
 			'help.groups.files.archives.body' => 'Archives behave like browsable folders, so you can look inside before extracting anything.\n\n- `Enter` opens a supported archive and lets you walk its contents.\n- The context menu can extract here, extract into a named folder, or extract each archive separately.\n- **Compress** builds a new archive from the selection - pick the format and compression level.\n- Extraction and compression run in the background, so the file list stays responsive.',
 			'help.groups.files.openWith.title' => 'Open With & Default Apps',
@@ -5451,11 +5463,11 @@ extension on Translations {
 			'errors.sftpNotSupported' => 'SFTP not supported',
 			'errors.sftpConnectFailed' => 'SFTP connect failed',
 			'errors.sftpError' => ({required Object error}) => 'SFTP: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'errors.sftpNoActiveSession' => 'No active SFTP session',
 			'errors.sftpNoActiveSessionFor' => ({required Object path}) => 'No active SFTP session for ${path}',
 			'errors.sftpListingFailed' => 'SFTP listing failed',
-			_ => null,
-		} ?? switch (path) {
 			'errors.sftpReadFailed' => 'SFTP read failed',
 			'errors.sftpWriteFailed' => 'SFTP write failed',
 			'errors.sftpMkdirFailed' => 'SFTP mkdir failed',

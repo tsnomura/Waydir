@@ -40,6 +40,84 @@ void main() {
     );
   });
 
+  test('"*" matches every file, including ones without an extension', () {
+    final def = parse({
+      'id': 'any',
+      'extensions': ['*'],
+      'cmd': 'x',
+      'args': ['%FILE%'],
+    });
+
+    expect(def.matchesAll, isTrue);
+    expect(def.matchesExtension('txt'), isTrue);
+    expect(def.matchesExtension(''), isTrue);
+  });
+
+  test('rejects default open launchers for "*"', () {
+    expect(
+      () => parse({
+        'id': 'any',
+        'extensions': ['*'],
+        'cmd': 'x',
+        'args': ['%FILE%'],
+        'default': true,
+      }),
+      throwsFormatException,
+    );
+  });
+
+  test('allows default compare launchers for "*"', () {
+    final def = parse({
+      'id': 'merge',
+      'context': 'compare',
+      'extensions': ['*'],
+      'cmd': 'winxmerge',
+      'args': ['%LEFT%', '%RIGHT%'],
+      'default': true,
+    });
+
+    expect(def.isDefault, isTrue);
+    expect(def.matchesExtension('m'), isTrue);
+  });
+
+  test('minFiles and maxFiles limit the selection size', () {
+    final def = parse({
+      'id': 'merge-files',
+      'extensions': ['*'],
+      'cmd': 'winxmerge',
+      'args': ['%FILES%'],
+      'minFiles': 2,
+      'maxFiles': 3,
+    });
+
+    expect(def.acceptsCount(1), isFalse);
+    expect(def.acceptsCount(2), isTrue);
+    expect(def.acceptsCount(3), isTrue);
+    expect(def.acceptsCount(4), isFalse);
+    expect(LauncherRunner.commandLines(def, files: ['/a', '/b', '/c']), [
+      ['/a', '/b', '/c'],
+    ]);
+  });
+
+  test('rejects invalid file count limits', () {
+    Map<String, dynamic> base() => {
+      'id': 'x',
+      'extensions': ['*'],
+      'cmd': 'x',
+      'args': ['%FILES%'],
+    };
+
+    expect(() => parse(base()..['minFiles'] = 0), throwsFormatException);
+    expect(
+      () => parse(
+        base()
+          ..['minFiles'] = 3
+          ..['maxFiles'] = 2,
+      ),
+      throwsFormatException,
+    );
+  });
+
   test('%FILE% runs once per file, %FILES% once with all files', () {
     final single = parse({
       'id': 'a',

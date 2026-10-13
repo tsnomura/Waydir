@@ -315,6 +315,12 @@ mixin _WaydirMenuMixin
           label: t.menu.open,
           action: 'open',
         ),
+      if (count > 1 && entries.every((e) => e.type == FileItemType.file))
+        ContextMenuItem(
+          icon: WaydirIconsRegular.appWindow,
+          label: t.menu.openItems(count: count),
+          action: 'open_all',
+        ),
       ...launcherItems,
       ...openWithItems,
       ?extractItem,
@@ -1340,6 +1346,8 @@ mixin _WaydirMenuMixin
     switch (action) {
       case 'open':
         store.openSelected();
+      case 'open_all':
+        _openAll(store.selectedEntries);
       case 'open_with_choose':
         final entry = _openWithEntry;
         if (entry != null) {

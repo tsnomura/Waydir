@@ -288,6 +288,46 @@ Windows), in the same spirit as preview generators:
 
 Relevant commits: `9c2313d`.
 
+### Every-file launchers, file-count limits, opening marked files together
+
+- `"extensions": ["*"]` matches every file, including files with no
+  extension (for compare launchers it means the same as leaving
+  `extensions` out). An open launcher with `"*"` cannot be `default`: it
+  would silently replace the OS association for every file that has no
+  launcher of its own, so it is context-menu only. Such a file is shown as
+  invalid in Preferences, and the form replaces the default toggle with a
+  note while `*` is in the extensions.
+- When several compare launchers match, Enter in compare mode prefers a
+  default for that extension, then a default for every file, then a
+  non-default for that extension, then one for every file.
+- `"minFiles"` / `"maxFiles"` (default 1 / unlimited) limit how many marked
+  files a launcher appears for; the Launchers list shows them as a badge
+  (`2–3 files`). Enter only ever uses launchers that accept one file.
+- Marking two or more files (no folders) adds **Open N Items** to the
+  context menu (previously there was no Open entry at all for a multi
+  selection). Each file opens as Enter would: files sharing a default
+  launcher are passed to it in one go (one process with `%FILES%`), the
+  rest go to the OS association. Open With stays single-file only, since
+  the Windows chooser takes one file.
+- WinXMerge does a 2-way compare with two paths and a 3-way merge with
+  three (base, left, right), so one launcher covers both:
+
+  ```json
+  {
+    "id": "winxmerge-files",
+    "name": "Compare in WinXMerge",
+    "extensions": ["*"],
+    "cmd": "winxmerge",
+    "args": ["%FILES%"],
+    "minFiles": 2,
+    "maxFiles": 3
+  }
+  ```
+
+  Files are passed in list order, not in the order they were marked.
+
+Relevant commits: `2dde497`.
+
 ### Opening the Quick Look file in an application
 
 - **Enter** in Quick Look opens the file being shown exactly like Enter in
