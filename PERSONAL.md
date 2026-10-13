@@ -150,9 +150,14 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   `pdf-page` (`mutool`, `"discrete"` paging), `svg-preview` (`resvg`, no
   paging), `3d-model` (`f3d` offscreen render of stl/obj/ply/gltf/glb/3mf/
   fbx/dae/STEP/IGES/VTK etc., angled camera, transparent background),
-  `comsol-mph`, `office-thumbnail` and `font-preview` in the `generators`
-  support directory — not committed, since generator config is local/personal
-  by design (see the trust model in `docs/generators.md`).
+  `comsol-mph`, `office-thumbnail`, `ico-preview` and `font-preview` in the
+  `generators` support directory. The live configs themselves still aren't
+  committed — generator config is local/personal by design, same trust model
+  as Lua plugins (see `docs/generators.md`) — but every one of them is
+  general enough to also be worth a copy-and-adjust example, so all of them
+  (Windows and, where the approach actually differs, Linux/macOS too) are now
+  under `docs/examples/generators/`; see "Worked Examples" in
+  `docs/generators.md` for the full index and which pairs split by OS.
 - The last two need no extra tools on Windows: COMSOL `.mph`, Office
   (pptx/docx/xlsx) and OpenDocument files are zips that can carry a preview
   image, and a PowerShell one-liner using .NET's `ZipFile` pulls out just
@@ -167,6 +172,20 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   `docProps/thumbnail.jpeg` by default but only ~256x192 (blurry in Quick
   Look); docx/xlsx only when "save thumbnail" was on; OpenDocument always
   has `Thumbnails/thumbnail.png`.
+- Both Linux/macOS scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (argv
+  entries after a `sh` placeholder for `$0`) rather than substituting them
+  into the script text, so a single quote in the path can't break the
+  script's own quoting — verified via Git Bash on Windows for the ordinary
+  case (`sh -c '<script>' sh "$input" "$output"` streams the right entry out
+  correctly). One single-quote-in-filename case did NOT come out clean
+  there, but as this Windows build's own `unzip.exe` truncating `$1` at the
+  first space inside the filename *despite* the shell-side quoting already
+  being correct (confirmed: `echo "$1"` inside the script showed the full,
+  right path) — almost certainly an MSYS/Git-Bash argv-to-Windows-command-
+  line re-encoding quirk specific to running a native `.exe` from MSYS `sh`,
+  not something a real Linux `unzip` (reading `argv` directly, no
+  re-encoding step) should reproduce. Flagging rather than silently trusting
+  it, since this was never actually run against a real Linux/macOS `unzip`.
 - Opening Quick Look on a paged file (mp4/pdf-style) now generates every
   remaining page in the background, one at a time, so paging forward is
   usually instant instead of waiting per page — stops if you close Quick
@@ -285,6 +304,17 @@ Windows), in the same spirit as preview generators:
   error), with add/edit (a form for id, menu name, open/compare, extensions,
   command, one argument per line, default), edit JSON, delete, open the
   folder, and Reload — saves and Reload apply without restarting Waydir.
+
+Installed locally (same not-committed-by-default trust model as preview
+generators): `f3d-step`/`f3d-iges` (open STEP/IGES in f3d), `quick-look-window`
+(`%WAYDIR%`, below), `winxmerge-compare`/`winxmerge-files` (a personal
+cargo-built WinXMerge, Windows-only). All four are now also copy-and-adjust
+examples under `docs/examples/launchers/` — `f3d-*` and `quick-look-window`
+work as-is cross-platform, `winxmerge` needs its own real path swapped in for
+the `<WINXMERGE_PATH>` placeholder and has no Linux/macOS counterpart bundled
+alongside it, since the tool itself doesn't exist there (a cross-platform
+merge tool like meld/kdiff3 fits the same `context: "compare"` +
+`%LEFT%`/`%RIGHT%` shape, if wanted).
 
 Relevant commits: `9c2313d`.
 
