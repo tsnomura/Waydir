@@ -1385,12 +1385,57 @@ falls back to page 0 of `args`, same cache entry as before.
 - Always a single static image for the thumbnail — `position` is forced to
   0 regardless of `pagingMode`, so a paged generator's grid tile doesn't
   flicker between pages as the file's mtime/size cache key changes.
-- Prompted by `font-preview`: a local (not committed) `"paging": "fixed"`
-  generator using `System.Drawing.Text.PrivateFontCollection` (GDI+) to
-  render a font file directly, no install/registration needed — tried
-  `ffmpeg`'s `drawtext` first, but this scoop ffmpeg build's fontconfig
-  isn't set up on Windows (`Fontconfig error: Cannot load default config
-  file`), so it uses the same PowerShell/.NET approach as
-  `office-thumbnail`/`comsol-mph` instead. Quick Look pages through 4 sample
-  screens (uppercase, lowercase, digits/punctuation, a pangram);
-  `thumbnailArgs` always renders a plain `Ag`.
+- Prompted by `font-preview`: a generator using
+  `System.Drawing.Text.PrivateFontCollection` (GDI+) to render a font file
+  directly, no install/registration needed — tried `ffmpeg`'s `drawtext`
+  first, but this scoop ffmpeg build's fontconfig isn't set up on Windows
+  (`Fontconfig error: Cannot load default config file`), so it uses the same
+  PowerShell/.NET approach as `office-thumbnail`/`comsol-mph` instead. Local
+  config (not auto-loaded, same trust model as every other generator), but
+  general enough to also commit as a worked example — see
+  `docs/examples/generators/font-preview/` and the new "Multi-File
+  Generators" section of `docs/generators.md`.
+
+## `font-preview`: per-font language detection, script-file generators
+
+Grew enough real logic that it moved from one `-Command` one-liner into
+four real `.ps1` files (`font-preview-lib.ps1` shared by the other three via
+`$PSScriptRoot` dot-sourcing) — `args`/`probeArgs`/`thumbnailArgs` pointing
+at `-File <script>` instead, each taking named parameters
+(`-FontPath`/`-Position`/`-OutPath`) rather than a giant quoted string. Fixed
+a real bug as a side effect: a path containing a single quote used to break
+the old one-liner's `'%INPUT%'` string-literal substitution (icon fallback);
+passed as a plain CLI argument now, so that stopped mattering.
+
+- WPF's `GlyphTypeface` (`System.Windows.Media`, the `PresentationCore`
+  assembly) checks which scripts the font actually has glyphs for
+  (`CharacterToGlyphMap`, a codepoint → glyph-index lookup; present and
+  nonzero means a real glyph) — tried `'Ag'`/`'あ字'`/`'가'` in turn for
+  Latin/Japanese/Hangul. Both the grid thumbnail and Quick Look's page order
+  follow what's actually detected instead of a fixed guess: a Japanese-
+  capable font's Japanese sample becomes page 1 (ahead of the Latin pages)
+  and its thumbnail shows `あ字` instead of `Ag`; a Latin-only font never
+  gets a blank/tofu Japanese page.
+- Switched `paging` from a fixed `"fixed"` count to `"discrete"`:
+  `font-preview-count.ps1` (`probeCmd`) runs the identical detection to
+  report how many blocks *this* font actually has (3 with no Japanese, 4
+  with no Latin after the fallback, 5 with both) — deterministic from the
+  font file alone, so the separate probe call and each page's render call
+  agree on the same ordering without sharing any state.
+- Found while building it: `CharacterToGlyphMap` only proves a codepoint
+  maps to *some* glyph ID, not that the glyph has visible ink — a decorative
+  font can map a character to an intentionally blank placeholder glyph,
+  which this can't detect, and one test font did exactly that for a kanji
+  used as the single thumbnail sample. Thumbnail sample is two characters
+  (`あ字`, not just `字`) so one being blank doesn't necessarily blank the
+  whole tile.
+- `GlyphTypeface` construction tries the plain file path first, then with a
+  `#0`/`#1` URI fragment — needed for a `.ttc` (TrueType collection, several
+  faces in one file): without a face index some collections fail to load at
+  all via the plain path.
+- The on-disk preview cache is keyed by `args`/`thumbnailArgs`'s own text,
+  with no awareness of an externally dot-sourced file's content — editing
+  `font-preview-lib.ps1` alone doesn't change that key, so cached output from
+  before the edit keeps getting reused until **Preferences → Quick Look →
+  Preview generators → Reload** (or deleting the generator cache folder's
+  files directly) clears it.
