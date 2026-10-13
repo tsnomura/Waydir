@@ -26,7 +26,7 @@ struct State {
   int height = 0;
   int x = 0;
   int y = 0;
-  int grip_size = 1;
+  int grip_size = 8;
   int min_width = -1;
   int min_height = -1;
 };
