@@ -150,9 +150,9 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   `pdf-page` (`mutool`, `"discrete"` paging), `svg-preview` (`resvg`, no
   paging), `3d-model` (`f3d` offscreen render of stl/obj/ply/gltf/glb/3mf/
   fbx/dae/STEP/IGES/VTK etc., angled camera, transparent background),
-  `comsol-mph` and `office-thumbnail` in the `generators` support
-  directory — not committed, since generator config is local/personal by
-  design (see the trust model in `docs/generators.md`).
+  `comsol-mph`, `office-thumbnail` and `font-preview` in the `generators`
+  support directory — not committed, since generator config is local/personal
+  by design (see the trust model in `docs/generators.md`).
 - The last two need no extra tools on Windows: COMSOL `.mph`, Office
   (pptx/docx/xlsx) and OpenDocument files are zips that can carry a preview
   image, and a PowerShell one-liner using .NET's `ZipFile` pulls out just
@@ -1364,3 +1364,33 @@ Markdown with math, a rendered/source toggle and an editor.
   assumes it), a separate lightweight `mdview` app sharing the Markdown
   renderer as a package, and a `wql` command that signals the running
   instance like `wd`/`wcd`.
+
+## Preview generators: separate grid thumbnail (`thumbnailArgs`)
+
+The grid tile and Quick Look used to always share the same image (page 0 of
+`args`) — fine for a video frame or a 3D render, not for a type specimen: a
+sample paragraph plus the font's family name reads fine in Quick Look but is
+just noise shrunk down to a tile. `GeneratorDef` gained an optional
+`thumbnailArgs`: when set, the grid runs that command instead of `args` for
+its thumbnail, as its own cached image, independent of whatever page Quick
+Look is currently showing. Omit it and nothing changes — the grid still
+falls back to page 0 of `args`, same cache entry as before.
+
+- `GeneratorRunner.thumbnail(entry)` is the grid's new entry point
+  (`file_grid.dart` called `preview(entry, position: 0)` directly before);
+  `preview()` is unchanged and still backs Quick Look. Both funnel through a
+  shared `_generate` that tags the cache/in-flight key with a `variant`
+  (`'preview'`/`'thumbnail'`) so the two can't collide even if `thumbnailArgs`
+  happened to render identically to `args`.
+- Always a single static image for the thumbnail — `position` is forced to
+  0 regardless of `pagingMode`, so a paged generator's grid tile doesn't
+  flicker between pages as the file's mtime/size cache key changes.
+- Prompted by `font-preview`: a local (not committed) `"paging": "fixed"`
+  generator using `System.Drawing.Text.PrivateFontCollection` (GDI+) to
+  render a font file directly, no install/registration needed — tried
+  `ffmpeg`'s `drawtext` first, but this scoop ffmpeg build's fontconfig
+  isn't set up on Windows (`Fontconfig error: Cannot load default config
+  file`), so it uses the same PowerShell/.NET approach as
+  `office-thumbnail`/`comsol-mph` instead. Quick Look pages through 4 sample
+  screens (uppercase, lowercase, digits/punctuation, a pangram);
+  `thumbnailArgs` always renders a plain `Ag`.
