@@ -974,7 +974,7 @@ class _GridPreview extends StatelessWidget {
 }
 
 Future<String?> _generatorThumbnail(FileEntry entry) =>
-    GeneratorRunner.preview(entry, position: 0);
+    GeneratorRunner.thumbnail(entry);
 
 class _ImageThumbnail extends StatelessWidget {
   final FileEntry entry;

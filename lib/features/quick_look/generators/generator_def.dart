@@ -29,6 +29,16 @@ class GeneratorDef {
   final String outputExt;
   final PagingMode pagingMode;
 
+  /// Overrides [args] for the file grid's thumbnail only — Quick Look always
+  /// uses [args]. Null (the default) means the grid reuses page 0 of [args]
+  /// verbatim, same cache entry and all. Always a single static image: the
+  /// grid never pages, regardless of [pagingMode]. For a generator whose
+  /// full preview is too dense to read shrunk down to a tile (e.g. a type
+  /// specimen's sample paragraph plus its family name), this renders
+  /// something simpler instead — it doesn't have to be the same kind of
+  /// image as [args] at all.
+  final List<String>? thumbnailArgs;
+
   /// Fixed sample count for [PagingMode.time]. Unused otherwise.
   final int pageCount;
 
@@ -57,6 +67,7 @@ class GeneratorDef {
     this.probeCmd,
     this.probeArgs = const [],
     this.probePattern,
+    this.thumbnailArgs,
   });
 
   factory GeneratorDef.fromJson(Map<String, dynamic> json) {
@@ -100,6 +111,9 @@ class GeneratorDef {
     final probeArgs =
         (json['probeArgs'] as List?)?.whereType<String>().toList() ?? const [];
     final probePattern = json['probePattern'] as String?;
+    final thumbnailArgs = (json['thumbnailArgs'] as List?)
+        ?.whereType<String>()
+        .toList();
     final fixedCount =
         pagingMode == PagingMode.time || pagingMode == PagingMode.fixed;
     if (fixedCount && pageCount <= 1) {
@@ -129,6 +143,7 @@ class GeneratorDef {
       probeCmd: probeCmd,
       probeArgs: probeArgs,
       probePattern: probePattern,
+      thumbnailArgs: thumbnailArgs,
     );
   }
 }

@@ -1,0 +1,15 @@
+{
+  "_help": "Windows version — see office-thumbnail.linux-macos.json for the Linux/macOS equivalent. Office/OpenDocument files are zip archives that can carry a preview image: PowerPoint writes docProps/thumbnail.jpeg (about 256x192) by default, Word/Excel only when 'save thumbnail' is on, and LibreOffice always writes Thumbnails/thumbnail.png. This extracts whichever exists using PowerShell's built-in zip support. It's a small image, so it's fine as a grid thumbnail but blurry in Quick Look. Files without one keep the file icon. Waydir ignores every key starting with \"_\".",
+  "id": "office-thumbnail",
+  "extensions": ["pptx", "ppsx", "potx", "docx", "xlsx", "odp", "odt", "ods", "odg"],
+  "cmd": "powershell",
+  "args": [
+    "-NoProfile",
+    "-NonInteractive",
+    "-Command",
+    "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [IO.Compression.ZipFile]::OpenRead('%INPUT%'); try { foreach ($n in 'docProps/thumbnail.jpeg', 'docProps/thumbnail.png', 'Thumbnails/thumbnail.png') { $e = $z.GetEntry($n); if ($e) { [IO.Compression.ZipFileExtensions]::ExtractToFile($e, '%OUTPUT%', $true); exit 0 } }; exit 1 } finally { $z.Dispose() }"
+  ],
+  "_help_args": "The output may actually be a JPEG despite the .png name; Waydir detects the real format from the file contents. Paths containing a single quote fail (icon fallback), as do remote (sftp://) files.",
+  "timeoutSeconds": 10,
+  "outputExt": "png"
+}

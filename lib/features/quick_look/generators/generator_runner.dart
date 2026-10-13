@@ -95,18 +95,43 @@ class GeneratorRunner {
     final def = GeneratorRegistry.instance.forExtension(entry.extension);
     if (def == null) return Future.value(null);
 
+    return _generate(entry, def, position, def.args, 'preview');
+  }
+
+  /// The image shown as this file's grid thumbnail. Identical to — and
+  /// shares the cache of — page 0 of [preview] unless the matched generator
+  /// sets `thumbnailArgs`, in which case that command runs instead. Always a
+  /// single static image: the grid never pages, regardless of
+  /// [GeneratorDef.pagingMode].
+  static Future<String?> thumbnail(FileEntry entry) {
+    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    if (def == null) return Future.value(null);
+    final custom = def.thumbnailArgs;
+    if (custom == null) return _generate(entry, def, 0, def.args, 'preview');
+
+    return _generate(entry, def, 0, custom, 'thumbnail');
+  }
+
+  static Future<String?> _generate(
+    FileEntry entry,
+    GeneratorDef def,
+    int position,
+    List<String> args,
+    String variant,
+  ) {
     final key = [
       entry.realPath,
       entry.modifiedMs,
       entry.size,
       def.id,
+      variant,
       position,
     ].join('|');
     if (_failedKeys.contains(key)) return Future.value(null);
 
     return _previewInFlight.putIfAbsent(key, () async {
       try {
-        return await _generatePreview(entry, def, position, key);
+        return await _generatePreview(entry, def, position, args, variant, key);
       } finally {
         _previewInFlight.remove(key);
       }
@@ -117,6 +142,8 @@ class GeneratorRunner {
     FileEntry entry,
     GeneratorDef def,
     int position,
+    List<String> args,
+    String variant,
     String failureKey,
   ) async {
     var page = position < 0 ? 0 : position;
@@ -135,7 +162,7 @@ class GeneratorRunner {
     }
 
     final cacheDir = await AppDirs.generatorCache();
-    final key = _cacheKey(entry, def, page);
+    final key = _cacheKey(entry, def, args, variant, page);
     final cachePath = p.join(cacheDir, '$key.${def.outputExt}');
     if (await File(cachePath).exists()) return cachePath;
 
@@ -149,8 +176,8 @@ class GeneratorRunner {
     // same low-resolution timestamp and race to rename each other's output
     // onto the wrong file's cache path.
     final tmpPath = p.join(cacheDir, 'tmp-$key.${def.outputExt}');
-    final args = _substitute(
-      def.args,
+    final substitutedArgs = _substitute(
+      args,
       entry: entry,
       output: tmpPath,
       cacheDir: cacheDir,
@@ -160,7 +187,7 @@ class GeneratorRunner {
     );
 
     try {
-      final result = await _run(def.cmd, args, def.timeout);
+      final result = await _run(def.cmd, substitutedArgs, def.timeout);
       if (result.timedOut) {
         log.warn(
           'quick-look',
@@ -340,15 +367,22 @@ class GeneratorRunner {
     } catch (_) {}
   }
 
-  static String _cacheKey(FileEntry entry, GeneratorDef def, int page) {
+  static String _cacheKey(
+    FileEntry entry,
+    GeneratorDef def,
+    List<String> args,
+    String variant,
+    int page,
+  ) {
     final raw = [
       entry.realPath,
       entry.modifiedMs,
       entry.size,
       def.id,
       def.cmd,
-      def.args.join(' '),
+      args.join(' '),
       page,
+      if (variant == 'thumbnail') variant,
     ].join('|');
 
     return sha256.convert(utf8.encode(raw)).toString();

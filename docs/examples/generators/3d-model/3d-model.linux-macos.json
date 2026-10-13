@@ -1,0 +1,19 @@
+{
+  "_help": "Linux/macOS version (single fixed angle, no paging) — see 3d-model.windows.json for a 10-page turntable version using the same %ANGLE%/paging:\"fixed\" mechanism, which adapts here too if you want it. Renders 3D models with F3D to a 640x480 PNG with a transparent background, viewed from a fixed angle (35 deg azimuth, 25 deg elevation) so the shape reads in a small thumbnail. --no-config ignores any personal f3d config so thumbnails stay consistent. STEP/IGES need 3d-model-step.json / 3d-model-iges.json instead (f3d can't auto-detect those readers from the extension alone). Waydir ignores every key starting with \"_\".",
+  "id": "3d-model",
+  "extensions": ["stl", "obj", "ply", "gltf", "glb", "3mf", "fbx", "dae", "3ds", "off", "vtk", "vtp", "vtu"],
+  "cmd": "f3d",
+  "args": [
+    "%INPUT%",
+    "--output=%OUTPUT%",
+    "--resolution=640,480",
+    "--no-config",
+    "--no-background",
+    "--anti-aliasing",
+    "--camera-azimuth-angle=35",
+    "--camera-elevation-angle=25"
+  ],
+  "_help_args": "F3D can also read DXF (via assimp), but mostly 3D DXF, not 2D drawings, so dxf is left out here. Remote (sftp://) files can't be read by f3d and fall back to the icon.",
+  "timeoutSeconds": 30,
+  "outputExt": "png"
+}

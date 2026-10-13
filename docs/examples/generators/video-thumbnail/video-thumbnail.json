@@ -1,0 +1,13 @@
+{
+  "_help": "Cross-platform as-is: ffmpeg/ffprobe have the same CLI on Windows, Linux and macOS, so this one file works everywhere the tools are on PATH. 10 evenly-spaced thumbnails across the video's duration, PageUp/PageDown to step through them in Quick Look. Waydir ignores every key starting with \"_\".",
+  "id": "video-thumbnail",
+  "extensions": ["avi", "m4v", "mkv", "mov", "mp4", "webm"],
+  "cmd": "ffmpeg",
+  "args": ["-y", "-ss", "%SEEK%", "-i", "%INPUT%", "-frames:v", "1", "-vf", "scale=640:-1", "%OUTPUT%"],
+  "paging": "time",
+  "pageCount": 10,
+  "probeCmd": "ffprobe",
+  "probeArgs": ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "%INPUT%"],
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

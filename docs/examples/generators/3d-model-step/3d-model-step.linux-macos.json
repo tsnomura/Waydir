@@ -1,0 +1,19 @@
+{
+  "_help": "Linux/macOS version (single fixed angle, no paging) — see 3d-model-step.windows.json for a 10-page turntable version. STEP files, split out from 3d-model.json: f3d can't auto-detect the occt STEP reader from the .step/.stp extension alone. Waydir ignores every key starting with \"_\".",
+  "id": "3d-model-step",
+  "extensions": ["step", "stp"],
+  "cmd": "f3d",
+  "args": [
+    "%INPUT%",
+    "--output=%OUTPUT%",
+    "--resolution=640,480",
+    "--no-config",
+    "--no-background",
+    "--anti-aliasing",
+    "--camera-azimuth-angle=35",
+    "--camera-elevation-angle=25",
+    "--force-reader=STEP"
+  ],
+  "timeoutSeconds": 30,
+  "outputExt": "png"
+}

@@ -1,0 +1,14 @@
+{
+  "_help": "Cross-platform as-is: mutool (MuPDF's CLI, part of the mupdf-tools package on Linux, the mupdf cask/formula on macOS, scoop's mupdf on Windows) has the same CLI everywhere. \"discrete\" paging: probeCmd runs \"mutool info\" and probePattern pulls the real page count for this specific file out of its \"Pages: N\" line, since a PDF's page count varies per file instead of being a fixed setting. Waydir ignores every key starting with \"_\".",
+  "id": "pdf-page",
+  "extensions": ["pdf"],
+  "cmd": "mutool",
+  "args": ["draw", "-o", "%OUTPUT%", "%INPUT%", "%PAGE%"],
+  "_help_args": "mutool draw -o <exact-path> file.pdf <page> renders straight to the given filename with no page-number suffix, matching %OUTPUT%'s contract; poppler's pdftoppm always appends its own suffix to the output prefix instead, which doesn't fit without extra handling — hence mutool here despite pdftoppm/pdfinfo also being common.",
+  "paging": "discrete",
+  "probeCmd": "mutool",
+  "probeArgs": ["info", "%INPUT%"],
+  "probePattern": "Pages:\\s*(\\d+)",
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

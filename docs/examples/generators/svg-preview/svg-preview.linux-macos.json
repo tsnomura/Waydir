@@ -1,0 +1,11 @@
+{
+  "_help": "Linux/macOS version — see svg-preview.windows.json for Windows. Same resvg tool, but some Linux distro packages install its binary as rendersvg instead of resvg (check which one is actually on PATH; adjust \"cmd\" if your distro differs). Preview generator config — see docs/generators.md for the full guide. Waydir ignores every key starting with \"_\" when loading.",
+  "id": "svg-preview",
+  "extensions": ["svg"],
+  "cmd": "rendersvg",
+  "_help_cmd": "The executable to run — must be on PATH, or an absolute path. Some distros name it resvg instead; `which rendersvg resvg` to check which one you actually have.",
+  "args": ["--width", "640", "%INPUT%", "%OUTPUT%"],
+  "_help_args": "resvg/rendersvg <in-svg> <out-png>, with --width fixing the output width while preserving the SVG's own aspect ratio. Background stays transparent since outputExt is png.",
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

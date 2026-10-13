@@ -1,0 +1,41 @@
+{
+  "_help": "Windows only (System.Drawing + PresentationCore/GlyphTypeface). Renders sample glyphs plus the font's own family name via GDI+ (System.Drawing.Text.PrivateFontCollection loads the file directly, no install/registration needed). ffmpeg's drawtext was tried first but a stock ffmpeg build's fontconfig often isn't set up on Windows ('Fontconfig error: Cannot load default config file'), so this uses the same PowerShell/.NET approach as office-thumbnail/comsol-mph instead. Split into real script files (font-preview-lib.ps1, shared by the other three) rather than one giant -Command one-liner, since it has real logic: WPF's GlyphTypeface checks which scripts the font actually has glyphs for, so both the Quick Look page order and the grid thumbnail reflect the specific font instead of a fixed guess — a Japanese-capable font gets its Japanese sample as page 1 and a kanji as its thumbnail instead of always 'Ag', and a Latin-only font never shows a blank/tofu Japanese page. probeCmd runs the same detection, just to report how many pages this specific font has. GDI+ only understands TrueType/OpenType directly, not WOFF/WOFF2, hence the extension list. Waydir ignores every key starting with \"_\".",
+  "id": "font-preview",
+  "extensions": ["ttf", "otf", "ttc"],
+  "cmd": "powershell",
+  "args": [
+    "-NoProfile",
+    "-NonInteractive",
+    "-File",
+    "<GENERATORS_DIR>\\font-preview.ps1",
+    "-FontPath",
+    "%INPUT%",
+    "-Position",
+    "%POSITION%",
+    "-OutPath",
+    "%OUTPUT%"
+  ],
+  "paging": "discrete",
+  "probeCmd": "powershell",
+  "probeArgs": [
+    "-NoProfile",
+    "-NonInteractive",
+    "-File",
+    "<GENERATORS_DIR>\\font-preview-count.ps1",
+    "-FontPath",
+    "%INPUT%"
+  ],
+  "thumbnailArgs": [
+    "-NoProfile",
+    "-NonInteractive",
+    "-File",
+    "<GENERATORS_DIR>\\font-thumbnail.ps1",
+    "-FontPath",
+    "%INPUT%",
+    "-OutPath",
+    "%OUTPUT%"
+  ],
+  "_help_args": "Replace every <GENERATORS_DIR> above with your own generators folder's real path (shown live in Preferences → Quick Look → Preview generators — easiest to copy from there) before using this: there's no placeholder for 'this config's own folder', so the four script paths have to be hardcoded. A path containing a single quote would fail with the old one-liner approach (PowerShell string-literal quoting); passed as a plain -FontPath argument here instead, so that's not an issue. A variable/collection font's default instance is whatever PrivateFontCollection picks, not necessarily the one you'd expect.",
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}

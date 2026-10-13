@@ -1,0 +1,23 @@
+{
+  "_help": "Windows version (10-page turntable) — see 3d-model-iges.linux-macos.json for a simpler single-angle Linux/macOS version. IGES files, split out from 3d-model.json for the same reason as 3d-model-step.json: f3d 3.5.0 can't auto-detect the occt IGES reader from the .iges/.igs extension alone. Waydir ignores every key starting with \"_\".",
+  "id": "3d-model-iges",
+  "extensions": ["iges", "igs"],
+  "cmd": "f3d",
+  "args": [
+    "%INPUT%",
+    "--output=%OUTPUT%",
+    "--resolution=640,480",
+    "--no-config",
+    "--no-background",
+    "--anti-aliasing",
+    "--up=+Z",
+    "--camera-azimuth-angle=%ANGLE%",
+    "--camera-elevation-angle=25",
+    "--force-reader=IGES"
+  ],
+  "timeoutSeconds": 30,
+  "outputExt": "png",
+  "_help_paging": "10 pages turning the model around its Z axis: --up=+Z makes Z the up axis, and %ANGLE% is 0, 36, 72 ... 324 degrees for pages 1-10 (PageUp/PageDown in Quick Look). Models authored Y-up (glTF by spec) will lie on their side with --up=+Z.",
+  "paging": "fixed",
+  "pageCount": 10
+}

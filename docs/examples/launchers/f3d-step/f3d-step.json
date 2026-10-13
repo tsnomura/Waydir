@@ -1,0 +1,9 @@
+{
+  "_help": "Cross-platform as-is: F3D has the same CLI everywhere. Opens STEP files in the f3d viewer with the STEP reader forced (f3d can't pick it from the extension). \"default\": true makes Enter/double-click use it. %FILE% runs once per file; %FILES% passes all selected files to one process.",
+  "id": "f3d-step",
+  "name": "View in f3d (STEP)",
+  "extensions": ["step", "stp"],
+  "cmd": "f3d",
+  "args": ["--force-reader=STEP", "%FILE%"],
+  "default": true
+}

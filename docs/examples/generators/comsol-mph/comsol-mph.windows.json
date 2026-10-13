@@ -1,0 +1,15 @@
+{
+  "_help": "Windows version — see comsol-mph.linux-macos.json for the Linux/macOS (unzip -p) equivalent. COMSOL .mph files are zip archives; models saved with a thumbnail (all COMSOL Application Library samples, and user models whose thumbnail was set) carry modelimage_large.png (1024x768) and modelimage.png inside. This extracts the large one, falling back to the small one, using PowerShell's built-in zip support - no extra tools. Models saved without a thumbnail simply keep the file icon. Waydir ignores every key starting with \"_\".",
+  "id": "comsol-mph",
+  "extensions": ["mph"],
+  "cmd": "powershell",
+  "args": [
+    "-NoProfile",
+    "-NonInteractive",
+    "-Command",
+    "Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [IO.Compression.ZipFile]::OpenRead('%INPUT%'); try { $e = $z.GetEntry('modelimage_large.png'); if (-not $e) { $e = $z.GetEntry('modelimage.png') }; if (-not $e) { exit 1 }; [IO.Compression.ZipFileExtensions]::ExtractToFile($e, '%OUTPUT%', $true) } finally { $z.Dispose() }"
+  ],
+  "_help_args": "Paths are wrapped in single quotes inside the PowerShell command, so a file whose path itself contains a single quote will fail (falls back to the icon). Only reads the zip's central directory plus one entry, so large models are still fast. Remote (sftp://) files can't be opened by PowerShell and also fall back to the icon.",
+  "timeoutSeconds": 10,
+  "outputExt": "png"
+}

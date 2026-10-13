@@ -1,0 +1,14 @@
+{
+  "_help": "Windows version — see svg-preview.linux-macos.json for Linux (some distros package the same resvg tool under the binary name rendersvg instead). Preview generator config — see docs/generators.md for the full guide. JSON has no comment syntax, so this is just a regular field; Waydir ignores every key starting with \"_\" when loading, so these are safe to delete once you know the format.",
+  "id": "svg-preview",
+  "extensions": ["svg"],
+  "_help_extensions": "Lowercase file extensions (no dot) this generator handles.",
+  "cmd": "resvg",
+  "_help_cmd": "The executable to run — must be on PATH, or an absolute path.",
+  "args": ["--width", "640", "%INPUT%", "%OUTPUT%"],
+  "_help_args": "resvg <in-svg> <out-png>, with --width fixing the output width while preserving the SVG's own aspect ratio (verified: a 200x100 SVG renders at 640x320). Background stays transparent (resvg's default) since outputExt is png. Placeholders substituted in every element: %INPUT% the source file's real path, %OUTPUT% where to write the result image (must end up with the \"outputExt\" extension below), %CACHE% a scratch directory (unused here), %SEEK%/%POSITION%/%PAGE% only meaningful for paged generators (unused here, this one has no \"paging\" key).",
+  "timeoutSeconds": 8,
+  "_help_timeoutSeconds": "Max seconds before the command is killed and treated as failed. 1-60.",
+  "outputExt": "png",
+  "_help_outputExt": "File extension of the generated image — must match what \"args\" actually writes to %OUTPUT%."
+}

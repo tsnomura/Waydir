@@ -1,0 +1,9 @@
+{
+  "_help": "Cross-platform as-is: F3D has the same CLI everywhere. Same as f3d-step.json for IGES: f3d needs the IGES reader forced for .iges/.igs.",
+  "id": "f3d-iges",
+  "name": "View in f3d (IGES)",
+  "extensions": ["iges", "igs"],
+  "cmd": "f3d",
+  "args": ["--force-reader=IGES", "%FILE%"],
+  "default": true
+}
