@@ -308,13 +308,16 @@ Windows), in the same spirit as preview generators:
 Installed locally (same not-committed-by-default trust model as preview
 generators): `f3d-step`/`f3d-iges` (open STEP/IGES in f3d), `quick-look-window`
 (`%WAYDIR%`, below), `winxmerge-compare`/`winxmerge-files` (a personal
-cargo-built WinXMerge, Windows-only). All four are now also copy-and-adjust
-examples under `docs/examples/launchers/` — `f3d-*` and `quick-look-window`
-work as-is cross-platform, `winxmerge` needs its own real path swapped in for
-the `<WINXMERGE_PATH>` placeholder and has no Linux/macOS counterpart bundled
-alongside it, since the tool itself doesn't exist there (a cross-platform
-merge tool like meld/kdiff3 fits the same `context: "compare"` +
-`%LEFT%`/`%RIGHT%` shape, if wanted).
+cargo-built WinXMerge, Windows-only), `ico-view` (pipes the .ico's largest
+size through netpng's `ico2png` into `pngview`; Linux/macOS only, needs
+netpng on PATH). All five are now also copy-and-adjust examples under
+`docs/examples/launchers/` — `f3d-*`, `quick-look-window` and `ico-view`
+work as-is on the OSes they target, `winxmerge` needs its own real path
+swapped in for the `<WINXMERGE_PATH>` placeholder and has no Linux/macOS
+counterpart bundled alongside it, since the tool itself doesn't exist there
+(a cross-platform merge tool like meld/kdiff3 fits the same
+`context: "compare"` + `%LEFT%`/`%RIGHT%` shape, if wanted), and `ico-view`
+needs `<LAUNCHERS_DIR>` pointed at its own folder.
 
 Relevant commits: `9c2313d`.
 
