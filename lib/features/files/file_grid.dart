@@ -776,139 +776,143 @@ class _GridTileState extends State<_GridTile> {
               : widget.isCut
               ? 0.45
               : (_dragging ? 0.45 : 1),
-          child: Container(
-            padding: EdgeInsets.all(widget.tilePadding),
-            decoration: BoxDecoration(
-              color: bg,
-              border: border,
-              borderRadius: BorderRadius.zero,
-            ),
-            foregroundDecoration: cursorOutline,
-            child: Column(
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
+          child: Stack(
+            children: [
+              Container(
+                padding: EdgeInsets.all(widget.tilePadding),
+                decoration: BoxDecoration(
+                  color: bg,
+                  border: border,
+                  borderRadius: BorderRadius.zero,
+                ),
+                foregroundDecoration: cursorOutline,
+                child: Column(
                   children: [
-                    SizedBox(
-                      width: thumbSize,
-                      height: thumbSize,
-                      child: _GridPreview(
-                        entry: entry,
-                        thumbSize: thumbSize,
-                        remoteThumbnails: widget.remoteThumbnails,
-                      ),
-                    ),
-                    if (widget.rowDecoration?.badge case final badge?)
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        child: StatusChip(
-                          glyph: badge,
-                          color: widget.rowDecoration!.tint,
-                          size: 18 * scale,
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        SizedBox(
+                          width: thumbSize,
+                          height: thumbSize,
+                          child: _GridPreview(
+                            entry: entry,
+                            thumbSize: thumbSize,
+                            remoteThumbnails: widget.remoteThumbnails,
+                          ),
                         ),
-                      ),
-                    if (selected)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: _MarkBadge(size: 18 * scale),
-                      ),
-                    if (widget.rowDecoration?.badgeColors case final colors?
-                        when colors.isNotEmpty)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final color in colors)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 2),
-                                child: Container(
-                                  width: 9,
-                                  height: 9,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.bg,
-                                      width: 1,
+                        if (widget.rowDecoration?.badge case final badge?)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            child: StatusChip(
+                              glyph: badge,
+                              color: widget.rowDecoration!.tint,
+                              size: 18 * scale,
+                            ),
+                          ),
+                        if (widget.rowDecoration?.badgeColors case final colors?
+                            when colors.isNotEmpty)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (final color in colors)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 2),
+                                    child: Container(
+                                      width: 9,
+                                      height: 9,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.bg,
+                                          width: 1,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: widget.thumbGap),
-                if (widget.isRenaming &&
-                    _renameController != null &&
-                    _renameFocusNode != null)
-                  SizedBox(
-                    height: widget.nameBlock,
-                    child: TextField(
-                      controller: _renameController,
-                      focusNode: _renameFocusNode,
-                      onSubmitted: (_) => _commitRename(),
-                      onEditingComplete: _commitRename,
-                      onTapOutside: (_) => _commitRename(),
-                      onChanged: (_) => _renameCommitted = false,
-                      style: nameStyle.copyWith(color: AppColors.fg),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.bgInput,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(color: AppColors.accent),
-                        ),
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.deny(RegExp(r'[/\\]')),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
-                  )
-                else
-                  SizedBox(
-                    height: widget.nameBlock,
-                    child: Center(
+                    SizedBox(height: widget.thumbGap),
+                    if (widget.isRenaming &&
+                        _renameController != null &&
+                        _renameFocusNode != null)
+                      SizedBox(
+                        height: widget.nameBlock,
+                        child: TextField(
+                          controller: _renameController,
+                          focusNode: _renameFocusNode,
+                          onSubmitted: (_) => _commitRename(),
+                          onEditingComplete: _commitRename,
+                          onTapOutside: (_) => _commitRename(),
+                          onChanged: (_) => _renameCommitted = false,
+                          style: nameStyle.copyWith(color: AppColors.fg),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.bgInput,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                              borderSide: BorderSide(color: AppColors.accent),
+                            ),
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.deny(RegExp(r'[/\\]')),
+                          ],
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: widget.nameBlock,
+                        child: Center(
+                          child: Text(
+                            entry.name,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: entry.isGhost
+                                ? nameStyle.copyWith(
+                                    color: AppColors.fgSubtle,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: AppColors.fgSubtle,
+                                  )
+                                : nameStyle,
+                          ),
+                        ),
+                      ),
+                    SizedBox(height: widget.captionGap),
+                    SizedBox(
+                      height: widget.captionBlock,
                       child: Text(
-                        entry.name,
-                        maxLines: 2,
+                        entry.type == FileItemType.folder
+                            ? entry.kind
+                            : '${entry.kind} · ${formatBytes(entry.size)}',
+                        maxLines: 1,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
-                        style: entry.isGhost
-                            ? nameStyle.copyWith(
-                                color: AppColors.fgSubtle,
-                                decoration: TextDecoration.lineThrough,
-                                decorationColor: AppColors.fgSubtle,
-                              )
-                            : nameStyle,
+                        style: captionStyle,
                       ),
                     ),
-                  ),
-                SizedBox(height: widget.captionGap),
-                SizedBox(
-                  height: widget.captionBlock,
-                  child: Text(
-                    entry.type == FileItemType.folder
-                        ? entry.kind
-                        : '${entry.kind} · ${formatBytes(entry.size)}',
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: captionStyle,
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  child: _MarkBadge(size: 18 * scale),
+                ),
+            ],
           ),
         ),
       ),
