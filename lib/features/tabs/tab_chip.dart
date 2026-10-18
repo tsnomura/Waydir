@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
+import '../../core/archive/archive_path.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/overlays/context_menu.dart';
@@ -10,13 +11,13 @@ import '../drives/drive_store.dart';
 import 'tab_state.dart';
 import 'tabs_store.dart';
 
-enum TabLocationKind { local, removable, network, sftp }
+enum TabLocationKind { local, removable, network, sftp, archive }
 
 TabLocationKind classifyTabLocation(String path) {
   if (PlatformPaths.isSftpUri(path)) return TabLocationKind.sftp;
-  if (PlatformPaths.isRemoteUri(path) || PlatformPaths.isNetworkPath(path)) {
-    return TabLocationKind.network;
-  }
+  if (PlatformPaths.isRemoteUri(path)) return TabLocationKind.network;
+  if (ArchivePath.resolve(path) != null) return TabLocationKind.archive;
+  if (PlatformPaths.isNetworkPath(path)) return TabLocationKind.network;
   for (final drive in driveStore.drives.value) {
     final mountPoint = drive.mountPoint;
     if (mountPoint == null) continue;
@@ -38,6 +39,7 @@ IconData _iconForTabLocation(TabLocationKind kind) => switch (kind) {
   TabLocationKind.removable => WaydirIconsRegular.usb,
   TabLocationKind.network => WaydirIconsRegular.treeStructure,
   TabLocationKind.sftp => WaydirIconsRegular.desktopTower,
+  TabLocationKind.archive => WaydirIconsRegular.archive,
 };
 
 final _driveLetterPattern = RegExp(r'^([A-Za-z]):[\\/]');
