@@ -39,7 +39,7 @@ IconData _iconForTabLocation(TabLocationKind kind) => switch (kind) {
   TabLocationKind.removable => WaydirIconsRegular.usb,
   TabLocationKind.network => WaydirIconsRegular.treeStructure,
   TabLocationKind.sftp => WaydirIconsRegular.desktopTower,
-  TabLocationKind.archive => WaydirIconsRegular.archive,
+  TabLocationKind.archive => WaydirIconsRegular.fileArchive,
 };
 
 final _driveLetterPattern = RegExp(r'^([A-Za-z]):[\\/]');
