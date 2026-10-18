@@ -1,9 +1,19 @@
 {
-  "_help": "Windows version of ico-preview: previews .ico files with a private build of netpbm's ico2png, which extracts the largest size in the icon as PNG — not a publicly-downloadable tool, so replace <ICO2PNG_PATH> with wherever your own equivalent lives. On Linux/macOS use ico-preview.linux-macos.json instead (netpng's ico2png, same CLI, publicly buildable). Waydir ignores every key starting with \"_\".",
+  "_help": "Windows version of ico-preview: previews .ico files with netpng's ico2png (github.com/tsnomura/netpng), which extracts the largest size in the icon as PNG. ico2png takes the input as a positional argument and writes the PNG to stdout, and Waydir runs generators without a shell, so ico-preview.ps1 (copy it next to this file) starts ico2png and copies its stdout into %OUTPUT% byte for byte. A PowerShell pipeline or > redirection can't be used for this: Windows PowerShell 5.1 re-encodes a native command's stdout as text, which corrupts binary PNG data. The script expects ico2png at %USERPROFILE%\\.netpng\\bin\\ico2png.exe, where netpng's install.sh puts the real binaries; edit $exe in the script if yours lives elsewhere. On Linux/macOS use ico-preview.linux-macos.json instead. Waydir ignores every key starting with \"_\".",
   "id": "ico-preview",
   "extensions": ["ico"],
-  "cmd": "<ICO2PNG_PATH>\\ico2png.exe",
-  "args": ["--input", "%INPUT%", "--output", "%OUTPUT%"],
+  "cmd": "powershell",
+  "args": [
+    "-NoProfile",
+    "-NonInteractive",
+    "-File",
+    "<GENERATORS_DIR>\\ico-preview.ps1",
+    "-InPath",
+    "%INPUT%",
+    "-OutPath",
+    "%OUTPUT%"
+  ],
+  "_help_args": "Replace <GENERATORS_DIR> with your own generators folder's real path (shown live in Preferences → Quick Look → Preview generators), same as font-preview: there's no placeholder for 'this config's own folder'. Paths are passed as separate -InPath/-OutPath arguments, so spaces in file names are fine.",
   "timeoutSeconds": 8,
   "outputExt": "png"
 }

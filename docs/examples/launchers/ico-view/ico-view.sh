@@ -1,2 +1,2 @@
 #!/bin/sh
-ico2png --input "$1" --output - | pngview --input -
+ico2png -q "$1" | pngview -
