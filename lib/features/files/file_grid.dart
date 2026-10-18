@@ -744,10 +744,8 @@ class _GridTileState extends State<_GridTile> {
     final isCursor = widget.isCursor;
     final bg = widget.isFolderDragOver
         ? AppColors.accent.withValues(alpha: 0.12)
-        : selected && isCursor
-        ? AppColors.bgSelected
         : selected
-        ? AppColors.bgSelectedMuted
+        ? AppColors.accent.withValues(alpha: 0.22)
         : isCursor
         ? AppColors.bgHoverStrong
         : _hovered && !PointerHoverStore.instance.suppressed.value
@@ -757,11 +755,13 @@ class _GridTileState extends State<_GridTile> {
         : Colors.transparent;
     final border = widget.isFolderDragOver
         ? Border.all(color: AppColors.accent.withValues(alpha: 0.4))
-        : selected
-        ? Border.all(color: AppColors.accent.withValues(alpha: 0.7))
-        : isCursor
-        ? Border.all(color: AppColors.accent.withValues(alpha: 0.5))
         : Border.all(color: Colors.transparent);
+    final cursorOutline = isCursor && !widget.isFolderDragOver
+        ? BoxDecoration(
+            border: Border.all(color: AppColors.accent, width: 2),
+            borderRadius: BorderRadius.zero,
+          )
+        : null;
 
     final tile = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -776,132 +776,143 @@ class _GridTileState extends State<_GridTile> {
               : widget.isCut
               ? 0.45
               : (_dragging ? 0.45 : 1),
-          child: Container(
-            padding: EdgeInsets.all(widget.tilePadding),
-            decoration: BoxDecoration(
-              color: bg,
-              border: border,
-              borderRadius: BorderRadius.zero,
-            ),
-            child: Column(
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
+          child: Stack(
+            children: [
+              Container(
+                padding: EdgeInsets.all(widget.tilePadding),
+                decoration: BoxDecoration(
+                  color: bg,
+                  border: border,
+                  borderRadius: BorderRadius.zero,
+                ),
+                foregroundDecoration: cursorOutline,
+                child: Column(
                   children: [
-                    SizedBox(
-                      width: thumbSize,
-                      height: thumbSize,
-                      child: _GridPreview(
-                        entry: entry,
-                        thumbSize: thumbSize,
-                        remoteThumbnails: widget.remoteThumbnails,
-                      ),
-                    ),
-                    if (widget.rowDecoration?.badge case final badge?)
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        child: StatusChip(
-                          glyph: badge,
-                          color: widget.rowDecoration!.tint,
-                          size: 18 * scale,
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        SizedBox(
+                          width: thumbSize,
+                          height: thumbSize,
+                          child: _GridPreview(
+                            entry: entry,
+                            thumbSize: thumbSize,
+                            remoteThumbnails: widget.remoteThumbnails,
+                          ),
                         ),
-                      ),
-                    if (widget.rowDecoration?.badgeColors case final colors?
-                        when colors.isNotEmpty)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (final color in colors)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 2),
-                                child: Container(
-                                  width: 9,
-                                  height: 9,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.bg,
-                                      width: 1,
+                        if (widget.rowDecoration?.badge case final badge?)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            child: StatusChip(
+                              glyph: badge,
+                              color: widget.rowDecoration!.tint,
+                              size: 18 * scale,
+                            ),
+                          ),
+                        if (widget.rowDecoration?.badgeColors case final colors?
+                            when colors.isNotEmpty)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (final color in colors)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 2),
+                                    child: Container(
+                                      width: 9,
+                                      height: 9,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.bg,
+                                          width: 1,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-                SizedBox(height: widget.thumbGap),
-                if (widget.isRenaming &&
-                    _renameController != null &&
-                    _renameFocusNode != null)
-                  SizedBox(
-                    height: widget.nameBlock,
-                    child: TextField(
-                      controller: _renameController,
-                      focusNode: _renameFocusNode,
-                      onSubmitted: (_) => _commitRename(),
-                      onEditingComplete: _commitRename,
-                      onTapOutside: (_) => _commitRename(),
-                      onChanged: (_) => _renameCommitted = false,
-                      style: nameStyle.copyWith(color: AppColors.fg),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.bgInput,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(color: AppColors.accent),
-                        ),
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.deny(RegExp(r'[/\\]')),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
-                  )
-                else
-                  SizedBox(
-                    height: widget.nameBlock,
-                    child: Center(
+                    SizedBox(height: widget.thumbGap),
+                    if (widget.isRenaming &&
+                        _renameController != null &&
+                        _renameFocusNode != null)
+                      SizedBox(
+                        height: widget.nameBlock,
+                        child: TextField(
+                          controller: _renameController,
+                          focusNode: _renameFocusNode,
+                          onSubmitted: (_) => _commitRename(),
+                          onEditingComplete: _commitRename,
+                          onTapOutside: (_) => _commitRename(),
+                          onChanged: (_) => _renameCommitted = false,
+                          style: nameStyle.copyWith(color: AppColors.fg),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.bgInput,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.zero,
+                              borderSide: BorderSide(color: AppColors.accent),
+                            ),
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.deny(RegExp(r'[/\\]')),
+                          ],
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: widget.nameBlock,
+                        child: Center(
+                          child: Text(
+                            entry.name,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: entry.isGhost
+                                ? nameStyle.copyWith(
+                                    color: AppColors.fgSubtle,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: AppColors.fgSubtle,
+                                  )
+                                : nameStyle,
+                          ),
+                        ),
+                      ),
+                    SizedBox(height: widget.captionGap),
+                    SizedBox(
+                      height: widget.captionBlock,
                       child: Text(
-                        entry.name,
-                        maxLines: 2,
+                        entry.type == FileItemType.folder
+                            ? entry.kind
+                            : '${entry.kind} · ${formatBytes(entry.size)}',
+                        maxLines: 1,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
-                        style: entry.isGhost
-                            ? nameStyle.copyWith(
-                                color: AppColors.fgSubtle,
-                                decoration: TextDecoration.lineThrough,
-                                decorationColor: AppColors.fgSubtle,
-                              )
-                            : nameStyle,
+                        style: captionStyle,
                       ),
                     ),
-                  ),
-                SizedBox(height: widget.captionGap),
-                SizedBox(
-                  height: widget.captionBlock,
-                  child: Text(
-                    entry.type == FileItemType.folder
-                        ? entry.kind
-                        : '${entry.kind} · ${formatBytes(entry.size)}',
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: captionStyle,
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  child: _MarkBadge(size: 18 * scale),
+                ),
+            ],
           ),
         ),
       ),
@@ -915,6 +926,29 @@ class _GridTileState extends State<_GridTile> {
       canAddItemToExistingSession: true,
       dragBuilder: _buildDragImage,
       child: DraggableWidget(child: tile),
+    );
+  }
+}
+
+class _MarkBadge extends StatelessWidget {
+  final double size;
+
+  const _MarkBadge({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.accent;
+    final onColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      color: color,
+      child: Icon(WaydirIconsBold.check, size: size * 0.75, color: onColor),
     );
   }
 }
