@@ -1166,6 +1166,24 @@ target — so it wiped your marks. It now only moves the cursor.
 
 Relevant commits: `5ec5722`, `3637e0b`.
 
+## Grid view: marked vs. cursor tiles
+
+In grid view a marked tile and the cursor tile were hard to tell apart:
+both got a slightly different background plus a faint accent border, and
+in most built-in themes `bgSelectedMuted` (marked) and `bgHoverStrong`
+(cursor) are nearly the same color. They now use separate cues, mirroring
+list view (left accent bar = mark, outline = cursor):
+
+- Marked: an accent-tinted background plus a check badge in the tile's
+  top-left corner (the whole tile — thumbnail, name and caption — not the
+  thumbnail). The compare status chip sits on the thumbnail's own corner,
+  so the two don't overlap at the default size.
+- Cursor: a 2px accent outline, drawn as a foreground decoration so it
+  doesn't shift the tile's layout.
+- Both: tint + check + outline.
+
+Relevant commits: `63e4640`, `8b890f1`.
+
 ## Grid thumbnails preserve aspect ratio
 
 Both image thumbnails and generator-produced thumbnails in the file grid
