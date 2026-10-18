@@ -79,6 +79,26 @@ void main() {
       expect(classifyTabLocation(r'C:\Users\me'), TabLocationKind.local);
     });
 
+    test('an archive and a folder inside it are archive', () {
+      final dir = Directory.systemTemp.createTempSync('waydir_tab_archive');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final zip = File('${dir.path}${Platform.pathSeparator}a.zip')
+        ..writeAsBytesSync(const []);
+      expect(classifyTabLocation(zip.path), TabLocationKind.archive);
+      expect(
+        classifyTabLocation('${zip.path}${Platform.pathSeparator}inner'),
+        TabLocationKind.archive,
+      );
+    });
+
+    test('a folder named like an archive is not archive', () {
+      final dir = Directory.systemTemp.createTempSync('waydir_tab_archive');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final folder = Directory('${dir.path}${Platform.pathSeparator}b.zip')
+        ..createSync();
+      expect(classifyTabLocation(folder.path), TabLocationKind.local);
+    });
+
     test('a path matching no known drive falls back to local', () {
       expect(classifyTabLocation('/home/me/docs'), TabLocationKind.local);
     });

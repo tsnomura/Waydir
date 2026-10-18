@@ -189,6 +189,11 @@ class WaydirIconsRegular {
     fontFamily: 'PhosphorRegular',
     matchTextDirection: true,
   );
+  static const IconData fileArchive = IconData(
+    0xeb2a,
+    fontFamily: 'PhosphorRegular',
+    matchTextDirection: true,
+  );
   static const IconData fileAudio = IconData(
     0xea20,
     fontFamily: 'PhosphorRegular',

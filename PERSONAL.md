@@ -768,6 +768,17 @@ stays correct without new native calls per tab.
 
 Relevant commits: `28cf621`.
 
+Tabs browsing an archive (the archive itself or any folder inside it) show
+`fileArchive` (a file with a zipper) instead. It's checked after `sftp://`
+and `smb://` URIs but before network paths and drives, so an archive on a
+network drive shows the archive icon, with the drive-letter badge still
+saying which drive. Detection reuses `ArchivePath.resolve`, which only
+stats path segments whose name looks like an archive, so a folder named
+`foo.zip` stays a plain folder. `fileArchive` was added to
+`WaydirIconsRegular`; the bundled Phosphor font already had the glyph.
+
+Relevant commits: `ad8bdfc`, `281f8c1`.
+
 ## Embedded terminal reliability fixes
 
 - Fixed: a terminal tab stayed open even after its shell process had
