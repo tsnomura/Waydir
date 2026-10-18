@@ -175,17 +175,19 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 - Both Linux/macOS scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (argv
   entries after a `sh` placeholder for `$0`) rather than substituting them
   into the script text, so a single quote in the path can't break the
-  script's own quoting — verified via Git Bash on Windows for the ordinary
-  case (`sh -c '<script>' sh "$input" "$output"` streams the right entry out
-  correctly). One single-quote-in-filename case did NOT come out clean
-  there, but as this Windows build's own `unzip.exe` truncating `$1` at the
-  first space inside the filename *despite* the shell-side quoting already
-  being correct (confirmed: `echo "$1"` inside the script showed the full,
-  right path) — almost certainly an MSYS/Git-Bash argv-to-Windows-command-
-  line re-encoding quirk specific to running a native `.exe` from MSYS `sh`,
-  not something a real Linux `unzip` (reading `argv` directly, no
-  re-encoding step) should reproduce. Flagging rather than silently trusting
-  it, since this was never actually run against a real Linux/macOS `unzip`.
+  script's own quoting — verified via Git Bash's `sh` on Windows, including
+  a path with both a single quote and spaces (`it's here\my deck.pptx`
+  streams the right entry out byte for byte). An earlier test of that case
+  failed with `unzip` seeing the path cut at the first space, and was put
+  down to an MSYS argv re-encoding quirk; it was actually the test harness.
+  Windows PowerShell 5.1 drops embedded `"` from arguments it passes to a
+  native command, so the script string `unzip -p "$1" ...` reached `sh` as
+  `unzip -p $1 ...` and word-split the path (`echo "$1"` looked right only
+  because `echo` rejoins its arguments with spaces). Escaping the quotes
+  as `\"` when calling from PowerShell 5.1 makes the same command succeed.
+  Waydir itself starts generators without a shell and passes each argument
+  intact, so it isn't affected. Still not run against a real Linux/macOS
+  `unzip`.
 - Opening Quick Look on a paged file (mp4/pdf-style) now generates every
   remaining page in the background, one at a time, so paging forward is
   usually instant instead of waiting per page — stops if you close Quick
