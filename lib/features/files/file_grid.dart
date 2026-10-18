@@ -744,10 +744,8 @@ class _GridTileState extends State<_GridTile> {
     final isCursor = widget.isCursor;
     final bg = widget.isFolderDragOver
         ? AppColors.accent.withValues(alpha: 0.12)
-        : selected && isCursor
-        ? AppColors.bgSelected
         : selected
-        ? AppColors.bgSelectedMuted
+        ? AppColors.accent.withValues(alpha: 0.22)
         : isCursor
         ? AppColors.bgHoverStrong
         : _hovered && !PointerHoverStore.instance.suppressed.value
@@ -757,11 +755,13 @@ class _GridTileState extends State<_GridTile> {
         : Colors.transparent;
     final border = widget.isFolderDragOver
         ? Border.all(color: AppColors.accent.withValues(alpha: 0.4))
-        : selected
-        ? Border.all(color: AppColors.accent.withValues(alpha: 0.7))
-        : isCursor
-        ? Border.all(color: AppColors.accent.withValues(alpha: 0.5))
         : Border.all(color: Colors.transparent);
+    final cursorOutline = isCursor && !widget.isFolderDragOver
+        ? BoxDecoration(
+            border: Border.all(color: AppColors.accent, width: 2),
+            borderRadius: BorderRadius.zero,
+          )
+        : null;
 
     final tile = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -783,6 +783,7 @@ class _GridTileState extends State<_GridTile> {
               border: border,
               borderRadius: BorderRadius.zero,
             ),
+            foregroundDecoration: cursorOutline,
             child: Column(
               children: [
                 Stack(
@@ -806,6 +807,12 @@ class _GridTileState extends State<_GridTile> {
                           color: widget.rowDecoration!.tint,
                           size: 18 * scale,
                         ),
+                      ),
+                    if (selected)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: _MarkBadge(size: 18 * scale),
                       ),
                     if (widget.rowDecoration?.badgeColors case final colors?
                         when colors.isNotEmpty)
@@ -915,6 +922,29 @@ class _GridTileState extends State<_GridTile> {
       canAddItemToExistingSession: true,
       dragBuilder: _buildDragImage,
       child: DraggableWidget(child: tile),
+    );
+  }
+}
+
+class _MarkBadge extends StatelessWidget {
+  final double size;
+
+  const _MarkBadge({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.accent;
+    final onColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      color: color,
+      child: Icon(WaydirIconsBold.check, size: size * 0.75, color: onColor),
     );
   }
 }
