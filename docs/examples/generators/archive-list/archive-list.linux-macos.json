@@ -1,0 +1,13 @@
+{
+  "_help": "Linux/macOS version — see archive-list.windows.json for Windows. Lists an archive's contents as text in Quick Look (\"outputExt\": \"txt\"), using libarchive's bsdtar (macOS's own tar is bsdtar; on Linux it's usually the libarchive-tools / bsdtar package). The grid keeps the plain file icon, since text output has no thumbnail. Preview generator config — see docs/generators.md for the full guide. Waydir ignores every key starting with \"_\" when loading.",
+  "id": "archive-list",
+  "extensions": ["zip", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "zst", "cab", "iso", "jar"],
+  "_help_extensions": "Lowercase extensions (no dot). A plain .gz that isn't a tarball has no member list, so it shows no preview.",
+  "cmd": "bsdtar",
+  "_help_cmd": "On macOS \"tar\" is bsdtar too; GNU tar (Linux's usual tar) only reads tar formats, not zip/7z/rar, so use bsdtar there.",
+  "args": ["-tvf", "%INPUT%"],
+  "_help_args": "bsdtar -tvf prints an ls -l style listing to stdout (\"stdout\": true saves it as the output).",
+  "stdout": true,
+  "timeoutSeconds": 15,
+  "outputExt": "txt"
+}

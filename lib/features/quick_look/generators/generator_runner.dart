@@ -105,7 +105,7 @@ class GeneratorRunner {
   /// [GeneratorDef.pagingMode].
   static Future<String?> thumbnail(FileEntry entry) {
     final def = GeneratorRegistry.instance.forExtension(entry.extension);
-    if (def == null) return Future.value(null);
+    if (def == null || def.textOutput) return Future.value(null);
     final custom = def.thumbnailArgs;
     if (custom == null) return _generate(entry, def, 0, def.args, 'preview');
 
@@ -187,7 +187,12 @@ class GeneratorRunner {
     );
 
     try {
-      final result = await _run(def.cmd, substitutedArgs, def.timeout);
+      final result = await _run(
+        def.cmd,
+        substitutedArgs,
+        def.timeout,
+        stdoutPath: def.captureStdout ? tmpPath : null,
+      );
       if (result.timedOut) {
         log.warn(
           'quick-look',
@@ -210,7 +215,8 @@ class GeneratorRunner {
         return null;
       }
       final tmpFile = File(tmpPath);
-      if (!await tmpFile.exists()) {
+      if (!await tmpFile.exists() || await tmpFile.length() == 0) {
+        await _tryDelete(tmpPath);
         _failedKeys.add(failureKey);
 
         return null;
@@ -408,20 +414,29 @@ final _processGate = ConcurrencyGate(Platform.numberOfProcessors.clamp(2, 4));
 /// Spawns [cmd], draining stdout/stderr as they're produced. Not draining
 /// them is not an option: a chatty command (ffmpeg logs per-frame progress
 /// to stderr) fills the pipe buffer and blocks the child process forever
-/// once nothing is reading it.
+/// once nothing is reading it. With [stdoutPath], stdout is written to that
+/// file byte for byte instead of being decoded and returned.
 Future<_ProcessResult> _run(
   String cmd,
   List<String> args,
-  Duration timeout,
-) async {
+  Duration timeout, {
+  String? stdoutPath,
+}) async {
   await _processGate.acquire();
   try {
     final process = await Process.start(cmd, args);
     final stdoutBuf = StringBuffer();
     final stderrTail = StringBuffer();
-    process.stdout
-        .transform(const SystemEncoding().decoder)
-        .listen(stdoutBuf.write);
+    final Future<void> stdoutDone;
+    if (stdoutPath != null) {
+      final sink = File(stdoutPath).openWrite();
+      stdoutDone = process.stdout.pipe(sink);
+    } else {
+      stdoutDone = process.stdout
+          .transform(const SystemEncoding().decoder)
+          .listen(stdoutBuf.write)
+          .asFuture<void>();
+    }
     process.stderr.transform(const SystemEncoding().decoder).listen((chunk) {
       stderrTail.write(chunk);
       if (stderrTail.length <= GeneratorRunner._stderrTailLimit) return;
@@ -440,6 +455,7 @@ Future<_ProcessResult> _run(
         return -1;
       },
     );
+    await stdoutDone.timeout(const Duration(seconds: 5), onTimeout: () {});
 
     return _ProcessResult(
       exitCode,

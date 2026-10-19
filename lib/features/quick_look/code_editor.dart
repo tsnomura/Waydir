@@ -43,6 +43,7 @@ class CodeEditor extends StatefulWidget {
   final Signal<bool> editorActive;
   final CodeEditorController? controller;
   final ScrollController? verticalScrollController;
+  final bool readOnly;
 
   const CodeEditor({
     super.key,
@@ -52,6 +53,7 @@ class CodeEditor extends StatefulWidget {
     required this.editorActive,
     this.controller,
     this.verticalScrollController,
+    this.readOnly = false,
   });
 
   @override
@@ -107,7 +109,7 @@ class _CodeEditorState extends State<CodeEditor> {
   bool get _dirty => !identical(_ctrl.value.codeLines, _savedRevision);
 
   Future<bool> _save() async {
-    if (_saving || !_dirty) return true;
+    if (widget.readOnly || _saving || !_dirty) return true;
     final text = _ctrl.text;
     final revision = _ctrl.value.codeLines;
     setState(() => _saving = true);
@@ -142,7 +144,8 @@ class _CodeEditorState extends State<CodeEditor> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+    if (widget.readOnly ||
+        (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
       return KeyEventResult.ignored;
     }
     final mod =
@@ -345,7 +348,8 @@ class _CodeEditorState extends State<CodeEditor> {
         final relativeLineNumbers = s.quickLookRelativeLineNumbers.value;
         final wrapLines = s.quickLookWrapLines.value;
         final vimEnabled = s.quickLookVimMode.value;
-        final readOnly = vimEnabled && _vim != _VimMode.insert;
+        final readOnly =
+            widget.readOnly || (vimEnabled && _vim != _VimMode.insert);
 
         final lang = editorLanguageForExtension(widget.extension);
         final isDark = AppColors.brightness == Brightness.dark;
@@ -432,7 +436,9 @@ class _CodeEditorState extends State<CodeEditor> {
                   line: _ctrl.selection.extentIndex + 1,
                   lineCount: _ctrl.lineCount,
                   onSave: _save,
-                  modeLabel: vimEnabled ? _vimLabel() : null,
+                  modeLabel: vimEnabled && !widget.readOnly
+                      ? _vimLabel()
+                      : null,
                 ),
               ),
             ],

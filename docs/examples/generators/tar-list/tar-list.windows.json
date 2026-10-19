@@ -1,0 +1,13 @@
+{
+  "_help": "Windows only — on Linux/macOS archive-list.linux-macos.json (bsdtar) already lists tarballs. Lists a tarball's members as text in Quick Look using Git for Windows' GNU tar, which reads through the compression layer (7z would only show the inner .tar of a .tar.gz). Preview generator config — see docs/generators.md for the full guide. Waydir ignores every key starting with \"_\" when loading.",
+  "id": "tar-list",
+  "extensions": ["tar", "tgz", "gz", "bz2", "tbz2", "xz", "txz"],
+  "_help_extensions": "Compression is detected from the file itself, so no -z/-j/-J. A plain .gz that isn't a tarball shows no preview. .zst stays with archive-list (7z): Git for Windows ships no zstd for tar to call.",
+  "cmd": "C:\\Program Files\\Git\\usr\\bin\\tar.exe",
+  "_help_cmd": "Git for Windows' GNU tar — the regular installer puts it here; a scoop install is at %USERPROFILE%\\scoop\\apps\\git\\current\\usr\\bin\\tar.exe (write the path out, Waydir doesn't expand %VAR% in cmd). Not Windows' own C:\\Windows\\System32\\tar.exe: that bsdtar prints names in the console code page, so non-ASCII names come out garbled.",
+  "args": ["--force-local", "--quoting-style=literal", "-tvf", "%INPUT%"],
+  "_help_args": "--force-local stops GNU tar reading the C: in a Windows path as a remote host:path. --quoting-style=literal prints non-ASCII names as-is instead of octal escapes like \\343\\202\\265.",
+  "stdout": true,
+  "timeoutSeconds": 15,
+  "outputExt": "txt"
+}
