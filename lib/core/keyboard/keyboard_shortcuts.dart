@@ -18,6 +18,8 @@ enum ShortcutGroup {
   plugins,
 }
 
+enum TerminalChord { focus, toggle }
+
 class KeyChord {
   final LogicalKeyboardKey key;
   final bool ctrl;
@@ -184,6 +186,29 @@ class AppShortcuts {
   static PhysicalKeyboardKey get terminalTogglePhysicalKey => Platform.isMacOS
       ? PhysicalKeyboardKey.keyJ
       : PhysicalKeyboardKey.backquote;
+
+  static TerminalChord? terminalChord(PhysicalKeyboardKey physicalKey) =>
+      terminalChordFor(
+        physicalKey,
+        ctrl: isControl,
+        shift: HardwareKeyboard.instance.isShiftPressed,
+        alt: HardwareKeyboard.instance.isAltPressed,
+      );
+
+  static TerminalChord? terminalChordFor(
+    PhysicalKeyboardKey physicalKey, {
+    required bool ctrl,
+    required bool shift,
+    required bool alt,
+    bool? macOS,
+  }) {
+    if (physicalKey != terminalTogglePhysicalKey) return null;
+    if (ctrl && !alt) return shift ? TerminalChord.toggle : TerminalChord.focus;
+    if (macOS ?? Platform.isMacOS) return null;
+    if (alt && ctrl != shift) return TerminalChord.focus;
+
+    return null;
+  }
 
   static bool get isShift =>
       HardwareKeyboard.instance.logicalKeysPressed.contains(

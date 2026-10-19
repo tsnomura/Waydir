@@ -521,14 +521,15 @@ class _TerminalPanelState extends State<_TerminalPanel> {
 
       return KeyEventResult.handled;
     }
-    if (event is KeyDownEvent &&
-        event.physicalKey == AppShortcuts.terminalTogglePhysicalKey &&
-        AppShortcuts.isControl &&
-        !HardwareKeyboard.instance.isAltPressed) {
-      if (HardwareKeyboard.instance.isShiftPressed) {
-        widget.onToggleTerminal?.call(widget.slot);
-      } else {
-        widget.onReturnFocusToFiles?.call();
+    final terminalChord = event is KeyDownEvent
+        ? AppShortcuts.terminalChord(event.physicalKey)
+        : null;
+    if (terminalChord != null) {
+      switch (terminalChord) {
+        case TerminalChord.toggle:
+          widget.onToggleTerminal?.call(widget.slot);
+        case TerminalChord.focus:
+          widget.onReturnFocusToFiles?.call();
       }
 
       return KeyEventResult.handled;
