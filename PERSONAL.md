@@ -376,6 +376,16 @@ Relevant commits: `2dde497`.
   closes Quick Look and runs it. The header also has an Open button, and
   the shortcut bar shows `Enter Open with application` /
   `Shift Enter Choose application` next to `Space Close`.
+- **Ctrl+Enter** opens the shown file in a standalone Quick Look window
+  (`waydir --quick-look <file>`, see "Standalone Quick Look window" below)
+  and leaves Quick Look open, so several files can be popped out while
+  browsing; the shortcut bar shows `Ctrl Enter Open in Quick Look window`.
+  The bottom-pane Quick Look does the same from the file list: there
+  Ctrl+Enter / Ctrl+Shift+Enter had nowhere to insert paths (the Quick
+  Look tab holds the terminal slot), so they pop out the cursor's file
+  instead of a "Quick Look tab is active" toast. Elsewhere Ctrl+Enter still
+  inserts paths into the terminal. Local files only (a ghost row pops out
+  its real file); a folder, an archive member or an SFTP file gets a toast.
 - That menu takes keyboard focus: ↑/↓ move (skipping dividers and disabled
   items), Enter/Space choose, →/← open/close a submenu, Esc closes and
   hands focus back to Quick Look; hovering moves the highlight too. This is
