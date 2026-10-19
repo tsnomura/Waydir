@@ -138,13 +138,18 @@ class FileGrid extends StatefulWidget {
 }
 
 class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
-  final _scrollController = ScrollController();
+  late final _scrollController = ScrollController(
+    initialScrollOffset: widget.scrollLink?.offsetFor(scrollMemoryKey) ?? 0,
+  );
 
   @override
   ScrollController get linkedScrollController => _scrollController;
 
   @override
   ScrollLink? get scrollLink => widget.scrollLink;
+
+  @override
+  String get scrollMemoryKey => 'grid|${widget.currentPath}';
 
   @override
   void initState() {
@@ -167,6 +172,9 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
   void didUpdateWidget(covariant FileGrid oldWidget) {
     super.didUpdateWidget(oldWidget);
     updateScrollLink();
+    if (oldWidget.currentPath != widget.currentPath) {
+      switchScrollMemory('grid|${oldWidget.currentPath}');
+    }
     if (oldWidget.cursorIndex != widget.cursorIndex ||
         oldWidget.files != widget.files) {
       _revealSelectedTile();

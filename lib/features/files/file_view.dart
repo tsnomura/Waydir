@@ -412,6 +412,9 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   ScrollLink? get scrollLink => widget.scrollLink;
 
   @override
+  String get scrollMemoryKey => 'list|${widget.currentPath}';
+
+  @override
   void initState() {
     super.initState();
     initScrollLink();
@@ -421,9 +424,14 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   void didUpdateWidget(covariant FileList oldWidget) {
     super.didUpdateWidget(oldWidget);
     updateScrollLink();
+    if (oldWidget.currentPath != widget.currentPath) {
+      switchScrollMemory('list|${oldWidget.currentPath}');
+    }
   }
 
-  final _scrollController = ScrollController();
+  late final _scrollController = ScrollController(
+    initialScrollOffset: widget.scrollLink?.offsetFor(scrollMemoryKey) ?? 0,
+  );
   final _hScrollController = ScrollController();
   double _contentWidth = 0;
   bool _isDragOver = false;
