@@ -13,8 +13,19 @@ class ScrollLink {
   final reported = signal<double>(0);
   final requested = signal<ScrollRequest?>(null);
   int _serial = 0;
+  final _offsets = <String, double>{};
 
   void report(double offset) => reported.value = offset;
+
+  double offsetFor(String key) => _offsets[key] ?? 0;
+
+  void remember(String key, double offset) {
+    if (offset > 0) {
+      _offsets[key] = offset;
+    } else {
+      _offsets.remove(key);
+    }
+  }
 
   void request(double offset) =>
       requested.value = ScrollRequest(offset, ++_serial);
@@ -23,6 +34,7 @@ class ScrollLink {
 mixin ScrollLinkBinding<T extends StatefulWidget> on State<T> {
   ScrollController get linkedScrollController;
   ScrollLink? get scrollLink;
+  String get scrollMemoryKey;
 
   ScrollLink? _bound;
   void Function()? _requestDisposer;
@@ -36,6 +48,22 @@ mixin ScrollLinkBinding<T extends StatefulWidget> on State<T> {
 
   void updateScrollLink() {
     if (!identical(_bound, scrollLink)) _bind(scrollLink);
+  }
+
+  void switchScrollMemory(String fromKey) {
+    final link = _bound;
+    if (link == null || fromKey == scrollMemoryKey) return;
+    if (linkedScrollController.hasClients) {
+      link.remember(fromKey, linkedScrollController.offset);
+    }
+    final target = link.offsetFor(scrollMemoryKey);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !linkedScrollController.hasClients) return;
+      final position = linkedScrollController.position;
+      linkedScrollController.jumpTo(
+        target.clamp(position.minScrollExtent, position.maxScrollExtent),
+      );
+    });
   }
 
   void disposeScrollLink() {
@@ -79,7 +107,9 @@ mixin ScrollLinkBinding<T extends StatefulWidget> on State<T> {
   }
 
   void _reportScroll() {
-    if (_applyingRemote || !linkedScrollController.hasClients) return;
+    if (!linkedScrollController.hasClients) return;
+    _bound?.remember(scrollMemoryKey, linkedScrollController.offset);
+    if (_applyingRemote) return;
     _bound?.report(linkedScrollController.offset);
   }
 }
