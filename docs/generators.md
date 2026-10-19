@@ -40,7 +40,8 @@ Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach ge
 | `comsol-mph` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
 | `ico-preview` | netpng's `ico2png` via a small PowerShell script that saves its stdout (`<GENERATORS_DIR>` placeholder) | netpng's `ico2png` (github.com/tsnomura/netpng, on PATH) via `sh -c` |
 | `font-preview` | GDI+/WPF (see [Multi-File Generators](#multi-file-generators) below) | none — Windows-only API |
-| `archive-list` | 7-Zip's `7z l` (text output, see [Text Output](#text-output)) | libarchive's `bsdtar -tvf` |
+| `archive-list` | 7-Zip's `7z l` (text output, see [Text Output](#text-output)) for zip/7z/rar/zst/cab/iso/jar | libarchive's `bsdtar -tvf`, tarballs included |
+| `tar-list` | Git for Windows' GNU tar for tar/tgz/gz/bz2/xz (7z would only show a `.tar.gz`'s inner `.tar`) | none — `archive-list` covers tarballs |
 
 The Linux/macOS `sh` scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (real argv entries after a `sh` placeholder for `$0`) instead of substituting them into the script text — the same fix `font-preview` applies on the PowerShell side: a path containing a single quote (or any other shell-special character) can't break the script's own quoting, because it's never textually inside it to begin with.
 

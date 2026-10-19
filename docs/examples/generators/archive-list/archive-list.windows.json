@@ -1,8 +1,8 @@
 {
   "_help": "Windows version — see archive-list.linux-macos.json for Linux/macOS. Lists an archive's contents as text in Quick Look (\"outputExt\": \"txt\"), using 7-Zip's command-line 7z.exe. The grid keeps the plain file icon, since text output has no thumbnail. Preview generator config — see docs/generators.md for the full guide. Waydir ignores every key starting with \"_\" when loading.",
   "id": "archive-list",
-  "extensions": ["zip", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "zst", "cab", "iso", "jar"],
-  "_help_extensions": "Lowercase extensions (no dot). A .tar.gz shows as one inner .tar here (7z lists one layer at a time); the Linux/macOS bsdtar version lists the tar's members directly.",
+  "extensions": ["zip", "7z", "rar", "zst", "cab", "iso", "jar"],
+  "_help_extensions": "Lowercase extensions (no dot). Tarballs (tar/tgz/gz/bz2/xz) go to tar-list.windows.json instead, since 7z lists one layer at a time and would show a .tar.gz as just its inner .tar.",
   "cmd": "7z",
   "_help_cmd": "7z on PATH (scoop install 7zip puts it there). The regular 7-Zip installer doesn't add it to PATH — use \"C:\\\\Program Files\\\\7-Zip\\\\7z.exe\" then.",
   "args": ["l", "-sccUTF-8", "-p", "%INPUT%"],

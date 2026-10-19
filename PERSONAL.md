@@ -1563,3 +1563,10 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   archive list starts at 7z's `Date Time Attr ...` column header instead of
   its copyright banner and archive properties. Applied at display time, so
   the cached output and its key are unaffected.
+- Windows tarballs go to a second example, `tar-list`: Git for Windows' GNU
+  tar with `--force-local` (else `C:` reads as a remote host) and
+  `--quoting-style=literal` (else non-ASCII names print as octal escapes),
+  which lists a `.tar.gz`'s members where 7z shows only the inner `.tar`.
+  Windows' own `System32\tar.exe` (bsdtar) was ruled out: it prints names
+  in the console code page, garbling Japanese. `.zst` stays with 7z, since
+  Git ships no `zstd` for tar to call.
