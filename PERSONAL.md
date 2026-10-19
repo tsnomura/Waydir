@@ -1518,7 +1518,16 @@ plus the IME open state) showed `` Ctrl+Alt+` ``, `` Alt+Shift+` `` and
   (focus the terminal from the file list, and back from the terminal).
   `` Ctrl+` `` still works whenever the IME isn't in the way, and
   `` Ctrl+Shift+` `` (show/hide terminal) is unchanged — it already got
-  through.
+  through. In practice that settles into two keys: `` Ctrl+Shift+` ``
+  opens/closes the terminal and moves focus with it, `` Alt+Shift+` ``
+  moves focus between terminal and file list with the terminal left open.
+- Alt+Shift+` (and any other unhandled Alt+key) rang the Windows default
+  beep: the `WM_SYSCHAR` it produces makes `DefWindowProc` look for a menu
+  mnemonic, and a window with no menu bar beeps when there isn't one.
+  `FlutterWindow::MessageHandler` now swallows `WM_SYSCOMMAND`/`SC_KEYMENU`
+  carrying a character, except Space, so Alt+Space still opens the system
+  menu and a lone Alt is untouched. Ctrl+Alt+` never beeped since Ctrl+Alt
+  doesn't go through the `WM_SYS*` path.
 - Both places that hardcoded the chord (the shell-level key handler and the
   terminal's own key handler in `pane_view.dart`) now go through one
   `AppShortcuts.terminalChord`, so the two can't drift apart.
