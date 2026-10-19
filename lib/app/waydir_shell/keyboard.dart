@@ -67,14 +67,15 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
-    if (!_isModalRouteOnTop() &&
-        ctrl &&
-        !alt &&
-        event.physicalKey == AppShortcuts.terminalTogglePhysicalKey) {
-      if (shift) {
-        _toggleTerminal();
-      } else {
-        _focusTerminal();
+    final terminalChord = _isModalRouteOnTop()
+        ? null
+        : AppShortcuts.terminalChord(event.physicalKey);
+    if (terminalChord != null) {
+      switch (terminalChord) {
+        case TerminalChord.toggle:
+          _toggleTerminal();
+        case TerminalChord.focus:
+          _focusTerminal();
       }
 
       return KeyEventResult.handled;

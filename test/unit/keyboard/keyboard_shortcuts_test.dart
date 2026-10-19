@@ -320,4 +320,46 @@ void main() {
       expect(AppShortcuts.isChordUsedByBuiltin(bottom), isTrue);
     });
   });
+
+  group('AppShortcuts.terminalChordFor', () {
+    final key = AppShortcuts.terminalTogglePhysicalKey;
+
+    TerminalChord? chord({
+      bool ctrl = false,
+      bool shift = false,
+      bool alt = false,
+      bool macOS = false,
+      PhysicalKeyboardKey? physicalKey,
+    }) => AppShortcuts.terminalChordFor(
+      physicalKey ?? key,
+      ctrl: ctrl,
+      shift: shift,
+      alt: alt,
+      macOS: macOS,
+    );
+
+    test('Ctrl focuses and Ctrl+Shift toggles', () {
+      expect(chord(ctrl: true), TerminalChord.focus);
+      expect(chord(ctrl: true, shift: true), TerminalChord.toggle);
+    });
+
+    test('Ctrl+Alt and Alt+Shift also focus, for IMEs that take Ctrl', () {
+      expect(chord(ctrl: true, alt: true), TerminalChord.focus);
+      expect(chord(alt: true, shift: true), TerminalChord.focus);
+    });
+
+    test('Alt variants are off on macOS', () {
+      expect(chord(ctrl: true, macOS: true), TerminalChord.focus);
+      expect(chord(ctrl: true, alt: true, macOS: true), isNull);
+      expect(chord(alt: true, shift: true, macOS: true), isNull);
+    });
+
+    test('other modifier sets and other keys are ignored', () {
+      expect(chord(), isNull);
+      expect(chord(shift: true), isNull);
+      expect(chord(alt: true), isNull);
+      expect(chord(ctrl: true, shift: true, alt: true), isNull);
+      expect(chord(ctrl: true, physicalKey: PhysicalKeyboardKey.keyK), isNull);
+    });
+  });
 }
