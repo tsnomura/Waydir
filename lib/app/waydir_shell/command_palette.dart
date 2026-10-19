@@ -120,10 +120,21 @@ mixin _WaydirCommandPaletteMixin
         enabled: selected > 0,
       ),
       _cmd('load_selection', () => unawaited(_loadSelectionFromFile())),
+      _cmd(
+        'dired_mark',
+        () => store.markCursorAndAdvance(),
+        enabled: hasTarget,
+      ),
+      _cmd(
+        'dired_unmark',
+        () => store.unmarkCursorAndAdvance(),
+        enabled: hasTarget,
+      ),
       _cmd('new_tab', _newTabHere),
       _cmd('close_tab', _closeActiveTab, enabled: tabCount > 1),
       _cmd('next_tab', _selectNextTab, enabled: tabCount > 1),
       _cmd('prev_tab', _selectPrevTab, enabled: tabCount > 1),
+      _cmd('move_tab_other_pane', _moveActiveTabToOtherPane),
       _cmd('toggle_dual', _shell.toggleDual),
       _cmd('compare', _shell.compare.toggle, enabled: dual),
       _cmd(
@@ -151,6 +162,41 @@ mixin _WaydirCommandPaletteMixin
       _cmd('file_list_zoom_out', SettingsStore.instance.decreaseFileListScale),
       _cmd('file_list_zoom_reset', SettingsStore.instance.resetFileListScale),
       _cmd('toggle_terminal', _toggleTerminal),
+      _cmd('focus_terminal', _focusTerminal),
+      _cmd(
+        'new_terminal_tab',
+        () => _newTerminalTab(_terminalSlotForActivePane()),
+      ),
+      _cmd(
+        'close_terminal_tab',
+        () {
+          final tab = _shell.activeTerminalForSlot(
+            _terminalSlotForActivePane(),
+          );
+          if (tab != null) _closeTerminalTab(tab.id);
+        },
+        enabled:
+            _shell.activeTerminalForSlot(_terminalSlotForActivePane()) != null,
+      ),
+      _cmd(
+        'insert_relative_paths',
+        () => unawaited(_insertPathsIntoTerminal(absolute: false)),
+        enabled: hasTarget,
+      ),
+      _cmd(
+        'insert_absolute_paths',
+        () => unawaited(_insertPathsIntoTerminal(absolute: true)),
+        enabled: hasTarget,
+      ),
+      _cmd(
+        'terminal_font_increase',
+        SettingsStore.instance.increaseTerminalFontSize,
+      ),
+      _cmd(
+        'terminal_font_decrease',
+        SettingsStore.instance.decreaseTerminalFontSize,
+      ),
+      _cmd('terminal_font_reset', SettingsStore.instance.resetTerminalFontSize),
       _cmd('preferences', _openPreferences),
       _cmd('help', _openHelp),
       ..._goToCommands(recentPaths),
