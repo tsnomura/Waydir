@@ -29,6 +29,11 @@ class GeneratorDef {
   final String outputExt;
   final PagingMode pagingMode;
 
+  /// Writes the command's stdout to `%OUTPUT%` instead of expecting the
+  /// command to write the file itself — for tools that only print their
+  /// result (e.g. `7z l`, or an image converter that streams PNG to stdout).
+  final bool captureStdout;
+
   /// Overrides [args] for the file grid's thumbnail only — Quick Look always
   /// uses [args]. Null (the default) means the grid reuses page 0 of [args]
   /// verbatim, same cache entry and all. Always a single static image: the
@@ -63,12 +68,17 @@ class GeneratorDef {
     required this.timeout,
     required this.outputExt,
     this.pagingMode = PagingMode.none,
+    this.captureStdout = false,
     this.pageCount = 1,
     this.probeCmd,
     this.probeArgs = const [],
     this.probePattern,
     this.thumbnailArgs,
   });
+
+  /// `outputExt: "txt"` makes the generator's output text, shown in Quick
+  /// Look's read-only text view rather than as an image.
+  bool get textOutput => outputExt.toLowerCase() == 'txt';
 
   factory GeneratorDef.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String?;
@@ -139,6 +149,7 @@ class GeneratorDef {
       ),
       outputExt: outputExt,
       pagingMode: pagingMode,
+      captureStdout: json['stdout'] == true,
       pageCount: fixedCount ? pageCount : 1,
       probeCmd: probeCmd,
       probeArgs: probeArgs,

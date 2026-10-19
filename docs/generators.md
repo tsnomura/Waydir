@@ -1,6 +1,6 @@
 # Waydir Preview Generator Guide
 
-Preview generators let Quick Look show a raster preview for file types Waydir has no built-in renderer for, by delegating the conversion to an external command you configure. Waydir never needs to understand the file format itself — it just runs your command and shows whatever image comes out.
+Preview generators let Quick Look show a raster preview for file types Waydir has no built-in renderer for, by delegating the conversion to an external command you configure. Waydir never needs to understand the file format itself — it just runs your command and shows whatever image comes out. A generator can also produce plain text instead, such as an archive's file list; see [Text Output](#text-output).
 
 A configured generator always takes priority over Waydir's built-in previews (images, PDF, Markdown) for the extensions it claims — adding one is a deliberate, explicit choice to handle that extension your own way, so it wins even where a built-in would otherwise apply.
 
@@ -40,6 +40,7 @@ Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach ge
 | `comsol-mph` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
 | `ico-preview` | netpng's `ico2png` via a small PowerShell script that saves its stdout (`<GENERATORS_DIR>` placeholder) | netpng's `ico2png` (github.com/tsnomura/netpng, on PATH) via `sh -c` |
 | `font-preview` | GDI+/WPF (see [Multi-File Generators](#multi-file-generators) below) | none — Windows-only API |
+| `archive-list` | 7-Zip's `7z l` (text output, see [Text Output](#text-output)) | libarchive's `bsdtar -tvf` |
 
 The Linux/macOS `sh` scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (real argv entries after a `sh` placeholder for `$0`) instead of substituting them into the script text — the same fix `font-preview` applies on the PowerShell side: a path containing a single quote (or any other shell-special character) can't break the script's own quoting, because it's never textually inside it to begin with.
 
@@ -70,7 +71,8 @@ before it does anything useful.
 | `cmd` | yes | Executable to run. Must be resolvable on `PATH` or an absolute path. |
 | `args` | yes | Argument list passed directly to the process — no shell involved, so no quoting or injection concerns. |
 | `timeoutSeconds` | no | Default 8, clamped to a maximum of 60. The process is killed if it runs longer. Also applies to `probeCmd`. |
-| `outputExt` | no | Extension of the generated image file. Default `png`. |
+| `outputExt` | no | Extension of the generated image file. Default `png`. `txt` makes the output text instead of an image; see [Text Output](#text-output). |
+| `stdout` | no | `true` saves the command's stdout as the output file, byte for byte, for tools that print their result instead of writing a file. `%OUTPUT%` is then usually left out of `args`. Default `false`. |
 | `paging` | no | `"time"`, `"discrete"` or `"fixed"` — see [Paging](#paging). Omit for a single, fixed preview. |
 | `pageCount` | required for `paging: "time"` and `"fixed"` | Fixed number of pages (> 1): evenly-spaced samples across the file for `"time"`, a plain page count for `"fixed"`. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
 | `probeCmd` / `probeArgs` | required for `paging: "time"` and `"discrete"` | A command that prints a plain number to stdout — a duration in seconds for `"time"`, a page/unit count for `"discrete"`. |
@@ -166,6 +168,28 @@ The grid tile and Quick Look normally show the exact same image (page 0 of `args
 
 Omit it and the grid falls back to page 0 of `args` exactly as before — same cache entry, no extra work.
 
+## Text Output
+
+With `"outputExt": "txt"`, Quick Look shows the generator's output in its text view (read-only, monospace, scrollable, selectable and copyable) instead of as an image. It's decoded as UTF-8. This suits anything a command-line tool can describe in text: an archive's file list, media info from `ffprobe`, metadata from `exiftool`. Paging works the same as for images. The grid keeps the plain file icon, since there's no thumbnail to draw from text.
+
+Most such tools print to stdout rather than writing a file, so pair it with `"stdout": true`:
+
+```json
+{
+  "id": "archive-list",
+  "extensions": ["zip", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "zst", "cab", "iso", "jar"],
+  "cmd": "7z",
+  "args": ["l", "-sccUTF-8", "-p", "%INPUT%"],
+  "stdout": true,
+  "timeoutSeconds": 15,
+  "outputExt": "txt"
+}
+```
+
+(`-sccUTF-8` makes 7-Zip print UTF-8 rather than the console code page. The empty `-p` keeps it from waiting for a password: an archive with encrypted file names fails at once, so Quick Look shows no preview, while one with only encrypted contents still lists. The Linux/macOS example uses `bsdtar -tvf %INPUT%` instead.)
+
+`"stdout": true` works for images too: a converter that streams PNG to stdout can be used directly, no wrapper script needed.
+
 ## Multi-File Generators
 
 `cmd`/`args` don't have to be an inline one-liner — once a generator has real logic, point `args` at a saved script instead (`-File <path>` rather than `-Command "<huge string>"`), and have it `.`-dot-source a shared helper file via `$PSScriptRoot` (PowerShell resolves that to the running script's own folder, so a sibling file works without a hardcoded path). `probeCmd`/`probeArgs` and `thumbnailArgs` can point at their own small scripts the same way, all sharing that one helper.
@@ -183,7 +207,7 @@ Every failure mode falls back to Waydir's default file icon — a broken or miss
 - Non-zero exit code → fallback, warning logged.
 - Timeout → the process is killed, fallback, warning logged.
 - Missing executable → fallback, warning logged.
-- Zero exit but no output file produced → fallback, silent.
+- Zero exit but no output produced (no file, or an empty one — e.g. nothing printed with `"stdout": true`) → fallback, silent.
 
 Check `Help → View Logs` (or the log file directly) for the exact command failure when a generator isn't producing output.
 

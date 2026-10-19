@@ -335,7 +335,12 @@ class QuickLookBody extends StatelessWidget {
       onCompactChanged(false);
 
       return splitPreview(
-        GeneratorPreview(entry: e, page: generatorPage),
+        GeneratorPreview(
+          entry: e,
+          page: generatorPage,
+          editorActive: editorActive,
+          scrollController: scrollController,
+        ),
         e,
         showInfo: showInfo,
       );

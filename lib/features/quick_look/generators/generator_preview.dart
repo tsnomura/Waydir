@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,15 +8,25 @@ import '../../../core/models/file_entry.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../ui/theme/app_theme.dart';
 import '../../../ui/icons/waydir_icons.dart';
+import '../code_editor.dart';
 import '../quick_look_common.dart';
 import 'generator_page_controller.dart';
+import 'generator_registry.dart';
 import 'generator_runner.dart';
 
 class GeneratorPreview extends StatelessWidget {
   final FileEntry entry;
   final GeneratorPageController page;
+  final Signal<bool> editorActive;
+  final ScrollController? scrollController;
 
-  const GeneratorPreview({super.key, required this.entry, required this.page});
+  const GeneratorPreview({
+    super.key,
+    required this.entry,
+    required this.page,
+    required this.editorActive,
+    this.scrollController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +34,13 @@ class GeneratorPreview extends StatelessWidget {
       cacheKey: '${entry.realPath}|${entry.modifiedMs}|${entry.size}',
       loader: () => GeneratorRunner.resolvePageCount(entry),
       loading: const QlCentered.spinner(),
-      builder: (pageCount) =>
-          _GeneratorPreviewBody(entry: entry, page: page, pageCount: pageCount),
+      builder: (pageCount) => _GeneratorPreviewBody(
+        entry: entry,
+        page: page,
+        pageCount: pageCount,
+        editorActive: editorActive,
+        scrollController: scrollController,
+      ),
     );
   }
 }
@@ -33,11 +49,15 @@ class _GeneratorPreviewBody extends StatefulWidget {
   final FileEntry entry;
   final GeneratorPageController page;
   final int pageCount;
+  final Signal<bool> editorActive;
+  final ScrollController? scrollController;
 
   const _GeneratorPreviewBody({
     required this.entry,
     required this.page,
     required this.pageCount,
+    required this.editorActive,
+    this.scrollController,
   });
 
   @override
@@ -105,6 +125,17 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
                       );
                     }
 
+                    final def = GeneratorRegistry.instance.forExtension(
+                      widget.entry.extension,
+                    );
+                    if (def != null && def.textOutput) {
+                      return _GeneratorText(
+                        path: path,
+                        editorActive: widget.editorActive,
+                        scrollController: widget.scrollController,
+                      );
+                    }
+
                     return Image.file(File(path), fit: BoxFit.contain);
                   },
                 ),
@@ -137,6 +168,37 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
           ),
         );
       },
+    );
+  }
+}
+
+class _GeneratorText extends StatelessWidget {
+  final String path;
+  final Signal<bool> editorActive;
+  final ScrollController? scrollController;
+
+  const _GeneratorText({
+    required this.path,
+    required this.editorActive,
+    this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AsyncRetain<String>(
+      cacheKey: path,
+      loader: () async =>
+          utf8.decode(await File(path).readAsBytes(), allowMalformed: true),
+      loading: const QlCentered.spinner(),
+      builder: (text) => CodeEditor(
+        key: ValueKey(path),
+        path: path,
+        extension: 'txt',
+        initial: text,
+        editorActive: editorActive,
+        verticalScrollController: scrollController,
+        readOnly: true,
+      ),
     );
   }
 }
