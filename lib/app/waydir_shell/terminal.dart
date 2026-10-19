@@ -250,14 +250,19 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
 
   Future<void> _insertPathsIntoTerminal({required bool absolute}) async {
     final slot = _terminalSlotForActivePane();
-    final tab = _shell.activeTerminalForSlot(slot);
-    if (!_shell.terminalVisible.value[slot] || tab == null) {
-      showToast(context: context, message: t.toast.terminalNotVisible);
+    if (_shell.terminalVisible.value[slot] &&
+        _shell.quickLookActive.value[slot]) {
+      final cursor = _active.cursorEntry.value;
+      final opened = cursor != null && await QuickLookPopOut.open(cursor);
+      if (!opened && mounted) {
+        showToast(context: context, message: t.quickLook.popOutUnavailable);
+      }
 
       return;
     }
-    if (_shell.quickLookActive.value[slot]) {
-      showToast(context: context, message: t.toast.quickLookTabActive);
+    final tab = _shell.activeTerminalForSlot(slot);
+    if (!_shell.terminalVisible.value[slot] || tab == null) {
+      showToast(context: context, message: t.toast.terminalNotVisible);
 
       return;
     }
@@ -277,6 +282,7 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
           (entry) =>
               absolute ? entry.path : _relativeTerminalPath(entry, tab.cwd),
         )
+        .map((path) => TerminalPaths.convert(path, tab.pathStyle))
         .map(_shellQuote)
         .toList();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../core/terminal/pty_session.dart';
+import '../../core/terminal/terminal_paths.dart';
 
 class TerminalTab {
   final int id;
@@ -8,6 +9,7 @@ class TerminalTab {
   final PtySession session;
   final FocusNode focusNode;
   final String cwd;
+  final TerminalPathStyle pathStyle;
   String label;
 
   TerminalTab({
@@ -16,6 +18,7 @@ class TerminalTab {
     required this.session,
     required this.focusNode,
     required this.cwd,
+    this.pathStyle = TerminalPathStyle.native,
     required this.label,
   });
 

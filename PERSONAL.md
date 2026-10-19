@@ -376,6 +376,16 @@ Relevant commits: `2dde497`.
   closes Quick Look and runs it. The header also has an Open button, and
   the shortcut bar shows `Enter Open with application` /
   `Shift Enter Choose application` next to `Space Close`.
+- **Ctrl+Enter** opens the shown file in a standalone Quick Look window
+  (`waydir --quick-look <file>`, see "Standalone Quick Look window" below)
+  and leaves Quick Look open, so several files can be popped out while
+  browsing; the shortcut bar shows `Ctrl Enter Open in Quick Look window`.
+  The bottom-pane Quick Look does the same from the file list: there
+  Ctrl+Enter / Ctrl+Shift+Enter had nowhere to insert paths (the Quick
+  Look tab holds the terminal slot), so they pop out the cursor's file
+  instead of a "Quick Look tab is active" toast. Elsewhere Ctrl+Enter still
+  inserts paths into the terminal. Local files only (a ghost row pops out
+  its real file); a folder, an archive member or an SFTP file gets a toast.
 - That menu takes keyboard focus: ↑/↓ move (skipping dividers and disabled
   items), Enter/Space choose, →/← open/close a submenu, Esc closes and
   hands focus back to Quick Look; hovering moves the highlight too. This is
@@ -1570,3 +1580,25 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   Windows' own `System32\tar.exe` (bsdtar) was ruled out: it prints names
   in the console code page, garbling Japanese. `.zst` stays with 7z, since
   Git ships no `zstd` for tar to call.
+## Path insert speaks the terminal shell's path dialect
+
+`Ctrl+Enter` / `Ctrl+Shift+Enter` (insert the cursor's or marked items'
+relative / absolute paths into the terminal) used to paste Windows paths
+verbatim, which a Git Bash terminal can't use as-is (`Q:\dir\x` loses its
+backslashes to the shell). Each terminal tab now records the path style of
+the shell it was started with, and the insert rewrites paths for it before
+quoting:
+
+| Shell (by program) | Style | `Q:\dir\x.txt` becomes |
+| --- | --- | --- |
+| `bash`/`sh`/`zsh`/`dash`/`fish`/`ksh` (Git Bash, MSYS2) | MSYS | `/q/dir/x.txt` |
+| same, path contains `cygwin` | Cygwin | `/cygdrive/q/dir/x.txt` |
+| `wsl.exe`, or `bash.exe` in `System32` | WSL | `/mnt/q/dir/x.txt` |
+| anything else (PowerShell, cmd, ssh) | native | unchanged |
+
+- Relative paths only switch `\` to `/`. MSYS turns a UNC path into
+  `//server/share/...`; WSL maps `\\wsl.localhost\<distro>\...` (and
+  `\\wsl$\...`) to the distro's own `/...` and leaves other UNC paths alone.
+- Detection is by the launched program only (`TerminalPaths.styleFor`), so
+  it follows the configured terminal shell, a Windows Terminal profile, or a
+  WSL tab alike. Off Windows nothing changes.
