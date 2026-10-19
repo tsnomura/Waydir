@@ -1536,3 +1536,26 @@ plus the IME open state) showed `` Ctrl+Alt+` ``, `` Alt+Shift+` `` and
 - Still hardcoded, as before: the `focus_terminal`/`toggle_terminal` entries
   in Preferences → Keybindings only drive the labels in menus and help, so
   rebinding them there doesn't change these keys.
+
+## Path insert speaks the terminal shell's path dialect
+
+`Ctrl+Enter` / `Ctrl+Shift+Enter` (insert the cursor's or marked items'
+relative / absolute paths into the terminal) used to paste Windows paths
+verbatim, which a Git Bash terminal can't use as-is (`Q:\dir\x` loses its
+backslashes to the shell). Each terminal tab now records the path style of
+the shell it was started with, and the insert rewrites paths for it before
+quoting:
+
+| Shell (by program) | Style | `Q:\dir\x.txt` becomes |
+| --- | --- | --- |
+| `bash`/`sh`/`zsh`/`dash`/`fish`/`ksh` (Git Bash, MSYS2) | MSYS | `/q/dir/x.txt` |
+| same, path contains `cygwin` | Cygwin | `/cygdrive/q/dir/x.txt` |
+| `wsl.exe`, or `bash.exe` in `System32` | WSL | `/mnt/q/dir/x.txt` |
+| anything else (PowerShell, cmd, ssh) | native | unchanged |
+
+- Relative paths only switch `\` to `/`. MSYS turns a UNC path into
+  `//server/share/...`; WSL maps `\\wsl.localhost\<distro>\...` (and
+  `\\wsl$\...`) to the distro's own `/...` and leaves other UNC paths alone.
+- Detection is by the launched program only (`TerminalPaths.styleFor`), so
+  it follows the configured terminal shell, a Windows Terminal profile, or a
+  WSL tab alike. Off Windows nothing changes.

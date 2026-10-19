@@ -18,6 +18,7 @@ import '../../core/platform/windows_env_vars.dart';
 import '../../core/settings/settings_store.dart';
 import '../../core/terminal/pty_session.dart';
 import '../../core/terminal/terminal_launch.dart';
+import '../../core/terminal/terminal_paths.dart';
 import '../compare/compare_controller.dart';
 import '../navigation/navigation_store.dart';
 import '../operations/operation_store.dart';
@@ -461,6 +462,7 @@ class ShellStore {
       session: session,
       focusNode: FocusNode(debugLabel: 'terminal-tab-$id'),
       cwd: cwd,
+      pathStyle: TerminalPaths.styleFor(launch.shell),
       label: _terminalLabel(cwd),
     );
     batch(() {
