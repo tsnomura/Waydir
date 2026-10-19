@@ -1602,3 +1602,22 @@ quoting:
 - Detection is by the launched program only (`TerminalPaths.styleFor`), so
   it follows the configured terminal shell, a Windows Terminal profile, or a
   WSL tab alike. Off Windows nothing changes.
+
+## Folder scroll position survives going in and back out
+
+Going parent → into a folder or archive → back to the parent put the cursor
+back on the right file, but at the bottom edge of the view whenever the
+parent had been scrolled: the file list is torn down while the next folder
+loads (the loading spinner replaces it), so it came back with a fresh
+`ScrollController` at offset 0, and the cursor reveal only scrolls as far as
+needed to bring the cursor into view.
+
+- Each tab's `ScrollLink` now also remembers a scroll offset per folder
+  (memory only, keyed `list|<path>` / `grid|<path>` since row and tile
+  geometry differ), recorded on every scroll — not on dispose, since the
+  `Scrollable` child has already detached from the controller by the time
+  the list's own `dispose` runs.
+- A recreated list or grid starts at the remembered offset
+  (`initialScrollOffset`); one that stays mounted across a path change
+  swaps offsets via `switchScrollMemory`, jumping before the cursor reveal
+  runs. A folder visited for the first time starts at the top as before.
