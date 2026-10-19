@@ -1536,3 +1536,26 @@ plus the IME open state) showed `` Ctrl+Alt+` ``, `` Alt+Shift+` `` and
 - Still hardcoded, as before: the `focus_terminal`/`toggle_terminal` entries
   in Preferences → Keybindings only drive the labels in menus and help, so
   rebinding them there doesn't change these keys.
+
+## Generator text output (`outputExt: "txt"`, `stdout: true`)
+
+Generators could only produce images, so anything a CLI describes in text —
+an archive's file list being the motivating case — had no way into Quick
+Look short of rendering text into a PNG. Two generator keys fix that:
+
+- `"stdout": true` writes the command's stdout to `%OUTPUT%` byte for byte
+  (`_run` pipes `process.stdout` into the temp file instead of decoding it),
+  for tools that print their result. Works for images as well, so a PNG-to-
+  stdout converter no longer needs a wrapper script.
+- `"outputExt": "txt"` shows the output in Quick Look's existing text view
+  (`CodeEditor`, re_editor-backed so long listings stay fast) with a new
+  `readOnly` flag: no editing, no save, no vim mode. Decoded as UTF-8.
+  Paging, `PageUp`/`PageDown` scrolling and the bottom-pane Quick Look all
+  work as for any generator. Grid tiles keep the file icon
+  (`GeneratorRunner.thumbnail` returns null for text output).
+- An empty output file now counts as "no output" (fallback, cached as
+  failed) for every generator, not just text ones.
+- New example `docs/examples/generators/archive-list/`: `7z l -sccUTF-8 -p`
+  on Windows, `bsdtar -tvf` on Linux/macOS, for zip/7z/rar/tar/gz/...; the
+  empty `-p` makes a name-encrypted archive fail fast instead of 7z waiting
+  for a password on stdin. Installed locally.
