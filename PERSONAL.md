@@ -1503,3 +1503,27 @@ passed as a plain CLI argument now, so that stopped mattering.
   before the edit keeps getting reused until **Preferences → Quick Look →
   Preview generators → Reload** (or deleting the generator cache folder's
   files directly) clears it.
+
+## Terminal focus chord that survives Google Japanese Input
+
+Google Japanese Input on a US keyboard treats `` Ctrl+` `` as its
+Hankaku/Zenkaku key: in both direct and hiragana mode the key arrives as
+`VK_PROCESSKEY` and flips the input mode, so Waydir's "focus terminal / back
+to the file list" chord never fires. It isn't in the IME's keymap, so it
+can't be unbound there. A key probe window (WinForms, logging each `KeyDown`
+plus the IME open state) showed `` Ctrl+Alt+` ``, `` Alt+Shift+` `` and
+`` Ctrl+Shift+` `` all pass through untouched in both modes.
+
+- `` Ctrl+Alt+` `` and `` Alt+Shift+` `` now do the same as `` Ctrl+` ``
+  (focus the terminal from the file list, and back from the terminal).
+  `` Ctrl+` `` still works whenever the IME isn't in the way, and
+  `` Ctrl+Shift+` `` (show/hide terminal) is unchanged — it already got
+  through.
+- Both places that hardcoded the chord (the shell-level key handler and the
+  terminal's own key handler in `pane_view.dart`) now go through one
+  `AppShortcuts.terminalChord`, so the two can't drift apart.
+- Not on macOS: there the chord is `Cmd+J`, and `Alt+Shift+J` types a
+  character a terminal user may want.
+- Still hardcoded, as before: the `focus_terminal`/`toggle_terminal` entries
+  in Preferences → Keybindings only drive the labels in menus and help, so
+  rebinding them there doesn't change these keys.
