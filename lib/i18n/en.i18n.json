@@ -895,6 +895,8 @@
     "hintClose": "Close",
     "hintOpen": "Open with application",
     "hintOpenWith": "Choose application",
+    "hintPopOut": "Open in Quick Look window",
+    "popOutUnavailable": "Only local files can open in a Quick Look window",
     "viewSource": "View source",
     "viewRendered": "View rendered",
     "saveBeforePreview": "Save changes to preview"
@@ -915,7 +917,6 @@
     "terminalUnavailable": "Terminal is unavailable: native core not loaded",
     "restartRequired": "Restart Waydir for this change to take effect",
     "terminalNotVisible": "Terminal is not open",
-    "quickLookTabActive": "Quick Look tab is active — no terminal to write to",
     "selectionFileError": "Selection file error: $message",
     "taskErrors(one)": "$label - 1 error",
     "taskErrors(other)": "$label - $count errors",

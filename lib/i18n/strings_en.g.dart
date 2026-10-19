@@ -1406,6 +1406,12 @@ class Translations$quickLook$en {
 	/// en: 'Choose application'
 	String get hintOpenWith => 'Choose application';
 
+	/// en: 'Open in Quick Look window'
+	String get hintPopOut => 'Open in Quick Look window';
+
+	/// en: 'Only local files can open in a Quick Look window'
+	String get popOutUnavailable => 'Only local files can open in a Quick Look window';
+
 	/// en: 'View source'
 	String get viewSource => 'View source';
 
@@ -1453,9 +1459,6 @@ class Translations$toast$en {
 
 	/// en: 'Terminal is not open'
 	String get terminalNotVisible => 'Terminal is not open';
-
-	/// en: 'Quick Look tab is active — no terminal to write to'
-	String get quickLookTabActive => 'Quick Look tab is active — no terminal to write to';
 
 	/// en: 'Selection file error: $message'
 	String selectionFileError({required Object message}) => 'Selection file error: ${message}';
@@ -5178,6 +5181,8 @@ extension on Translations {
 			'quickLook.hintClose' => 'Close',
 			'quickLook.hintOpen' => 'Open with application',
 			'quickLook.hintOpenWith' => 'Choose application',
+			'quickLook.hintPopOut' => 'Open in Quick Look window',
+			'quickLook.popOutUnavailable' => 'Only local files can open in a Quick Look window',
 			'quickLook.viewSource' => 'View source',
 			'quickLook.viewRendered' => 'View rendered',
 			'quickLook.saveBeforePreview' => 'Save changes to preview',
@@ -5191,7 +5196,6 @@ extension on Translations {
 			'toast.terminalUnavailable' => 'Terminal is unavailable: native core not loaded',
 			'toast.restartRequired' => 'Restart Waydir for this change to take effect',
 			'toast.terminalNotVisible' => 'Terminal is not open',
-			'toast.quickLookTabActive' => 'Quick Look tab is active — no terminal to write to',
 			'toast.selectionFileError' => ({required Object message}) => 'Selection file error: ${message}',
 			'toast.taskErrors' => ({required Object label, required Object count}) => '${label} - ${count} errors',
 			'toast.renameAlreadyExists' => ({required Object name}) => 'An item named \'${name}\' already exists',
@@ -5462,9 +5466,9 @@ extension on Translations {
 			'errors.targetExists' => 'Target exists',
 			'errors.sftpNotSupported' => 'SFTP not supported',
 			'errors.sftpConnectFailed' => 'SFTP connect failed',
-			'errors.sftpError' => ({required Object error}) => 'SFTP: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'errors.sftpError' => ({required Object error}) => 'SFTP: ${error}',
 			'errors.sftpNoActiveSession' => 'No active SFTP session',
 			'errors.sftpNoActiveSessionFor' => ({required Object path}) => 'No active SFTP session for ${path}',
 			'errors.sftpListingFailed' => 'SFTP listing failed',
