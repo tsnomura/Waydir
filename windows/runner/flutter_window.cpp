@@ -70,6 +70,11 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_DPICHANGED:
       waydir::SystemScale::Instance().OnDpiChanged();
       break;
+    case WM_SYSCOMMAND:
+      if ((wparam & 0xFFF0) == SC_KEYMENU && lparam != 0 && lparam != ' ') {
+        return 0;
+      }
+      break;
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
