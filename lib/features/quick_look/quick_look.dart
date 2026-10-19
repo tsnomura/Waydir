@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
@@ -9,6 +12,7 @@ import '../../core/settings/settings_store.dart';
 import '../../features/navigation/navigation_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/dialogs/dialog.dart';
+import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'code_editor.dart';
@@ -17,6 +21,7 @@ import 'generators/generator_page_controller.dart';
 import 'info_panel.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
+import 'quick_look_pop_out.dart';
 
 typedef QuickLookDiffResolver =
     (FileEntry, FileEntry)? Function(FileEntry? entry);
@@ -370,6 +375,18 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     widget.store.onOpen(entry);
   }
 
+  void _popOutShown() {
+    final entry = _shownEntry;
+    if (entry == null) return;
+    unawaited(
+      QuickLookPopOut.open(entry).then((opened) {
+        if (!opened && mounted) {
+          showToast(context: context, message: t.quickLook.popOutUnavailable);
+        }
+      }),
+    );
+  }
+
   void _openShownWithMenu() {
     final entry = _shownEntry;
     final menu = widget.onOpenMenu;
@@ -418,7 +435,9 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     if (!isRepeat &&
         (key == LogicalKeyboardKey.enter ||
             key == LogicalKeyboardKey.numpadEnter)) {
-      if (HardwareKeyboard.instance.isShiftPressed) {
+      if (AppShortcuts.isControl) {
+        _popOutShown();
+      } else if (HardwareKeyboard.instance.isShiftPressed) {
         _openShownWithMenu();
       } else {
         _openShown();
@@ -787,6 +806,8 @@ class _ShortcutBar extends StatelessWidget {
 
   const _ShortcutBar({required this.editorActive});
 
+  String get _ctrlCap => Platform.isMacOS ? '⌘' : 'Ctrl';
+
   List<String> _capsOf(String id) =>
       AppShortcuts.getById(id).displayKeys.split('+');
 
@@ -831,6 +852,10 @@ class _ShortcutBar extends StatelessWidget {
                 _ShortcutHint(
                   caps: const ['Shift', 'Enter'],
                   label: t.quickLook.hintOpenWith,
+                ),
+                _ShortcutHint(
+                  caps: [_ctrlCap, 'Enter'],
+                  label: t.quickLook.hintPopOut,
                 ),
               ];
 

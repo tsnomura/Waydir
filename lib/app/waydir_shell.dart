@@ -76,6 +76,7 @@ import '../ui/overlays/notification_overlay.dart';
 import '../ui/widgets/app_text_field.dart';
 import '../features/navigation/select_pattern_dialog.dart';
 import '../features/quick_look/quick_look.dart';
+import '../features/quick_look/quick_look_pop_out.dart';
 import '../ui/overlays/notification_store.dart';
 import '../ui/overlays/toast.dart';
 import '../ui/theme/app_theme.dart';
