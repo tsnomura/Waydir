@@ -10,6 +10,7 @@ import '../../../ui/theme/app_theme.dart';
 import '../../../ui/icons/waydir_icons.dart';
 import '../code_editor.dart';
 import '../quick_look_common.dart';
+import 'generator_def.dart';
 import 'generator_page_controller.dart';
 import 'generator_registry.dart';
 import 'generator_runner.dart';
@@ -131,6 +132,7 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
                     if (def != null && def.textOutput) {
                       return _GeneratorText(
                         path: path,
+                        def: def,
                         editorActive: widget.editorActive,
                         scrollController: widget.scrollController,
                       );
@@ -174,11 +176,13 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
 
 class _GeneratorText extends StatelessWidget {
   final String path;
+  final GeneratorDef def;
   final Signal<bool> editorActive;
   final ScrollController? scrollController;
 
   const _GeneratorText({
     required this.path,
+    required this.def,
     required this.editorActive,
     this.scrollController,
   });
@@ -186,9 +190,10 @@ class _GeneratorText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AsyncRetain<String>(
-      cacheKey: path,
-      loader: () async =>
-          utf8.decode(await File(path).readAsBytes(), allowMalformed: true),
+      cacheKey: '$path|${def.textFrom}',
+      loader: () async => def.trimText(
+        utf8.decode(await File(path).readAsBytes(), allowMalformed: true),
+      ),
       loading: const QlCentered.spinner(),
       builder: (text) => CodeEditor(
         key: ValueKey(path),

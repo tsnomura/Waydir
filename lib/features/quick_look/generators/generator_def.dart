@@ -34,6 +34,10 @@ class GeneratorDef {
   /// result (e.g. `7z l`, or an image converter that streams PNG to stdout).
   final bool captureStdout;
 
+  /// For text output: a regex for the first line to show. Everything above
+  /// it (e.g. a tool's banner) is dropped; no match shows the whole text.
+  final String? textFrom;
+
   /// Overrides [args] for the file grid's thumbnail only — Quick Look always
   /// uses [args]. Null (the default) means the grid reuses page 0 of [args]
   /// verbatim, same cache entry and all. Always a single static image: the
@@ -69,6 +73,7 @@ class GeneratorDef {
     required this.outputExt,
     this.pagingMode = PagingMode.none,
     this.captureStdout = false,
+    this.textFrom,
     this.pageCount = 1,
     this.probeCmd,
     this.probeArgs = const [],
@@ -79,6 +84,29 @@ class GeneratorDef {
   /// `outputExt: "txt"` makes the generator's output text, shown in Quick
   /// Look's read-only text view rather than as an image.
   bool get textOutput => outputExt.toLowerCase() == 'txt';
+
+  String trimText(String text) {
+    final pattern = textFrom;
+    if (pattern == null || pattern.isEmpty) return text;
+    final RegExp re;
+    try {
+      re = RegExp(pattern);
+    } on FormatException {
+      return text;
+    }
+    var start = 0;
+    while (start < text.length) {
+      final newline = text.indexOf('\n', start);
+      final end = newline < 0 ? text.length : newline;
+      var line = text.substring(start, end);
+      if (line.endsWith('\r')) line = line.substring(0, line.length - 1);
+      if (re.hasMatch(line)) return text.substring(start);
+      if (newline < 0) break;
+      start = newline + 1;
+    }
+
+    return text;
+  }
 
   factory GeneratorDef.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String?;
@@ -150,6 +178,7 @@ class GeneratorDef {
       outputExt: outputExt,
       pagingMode: pagingMode,
       captureStdout: json['stdout'] == true,
+      textFrom: json['textFrom'] as String?,
       pageCount: fixedCount ? pageCount : 1,
       probeCmd: probeCmd,
       probeArgs: probeArgs,

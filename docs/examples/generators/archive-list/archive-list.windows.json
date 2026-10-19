@@ -8,6 +8,8 @@
   "args": ["l", "-sccUTF-8", "-p", "%INPUT%"],
   "_help_args": "7z l prints the listing to stdout (\"stdout\": true saves it as the output). -sccUTF-8 makes it print UTF-8 instead of the console code page, so non-ASCII names survive. -p with an empty password stops 7z from waiting for one: an archive with encrypted file names then fails fast and Quick Look shows no preview, while one with only encrypted contents still lists normally.",
   "stdout": true,
+  "textFrom": "^\\s*Date\\s+Time\\s+Attr",
+  "_help_textFrom": "Starts the shown text at 7z's column header line, dropping its copyright banner and archive properties above it. The totals line at the bottom stays.",
   "timeoutSeconds": 15,
   "outputExt": "txt"
 }

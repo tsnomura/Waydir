@@ -72,6 +72,7 @@ before it does anything useful.
 | `args` | yes | Argument list passed directly to the process — no shell involved, so no quoting or injection concerns. |
 | `timeoutSeconds` | no | Default 8, clamped to a maximum of 60. The process is killed if it runs longer. Also applies to `probeCmd`. |
 | `outputExt` | no | Extension of the generated image file. Default `png`. `txt` makes the output text instead of an image; see [Text Output](#text-output). |
+| `textFrom` | no | Text output only: a regex for the first line to show. Lines above the first matching line (a tool's banner, say) are dropped; no match shows everything. |
 | `stdout` | no | `true` saves the command's stdout as the output file, byte for byte, for tools that print their result instead of writing a file. `%OUTPUT%` is then usually left out of `args`. Default `false`. |
 | `paging` | no | `"time"`, `"discrete"` or `"fixed"` — see [Paging](#paging). Omit for a single, fixed preview. |
 | `pageCount` | required for `paging: "time"` and `"fixed"` | Fixed number of pages (> 1): evenly-spaced samples across the file for `"time"`, a plain page count for `"fixed"`. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
@@ -181,12 +182,13 @@ Most such tools print to stdout rather than writing a file, so pair it with `"st
   "cmd": "7z",
   "args": ["l", "-sccUTF-8", "-p", "%INPUT%"],
   "stdout": true,
+  "textFrom": "^\\s*Date\\s+Time\\s+Attr",
   "timeoutSeconds": 15,
   "outputExt": "txt"
 }
 ```
 
-(`-sccUTF-8` makes 7-Zip print UTF-8 rather than the console code page. The empty `-p` keeps it from waiting for a password: an archive with encrypted file names fails at once, so Quick Look shows no preview, while one with only encrypted contents still lists. The Linux/macOS example uses `bsdtar -tvf %INPUT%` instead.)
+(`textFrom` starts the shown text at 7z's column header, dropping the copyright banner and archive properties printed above it; the cached output itself is untouched. `-sccUTF-8` makes 7-Zip print UTF-8 rather than the console code page. The empty `-p` keeps it from waiting for a password: an archive with encrypted file names fails at once, so Quick Look shows no preview, while one with only encrypted contents still lists. The Linux/macOS example uses `bsdtar -tvf %INPUT%` instead.)
 
 `"stdout": true` works for images too: a converter that streams PNG to stdout can be used directly, no wrapper script needed.
 

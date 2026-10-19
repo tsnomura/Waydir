@@ -1559,3 +1559,7 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   on Windows, `bsdtar -tvf` on Linux/macOS, for zip/7z/rar/tar/gz/...; the
   empty `-p` makes a name-encrypted archive fail fast instead of 7z waiting
   for a password on stdin. Installed locally.
+- `"textFrom"`: a regex for the first line of text output to show, so the
+  archive list starts at 7z's `Date Time Attr ...` column header instead of
+  its copyright banner and archive properties. Applied at display time, so
+  the cached output and its key are unaffected.
