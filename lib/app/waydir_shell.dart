@@ -28,6 +28,7 @@ import '../core/models/file_operation.dart';
 import '../core/settings/settings_store.dart';
 import '../core/terminal/shell_detector.dart';
 import '../core/terminal/terminal_launch.dart';
+import '../core/terminal/terminal_paths.dart';
 import '../features/containers/container_store.dart';
 import '../features/containers/wsl_path.dart';
 import '../features/checksum/checksum_dialog.dart';

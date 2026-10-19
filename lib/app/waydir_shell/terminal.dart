@@ -277,6 +277,7 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
           (entry) =>
               absolute ? entry.path : _relativeTerminalPath(entry, tab.cwd),
         )
+        .map((path) => TerminalPaths.convert(path, tab.pathStyle))
         .map(_shellQuote)
         .toList();
 
