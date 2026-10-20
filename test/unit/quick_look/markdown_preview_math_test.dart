@@ -192,6 +192,61 @@ After.
     expect(find.byType(Math), findsOneWidget);
   });
 
+  group('texForFlutterMath', () {
+    test('separates an operator name from a following fence', () {
+      expect(
+        texForFlutterMath(r'\operatorname{diag}\left(d\right)'),
+        r'\operatorname{diag}{}\left(d\right)',
+      );
+      expect(
+        texForFlutterMath(r'\operatorname*{argmax}_x \bigl(f\bigr)'),
+        r'\operatorname*{argmax}_x{} \bigl(f\bigr)',
+      );
+    });
+
+    test('leaves everything else alone', () {
+      for (final tex in [
+        r'\operatorname{tr}(A)',
+        r'\operatorname{tr} A',
+        r'\sin\left(x\right)',
+        r'\operatorname{diag}\leftarrow x',
+        r'\left(\operatorname{diag}\right)',
+      ]) {
+        expect(texForFlutterMath(tex), tex);
+      }
+    });
+  });
+
+  testWidgets(
+    'renders \\operatorname followed by \\left( without falling back',
+    (tester) async {
+      final dir = Directory.systemTemp.createTempSync('md_preview_math_test');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final md = File('${dir.path}/doc.md')
+        ..writeAsStringSync(r'''
+とすると、\(A\) は
+
+\[
+A
+=vv^{\mathsf T}
++\operatorname{diag}\left(
+d_1(1-t_1^2),
+d_2(1-t_2^2),
+d_3(1-t_3^2)
+\right)
+\]
+
+と分解できる。
+''');
+
+      await _pumpPreview(tester, md.path);
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(Math), findsNWidgets(2));
+      expect(find.textContaining(r'\operatorname'), findsNothing);
+    },
+  );
+
   test('inline math regex requires tight, dollar-free delimiters', () {
     final pattern = MathInlineSyntax().pattern;
     bool matches(String s) => pattern.hasMatch(s);

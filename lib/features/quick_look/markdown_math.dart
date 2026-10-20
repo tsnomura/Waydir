@@ -91,6 +91,20 @@ class MathBlockSyntax extends md.BlockSyntax {
   }
 }
 
+/// `flutter_math_fork` parses `\operatorname{name}` as a function that takes
+/// the next group as its argument, and fails when that group is a sizing or
+/// fence command (`\operatorname{diag}\left(` -> "Got function '\left' with no
+/// arguments"). KaTeX and LaTeX accept it, so an empty group is inserted after
+/// the operator (and its scripts) in exactly that case.
+String texForFlutterMath(String tex) => tex.replaceAllMapped(
+  RegExp(
+    r'(\\operatorname\*?\s*\{[^{}]*\}'
+    r'(?:\s*[_^]\s*(?:\{[^{}]*\}|\\[A-Za-z]+|[^\s\\{}]))*)'
+    r'(?=\s*\\(?:left|middle|[bB]igg?[lrm]?)(?![A-Za-z]))',
+  ),
+  (m) => '${m[1]}{}',
+);
+
 class MathElementBuilder extends MarkdownElementBuilder {
   final TextStyle textStyle;
   final MathStyle mathStyle;
@@ -102,7 +116,7 @@ class MathElementBuilder extends MarkdownElementBuilder {
     final tex = element.textContent;
 
     return Math.tex(
-      tex,
+      texForFlutterMath(tex),
       textStyle: textStyle,
       mathStyle: mathStyle,
       onErrorFallback: (error) => Text(
