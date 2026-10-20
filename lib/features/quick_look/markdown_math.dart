@@ -18,6 +18,20 @@ class MathInlineSyntax extends md.InlineSyntax {
   }
 }
 
+/// `\(...\)` inline math. Registered ahead of the built-in escape handling,
+/// so `\(` here opens math instead of producing a literal parenthesis; the
+/// content may wrap across a soft line break.
+class MathParenInlineSyntax extends md.InlineSyntax {
+  MathParenInlineSyntax() : super(r'\\\(([\s\S]+?)\\\)');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('math_inline', match[1]!.trim()));
+
+    return true;
+  }
+}
+
 /// Display math, either `$$...$$` or `\[...\]`: on one line (`$$ x^2 $$`) or
 /// spanning lines, where the opening line may carry content after the
 /// delimiter and the closing line content before it. A block is only taken

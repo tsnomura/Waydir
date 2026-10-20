@@ -450,7 +450,7 @@ class _MarkdownBody extends StatelessWidget {
         onTapLink: (_, href, _) => _openLink(href),
         imageBuilder: _buildImage,
         styleSheet: styleSheet,
-        inlineSyntaxes: [MathInlineSyntax()],
+        inlineSyntaxes: [MathInlineSyntax(), MathParenInlineSyntax()],
         blockSyntaxes: const [
           MathBlockSyntax.dollars(),
           MathBlockSyntax.brackets(),

@@ -145,6 +145,53 @@ After.
     });
   });
 
+  group('paren inline math', () {
+    List<String> inline(String source) {
+      final doc = md.Document(
+        inlineSyntaxes: [MathInlineSyntax(), MathParenInlineSyntax()],
+      );
+      final found = <String>[];
+      void walk(md.Node node) {
+        if (node is md.Element) {
+          if (node.tag == 'math_inline') found.add(node.textContent);
+          node.children?.forEach(walk);
+        }
+      }
+
+      doc.parse(source).forEach(walk);
+
+      return found;
+    }
+
+    test('renders \\( \\) inside a sentence', () {
+      expect(inline(r'Area is \(\pi r^2\), roughly.'), [r'\pi r^2']);
+    });
+
+    test('allows a soft line break inside', () {
+      expect(inline('Sum \\(a +\nb\\) here.'), ['a +\nb']);
+    });
+
+    test('a lone escaped parenthesis stays text', () {
+      expect(inline(r'Call f\(x) with x.'), isEmpty);
+    });
+
+    test('mixes with dollar math', () {
+      expect(inline(r'Both $x$ and \(y\).'), ['x', 'y']);
+    });
+  });
+
+  testWidgets('renders \\( \\) as inline LaTeX math', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('md_preview_math_test');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final md = File('${dir.path}/doc.md')
+      ..writeAsStringSync(r'The area is \(\pi r^2\) for a circle.');
+
+    await _pumpPreview(tester, md.path);
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(Math), findsOneWidget);
+  });
+
   test('inline math regex requires tight, dollar-free delimiters', () {
     final pattern = MathInlineSyntax().pattern;
     bool matches(String s) => pattern.hasMatch(s);
