@@ -4101,12 +4101,12 @@ class BookmarksCompanion extends UpdateCompanion<Bookmark> {
   }
 }
 
-class $FolderPrefsTable extends FolderPrefs
-    with TableInfo<$FolderPrefsTable, FolderPref> {
+class $FolderSortPrefsTable extends FolderSortPrefs
+    with TableInfo<$FolderSortPrefsTable, FolderSortPref> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $FolderPrefsTable(this.attachedDatabase, [this._alias]);
+  $FolderSortPrefsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _pathMeta = const VerificationMeta('path');
   @override
   late final GeneratedColumn<String> path = GeneratedColumn<String>(
@@ -4125,8 +4125,7 @@ class $FolderPrefsTable extends FolderPrefs
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('name'),
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _sortAscendingMeta = const VerificationMeta(
     'sortAscending',
@@ -4137,48 +4136,10 @@ class $FolderPrefsTable extends FolderPrefs
     aliasedName,
     false,
     type: DriftSqlType.bool,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'CHECK ("sort_ascending" IN (0, 1))',
     ),
-    defaultValue: const Constant(true),
-  );
-  static const VerificationMeta _foldersFirstMeta = const VerificationMeta(
-    'foldersFirst',
-  );
-  @override
-  late final GeneratedColumn<bool> foldersFirst = GeneratedColumn<bool>(
-    'folders_first',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("folders_first" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
-  );
-  static const VerificationMeta _cursorPathMeta = const VerificationMeta(
-    'cursorPath',
-  );
-  @override
-  late final GeneratedColumn<String> cursorPath = GeneratedColumn<String>(
-    'cursor_path',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _selectedPathsMeta = const VerificationMeta(
-    'selectedPaths',
-  );
-  @override
-  late final GeneratedColumn<String> selectedPaths = GeneratedColumn<String>(
-    'selected_paths',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
   );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
@@ -4197,19 +4158,16 @@ class $FolderPrefsTable extends FolderPrefs
     path,
     sortKey,
     sortAscending,
-    foldersFirst,
-    cursorPath,
-    selectedPaths,
     updatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'folder_prefs';
+  static const String $name = 'folder_sort_prefs';
   @override
   VerificationContext validateIntegrity(
-    Insertable<FolderPref> instance, {
+    Insertable<FolderSortPref> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -4227,6 +4185,8 @@ class $FolderPrefsTable extends FolderPrefs
         _sortKeyMeta,
         sortKey.isAcceptableOrUnknown(data['sort_key']!, _sortKeyMeta),
       );
+    } else if (isInserting) {
+      context.missing(_sortKeyMeta);
     }
     if (data.containsKey('sort_ascending')) {
       context.handle(
@@ -4236,30 +4196,8 @@ class $FolderPrefsTable extends FolderPrefs
           _sortAscendingMeta,
         ),
       );
-    }
-    if (data.containsKey('folders_first')) {
-      context.handle(
-        _foldersFirstMeta,
-        foldersFirst.isAcceptableOrUnknown(
-          data['folders_first']!,
-          _foldersFirstMeta,
-        ),
-      );
-    }
-    if (data.containsKey('cursor_path')) {
-      context.handle(
-        _cursorPathMeta,
-        cursorPath.isAcceptableOrUnknown(data['cursor_path']!, _cursorPathMeta),
-      );
-    }
-    if (data.containsKey('selected_paths')) {
-      context.handle(
-        _selectedPathsMeta,
-        selectedPaths.isAcceptableOrUnknown(
-          data['selected_paths']!,
-          _selectedPathsMeta,
-        ),
-      );
+    } else if (isInserting) {
+      context.missing(_sortAscendingMeta);
     }
     if (data.containsKey('updated_at')) {
       context.handle(
@@ -4273,9 +4211,9 @@ class $FolderPrefsTable extends FolderPrefs
   @override
   Set<GeneratedColumn> get $primaryKey => {path};
   @override
-  FolderPref map(Map<String, dynamic> data, {String? tablePrefix}) {
+  FolderSortPref map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return FolderPref(
+    return FolderSortPref(
       path: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}path'],
@@ -4288,18 +4226,6 @@ class $FolderPrefsTable extends FolderPrefs
         DriftSqlType.bool,
         data['${effectivePrefix}sort_ascending'],
       )!,
-      foldersFirst: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}folders_first'],
-      )!,
-      cursorPath: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}cursor_path'],
-      ),
-      selectedPaths: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}selected_paths'],
-      ),
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}updated_at'],
@@ -4308,26 +4234,20 @@ class $FolderPrefsTable extends FolderPrefs
   }
 
   @override
-  $FolderPrefsTable createAlias(String alias) {
-    return $FolderPrefsTable(attachedDatabase, alias);
+  $FolderSortPrefsTable createAlias(String alias) {
+    return $FolderSortPrefsTable(attachedDatabase, alias);
   }
 }
 
-class FolderPref extends DataClass implements Insertable<FolderPref> {
+class FolderSortPref extends DataClass implements Insertable<FolderSortPref> {
   final String path;
   final String sortKey;
   final bool sortAscending;
-  final bool foldersFirst;
-  final String? cursorPath;
-  final String? selectedPaths;
   final int updatedAt;
-  const FolderPref({
+  const FolderSortPref({
     required this.path,
     required this.sortKey,
     required this.sortAscending,
-    required this.foldersFirst,
-    this.cursorPath,
-    this.selectedPaths,
     required this.updatedAt,
   });
   @override
@@ -4336,45 +4256,28 @@ class FolderPref extends DataClass implements Insertable<FolderPref> {
     map['path'] = Variable<String>(path);
     map['sort_key'] = Variable<String>(sortKey);
     map['sort_ascending'] = Variable<bool>(sortAscending);
-    map['folders_first'] = Variable<bool>(foldersFirst);
-    if (!nullToAbsent || cursorPath != null) {
-      map['cursor_path'] = Variable<String>(cursorPath);
-    }
-    if (!nullToAbsent || selectedPaths != null) {
-      map['selected_paths'] = Variable<String>(selectedPaths);
-    }
     map['updated_at'] = Variable<int>(updatedAt);
     return map;
   }
 
-  FolderPrefsCompanion toCompanion(bool nullToAbsent) {
-    return FolderPrefsCompanion(
+  FolderSortPrefsCompanion toCompanion(bool nullToAbsent) {
+    return FolderSortPrefsCompanion(
       path: Value(path),
       sortKey: Value(sortKey),
       sortAscending: Value(sortAscending),
-      foldersFirst: Value(foldersFirst),
-      cursorPath: cursorPath == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cursorPath),
-      selectedPaths: selectedPaths == null && nullToAbsent
-          ? const Value.absent()
-          : Value(selectedPaths),
       updatedAt: Value(updatedAt),
     );
   }
 
-  factory FolderPref.fromJson(
+  factory FolderSortPref.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return FolderPref(
+    return FolderSortPref(
       path: serializer.fromJson<String>(json['path']),
       sortKey: serializer.fromJson<String>(json['sortKey']),
       sortAscending: serializer.fromJson<bool>(json['sortAscending']),
-      foldersFirst: serializer.fromJson<bool>(json['foldersFirst']),
-      cursorPath: serializer.fromJson<String?>(json['cursorPath']),
-      selectedPaths: serializer.fromJson<String?>(json['selectedPaths']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
     );
   }
@@ -4385,125 +4288,81 @@ class FolderPref extends DataClass implements Insertable<FolderPref> {
       'path': serializer.toJson<String>(path),
       'sortKey': serializer.toJson<String>(sortKey),
       'sortAscending': serializer.toJson<bool>(sortAscending),
-      'foldersFirst': serializer.toJson<bool>(foldersFirst),
-      'cursorPath': serializer.toJson<String?>(cursorPath),
-      'selectedPaths': serializer.toJson<String?>(selectedPaths),
       'updatedAt': serializer.toJson<int>(updatedAt),
     };
   }
 
-  FolderPref copyWith({
+  FolderSortPref copyWith({
     String? path,
     String? sortKey,
     bool? sortAscending,
-    bool? foldersFirst,
-    Value<String?> cursorPath = const Value.absent(),
-    Value<String?> selectedPaths = const Value.absent(),
     int? updatedAt,
-  }) => FolderPref(
+  }) => FolderSortPref(
     path: path ?? this.path,
     sortKey: sortKey ?? this.sortKey,
     sortAscending: sortAscending ?? this.sortAscending,
-    foldersFirst: foldersFirst ?? this.foldersFirst,
-    cursorPath: cursorPath.present ? cursorPath.value : this.cursorPath,
-    selectedPaths: selectedPaths.present
-        ? selectedPaths.value
-        : this.selectedPaths,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  FolderPref copyWithCompanion(FolderPrefsCompanion data) {
-    return FolderPref(
+  FolderSortPref copyWithCompanion(FolderSortPrefsCompanion data) {
+    return FolderSortPref(
       path: data.path.present ? data.path.value : this.path,
       sortKey: data.sortKey.present ? data.sortKey.value : this.sortKey,
       sortAscending: data.sortAscending.present
           ? data.sortAscending.value
           : this.sortAscending,
-      foldersFirst: data.foldersFirst.present
-          ? data.foldersFirst.value
-          : this.foldersFirst,
-      cursorPath: data.cursorPath.present
-          ? data.cursorPath.value
-          : this.cursorPath,
-      selectedPaths: data.selectedPaths.present
-          ? data.selectedPaths.value
-          : this.selectedPaths,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('FolderPref(')
+    return (StringBuffer('FolderSortPref(')
           ..write('path: $path, ')
           ..write('sortKey: $sortKey, ')
           ..write('sortAscending: $sortAscending, ')
-          ..write('foldersFirst: $foldersFirst, ')
-          ..write('cursorPath: $cursorPath, ')
-          ..write('selectedPaths: $selectedPaths, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    path,
-    sortKey,
-    sortAscending,
-    foldersFirst,
-    cursorPath,
-    selectedPaths,
-    updatedAt,
-  );
+  int get hashCode => Object.hash(path, sortKey, sortAscending, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FolderPref &&
+      (other is FolderSortPref &&
           other.path == this.path &&
           other.sortKey == this.sortKey &&
           other.sortAscending == this.sortAscending &&
-          other.foldersFirst == this.foldersFirst &&
-          other.cursorPath == this.cursorPath &&
-          other.selectedPaths == this.selectedPaths &&
           other.updatedAt == this.updatedAt);
 }
 
-class FolderPrefsCompanion extends UpdateCompanion<FolderPref> {
+class FolderSortPrefsCompanion extends UpdateCompanion<FolderSortPref> {
   final Value<String> path;
   final Value<String> sortKey;
   final Value<bool> sortAscending;
-  final Value<bool> foldersFirst;
-  final Value<String?> cursorPath;
-  final Value<String?> selectedPaths;
   final Value<int> updatedAt;
   final Value<int> rowid;
-  const FolderPrefsCompanion({
+  const FolderSortPrefsCompanion({
     this.path = const Value.absent(),
     this.sortKey = const Value.absent(),
     this.sortAscending = const Value.absent(),
-    this.foldersFirst = const Value.absent(),
-    this.cursorPath = const Value.absent(),
-    this.selectedPaths = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  FolderPrefsCompanion.insert({
+  FolderSortPrefsCompanion.insert({
     required String path,
-    this.sortKey = const Value.absent(),
-    this.sortAscending = const Value.absent(),
-    this.foldersFirst = const Value.absent(),
-    this.cursorPath = const Value.absent(),
-    this.selectedPaths = const Value.absent(),
+    required String sortKey,
+    required bool sortAscending,
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : path = Value(path);
-  static Insertable<FolderPref> custom({
+  }) : path = Value(path),
+       sortKey = Value(sortKey),
+       sortAscending = Value(sortAscending);
+  static Insertable<FolderSortPref> custom({
     Expression<String>? path,
     Expression<String>? sortKey,
     Expression<bool>? sortAscending,
-    Expression<bool>? foldersFirst,
-    Expression<String>? cursorPath,
-    Expression<String>? selectedPaths,
     Expression<int>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -4511,31 +4370,22 @@ class FolderPrefsCompanion extends UpdateCompanion<FolderPref> {
       if (path != null) 'path': path,
       if (sortKey != null) 'sort_key': sortKey,
       if (sortAscending != null) 'sort_ascending': sortAscending,
-      if (foldersFirst != null) 'folders_first': foldersFirst,
-      if (cursorPath != null) 'cursor_path': cursorPath,
-      if (selectedPaths != null) 'selected_paths': selectedPaths,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  FolderPrefsCompanion copyWith({
+  FolderSortPrefsCompanion copyWith({
     Value<String>? path,
     Value<String>? sortKey,
     Value<bool>? sortAscending,
-    Value<bool>? foldersFirst,
-    Value<String?>? cursorPath,
-    Value<String?>? selectedPaths,
     Value<int>? updatedAt,
     Value<int>? rowid,
   }) {
-    return FolderPrefsCompanion(
+    return FolderSortPrefsCompanion(
       path: path ?? this.path,
       sortKey: sortKey ?? this.sortKey,
       sortAscending: sortAscending ?? this.sortAscending,
-      foldersFirst: foldersFirst ?? this.foldersFirst,
-      cursorPath: cursorPath ?? this.cursorPath,
-      selectedPaths: selectedPaths ?? this.selectedPaths,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -4553,14 +4403,551 @@ class FolderPrefsCompanion extends UpdateCompanion<FolderPref> {
     if (sortAscending.present) {
       map['sort_ascending'] = Variable<bool>(sortAscending.value);
     }
-    if (foldersFirst.present) {
-      map['folders_first'] = Variable<bool>(foldersFirst.value);
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderSortPrefsCompanion(')
+          ..write('path: $path, ')
+          ..write('sortKey: $sortKey, ')
+          ..write('sortAscending: $sortAscending, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FolderViewStatesTable extends FolderViewStates
+    with TableInfo<$FolderViewStatesTable, FolderViewState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FolderViewStatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cursorPathMeta = const VerificationMeta(
+    'cursorPath',
+  );
+  @override
+  late final GeneratedColumn<String> cursorPath = GeneratedColumn<String>(
+    'cursor_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _anchorPathMeta = const VerificationMeta(
+    'anchorPath',
+  );
+  @override
+  late final GeneratedColumn<String> anchorPath = GeneratedColumn<String>(
+    'anchor_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _selectedPathsMeta = const VerificationMeta(
+    'selectedPaths',
+  );
+  @override
+  late final GeneratedColumn<String> selectedPaths = GeneratedColumn<String>(
+    'selected_paths',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cursorViewportRowMeta = const VerificationMeta(
+    'cursorViewportRow',
+  );
+  @override
+  late final GeneratedColumn<double> cursorViewportRow =
+      GeneratedColumn<double>(
+        'cursor_viewport_row',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _topPathMeta = const VerificationMeta(
+    'topPath',
+  );
+  @override
+  late final GeneratedColumn<String> topPath = GeneratedColumn<String>(
+    'top_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _treeExpandedPathsMeta = const VerificationMeta(
+    'treeExpandedPaths',
+  );
+  @override
+  late final GeneratedColumn<String> treeExpandedPaths =
+      GeneratedColumn<String>(
+        'tree_expanded_paths',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    path,
+    cursorPath,
+    anchorPath,
+    selectedPaths,
+    cursorViewportRow,
+    topPath,
+    treeExpandedPaths,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'folder_view_states';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FolderViewState> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    if (data.containsKey('cursor_path')) {
+      context.handle(
+        _cursorPathMeta,
+        cursorPath.isAcceptableOrUnknown(data['cursor_path']!, _cursorPathMeta),
+      );
+    }
+    if (data.containsKey('anchor_path')) {
+      context.handle(
+        _anchorPathMeta,
+        anchorPath.isAcceptableOrUnknown(data['anchor_path']!, _anchorPathMeta),
+      );
+    }
+    if (data.containsKey('selected_paths')) {
+      context.handle(
+        _selectedPathsMeta,
+        selectedPaths.isAcceptableOrUnknown(
+          data['selected_paths']!,
+          _selectedPathsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cursor_viewport_row')) {
+      context.handle(
+        _cursorViewportRowMeta,
+        cursorViewportRow.isAcceptableOrUnknown(
+          data['cursor_viewport_row']!,
+          _cursorViewportRowMeta,
+        ),
+      );
+    }
+    if (data.containsKey('top_path')) {
+      context.handle(
+        _topPathMeta,
+        topPath.isAcceptableOrUnknown(data['top_path']!, _topPathMeta),
+      );
+    }
+    if (data.containsKey('tree_expanded_paths')) {
+      context.handle(
+        _treeExpandedPathsMeta,
+        treeExpandedPaths.isAcceptableOrUnknown(
+          data['tree_expanded_paths']!,
+          _treeExpandedPathsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {path};
+  @override
+  FolderViewState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FolderViewState(
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+      cursorPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cursor_path'],
+      ),
+      anchorPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}anchor_path'],
+      ),
+      selectedPaths: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}selected_paths'],
+      ),
+      cursorViewportRow: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cursor_viewport_row'],
+      ),
+      topPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}top_path'],
+      ),
+      treeExpandedPaths: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tree_expanded_paths'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FolderViewStatesTable createAlias(String alias) {
+    return $FolderViewStatesTable(attachedDatabase, alias);
+  }
+}
+
+class FolderViewState extends DataClass implements Insertable<FolderViewState> {
+  final String path;
+  final String? cursorPath;
+  final String? anchorPath;
+  final String? selectedPaths;
+  final double? cursorViewportRow;
+  final String? topPath;
+  final String? treeExpandedPaths;
+  final int updatedAt;
+  const FolderViewState({
+    required this.path,
+    this.cursorPath,
+    this.anchorPath,
+    this.selectedPaths,
+    this.cursorViewportRow,
+    this.topPath,
+    this.treeExpandedPaths,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['path'] = Variable<String>(path);
+    if (!nullToAbsent || cursorPath != null) {
+      map['cursor_path'] = Variable<String>(cursorPath);
+    }
+    if (!nullToAbsent || anchorPath != null) {
+      map['anchor_path'] = Variable<String>(anchorPath);
+    }
+    if (!nullToAbsent || selectedPaths != null) {
+      map['selected_paths'] = Variable<String>(selectedPaths);
+    }
+    if (!nullToAbsent || cursorViewportRow != null) {
+      map['cursor_viewport_row'] = Variable<double>(cursorViewportRow);
+    }
+    if (!nullToAbsent || topPath != null) {
+      map['top_path'] = Variable<String>(topPath);
+    }
+    if (!nullToAbsent || treeExpandedPaths != null) {
+      map['tree_expanded_paths'] = Variable<String>(treeExpandedPaths);
+    }
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  FolderViewStatesCompanion toCompanion(bool nullToAbsent) {
+    return FolderViewStatesCompanion(
+      path: Value(path),
+      cursorPath: cursorPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cursorPath),
+      anchorPath: anchorPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anchorPath),
+      selectedPaths: selectedPaths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(selectedPaths),
+      cursorViewportRow: cursorViewportRow == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cursorViewportRow),
+      topPath: topPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(topPath),
+      treeExpandedPaths: treeExpandedPaths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(treeExpandedPaths),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory FolderViewState.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FolderViewState(
+      path: serializer.fromJson<String>(json['path']),
+      cursorPath: serializer.fromJson<String?>(json['cursorPath']),
+      anchorPath: serializer.fromJson<String?>(json['anchorPath']),
+      selectedPaths: serializer.fromJson<String?>(json['selectedPaths']),
+      cursorViewportRow: serializer.fromJson<double?>(
+        json['cursorViewportRow'],
+      ),
+      topPath: serializer.fromJson<String?>(json['topPath']),
+      treeExpandedPaths: serializer.fromJson<String?>(
+        json['treeExpandedPaths'],
+      ),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'path': serializer.toJson<String>(path),
+      'cursorPath': serializer.toJson<String?>(cursorPath),
+      'anchorPath': serializer.toJson<String?>(anchorPath),
+      'selectedPaths': serializer.toJson<String?>(selectedPaths),
+      'cursorViewportRow': serializer.toJson<double?>(cursorViewportRow),
+      'topPath': serializer.toJson<String?>(topPath),
+      'treeExpandedPaths': serializer.toJson<String?>(treeExpandedPaths),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  FolderViewState copyWith({
+    String? path,
+    Value<String?> cursorPath = const Value.absent(),
+    Value<String?> anchorPath = const Value.absent(),
+    Value<String?> selectedPaths = const Value.absent(),
+    Value<double?> cursorViewportRow = const Value.absent(),
+    Value<String?> topPath = const Value.absent(),
+    Value<String?> treeExpandedPaths = const Value.absent(),
+    int? updatedAt,
+  }) => FolderViewState(
+    path: path ?? this.path,
+    cursorPath: cursorPath.present ? cursorPath.value : this.cursorPath,
+    anchorPath: anchorPath.present ? anchorPath.value : this.anchorPath,
+    selectedPaths: selectedPaths.present
+        ? selectedPaths.value
+        : this.selectedPaths,
+    cursorViewportRow: cursorViewportRow.present
+        ? cursorViewportRow.value
+        : this.cursorViewportRow,
+    topPath: topPath.present ? topPath.value : this.topPath,
+    treeExpandedPaths: treeExpandedPaths.present
+        ? treeExpandedPaths.value
+        : this.treeExpandedPaths,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  FolderViewState copyWithCompanion(FolderViewStatesCompanion data) {
+    return FolderViewState(
+      path: data.path.present ? data.path.value : this.path,
+      cursorPath: data.cursorPath.present
+          ? data.cursorPath.value
+          : this.cursorPath,
+      anchorPath: data.anchorPath.present
+          ? data.anchorPath.value
+          : this.anchorPath,
+      selectedPaths: data.selectedPaths.present
+          ? data.selectedPaths.value
+          : this.selectedPaths,
+      cursorViewportRow: data.cursorViewportRow.present
+          ? data.cursorViewportRow.value
+          : this.cursorViewportRow,
+      topPath: data.topPath.present ? data.topPath.value : this.topPath,
+      treeExpandedPaths: data.treeExpandedPaths.present
+          ? data.treeExpandedPaths.value
+          : this.treeExpandedPaths,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderViewState(')
+          ..write('path: $path, ')
+          ..write('cursorPath: $cursorPath, ')
+          ..write('anchorPath: $anchorPath, ')
+          ..write('selectedPaths: $selectedPaths, ')
+          ..write('cursorViewportRow: $cursorViewportRow, ')
+          ..write('topPath: $topPath, ')
+          ..write('treeExpandedPaths: $treeExpandedPaths, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    path,
+    cursorPath,
+    anchorPath,
+    selectedPaths,
+    cursorViewportRow,
+    topPath,
+    treeExpandedPaths,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FolderViewState &&
+          other.path == this.path &&
+          other.cursorPath == this.cursorPath &&
+          other.anchorPath == this.anchorPath &&
+          other.selectedPaths == this.selectedPaths &&
+          other.cursorViewportRow == this.cursorViewportRow &&
+          other.topPath == this.topPath &&
+          other.treeExpandedPaths == this.treeExpandedPaths &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FolderViewStatesCompanion extends UpdateCompanion<FolderViewState> {
+  final Value<String> path;
+  final Value<String?> cursorPath;
+  final Value<String?> anchorPath;
+  final Value<String?> selectedPaths;
+  final Value<double?> cursorViewportRow;
+  final Value<String?> topPath;
+  final Value<String?> treeExpandedPaths;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const FolderViewStatesCompanion({
+    this.path = const Value.absent(),
+    this.cursorPath = const Value.absent(),
+    this.anchorPath = const Value.absent(),
+    this.selectedPaths = const Value.absent(),
+    this.cursorViewportRow = const Value.absent(),
+    this.topPath = const Value.absent(),
+    this.treeExpandedPaths = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FolderViewStatesCompanion.insert({
+    required String path,
+    this.cursorPath = const Value.absent(),
+    this.anchorPath = const Value.absent(),
+    this.selectedPaths = const Value.absent(),
+    this.cursorViewportRow = const Value.absent(),
+    this.topPath = const Value.absent(),
+    this.treeExpandedPaths = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : path = Value(path);
+  static Insertable<FolderViewState> custom({
+    Expression<String>? path,
+    Expression<String>? cursorPath,
+    Expression<String>? anchorPath,
+    Expression<String>? selectedPaths,
+    Expression<double>? cursorViewportRow,
+    Expression<String>? topPath,
+    Expression<String>? treeExpandedPaths,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (path != null) 'path': path,
+      if (cursorPath != null) 'cursor_path': cursorPath,
+      if (anchorPath != null) 'anchor_path': anchorPath,
+      if (selectedPaths != null) 'selected_paths': selectedPaths,
+      if (cursorViewportRow != null) 'cursor_viewport_row': cursorViewportRow,
+      if (topPath != null) 'top_path': topPath,
+      if (treeExpandedPaths != null) 'tree_expanded_paths': treeExpandedPaths,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FolderViewStatesCompanion copyWith({
+    Value<String>? path,
+    Value<String?>? cursorPath,
+    Value<String?>? anchorPath,
+    Value<String?>? selectedPaths,
+    Value<double?>? cursorViewportRow,
+    Value<String?>? topPath,
+    Value<String?>? treeExpandedPaths,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FolderViewStatesCompanion(
+      path: path ?? this.path,
+      cursorPath: cursorPath ?? this.cursorPath,
+      anchorPath: anchorPath ?? this.anchorPath,
+      selectedPaths: selectedPaths ?? this.selectedPaths,
+      cursorViewportRow: cursorViewportRow ?? this.cursorViewportRow,
+      topPath: topPath ?? this.topPath,
+      treeExpandedPaths: treeExpandedPaths ?? this.treeExpandedPaths,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
     }
     if (cursorPath.present) {
       map['cursor_path'] = Variable<String>(cursorPath.value);
     }
+    if (anchorPath.present) {
+      map['anchor_path'] = Variable<String>(anchorPath.value);
+    }
     if (selectedPaths.present) {
       map['selected_paths'] = Variable<String>(selectedPaths.value);
+    }
+    if (cursorViewportRow.present) {
+      map['cursor_viewport_row'] = Variable<double>(cursorViewportRow.value);
+    }
+    if (topPath.present) {
+      map['top_path'] = Variable<String>(topPath.value);
+    }
+    if (treeExpandedPaths.present) {
+      map['tree_expanded_paths'] = Variable<String>(treeExpandedPaths.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<int>(updatedAt.value);
@@ -4573,13 +4960,14 @@ class FolderPrefsCompanion extends UpdateCompanion<FolderPref> {
 
   @override
   String toString() {
-    return (StringBuffer('FolderPrefsCompanion(')
+    return (StringBuffer('FolderViewStatesCompanion(')
           ..write('path: $path, ')
-          ..write('sortKey: $sortKey, ')
-          ..write('sortAscending: $sortAscending, ')
-          ..write('foldersFirst: $foldersFirst, ')
           ..write('cursorPath: $cursorPath, ')
+          ..write('anchorPath: $anchorPath, ')
           ..write('selectedPaths: $selectedPaths, ')
+          ..write('cursorViewportRow: $cursorViewportRow, ')
+          ..write('topPath: $topPath, ')
+          ..write('treeExpandedPaths: $treeExpandedPaths, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -7174,7 +7562,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $SessionTabsTable sessionTabs = $SessionTabsTable(this);
   late final $BookmarksTable bookmarks = $BookmarksTable(this);
-  late final $FolderPrefsTable folderPrefs = $FolderPrefsTable(this);
+  late final $FolderSortPrefsTable folderSortPrefs = $FolderSortPrefsTable(
+    this,
+  );
+  late final $FolderViewStatesTable folderViewStates = $FolderViewStatesTable(
+    this,
+  );
   late final $RecentAppsTable recentApps = $RecentAppsTable(this);
   late final $RecentEnteredPathsTable recentEnteredPaths =
       $RecentEnteredPathsTable(this);
@@ -7197,7 +7590,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettings,
     sessionTabs,
     bookmarks,
-    folderPrefs,
+    folderSortPrefs,
+    folderViewStates,
     recentApps,
     recentEnteredPaths,
     defaultApps,
@@ -8966,32 +9360,26 @@ typedef $$BookmarksTableProcessedTableManager =
       Bookmark,
       PrefetchHooks Function()
     >;
-typedef $$FolderPrefsTableCreateCompanionBuilder =
-    FolderPrefsCompanion Function({
+typedef $$FolderSortPrefsTableCreateCompanionBuilder =
+    FolderSortPrefsCompanion Function({
       required String path,
-      Value<String> sortKey,
-      Value<bool> sortAscending,
-      Value<bool> foldersFirst,
-      Value<String?> cursorPath,
-      Value<String?> selectedPaths,
+      required String sortKey,
+      required bool sortAscending,
       Value<int> updatedAt,
       Value<int> rowid,
     });
-typedef $$FolderPrefsTableUpdateCompanionBuilder =
-    FolderPrefsCompanion Function({
+typedef $$FolderSortPrefsTableUpdateCompanionBuilder =
+    FolderSortPrefsCompanion Function({
       Value<String> path,
       Value<String> sortKey,
       Value<bool> sortAscending,
-      Value<bool> foldersFirst,
-      Value<String?> cursorPath,
-      Value<String?> selectedPaths,
       Value<int> updatedAt,
       Value<int> rowid,
     });
 
-class $$FolderPrefsTableFilterComposer
-    extends Composer<_$AppDatabase, $FolderPrefsTable> {
-  $$FolderPrefsTableFilterComposer({
+class $$FolderSortPrefsTableFilterComposer
+    extends Composer<_$AppDatabase, $FolderSortPrefsTable> {
+  $$FolderSortPrefsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9013,30 +9401,15 @@ class $$FolderPrefsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get foldersFirst => $composableBuilder(
-    column: $table.foldersFirst,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get cursorPath => $composableBuilder(
-    column: $table.cursorPath,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get selectedPaths => $composableBuilder(
-    column: $table.selectedPaths,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<int> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
 
-class $$FolderPrefsTableOrderingComposer
-    extends Composer<_$AppDatabase, $FolderPrefsTable> {
-  $$FolderPrefsTableOrderingComposer({
+class $$FolderSortPrefsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FolderSortPrefsTable> {
+  $$FolderSortPrefsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9058,30 +9431,15 @@ class $$FolderPrefsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get foldersFirst => $composableBuilder(
-    column: $table.foldersFirst,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get cursorPath => $composableBuilder(
-    column: $table.cursorPath,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get selectedPaths => $composableBuilder(
-    column: $table.selectedPaths,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
 
-class $$FolderPrefsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $FolderPrefsTable> {
-  $$FolderPrefsTableAnnotationComposer({
+class $$FolderSortPrefsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FolderSortPrefsTable> {
+  $$FolderSortPrefsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9099,91 +9457,70 @@ class $$FolderPrefsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get foldersFirst => $composableBuilder(
-    column: $table.foldersFirst,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get cursorPath => $composableBuilder(
-    column: $table.cursorPath,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get selectedPaths => $composableBuilder(
-    column: $table.selectedPaths,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<int> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
-class $$FolderPrefsTableTableManager
+class $$FolderSortPrefsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $FolderPrefsTable,
-          FolderPref,
-          $$FolderPrefsTableFilterComposer,
-          $$FolderPrefsTableOrderingComposer,
-          $$FolderPrefsTableAnnotationComposer,
-          $$FolderPrefsTableCreateCompanionBuilder,
-          $$FolderPrefsTableUpdateCompanionBuilder,
+          $FolderSortPrefsTable,
+          FolderSortPref,
+          $$FolderSortPrefsTableFilterComposer,
+          $$FolderSortPrefsTableOrderingComposer,
+          $$FolderSortPrefsTableAnnotationComposer,
+          $$FolderSortPrefsTableCreateCompanionBuilder,
+          $$FolderSortPrefsTableUpdateCompanionBuilder,
           (
-            FolderPref,
-            BaseReferences<_$AppDatabase, $FolderPrefsTable, FolderPref>,
+            FolderSortPref,
+            BaseReferences<
+              _$AppDatabase,
+              $FolderSortPrefsTable,
+              FolderSortPref
+            >,
           ),
-          FolderPref,
+          FolderSortPref,
           PrefetchHooks Function()
         > {
-  $$FolderPrefsTableTableManager(_$AppDatabase db, $FolderPrefsTable table)
-    : super(
+  $$FolderSortPrefsTableTableManager(
+    _$AppDatabase db,
+    $FolderSortPrefsTable table,
+  ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$FolderPrefsTableFilterComposer($db: db, $table: table),
+              $$FolderSortPrefsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$FolderPrefsTableOrderingComposer($db: db, $table: table),
+              $$FolderSortPrefsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$FolderPrefsTableAnnotationComposer($db: db, $table: table),
+              $$FolderSortPrefsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> path = const Value.absent(),
                 Value<String> sortKey = const Value.absent(),
                 Value<bool> sortAscending = const Value.absent(),
-                Value<bool> foldersFirst = const Value.absent(),
-                Value<String?> cursorPath = const Value.absent(),
-                Value<String?> selectedPaths = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => FolderPrefsCompanion(
+              }) => FolderSortPrefsCompanion(
                 path: path,
                 sortKey: sortKey,
                 sortAscending: sortAscending,
-                foldersFirst: foldersFirst,
-                cursorPath: cursorPath,
-                selectedPaths: selectedPaths,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String path,
-                Value<String> sortKey = const Value.absent(),
-                Value<bool> sortAscending = const Value.absent(),
-                Value<bool> foldersFirst = const Value.absent(),
-                Value<String?> cursorPath = const Value.absent(),
-                Value<String?> selectedPaths = const Value.absent(),
+                required String sortKey,
+                required bool sortAscending,
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => FolderPrefsCompanion.insert(
+              }) => FolderSortPrefsCompanion.insert(
                 path: path,
                 sortKey: sortKey,
                 sortAscending: sortAscending,
-                foldersFirst: foldersFirst,
-                cursorPath: cursorPath,
-                selectedPaths: selectedPaths,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -9195,21 +9532,294 @@ class $$FolderPrefsTableTableManager
       );
 }
 
-typedef $$FolderPrefsTableProcessedTableManager =
+typedef $$FolderSortPrefsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $FolderPrefsTable,
-      FolderPref,
-      $$FolderPrefsTableFilterComposer,
-      $$FolderPrefsTableOrderingComposer,
-      $$FolderPrefsTableAnnotationComposer,
-      $$FolderPrefsTableCreateCompanionBuilder,
-      $$FolderPrefsTableUpdateCompanionBuilder,
+      $FolderSortPrefsTable,
+      FolderSortPref,
+      $$FolderSortPrefsTableFilterComposer,
+      $$FolderSortPrefsTableOrderingComposer,
+      $$FolderSortPrefsTableAnnotationComposer,
+      $$FolderSortPrefsTableCreateCompanionBuilder,
+      $$FolderSortPrefsTableUpdateCompanionBuilder,
       (
-        FolderPref,
-        BaseReferences<_$AppDatabase, $FolderPrefsTable, FolderPref>,
+        FolderSortPref,
+        BaseReferences<_$AppDatabase, $FolderSortPrefsTable, FolderSortPref>,
       ),
-      FolderPref,
+      FolderSortPref,
+      PrefetchHooks Function()
+    >;
+typedef $$FolderViewStatesTableCreateCompanionBuilder =
+    FolderViewStatesCompanion Function({
+      required String path,
+      Value<String?> cursorPath,
+      Value<String?> anchorPath,
+      Value<String?> selectedPaths,
+      Value<double?> cursorViewportRow,
+      Value<String?> topPath,
+      Value<String?> treeExpandedPaths,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FolderViewStatesTableUpdateCompanionBuilder =
+    FolderViewStatesCompanion Function({
+      Value<String> path,
+      Value<String?> cursorPath,
+      Value<String?> anchorPath,
+      Value<String?> selectedPaths,
+      Value<double?> cursorViewportRow,
+      Value<String?> topPath,
+      Value<String?> treeExpandedPaths,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$FolderViewStatesTableFilterComposer
+    extends Composer<_$AppDatabase, $FolderViewStatesTable> {
+  $$FolderViewStatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cursorPath => $composableBuilder(
+    column: $table.cursorPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get anchorPath => $composableBuilder(
+    column: $table.anchorPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get selectedPaths => $composableBuilder(
+    column: $table.selectedPaths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get cursorViewportRow => $composableBuilder(
+    column: $table.cursorViewportRow,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get topPath => $composableBuilder(
+    column: $table.topPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get treeExpandedPaths => $composableBuilder(
+    column: $table.treeExpandedPaths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FolderViewStatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FolderViewStatesTable> {
+  $$FolderViewStatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cursorPath => $composableBuilder(
+    column: $table.cursorPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get anchorPath => $composableBuilder(
+    column: $table.anchorPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get selectedPaths => $composableBuilder(
+    column: $table.selectedPaths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get cursorViewportRow => $composableBuilder(
+    column: $table.cursorViewportRow,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get topPath => $composableBuilder(
+    column: $table.topPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get treeExpandedPaths => $composableBuilder(
+    column: $table.treeExpandedPaths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FolderViewStatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FolderViewStatesTable> {
+  $$FolderViewStatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get cursorPath => $composableBuilder(
+    column: $table.cursorPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get anchorPath => $composableBuilder(
+    column: $table.anchorPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get selectedPaths => $composableBuilder(
+    column: $table.selectedPaths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get cursorViewportRow => $composableBuilder(
+    column: $table.cursorViewportRow,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get topPath =>
+      $composableBuilder(column: $table.topPath, builder: (column) => column);
+
+  GeneratedColumn<String> get treeExpandedPaths => $composableBuilder(
+    column: $table.treeExpandedPaths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$FolderViewStatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FolderViewStatesTable,
+          FolderViewState,
+          $$FolderViewStatesTableFilterComposer,
+          $$FolderViewStatesTableOrderingComposer,
+          $$FolderViewStatesTableAnnotationComposer,
+          $$FolderViewStatesTableCreateCompanionBuilder,
+          $$FolderViewStatesTableUpdateCompanionBuilder,
+          (
+            FolderViewState,
+            BaseReferences<
+              _$AppDatabase,
+              $FolderViewStatesTable,
+              FolderViewState
+            >,
+          ),
+          FolderViewState,
+          PrefetchHooks Function()
+        > {
+  $$FolderViewStatesTableTableManager(
+    _$AppDatabase db,
+    $FolderViewStatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FolderViewStatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FolderViewStatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FolderViewStatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> path = const Value.absent(),
+                Value<String?> cursorPath = const Value.absent(),
+                Value<String?> anchorPath = const Value.absent(),
+                Value<String?> selectedPaths = const Value.absent(),
+                Value<double?> cursorViewportRow = const Value.absent(),
+                Value<String?> topPath = const Value.absent(),
+                Value<String?> treeExpandedPaths = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FolderViewStatesCompanion(
+                path: path,
+                cursorPath: cursorPath,
+                anchorPath: anchorPath,
+                selectedPaths: selectedPaths,
+                cursorViewportRow: cursorViewportRow,
+                topPath: topPath,
+                treeExpandedPaths: treeExpandedPaths,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String path,
+                Value<String?> cursorPath = const Value.absent(),
+                Value<String?> anchorPath = const Value.absent(),
+                Value<String?> selectedPaths = const Value.absent(),
+                Value<double?> cursorViewportRow = const Value.absent(),
+                Value<String?> topPath = const Value.absent(),
+                Value<String?> treeExpandedPaths = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FolderViewStatesCompanion.insert(
+                path: path,
+                cursorPath: cursorPath,
+                anchorPath: anchorPath,
+                selectedPaths: selectedPaths,
+                cursorViewportRow: cursorViewportRow,
+                topPath: topPath,
+                treeExpandedPaths: treeExpandedPaths,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FolderViewStatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FolderViewStatesTable,
+      FolderViewState,
+      $$FolderViewStatesTableFilterComposer,
+      $$FolderViewStatesTableOrderingComposer,
+      $$FolderViewStatesTableAnnotationComposer,
+      $$FolderViewStatesTableCreateCompanionBuilder,
+      $$FolderViewStatesTableUpdateCompanionBuilder,
+      (
+        FolderViewState,
+        BaseReferences<_$AppDatabase, $FolderViewStatesTable, FolderViewState>,
+      ),
+      FolderViewState,
       PrefetchHooks Function()
     >;
 typedef $$RecentAppsTableCreateCompanionBuilder =
@@ -10998,8 +11608,10 @@ class $AppDatabaseManager {
       $$SessionTabsTableTableManager(_db, _db.sessionTabs);
   $$BookmarksTableTableManager get bookmarks =>
       $$BookmarksTableTableManager(_db, _db.bookmarks);
-  $$FolderPrefsTableTableManager get folderPrefs =>
-      $$FolderPrefsTableTableManager(_db, _db.folderPrefs);
+  $$FolderSortPrefsTableTableManager get folderSortPrefs =>
+      $$FolderSortPrefsTableTableManager(_db, _db.folderSortPrefs);
+  $$FolderViewStatesTableTableManager get folderViewStates =>
+      $$FolderViewStatesTableTableManager(_db, _db.folderViewStates);
   $$RecentAppsTableTableManager get recentApps =>
       $$RecentAppsTableTableManager(_db, _db.recentApps);
   $$RecentEnteredPathsTableTableManager get recentEnteredPaths =>

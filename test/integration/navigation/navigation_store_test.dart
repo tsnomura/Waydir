@@ -98,7 +98,7 @@ void main() {
       () async {
         final other = File(p.join(tmpDir.path, 'other.txt'))
           ..writeAsStringSync('o');
-        await SettingsStore.instance.db.setFolderUiState(
+        await SettingsStore.instance.db.setFolderViewState(
           tmpDir.path,
           cursorPath: other.path,
           selectedPaths: jsonEncode([other.path]),
