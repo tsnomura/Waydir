@@ -295,4 +295,38 @@ void main() {
       expect((await db.getSidebarPrefs()).single.hidden, isFalse);
     });
   });
+
+  group('Folder state', () {
+    test('saving a cursor does not pin a folder sort', () async {
+      await db.setFolderViewState(
+        '/a',
+        cursorPath: '/a/x',
+        selectedPaths: null,
+      );
+
+      expect(await db.getFolderSortPref('/a'), null);
+      expect((await db.getFolderViewState('/a'))!.cursorPath, '/a/x');
+    });
+
+    test('a folder sort and its view state are stored independently', () async {
+      await db.setFolderSortPref('/a', sortKey: 'date', sortAscending: false);
+      await db.setFolderViewState(
+        '/a',
+        cursorPath: '/a/x',
+        selectedPaths: '["/a/y"]',
+      );
+      await db.setFolderViewState(
+        '/a',
+        cursorPath: '/a/z',
+        selectedPaths: null,
+      );
+
+      final sort = await db.getFolderSortPref('/a');
+      final view = await db.getFolderViewState('/a');
+      expect(sort!.sortKey, 'date');
+      expect(sort.sortAscending, isFalse);
+      expect(view!.cursorPath, '/a/z');
+      expect(view.selectedPaths, null);
+    });
+  });
 }

@@ -125,13 +125,24 @@ class Bookmarks extends Table {
   TextColumn get path => text().unique()();
 }
 
-class FolderPrefs extends Table {
+class FolderSortPrefs extends Table {
   TextColumn get path => text()();
-  TextColumn get sortKey => text().withDefault(const Constant('name'))();
-  BoolColumn get sortAscending => boolean().withDefault(const Constant(true))();
-  BoolColumn get foldersFirst => boolean().withDefault(const Constant(true))();
+  TextColumn get sortKey => text()();
+  BoolColumn get sortAscending => boolean()();
+  IntColumn get updatedAt => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {path};
+}
+
+class FolderViewStates extends Table {
+  TextColumn get path => text()();
   TextColumn get cursorPath => text().nullable()();
+  TextColumn get anchorPath => text().nullable()();
   TextColumn get selectedPaths => text().nullable()();
+  RealColumn get cursorViewportRow => real().nullable()();
+  TextColumn get topPath => text().nullable()();
+  TextColumn get treeExpandedPaths => text().nullable()();
   IntColumn get updatedAt => integer().withDefault(const Constant(0))();
 
   @override
@@ -238,7 +249,8 @@ class SidebarPrefs extends Table {
     AppSettings,
     SessionTabs,
     Bookmarks,
-    FolderPrefs,
+    FolderSortPrefs,
+    FolderViewStates,
     RecentApps,
     RecentEnteredPaths,
     DefaultApps,
@@ -254,7 +266,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 45;
+  int get schemaVersion => 46;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -298,9 +310,6 @@ class AppDatabase extends _$AppDatabase {
         await addSettingColumn(appSettings.sortAscending);
         await addSettingColumn(appSettings.foldersFirst);
       }
-      if (from < 8) {
-        await m.createTable(folderPrefs);
-      }
       if (from < 9) {
         await m.createTable(recentApps);
       }
@@ -326,21 +335,9 @@ class AppDatabase extends _$AppDatabase {
         await addSettingColumn(appSettings.fileListHorizontalSpacing);
         await addSettingColumn(appSettings.fileListVerticalSpacing);
       }
-      Future<void> addFolderPrefColumn(GeneratedColumn column) async {
-        final existing = await customSelect(
-          'PRAGMA table_info(folder_prefs)',
-        ).get();
-        final names = existing.map((r) => r.read<String>('name')).toSet();
-        if (!names.contains(column.name)) {
-          await m.addColumn(folderPrefs, column);
-        }
-      }
-
       if (from < 16) {
         await addSettingColumn(appSettings.rememberFolderState);
         await addSettingColumn(appSettings.rememberFolderSort);
-        await addFolderPrefColumn(folderPrefs.cursorPath);
-        await addFolderPrefColumn(folderPrefs.selectedPaths);
       }
       if (from < 17) {
         await m.createTable(recentEnteredPaths);
@@ -465,8 +462,33 @@ class AppDatabase extends _$AppDatabase {
       if (from < 45) {
         await addSettingColumn(appSettings.keyboardScheme);
       }
+      if (from < 46) {
+        await m.createTable(folderSortPrefs);
+        await m.createTable(folderViewStates);
+        await _migrateLegacyFolderPrefs();
+      }
     },
   );
+
+  Future<void> _migrateLegacyFolderPrefs() async {
+    final columns = (await customSelect(
+      'PRAGMA table_info(folder_prefs)',
+    ).get()).map((r) => r.read<String>('name')).toSet();
+    if (columns.isEmpty) return;
+    await customStatement('''
+      INSERT INTO folder_sort_prefs (path, sort_key, sort_ascending, updated_at)
+      SELECT path, sort_key, sort_ascending, updated_at FROM folder_prefs
+      WHERE NOT (sort_key = 'name' AND sort_ascending = 1)
+    ''');
+    if (columns.containsAll({'cursor_path', 'selected_paths'})) {
+      await customStatement('''
+        INSERT INTO folder_view_states (path, cursor_path, selected_paths, updated_at)
+        SELECT path, cursor_path, selected_paths, updated_at FROM folder_prefs
+        WHERE cursor_path IS NOT NULL OR selected_paths IS NOT NULL
+      ''');
+    }
+    await customStatement('DROP TABLE folder_prefs');
+  }
 
   static const _defaultTags = <(String, int)>[
     ('Red', 0xFFE5484D),
@@ -844,54 +866,54 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  /// Keep at most this many remembered per-folder sort preferences.
-  static const int _maxFolderPrefs = 500;
+  static const int _maxFolderViewStates = 2000;
 
-  Future<FolderPref?> getFolderPref(String path) {
+  Future<FolderSortPref?> getFolderSortPref(String path) {
     return (select(
-      folderPrefs,
+      folderSortPrefs,
     )..where((t) => t.path.equals(path))).getSingleOrNull();
   }
 
-  Future<void> setFolderPref(
+  Future<void> setFolderSortPref(
     String path, {
     required String sortKey,
     required bool sortAscending,
-    required bool foldersFirst,
   }) async {
-    await into(folderPrefs).insertOnConflictUpdate(
-      FolderPrefsCompanion.insert(
+    await into(folderSortPrefs).insertOnConflictUpdate(
+      FolderSortPrefsCompanion.insert(
         path: path,
-        sortKey: Value(sortKey),
-        sortAscending: Value(sortAscending),
-        foldersFirst: Value(foldersFirst),
+        sortKey: sortKey,
+        sortAscending: sortAscending,
         updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
       ),
     );
-    await _pruneFolderPrefs();
   }
 
-  Future<void> deleteFolderPref(String path) {
-    return (delete(folderPrefs)..where((t) => t.path.equals(path))).go();
+  Future<FolderViewState?> getFolderViewState(String path) {
+    return (select(
+      folderViewStates,
+    )..where((t) => t.path.equals(path))).getSingleOrNull();
   }
 
-  Future<void> setFolderUiState(
+  Future<void> setFolderViewState(
     String path, {
     required String? cursorPath,
     required String? selectedPaths,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final updated =
-        await (update(folderPrefs)..where((t) => t.path.equals(path))).write(
-          FolderPrefsCompanion(
+        await (update(
+          folderViewStates,
+        )..where((t) => t.path.equals(path))).write(
+          FolderViewStatesCompanion(
             cursorPath: Value(cursorPath),
             selectedPaths: Value(selectedPaths),
             updatedAt: Value(now),
           ),
         );
     if (updated == 0) {
-      await into(folderPrefs).insert(
-        FolderPrefsCompanion.insert(
+      await into(folderViewStates).insert(
+        FolderViewStatesCompanion.insert(
           path: path,
           cursorPath: Value(cursorPath),
           selectedPaths: Value(selectedPaths),
@@ -899,23 +921,23 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     }
-    await _pruneFolderPrefs();
+    await _pruneFolderViewStates();
   }
 
-  Future<void> _pruneFolderPrefs() async {
-    final countExp = folderPrefs.path.count();
+  Future<void> _pruneFolderViewStates() async {
+    final countExp = folderViewStates.path.count();
     final row = await (selectOnly(
-      folderPrefs,
+      folderViewStates,
     )..addColumns([countExp])).getSingle();
     final total = row.read(countExp) ?? 0;
-    if (total <= _maxFolderPrefs) return;
+    if (total <= _maxFolderViewStates) return;
     final cutoff =
-        await (select(folderPrefs)
+        await (select(folderViewStates)
               ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
-              ..limit(1, offset: _maxFolderPrefs - 1))
+              ..limit(1, offset: _maxFolderViewStates - 1))
             .getSingle();
     await (delete(
-      folderPrefs,
+      folderViewStates,
     )..where((t) => t.updatedAt.isSmallerThanValue(cutoff.updatedAt))).go();
   }
 }

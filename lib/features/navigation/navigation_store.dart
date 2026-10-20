@@ -473,7 +473,7 @@ class NavigationStore {
     if (!s.rememberFolderSort.value) return;
     if (!s.isLoaded) return;
     try {
-      final pref = await s.db.getFolderPref(path);
+      final pref = await s.db.getFolderSortPref(path);
       if (token != _sortLoadToken) return;
       if (pref != null) {
         _applySort(
@@ -494,11 +494,10 @@ class NavigationStore {
     if (!s.rememberFolderSort.value) return;
     if (!s.isLoaded) return;
     s.db
-        .setFolderPref(
+        .setFolderSortPref(
           path,
           sortKey: sortKeyToString(sortKey.value),
           sortAscending: sortAscending.value,
-          foldersFirst: foldersFirst.value,
         )
         .catchError(
           (e, st) => log.warn(
@@ -800,7 +799,11 @@ class NavigationStore {
     if (!s.isLoaded) return;
     final encoded = selected.isEmpty ? null : jsonEncode(selected.toList());
     s.db
-        .setFolderUiState(path, cursorPath: cursorPath, selectedPaths: encoded)
+        .setFolderViewState(
+          path,
+          cursorPath: cursorPath,
+          selectedPaths: encoded,
+        )
         .catchError(
           (e, st) => log.warn(
             'navigation',
@@ -833,7 +836,7 @@ class NavigationStore {
     _FolderState? state = _folderStateCache[path];
     if (state == null && s.isLoaded) {
       try {
-        final pref = await s.db.getFolderPref(path);
+        final pref = await s.db.getFolderViewState(path);
         if (pref == null) return;
         if (currentPath.value != path) return;
         Set<String> selected = const {};

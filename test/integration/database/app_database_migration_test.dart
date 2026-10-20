@@ -59,6 +59,79 @@ void main() {
         .getSingleOrNull();
     expect(sidebarPrefsTable, isNotNull);
   });
+
+  Future<List<Map<String, Object?>>> rows(AppDatabase db, String sql) async =>
+      (await db.customSelect(sql).get()).map((r) => r.data).toList();
+
+  test('splits legacy folder_prefs into sort prefs and view states', () async {
+    final path = p.join(tmpDir.path, 'legacy.sqlite');
+    _createSchemaV12(path);
+    final raw = sqlite3.open(path);
+    raw.execute('''
+ALTER TABLE folder_prefs ADD COLUMN cursor_path TEXT;
+ALTER TABLE folder_prefs ADD COLUMN selected_paths TEXT;
+INSERT INTO folder_prefs (path, sort_key, sort_ascending, folders_first, cursor_path, selected_paths, updated_at)
+VALUES
+  ('/dl', 'date', 0, 1, '/dl/x', NULL, 5),
+  ('/a', 'name', 1, 1, '/a/c', NULL, 4),
+  ('/k', 'kind', 1, 0, NULL, NULL, 3),
+  ('/n', 'name', 0, 1, NULL, '["/n/y"]', 2),
+  ('/empty', 'name', 1, 1, NULL, NULL, 1);
+''');
+    raw.close();
+
+    final db = AppDatabase(NativeDatabase(File(path)));
+    addTearDown(db.close);
+
+    expect(
+      await rows(
+        db,
+        'SELECT path, sort_key, sort_ascending FROM folder_sort_prefs ORDER BY path',
+      ),
+      [
+        {'path': '/dl', 'sort_key': 'date', 'sort_ascending': 0},
+        {'path': '/k', 'sort_key': 'kind', 'sort_ascending': 1},
+        {'path': '/n', 'sort_key': 'name', 'sort_ascending': 0},
+      ],
+    );
+    expect(
+      await rows(
+        db,
+        'SELECT path, cursor_path, selected_paths FROM folder_view_states ORDER BY path',
+      ),
+      [
+        {'path': '/a', 'cursor_path': '/a/c', 'selected_paths': null},
+        {'path': '/dl', 'cursor_path': '/dl/x', 'selected_paths': null},
+        {'path': '/n', 'cursor_path': null, 'selected_paths': '["/n/y"]'},
+      ],
+    );
+    expect(
+      await rows(
+        db,
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'folder_prefs'",
+      ),
+      isEmpty,
+    );
+  });
+
+  test('migrates folder_prefs that predate the cursor columns', () async {
+    final path = p.join(tmpDir.path, 'legacy.sqlite');
+    _createSchemaV12(path);
+    final raw = sqlite3.open(path);
+    raw.execute('''
+INSERT INTO folder_prefs (path, sort_key, sort_ascending, folders_first, updated_at)
+VALUES ('/dl', 'date', 0, 1, 1), ('/a', 'name', 1, 1, 2);
+''');
+    raw.close();
+
+    final db = AppDatabase(NativeDatabase(File(path)));
+    addTearDown(db.close);
+
+    expect(await rows(db, 'SELECT path FROM folder_sort_prefs'), [
+      {'path': '/dl'},
+    ]);
+    expect(await rows(db, 'SELECT path FROM folder_view_states'), isEmpty);
+  });
 }
 
 void _createSchemaV12(String path) {
