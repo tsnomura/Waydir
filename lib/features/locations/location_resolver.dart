@@ -316,7 +316,10 @@ class LocationResolver {
           final remote = !hasExplicitPath
               ? (sessionId == null
                     ? '/'
-                    : SftpSessionManager.defaultRemotePath(sessionId, username))
+                    : await SftpSessionManager.defaultRemotePath(
+                        sessionId,
+                        username,
+                      ))
               : (uri.path == null || uri.path!.isEmpty)
               ? '/'
               : uri.path!.startsWith('/')

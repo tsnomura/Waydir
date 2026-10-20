@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:isolate';
+
 import '../../features/locations/location_resolver.dart'
     show SftpCredentials, SftpAuthMethod;
 import '../../features/locations/location_uri.dart';
@@ -147,7 +150,10 @@ class SftpSessionManager {
     );
   }
 
-  static String defaultRemotePath(int sessionId, String user) {
+  static Future<String> defaultRemotePath(int sessionId, String user) =>
+      Isolate.run(() => _defaultRemotePathSync(sessionId, user));
+
+  static String _defaultRemotePathSync(int sessionId, String user) {
     final home = WaydirCoreLoader.sftpRealPath(sessionId, '.');
     if (home != null && home.startsWith('/')) {
       final stat = WaydirCoreLoader.sftpStat(sessionId, home);
@@ -210,15 +216,29 @@ class SftpSessionManager {
       }
     }
 
-    final result = WaydirCoreLoader.sftpOpen(
-      host: host,
-      port: port,
-      user: user,
-      authKind: authKind,
-      password: password,
-      keyPath: keyPath,
-      passphrase: passphrase,
+    final result = await Isolate.run(
+      () => WaydirCoreLoader.sftpOpen(
+        host: host,
+        port: port,
+        user: user,
+        authKind: authKind,
+        password: password,
+        keyPath: keyPath,
+        passphrase: passphrase,
+      ),
     );
+    final raced = _byRoot[root];
+    if (raced != null && result.isOk) {
+      if (raced.sessionId != result.sessionId) {
+        final orphan = result.sessionId;
+        unawaited(Isolate.run(() => WaydirCoreLoader.sftpClose(orphan)));
+      }
+
+      return SftpOpenOutcome(
+        status: SftpOpenStatus.ok,
+        sessionId: raced.sessionId,
+      );
+    }
 
     if (result.isOk) {
       _byRoot[root] = SftpSessionRecord(
@@ -245,9 +265,8 @@ class SftpSessionManager {
   }
 
   /// Sprawdza, czy sesja wciąż odpowiada (lekki round-trip: canonicalize).
-  static bool isAlive(int sessionId) {
-    return WaydirCoreLoader.sftpRealPath(sessionId, '.') != null;
-  }
+  static Future<bool> isAlive(int sessionId) =>
+      Isolate.run(() => WaydirCoreLoader.sftpRealPath(sessionId, '.') != null);
 
   /// Próbuje otworzyć sesję dla `host`/`port`/`username`: najpierw bez danych
   /// logowania (klucze auto), a gdy serwer zażąda auth — przez
@@ -341,7 +360,7 @@ class SftpSessionManager {
     if (!anyPath.startsWith('sftp://')) return null;
     final existing = recordFor(anyPath);
     if (existing != null) {
-      if (isAlive(existing.sessionId)) return existing;
+      if (await isAlive(existing.sessionId)) return existing;
 
       return reconnect(existing);
     }
@@ -366,7 +385,8 @@ class SftpSessionManager {
   static void closeRoot(String root) {
     final rec = _byRoot.remove(root);
     if (rec != null) {
-      WaydirCoreLoader.sftpClose(rec.sessionId);
+      final id = rec.sessionId;
+      unawaited(Isolate.run(() => WaydirCoreLoader.sftpClose(id)));
     }
   }
 

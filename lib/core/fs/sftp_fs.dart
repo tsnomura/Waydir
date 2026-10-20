@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import '../../i18n/strings.g.dart';
@@ -32,14 +33,17 @@ class SftpFs implements FsBackend {
     if (rec == null) {
       throw FileSystemException(t.errors.sftpNoActiveSessionFor(path: path));
     }
-    final first = op(rec.sessionId);
+    final first = await _offUiThread(op, rec.sessionId);
     if (!isFailure(first)) return first;
-    if (SftpSessionManager.isAlive(rec.sessionId)) return first;
+    if (await SftpSessionManager.isAlive(rec.sessionId)) return first;
     final reconnected = await SftpSessionManager.ensureSession(path);
     if (reconnected == null) return first;
 
-    return op(reconnected.sessionId);
+    return _offUiThread(op, reconnected.sessionId);
   }
+
+  static Future<T> _offUiThread<T>(T Function(int sessionId) op, int id) =>
+      Isolate.run(() => op(id));
 
   String _remote(String path) => SftpSessionManager.remotePath(path);
 
@@ -176,11 +180,12 @@ class SftpFs implements FsBackend {
 
   @override
   Future<void> rename(String from, String to) async {
+    final fromRemote = _remote(from);
     final toRemote = _remote(to);
     final ok = await _withReconnect(
       from,
       (sessionId) =>
-          WaydirCoreLoader.sftpRename(sessionId, _remote(from), toRemote),
+          WaydirCoreLoader.sftpRename(sessionId, fromRemote, toRemote),
       (r) => !r,
     );
     if (!ok) throw FileSystemException(t.errors.sftpRenameFailed, from);
