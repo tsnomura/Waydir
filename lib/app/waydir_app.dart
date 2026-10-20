@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:signals/signals_flutter.dart';
 import '../core/archive/archive_temp.dart';
 import '../core/settings/settings_store.dart';
+import '../features/navigation/navigation_store.dart';
+import '../features/panes/shell_store.dart';
 import '../i18n/strings.g.dart';
 import '../ui/theme/app_theme.dart';
 import '../ui/theme/app_theme_registry.dart';
@@ -34,6 +36,10 @@ class _WaydirAppState extends State<WaydirApp> with WidgetsBindingObserver {
 
   Future<AppExitResponse> _onExitRequested() async {
     ArchiveTemp.endSession();
+    final stores = ShellStore.current?.allStores ?? const <NavigationStore>[];
+    await Future.wait([
+      for (final store in stores) store.saveFolderState(),
+    ]).timeout(const Duration(seconds: 2), onTimeout: () => const []);
 
     return AppExitResponse.exit;
   }

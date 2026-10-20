@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:signals/signals.dart';
 import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/features/navigation/navigation_store.dart';
@@ -132,6 +133,89 @@ void main() {
       expect(cursorName(), 'd');
     },
   );
+
+  test('going up lands on the folder that was left', () async {
+    putCursorOn('a');
+    store.navigateTo(p.join(tmpDir.path, 'c'));
+    await settle();
+    store.goUp();
+    await settle();
+
+    expect(cursorName(), 'c');
+  });
+
+  test('going back restores the remembered cursor', () async {
+    putCursorOn('a');
+    store.navigateTo(p.join(tmpDir.path, 'c'));
+    await settle();
+    store.goBack();
+    await settle();
+
+    expect(cursorName(), 'a');
+  });
+
+  test('a folder sort is applied together with its listing', () async {
+    await SettingsStore.instance.db.setFolderSortPref(
+      tmpDir.path,
+      sortKey: 'date',
+      sortAscending: false,
+    );
+    putCursorOn('c');
+    store.onOpen(store.visibleFiles.value[store.cursorIndex.value]);
+    await settle();
+    final seen = <String>[];
+    final dispose = effect(() {
+      final names = store.visibleFiles.value.map((f) => f.name).join(',');
+      if (names.contains('a')) seen.add(names);
+    });
+    store.goBack();
+    await settle();
+    dispose();
+
+    expect(seen.toSet(), {'b,d,a,e,c'});
+    expect(cursorName(), 'c');
+  });
+
+  test(
+    'leaving a folder does not re-sort it before the next one shows',
+    () async {
+      await SettingsStore.instance.db.setFolderSortPref(
+        tmpDir.path,
+        sortKey: 'date',
+        sortAscending: false,
+      );
+      store.dispose();
+      store = NavigationStore(
+        operationStore: operationStore,
+        initialPath: tmpDir.path,
+      );
+      await settle();
+      final seen = <String>[];
+      final dispose = effect(() {
+        final names = store.visibleFiles.value.map((f) => f.name).join(',');
+        if (names.contains('a')) seen.add(names);
+      });
+      putCursorOn('c');
+      store.onOpen(store.visibleFiles.value[store.cursorIndex.value]);
+      await settle();
+      dispose();
+
+      expect(seen.toSet(), {'b,d,a,e,c'});
+    },
+  );
+
+  test('saving the folder state lets a new tab restore the cursor', () async {
+    putCursorOn('d');
+    await store.saveFolderState();
+    store.dispose();
+    store = NavigationStore(
+      operationStore: operationStore,
+      initialPath: tmpDir.path,
+    );
+    await settle();
+
+    expect(cursorName(), 'd');
+  });
 
   group('tree view', () {
     late String previousMode;

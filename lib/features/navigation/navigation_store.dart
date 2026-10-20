@@ -99,6 +99,8 @@ class NavigationStore {
   final decorations = RowDecorationStore();
   final fileTags = signal<Map<String, Set<int>>>({});
   int _sortLoadToken = 0;
+  Future<(SortKey, bool)>? _pendingSort;
+  String? _pendingCursorAfterUp;
   void Function()? _sortDefaultsDisposer;
   void Function()? _gitStatusDisposer;
   void Function()? _fileTagsDisposer;
@@ -379,7 +381,7 @@ class NavigationStore {
     history.value = [startPath];
     showHidden.value = SettingsStore.instance.showHiddenDefault.value;
     _pendingInitialSelect = initialSelect;
-    _loadSortFor(startPath);
+    _prepareSortFor(startPath);
     loadDirectory(startPath);
     _setupShowHiddenEffect();
     _setupGhostSelectionEffect();
@@ -463,29 +465,35 @@ class NavigationStore {
     });
   }
 
-  Future<void> _loadSortFor(String path) async {
-    final token = ++_sortLoadToken;
+  Future<(SortKey, bool)> _resolveSortFor(String path) async {
     final s = SettingsStore.instance;
-    _applySort(
+    final fallback = (
       sortKeyFromString(s.sortKey.value),
       s.sortAscending.value,
-      s.foldersFirst.value,
     );
-    if (!s.rememberFolderSort.value) return;
-    if (!s.isLoaded) return;
+    if (!s.rememberFolderSort.value || !s.isLoaded) return fallback;
     try {
       final pref = await s.db.getFolderSortPref(path);
-      if (token != _sortLoadToken) return;
       if (pref != null) {
-        _applySort(
-          sortKeyFromString(pref.sortKey),
-          pref.sortAscending,
-          s.foldersFirst.value,
-        );
+        return (sortKeyFromString(pref.sortKey), pref.sortAscending);
       }
     } catch (e, st) {
       log.warn('navigation', 'failed to load folder sort', error: e, stack: st);
     }
+
+    return fallback;
+  }
+
+  Future<void> _loadSortFor(String path) async {
+    final token = ++_sortLoadToken;
+    final (key, ascending) = await _resolveSortFor(path);
+    if (token != _sortLoadToken) return;
+    _applySort(key, ascending, SettingsStore.instance.foldersFirst.value);
+  }
+
+  void _prepareSortFor(String path) {
+    ++_sortLoadToken;
+    _pendingSort = _resolveSortFor(path);
   }
 
   void _persistSort() {
@@ -764,7 +772,7 @@ class NavigationStore {
       anchorIndex.value = -1;
       currentPath.value = normalized;
     });
-    _loadSortFor(normalized);
+    _prepareSortFor(normalized);
     loadDirectory(normalized);
     _recordEnteredPath(enteredPath);
   }
@@ -785,7 +793,9 @@ class NavigationStore {
         );
   }
 
-  void _saveFolderState(String path) {
+  Future<void> saveFolderState() => _saveFolderState(currentPath.value);
+
+  Future<void> _saveFolderState(String path) async {
     if (path.isEmpty) return;
     final s = SettingsStore.instance;
     if (!s.rememberFolderState.value) return;
@@ -799,20 +809,20 @@ class NavigationStore {
     );
     if (!s.isLoaded) return;
     final encoded = selected.isEmpty ? null : jsonEncode(selected.toList());
-    s.db
-        .setFolderViewState(
-          path,
-          cursorPath: cursorPath,
-          selectedPaths: encoded,
-        )
-        .catchError(
-          (e, st) => log.warn(
-            'navigation',
-            'failed to save folder state',
-            error: e,
-            stack: st,
-          ),
-        );
+    try {
+      await s.db.setFolderViewState(
+        path,
+        cursorPath: cursorPath,
+        selectedPaths: encoded,
+      );
+    } catch (e, st) {
+      log.warn(
+        'navigation',
+        'failed to save folder state',
+        error: e,
+        stack: st,
+      );
+    }
   }
 
   void _applyPendingSelect() {
@@ -830,72 +840,105 @@ class NavigationStore {
     });
   }
 
-  Future<void> _restoreFolderStateIfMatches(String path) async {
-    if (_pendingInitialSelect != null) return;
+  Future<_FolderState?> _loadFolderState(String path) async {
+    if (_pendingInitialSelect != null) return null;
     final s = SettingsStore.instance;
-    if (!s.rememberFolderState.value) return;
-    _FolderState? state = _folderStateCache[path];
-    if (state == null && s.isLoaded) {
-      try {
-        final pref = await s.db.getFolderViewState(path);
-        if (pref == null) return;
-        if (currentPath.value != path) return;
-        Set<String> selected = const {};
-        final raw = pref.selectedPaths;
-        if (raw != null && raw.isNotEmpty) {
-          try {
-            final decoded = jsonDecode(raw);
-            if (decoded is List) {
-              selected = decoded.whereType<String>().toSet();
-            }
-          } catch (e, st) {
-            log.warn(
-              'navigation',
-              'failed to decode stored folder selection',
-              error: e,
-              stack: st,
-            );
+    if (!s.rememberFolderState.value) return null;
+    final cached = _folderStateCache[path];
+    if (cached != null || !s.isLoaded) return cached;
+    try {
+      final pref = await s.db.getFolderViewState(path);
+      if (pref == null) return null;
+      Set<String> selected = const {};
+      final raw = pref.selectedPaths;
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            selected = decoded.whereType<String>().toSet();
           }
+        } catch (e, st) {
+          log.warn(
+            'navigation',
+            'failed to decode stored folder selection',
+            error: e,
+            stack: st,
+          );
         }
-        if (pref.cursorPath == null && selected.isEmpty) return;
-        state = _FolderState(
-          selectedPaths: selected,
-          cursorPath: pref.cursorPath,
-        );
-        _folderStateCache[path] = state;
-      } catch (e, st) {
-        log.warn(
-          'navigation',
-          'failed to restore folder state',
-          error: e,
-          stack: st,
-        );
-
-        return;
       }
+      if (pref.cursorPath == null && selected.isEmpty) return null;
+      final state = _FolderState(
+        selectedPaths: selected,
+        cursorPath: pref.cursorPath,
+      );
+      _folderStateCache[path] = state;
+
+      return state;
+    } catch (e, st) {
+      log.warn(
+        'navigation',
+        'failed to restore folder state',
+        error: e,
+        stack: st,
+      );
+
+      return null;
     }
-    final resolved = state;
-    if (resolved == null) return;
+  }
+
+  void _applyFolderState(_FolderState? state) {
+    if (state == null) return;
+    if (selectedPaths.value.isNotEmpty || cursorIndex.value >= 0) return;
     final list = _vf;
     if (list.isEmpty) return;
     final visiblePaths = {for (final f in list) f.path};
-    final restored = resolved.selectedPaths.intersection(visiblePaths);
-    int cursor = -1;
-    final cursorPath = resolved.cursorPath;
+    final restored = state.selectedPaths.intersection(visiblePaths);
+    var cursor = -1;
+    final cursorPath = state.cursorPath;
     if (cursorPath != null) {
       cursor = list.indexWhere((f) => f.path == cursorPath);
     }
     if (cursor < 0 && restored.isNotEmpty) {
       cursor = list.indexWhere((f) => f.path == restored.first);
     }
-    if (selectedPaths.value.isNotEmpty || cursorIndex.value >= 0) return;
+    if (restored.isNotEmpty) selectedPaths.value = restored;
+    if (cursor >= 0) {
+      cursorIndex.value = cursor;
+      anchorIndex.value = cursor;
+    }
+  }
+
+  void _applyPendingCursorAfterUp() {
+    final child = _pendingCursorAfterUp;
+    if (child == null) return;
+    _pendingCursorAfterUp = null;
+    final idx = _vf.indexWhere((f) => f.path == child);
+    if (idx < 0) return;
+    cursorIndex.value = idx;
+    anchorIndex.value = idx;
+  }
+
+  Future<bool> _publishFolder(
+    List<FileEntry> entries,
+    int token,
+    Future<(SortKey, bool)>? pendingSort,
+    Future<_FolderState?> state,
+  ) async {
+    final sort = pendingSort == null ? null : await pendingSort;
+    final restored = await state;
+    if (token != _loadToken) return false;
+    if (identical(_pendingSort, pendingSort)) _pendingSort = null;
     batch(() {
-      if (restored.isNotEmpty) selectedPaths.value = restored;
-      if (cursor >= 0) {
-        cursorIndex.value = cursor;
-        anchorIndex.value = cursor;
+      if (sort != null) {
+        _applySort(sort.$1, sort.$2, SettingsStore.instance.foldersFirst.value);
       }
+      _publishEntries(entries);
+      _applyFolderState(restored);
+      _applyPendingCursorAfterUp();
+      _applyPendingSelect();
     });
+
+    return true;
   }
 
   Future<bool> navigateToEnteredPath(String path) async {
@@ -972,7 +1015,7 @@ class NavigationStore {
     final cur = currentPath.value;
     if (PlatformPaths.isSmbUri(cur)) {
       final parent = PlatformPaths.parentOf(cur);
-      if (parent != cur) navigateTo(parent);
+      if (parent != cur) _navigateUp(parent, cur);
 
       return;
     }
@@ -980,14 +1023,21 @@ class NavigationStore {
     if (parent == cur) return;
     if (PlatformPaths.windowsUncServerRoot(parent) != null ||
         await FileSystemService.isNavigable(parent)) {
-      navigateTo(parent);
+      _navigateUp(parent, cur);
     }
+  }
+
+  void _navigateUp(String parent, String child) {
+    _pendingCursorAfterUp = child;
+    navigateTo(parent);
   }
 
   Future<void> refresh() => loadDirectory(currentPath.value);
 
   Future<void> loadDirectory(String path) async {
     final token = ++_loadToken;
+    final pendingSort = _pendingSort;
+    final state = _loadFolderState(path);
     batch(() {
       isLoading.value = true;
       trashAccessDenied.value = false;
@@ -1003,9 +1053,9 @@ class NavigationStore {
         final uri = LocationUri.parse(path);
         if (uri.share == null || uri.share!.isEmpty) {
           entries = await _listSmbHostShares(path, uri);
-          if (token != _loadToken) return;
-          _publishEntries(entries);
-          _restoreFolderStateIfMatches(path);
+          if (!await _publishFolder(entries, token, pendingSort, state)) {
+            return;
+          }
           _watcher.stop();
 
           return;
@@ -1038,20 +1088,19 @@ class NavigationStore {
         ];
       } else if (PlatformPaths.windowsUncServerRoot(path) case final host?) {
         entries = await _listWindowsUncShares(path, host);
-        if (token != _loadToken) return;
-        _publishEntries(entries);
-        _restoreFolderStateIfMatches(path);
+        if (!await _publishFolder(entries, token, pendingSort, state)) {
+          return;
+        }
         _watcher.stop();
 
         return;
       } else {
         entries = await FileSystemService.listDirectory(path);
       }
-      if (token != _loadToken) return;
-      _publishEntries(entries);
-      _restoreFolderStateIfMatches(path);
-      _applyPendingSelect();
-      if (token == _loadToken) await _loadFileTags(entries);
+      if (!await _publishFolder(entries, token, pendingSort, state)) {
+        return;
+      }
+      await _loadFileTags(entries);
       if (token != _loadToken) return;
       if (isTagPath(path) ||
           isTrashPath(path) ||
@@ -2103,6 +2152,7 @@ class NavigationStore {
   }
 
   void dispose() {
+    unawaited(saveFolderState());
     _showHiddenDisposer?.call();
     _showHiddenDisposer = null;
     _ghostSelectionDisposer?.call();
