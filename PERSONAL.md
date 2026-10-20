@@ -1466,6 +1466,28 @@ Markdown with math, a rendered/source toggle and an editor.
   renderer as a package, and a `wql` command that signals the running
   instance like `wd`/`wcd`.
 
+## Ctrl+wheel zooms Quick Look text
+
+Ctrl+wheel in Quick Look (overlay, bottom pane, standalone window) scales
+the previewed text in ~10% steps between 0.5× and 3×. The zoom is temporary:
+it is local to that Quick Look, carries over while paging to other files,
+resets when Quick Look closes, and never touches the saved Quick Look font
+size.
+
+- `QuickLookZoomArea` wraps the body and applies the zoom through
+  `MediaQuery`'s text scaler, so Markdown, plain text and the info panel
+  follow it; the code editor multiplies its own font size by the same
+  scaler (its status bar stays unscaled).
+- A Ctrl+wheel must not also scroll. Scrollables claim wheel events before
+  any ancestor, and making them non-scrollable through `ScrollConfiguration`
+  does not work — Quick Look's lists use `AlwaysScrollableScrollPhysics`,
+  which overrides it. Instead, while Ctrl is held the content ignores
+  pointer events and the zoom area takes the wheel. So Ctrl+click inside the
+  content does nothing while Ctrl is down, and Ctrl+wheel over an image
+  zooms the text rather than the image (the plain wheel still zooms images).
+
+Relevant commit: `ba6fee1`.
+
 ## Preview generators: separate grid thumbnail (`thumbnailArgs`)
 
 The grid tile and Quick Look used to always share the same image (page 0 of
