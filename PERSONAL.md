@@ -1621,3 +1621,76 @@ needed to bring the cursor into view.
   (`initialScrollOffset`); one that stays mounted across a path change
   swaps offsets via `switchScrollMemory`, jumping before the cursor reveal
   runs. A folder visited for the first time starts at the top as before.
+
+## Cursor and folder view state follow the item, and come back as left
+
+Going back to Downloads (BS or Alt+←) put the cursor on an unrelated file.
+The remembered cursor was restored correctly, but ~28 ms later Downloads'
+own date sort arrived from the database and re-sorted the list — and the
+cursor was a row index (`cursorIndex`), so it stayed on the same row, now
+another file. Marks were already kept by path; the cursor and the Shift
+anchor were not. Any re-order or membership change after the cursor was
+set had the same effect: sort changes, refresh, a file appearing above the
+cursor, tree expand/collapse, list ↔ tree. Rather than remapping each case,
+the cursor and the per-folder view state were redesigned (design notes:
+`cursor-view-state-spec.md` in the workspace root).
+
+### The cursor is the item
+
+- `ItemCursor` keeps the item's path as the source of truth and derives the
+  row index from whatever list the view navigates (tree rows in tree view).
+  The `cursorIndex` / `anchorIndex` `.value` API is unchanged, so every
+  existing caller became item-bound at once.
+- When the item disappears (deleted, renamed away), the cursor lands on the
+  nearest row. Deleting no longer clears the cursor.
+- The per-case remap in the directory-watcher refresh (the compare ghost-row
+  fix above) is gone; it is automatic now.
+- In tree view, copy/move to the other pane, the command palette's target
+  check, type-ahead and Quick Look's selection now use the same list as the
+  cursor, so they no longer pick a different file than the highlighted one.
+  Type-ahead also matches files shown inside expanded folders.
+
+### Folder sorts no longer get pinned by visiting
+
+- `folder_prefs` held both a folder's explicit sort and its remembered
+  cursor/marks, and the sort columns could not be empty — so remembering a
+  cursor created a row with "name, ascending" that then pinned every visited
+  folder to that sort, and filled the 500-row cap so real sort choices got
+  pruned.
+- Split into `folder_sort_prefs` (a row exists only for a sort you chose;
+  never pruned) and `folder_view_states` (cursor, marks, on-screen cursor
+  row, tree expansion; pruned oldest-first at 2000). Schema v46 migrates
+  non-default sorts and remembered cursors and drops the old table. The
+  per-folder "folders first" value, saved but never read, was dropped.
+
+### One-step restore
+
+- Entering a folder resolves its sort and its remembered view state while
+  the listing loads, then applies sort, entries, cursor and marks together.
+  The folder being left is no longer re-sorted to the global order first,
+  and the new one no longer flashes name order before its own sort.
+- BS / go up puts the cursor on the folder or archive just left, even when
+  it was entered some other way (path bar, sidebar). Alt+← / → restore the
+  remembered cursor as before.
+- The view state is also saved when a tab closes and when Waydir exits (the
+  exit handler waits up to 2 s for the database), so it survives restarts.
+
+### Same place on screen, same tree
+
+- The list and grid report how many rows the cursor sits below the top of
+  the view; that is saved with the folder state, and on return the view
+  scrolls so the cursor is at that row again instead of just being revealed.
+  Grid uses tile rows, so it is approximate when the column count changed.
+  Without a cursor, the in-memory offset from the previous section applies.
+- In tree view, every expanded folder (any depth) is saved per folder. On
+  return only the expanded ancestors of the cursor item are listed before
+  the one-step restore, so the cursor lands on its row; the rest fill in
+  right after. In list view the expansion is kept and loaded when switching
+  to tree view.
+
+Not covered: back/forward history across restarts, a view mode per tab, and
+keeping the cursor on an item that is only hidden by a search filter
+(starting a search still resets it).
+
+Relevant commits: `2e9ffe5`, `4da1b3b`, `80c41c0`, `9363857`, `c33ad94`
+(the cursor row's right padding no longer overflows by its 1px border).
