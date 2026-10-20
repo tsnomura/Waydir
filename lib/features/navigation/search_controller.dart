@@ -11,6 +11,7 @@ import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../locations/location_resolver.dart';
 import 'filter_query.dart';
+import 'item_cursor.dart';
 
 class SearchController {
   final String Function() currentPath;
@@ -20,8 +21,8 @@ class SearchController {
   final Future<String?> Function(String logical) resolvePhysicalDestination;
   final List<FileEntry> Function(List<FileEntry> list, FilterQuery filter)
   filterByTags;
-  final Signal<int> cursorIndex;
-  final Signal<int> anchorIndex;
+  final ItemCursor cursorIndex;
+  final ItemCursor anchorIndex;
 
   final searchActive = signal(false);
   final searchQuery = signal('');

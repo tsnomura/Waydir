@@ -9,9 +9,8 @@ mixin _WaydirCommandPaletteMixin
         _WaydirMenuMixin {
   bool _hasTarget(NavigationStore s) {
     if (s.selectedCount.value > 0) return true;
-    final idx = s.cursorIndex.value;
-    final files = s.visibleFiles.value;
-    return idx >= 0 && idx < files.length && !files[idx].isGhost;
+    final entry = s.cursorEntry.value;
+    return entry != null && !entry.isGhost;
   }
 
   AppCommand _cmd(

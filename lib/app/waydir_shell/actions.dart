@@ -710,11 +710,8 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   List<FileEntry> _dualPaneEntries(NavigationStore store) {
     final entries = store.selectedEntries;
     if (entries.isNotEmpty) return entries;
-    final idx = store.cursorIndex.value;
-    final files = store.visibleFiles.value;
-    if (idx >= 0 && idx < files.length && !files[idx].isGhost) {
-      return [files[idx]];
-    }
+    final entry = store.cursorEntry.value;
+    if (entry != null && !entry.isGhost) return [entry];
 
     return const [];
   }

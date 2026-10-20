@@ -686,7 +686,7 @@ mixin _WaydirKeyboardMixin
   }
 
   void _handleTypeAhead(NavigationStore store, String ch) {
-    final files = store.visibleFiles.value;
+    final files = store.navigableFiles;
     if (files.isEmpty) return;
     final bufferEnabled = SettingsStore.instance.typeAheadBuffer.value;
     final now = DateTime.now();

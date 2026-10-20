@@ -29,6 +29,7 @@ import '../tags/tag_store.dart';
 import 'clipboard_controller.dart';
 import 'filter_query.dart';
 import 'folder_size_scanner.dart';
+import 'item_cursor.dart';
 import 'remote_resolver.dart';
 import 'search_controller.dart';
 import 'selection_controller.dart';
@@ -47,8 +48,8 @@ class NavigationStore {
   final showHidden = signal(false);
   final remoteThumbnails = signal(false);
   final selectedPaths = signal<Set<String>>({});
-  final cursorIndex = signal(-1);
-  final anchorIndex = signal(-1);
+  late final cursorIndex = ItemCursor(() => _selectionFiles);
+  late final anchorIndex = ItemCursor(() => _selectionFiles);
   final history = signal<List<String>>([]);
   final historyIndex = signal(0);
   final isLoading = signal(false);
@@ -1552,32 +1553,9 @@ class NavigationStore {
         .where(newPaths.contains)
         .toSet();
 
-    final oldList = _vf;
-    final oldCursor = cursorIndex.value;
-    final cursorPath = oldCursor >= 0 && oldCursor < oldList.length
-        ? oldList[oldCursor].path
-        : null;
-    final oldAnchor = anchorIndex.value;
-    final anchorPath = oldAnchor >= 0 && oldAnchor < oldList.length
-        ? oldList[oldAnchor].path
-        : null;
-
     batch(() {
       files.value = newEntries;
       selectedPaths.value = filteredSelected;
-      final list = _vf;
-      var newCursor = cursorPath == null
-          ? -1
-          : list.indexWhere((e) => e.path == cursorPath);
-      if (newCursor < 0 && oldCursor >= 0 && list.isNotEmpty) {
-        newCursor = oldCursor.clamp(0, list.length - 1);
-      }
-      var newAnchor = anchorPath == null
-          ? -1
-          : list.indexWhere((e) => e.path == anchorPath);
-      if (newAnchor < 0) newAnchor = newCursor;
-      cursorIndex.value = newCursor;
-      anchorIndex.value = newAnchor;
     });
   }
 
@@ -2150,6 +2128,8 @@ class NavigationStore {
 
   List<FileEntry> get _vf => _selectionFiles;
 
+  List<FileEntry> get navigableFiles => _selectionFiles;
+
   void onSelect(FileSelectionEvent event) =>
       _selectionController.onSelect(event);
 
@@ -2277,7 +2257,6 @@ class NavigationStore {
     final paths = entries.map((e) => e.realPath).toList();
     batch(() {
       selectedPaths.value = {};
-      cursorIndex.value = -1;
       anchorIndex.value = -1;
     });
     final archiveLoc = await _archiveLocationFor(currentPath.value);
