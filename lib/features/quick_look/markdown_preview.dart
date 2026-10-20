@@ -444,7 +444,7 @@ class _MarkdownBody extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: MarkdownBody(
-        data: data,
+        data: protectTableMathPipes(data),
         selectable: true,
         fitContent: !centered,
         onTapLink: (_, href, _) => _openLink(href),

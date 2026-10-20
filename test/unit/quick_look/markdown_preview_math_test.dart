@@ -192,38 +192,81 @@ After.
     expect(find.byType(Math), findsOneWidget);
   });
 
-  group('texForFlutterMath', () {
-    test('separates an operator name from a following fence', () {
+  group('protectTableMathPipes', () {
+    test('rewrites pipes inside inline math in table rows', () {
       expect(
-        texForFlutterMath(r'\operatorname{diag}\left(d\right)'),
-        r'\operatorname{diag}{}\left(d\right)',
+        protectTableMathPipes(r'| a | `beta_t`で \(|t_i|\to1\) |'),
+        r'| a | `beta_t`で \(\vert t_i\vert \to1\) |',
       );
       expect(
-        texForFlutterMath(r'\operatorname*{argmax}_x \bigl(f\bigr)'),
-        r'\operatorname*{argmax}_x{} \bigl(f\bigr)',
+        protectTableMathPipes(r'| $\|x\|$ | b |'),
+        r'| $\Vert x\Vert $ | b |',
       );
     });
 
-    test('leaves everything else alone', () {
-      for (final tex in [
-        r'\operatorname{tr}(A)',
-        r'\operatorname{tr} A',
-        r'\sin\left(x\right)',
-        r'\operatorname{diag}\leftarrow x',
-        r'\left(\operatorname{diag}\right)',
+    test('leaves code spans, prose and non-table lines alone', () {
+      for (final source in [
+        r'| `a|b` | c |',
+        r'| $5 | $10 |',
+        r'Outside a table \(|x|\) stays.',
       ]) {
-        expect(texForFlutterMath(tex), tex);
+        expect(protectTableMathPipes(source), source);
       }
     });
   });
 
-  testWidgets(
-    'renders \\operatorname followed by \\left( without falling back',
-    (tester) async {
-      final dir = Directory.systemTemp.createTempSync('md_preview_math_test');
-      addTearDown(() => dir.deleteSync(recursive: true));
-      final md = File('${dir.path}/doc.md')
-        ..writeAsStringSync(r'''
+  testWidgets('keeps inline math with pipes inside one table cell', (
+    tester,
+  ) async {
+    final dir = Directory.systemTemp.createTempSync('md_preview_math_test');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final md = File('${dir.path}/doc.md')
+      ..writeAsStringSync(r'''
+| 現行eo系列 | 本定式化 |
+|---|---|
+| `beta_sgn`で各非対角符号を鮮明化 | `beta_t`で \(|t_i|\to1\) としrank-1化 |
+| rank 1は未保証 | \(|t_i|\to1\) でrank 1 |
+''');
+
+    await _pumpPreview(tester, md.path);
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(Math), findsNWidgets(2));
+    expect(find.textContaining('としrank-1化'), findsOneWidget);
+    expect(find.textContaining(r'\to1'), findsNothing);
+  });
+
+  group('separateOperatorNames', () {
+    test('inserts an empty group before a following command', () {
+      expect(
+        separateOperatorNames(r'\operatorname{diag}\left(d\right)'),
+        r'\operatorname{diag}{}\left(d\right)',
+      );
+      expect(
+        separateOperatorNames(r'\operatorname*{argmax}_x \bigl(f\bigr)'),
+        r'\operatorname*{argmax}_x{} \bigl(f\bigr)',
+      );
+      expect(
+        separateOperatorNames(r'\operatorname{tr}\widetilde Q'),
+        r'\operatorname{tr}{}\widetilde Q',
+      );
+    });
+
+    test('leaves operator names followed by plain content alone', () {
+      for (final tex in [
+        r'\operatorname{tr}(A)',
+        r'\operatorname{tr} A',
+        r'\sin\left(x\right)',
+      ]) {
+        expect(separateOperatorNames(tex), tex);
+      }
+    });
+  });
+
+  for (final (name, source) in [
+    (
+      'operator name followed by a fence',
+      r'''
 とすると、\(A\) は
 
 \[
@@ -237,15 +280,37 @@ d_3(1-t_3^2)
 \]
 
 と分解できる。
-''');
+''',
+    ),
+    (
+      'operator name followed by an accent or spacing',
+      r'''
+\(\operatorname{tr}A=1\) でも
+
+\[
+\operatorname{tr}\widetilde Q
+=|M p_0|^2
+\le1
+\]
+
+\[
+\operatorname{tr}\,\hat Q + \operatorname{tr}\sqrt{x}
+\]
+''',
+    ),
+  ]) {
+    testWidgets('renders $name without falling back to source', (tester) async {
+      final dir = Directory.systemTemp.createTempSync('md_preview_math_test');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final md = File('${dir.path}/doc.md')..writeAsStringSync(source);
 
       await _pumpPreview(tester, md.path);
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(Math), findsNWidgets(2));
+      expect(find.byType(Math), findsWidgets);
       expect(find.textContaining(r'\operatorname'), findsNothing);
-    },
-  );
+    });
+  }
 
   test('inline math regex requires tight, dollar-free delimiters', () {
     final pattern = MathInlineSyntax().pattern;

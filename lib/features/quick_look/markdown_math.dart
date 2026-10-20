@@ -91,16 +91,51 @@ class MathBlockSyntax extends md.BlockSyntax {
   }
 }
 
+final _codeSpan = RegExp(r'`+[^`]*`+');
+final _inlineMathSpan = RegExp(
+  r'\\\((.+?)\\\)|(?<![\\$])\$(?!\$)\S(?:[^$]*\S)?\$(?!\$)',
+);
+
+/// GFM tables split rows at every `|` before inline syntaxes run, so inline
+/// math such as `\(|t_i|\to1\)` in a table cell was cut apart. In table rows,
+/// `|` and `\|` inside inline math are rewritten to the equivalent `\vert`
+/// and `\Vert`; code spans are left untouched.
+String protectTableMathPipes(String source) {
+  if (!source.contains('|')) return source;
+  String protect(String segment) => segment.replaceAllMapped(
+    _inlineMathSpan,
+    (m) => m[0]!.replaceAll(r'\|', r'\Vert ').replaceAll('|', r'\vert '),
+  );
+  final lines = source.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
+    if (!line.trimLeft().startsWith('|')) continue;
+    final out = StringBuffer();
+    var last = 0;
+    for (final code in _codeSpan.allMatches(line)) {
+      out
+        ..write(protect(line.substring(last, code.start)))
+        ..write(code[0]);
+      last = code.end;
+    }
+    out.write(protect(line.substring(last)));
+    lines[i] = out.toString();
+  }
+
+  return lines.join('\n');
+}
+
 /// `flutter_math_fork` parses `\operatorname{name}` as a function that takes
-/// the next group as its argument, and fails when that group is a sizing or
-/// fence command (`\operatorname{diag}\left(` -> "Got function '\left' with no
-/// arguments"). KaTeX and LaTeX accept it, so an empty group is inserted after
-/// the operator (and its scripts) in exactly that case.
-String texForFlutterMath(String tex) => tex.replaceAllMapped(
+/// the next group as its argument, and fails when that group is a command
+/// that cannot stand alone as one (`\left`, `\big`, accents, `\sqrt`, `\,`, …:
+/// "Got function '\left' with no arguments"). KaTeX and LaTeX accept these, so
+/// a formula that fails to parse is retried with an empty group after every
+/// operator name (and its scripts) that is followed by a command.
+String separateOperatorNames(String tex) => tex.replaceAllMapped(
   RegExp(
     r'(\\operatorname\*?\s*\{[^{}]*\}'
     r'(?:\s*[_^]\s*(?:\{[^{}]*\}|\\[A-Za-z]+|[^\s\\{}]))*)'
-    r'(?=\s*\\(?:left|middle|[bB]igg?[lrm]?)(?![A-Za-z]))',
+    r'(?=\s*\\)',
   ),
   (m) => '${m[1]}{}',
 );
@@ -115,17 +150,29 @@ class MathElementBuilder extends MarkdownElementBuilder {
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     final tex = element.textContent;
 
+    Widget source() => Text(
+      tex,
+      style: textStyle.copyWith(
+        fontFamily: 'monospace',
+        color: textStyle.color?.withValues(alpha: 0.6),
+      ),
+    );
+
     return Math.tex(
-      texForFlutterMath(tex),
+      tex,
       textStyle: textStyle,
       mathStyle: mathStyle,
-      onErrorFallback: (error) => Text(
-        tex,
-        style: textStyle.copyWith(
-          fontFamily: 'monospace',
-          color: textStyle.color?.withValues(alpha: 0.6),
-        ),
-      ),
+      onErrorFallback: (error) {
+        final retry = separateOperatorNames(tex);
+        if (retry == tex) return source();
+
+        return Math.tex(
+          retry,
+          textStyle: textStyle,
+          mathStyle: mathStyle,
+          onErrorFallback: (error) => source(),
+        );
+      },
     );
   }
 }
