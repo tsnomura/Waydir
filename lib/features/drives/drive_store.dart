@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:signals/signals.dart';
 import '../../core/logging/app_logger.dart';
 import 'drive_model.dart';
@@ -6,12 +7,17 @@ import 'drive_service.dart';
 
 class DriveStore {
   final drives = signal<List<Drive>>([]);
-  final DriveService _service = DriveService();
+  final DriveService _service;
   Timer? _timer;
+  Future<void>? _inFlight;
+  bool _refreshAgain = false;
 
-  DriveStore() {
+  DriveStore({DriveService? service}) : _service = service ?? DriveService() {
     _init();
   }
+
+  @visibleForTesting
+  Future<void> refresh() => _refresh();
 
   void _init() {
     _refresh();
@@ -20,7 +26,26 @@ class DriveStore {
     });
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh() {
+    final running = _inFlight;
+    if (running != null) {
+      _refreshAgain = true;
+
+      return running;
+    }
+    final next = _load().whenComplete(() {
+      _inFlight = null;
+      if (_refreshAgain) {
+        _refreshAgain = false;
+        _refresh();
+      }
+    });
+    _inFlight = next;
+
+    return next;
+  }
+
+  Future<void> _load() async {
     try {
       final updatedDrives = await _service.getDrives();
       drives.value = updatedDrives;

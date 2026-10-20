@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ffi';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
@@ -31,6 +32,26 @@ typedef _WNetGetConnectionNative =
 typedef _WNetGetConnectionDart =
     int Function(Pointer<Utf16>, Pointer<Utf16>, Pointer<Uint32>);
 
+class _RawWindowsDrive {
+  final String letter;
+  final bool isNetwork;
+  final bool isRemovable;
+  final String? remoteTarget;
+  final String? volumeName;
+  final int? totalBytes;
+  final int? freeBytes;
+
+  const _RawWindowsDrive({
+    required this.letter,
+    required this.isNetwork,
+    required this.isRemovable,
+    this.remoteTarget,
+    this.volumeName,
+    this.totalBytes,
+    this.freeBytes,
+  });
+}
+
 class _WindowsDriveService implements DriveService {
   static final _wNetGetConnection = DynamicLibrary.open('mpr.dll')
       .lookupFunction<_WNetGetConnectionNative, _WNetGetConnectionDart>(
@@ -39,83 +60,109 @@ class _WindowsDriveService implements DriveService {
 
   @override
   Future<List<Drive>> getDrives() async {
-    final drives = <Drive>[];
+    final raw = await Isolate.run(_probeDrives);
 
+    return [
+      for (final d in raw)
+        if (d.isNetwork)
+          Drive(
+            id: '${d.letter}:\\',
+            label: t.sidebar.drives.windowsDriveLabel(
+              name: _shareName(d.remoteTarget) ?? t.sidebar.drives.networkDrive,
+              letter: d.letter,
+            ),
+            mountPoint: '${d.letter}:\\',
+            isRemovable: false,
+            isNetwork: true,
+            remoteTarget: d.remoteTarget,
+            fsType: null,
+          )
+        else
+          Drive(
+            id: '${d.letter}:\\',
+            label: t.sidebar.drives.windowsDriveLabel(
+              name: (d.volumeName ?? '').isNotEmpty
+                  ? d.volumeName!
+                  : d.isRemovable
+                  ? t.sidebar.drives.usbDrive
+                  : t.sidebar.drives.localDisk,
+              letter: d.letter,
+            ),
+            mountPoint: '${d.letter}:\\',
+            isRemovable: d.isRemovable,
+            fsType: null,
+            space: d.totalBytes == null || d.totalBytes! <= 0
+                ? null
+                : DriveSpace(
+                    totalBytes: d.totalBytes!,
+                    freeBytes: d.freeBytes ?? 0,
+                  ),
+          ),
+    ];
+  }
+
+  static List<_RawWindowsDrive> _probeDrives() {
+    final drives = <_RawWindowsDrive>[];
     final bitMask = GetLogicalDrives();
     if (bitMask == 0) return drives;
 
     for (var i = 0; i < 26; i++) {
-      if ((bitMask & (1 << i)) != 0) {
-        final letter = String.fromCharCode(65 + i);
-        final rootPath = '$letter:\\';
-        final rootPathPtr = rootPath.toNativeUtf16();
-
-        try {
-          final driveType = GetDriveType(rootPathPtr);
-          if (driveType == DRIVE_REMOTE) {
-            final target = _networkDriveTarget(letter);
-            drives.add(
-              Drive(
-                id: rootPath,
-                label: t.sidebar.drives.windowsDriveLabel(
-                  name: _shareName(target) ?? t.sidebar.drives.networkDrive,
-                  letter: letter,
-                ),
-                mountPoint: rootPath,
-                isRemovable: false,
-                isNetwork: true,
-                remoteTarget: target,
-                fsType: null,
-              ),
-            );
-          } else if (driveType == DRIVE_REMOVABLE || driveType == DRIVE_FIXED) {
-            final volumeNameBuffer = wsalloc(MAX_PATH + 1);
-            try {
-              final result = GetVolumeInformation(
-                rootPathPtr,
-                volumeNameBuffer,
-                MAX_PATH + 1,
-                nullptr,
-                nullptr,
-                nullptr,
-                nullptr,
-                0,
-              );
-
-              String label = t.sidebar.drives.localDisk;
-              if (result != 0) {
-                label = volumeNameBuffer.toDartString();
-              }
-              if (label.isEmpty) {
-                label = driveType == DRIVE_REMOVABLE
-                    ? t.sidebar.drives.usbDrive
-                    : t.sidebar.drives.localDisk;
-              }
-
-              drives.add(
-                Drive(
-                  id: rootPath,
-                  label: t.sidebar.drives.windowsDriveLabel(
-                    name: label,
-                    letter: letter,
-                  ),
-                  mountPoint: rootPath,
-                  isRemovable: driveType == DRIVE_REMOVABLE,
-                  fsType: null,
-                  space: _windowsSpace(rootPath),
-                ),
-              );
-            } finally {
-              free(volumeNameBuffer);
-            }
-          }
-        } finally {
-          free(rootPathPtr);
+      if ((bitMask & (1 << i)) == 0) continue;
+      final letter = String.fromCharCode(65 + i);
+      final rootPath = '$letter:\\';
+      final rootPathPtr = rootPath.toNativeUtf16();
+      try {
+        final driveType = GetDriveType(rootPathPtr);
+        if (driveType == DRIVE_REMOTE) {
+          drives.add(
+            _RawWindowsDrive(
+              letter: letter,
+              isNetwork: true,
+              isRemovable: false,
+              remoteTarget: _networkDriveTarget(letter),
+            ),
+          );
+        } else if (driveType == DRIVE_REMOVABLE || driveType == DRIVE_FIXED) {
+          final space = _windowsSpace(rootPathPtr);
+          drives.add(
+            _RawWindowsDrive(
+              letter: letter,
+              isNetwork: false,
+              isRemovable: driveType == DRIVE_REMOVABLE,
+              volumeName: _volumeName(rootPathPtr),
+              totalBytes: space?.$1,
+              freeBytes: space?.$2,
+            ),
+          );
         }
+      } finally {
+        free(rootPathPtr);
       }
     }
 
     return drives;
+  }
+
+  static String? _volumeName(Pointer<Utf16> rootPathPtr) {
+    final buffer = wsalloc(MAX_PATH + 1);
+    try {
+      final ok = GetVolumeInformation(
+        rootPathPtr,
+        buffer,
+        MAX_PATH + 1,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        0,
+      );
+
+      return ok == 0 ? null : buffer.toDartString();
+    } catch (_) {
+      return null;
+    } finally {
+      free(buffer);
+    }
   }
 
   @override
@@ -151,7 +198,7 @@ class _WindowsDriveService implements DriveService {
     return parts.last;
   }
 
-  String? _networkDriveTarget(String letter) {
+  static String? _networkDriveTarget(String letter) {
     final local = '$letter:'.toNativeUtf16();
     final length = calloc<Uint32>()..value = MAX_PATH + 1;
     final remote = wsalloc(MAX_PATH + 1);
@@ -161,9 +208,7 @@ class _WindowsDriveService implements DriveService {
       final unc = remote.toDartString();
 
       return unc.isEmpty ? null : unc;
-    } catch (e, st) {
-      log.warn('drives', 'network drive lookup failed', error: e, stack: st);
-
+    } catch (_) {
       return null;
     } finally {
       free(local);
@@ -172,27 +217,18 @@ class _WindowsDriveService implements DriveService {
     }
   }
 
-  DriveSpace? _windowsSpace(String rootPath) {
-    final path = rootPath.toNativeUtf16();
+  static (int, int)? _windowsSpace(Pointer<Utf16> rootPathPtr) {
     final freeToCaller = calloc<Uint64>();
     final total = calloc<Uint64>();
     final free = calloc<Uint64>();
     try {
-      final ok = GetDiskFreeSpaceEx(path, freeToCaller, total, free);
+      final ok = GetDiskFreeSpaceEx(rootPathPtr, freeToCaller, total, free);
       if (ok == 0 || total.value <= 0) return null;
 
-      return DriveSpace(totalBytes: total.value, freeBytes: free.value);
-    } catch (e, st) {
-      log.warn(
-        'drives',
-        'windows drive space lookup failed',
-        error: e,
-        stack: st,
-      );
-
+      return (total.value, free.value);
+    } catch (_) {
       return null;
     } finally {
-      calloc.free(path);
       calloc.free(freeToCaller);
       calloc.free(total);
       calloc.free(free);
