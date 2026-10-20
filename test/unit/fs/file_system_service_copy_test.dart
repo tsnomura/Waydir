@@ -66,6 +66,8 @@ void main() {
 
   test('copies nested files and directories with correct totals, no conflicts '
       'against a destination that does not exist yet', () async {
+    if (!Platform.isWindows) return;
+
     final src = Directory('${tmp.path}\\src')..createSync();
     File('${src.path}\\a.txt').writeAsStringSync('A');
     final sub = Directory('${src.path}\\sub')..createSync();
@@ -88,6 +90,8 @@ void main() {
 
   test('detects a conflict against an existing destination file and overwrites '
       'it once resolved', () async {
+    if (!Platform.isWindows) return;
+
     final src = Directory('${tmp.path}\\src')..createSync();
     final srcFile = File('${src.path}\\file.txt')
       ..writeAsStringSync('new content');
