@@ -65,9 +65,58 @@ jobs:
           name: windows-artifacts
           path: dist/**/*
 
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build and vendor waydir_core
+        run: scripts/build_waydir_core.sh
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Linux release
+        run: flutter build linux --release
+
+      - name: Package bundle
+        run: |
+          mkdir -p build/linux/x64/release/bundle/docs
+          cp docs/generators.md build/linux/x64/release/bundle/docs/generators.md
+          mkdir -p dist
+          tar -C build/linux/x64/release -czf \
+            "dist/waydir-${GITHUB_REF_NAME#v}-linux-x64.tar.gz" \
+            --transform 's,^bundle,waydir,' bundle
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-artifacts
+          path: dist/**/*
+
   release:
     name: Publish GitHub Release
-    needs: [build-windows]
+    needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -81,7 +130,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release-files
-          find artifacts -type f \( -name "*.exe" -o -name "*.zip" \) \
+          find artifacts -type f \( -name "*.exe" -o -name "*.zip" -o -name "*.tar.gz" \) \
             -exec cp {} release-files/ \;
           ls -la release-files/
 
