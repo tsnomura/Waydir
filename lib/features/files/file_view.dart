@@ -1694,6 +1694,12 @@ class _ListRowState extends State<_ListRow> {
     return 0;
   }
 
+  double get _rightBorderWidth {
+    if (widget.isCursor) return 1;
+
+    return 0;
+  }
+
   BoxBorder? get _border {
     if (widget.isFolderDragOver) {
       return Border.all(color: AppColors.accent.withValues(alpha: 0.4));
@@ -2144,7 +2150,7 @@ class _ListRowState extends State<_ListRow> {
           height: widget.rowHeight,
           padding: EdgeInsets.only(
             left: _kRowPaddingLeft - _leftBorderWidth,
-            right: _kRowPaddingRight,
+            right: _kRowPaddingRight - _rightBorderWidth,
           ),
           decoration: BoxDecoration(
             color: _bg,
