@@ -29,6 +29,26 @@ class ScrollLink {
 
   void request(double offset) =>
       requested.value = ScrollRequest(offset, ++_serial);
+
+  final _cursorRows = <String, double>{};
+  (String, double)? _pendingCursorRow;
+
+  void reportCursorRow(String folder, double row) => _cursorRows[folder] = row;
+
+  double? cursorRowFor(String folder) => _cursorRows[folder];
+
+  void requestCursorRow(String folder, double row) {
+    _cursorRows[folder] = row;
+    _pendingCursorRow = (folder, row);
+  }
+
+  double? takeCursorRow(String folder) {
+    final pending = _pendingCursorRow;
+    if (pending == null || pending.$1 != folder) return null;
+    _pendingCursorRow = null;
+
+    return pending.$2;
+  }
 }
 
 mixin ScrollLinkBinding<T extends StatefulWidget> on State<T> {

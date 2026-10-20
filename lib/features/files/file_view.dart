@@ -418,6 +418,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   void initState() {
     super.initState();
     initScrollLink();
+    _scrollController.addListener(_reportCursorRow);
   }
 
   @override
@@ -605,11 +606,44 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     }
   }
 
+  double? _cursorRowTop() {
+    final index = widget.cursorIndex;
+    if (index < 0 || index >= _displayFiles.length) return null;
+
+    return _listTopPadding + index * _itemExt;
+  }
+
+  void _reportCursorRow() {
+    final top = _cursorRowTop();
+    if (top == null || !_scrollController.hasClients || _itemExt <= 0) return;
+    widget.scrollLink?.reportCursorRow(
+      widget.currentPath,
+      (top - _scrollController.offset) / _itemExt,
+    );
+  }
+
   void _revealSelectedRow() {
     final index = widget.cursorIndex;
     final files = _displayFiles;
     if (index < 0 || index >= files.length) return;
     final key = '$index:${files[index].path}';
+    final restoreRow = widget.scrollLink?.takeCursorRow(widget.currentPath);
+    if (restoreRow != null) {
+      _lastRevealedKey = key;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final top = _cursorRowTop();
+        if (!mounted || !_scrollController.hasClients || top == null) return;
+        final position = _scrollController.position;
+        _scrollController.jumpTo(
+          (top - restoreRow * _itemExt).clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+        );
+      });
+
+      return;
+    }
     if (key == _lastRevealedKey) return;
     _lastRevealedKey = key;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -648,6 +682,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   @override
   void dispose() {
     disposeScrollLink();
+    _scrollController.removeListener(_reportCursorRow);
     _scrollController.dispose();
     _hScrollController.dispose();
     super.dispose();
@@ -675,7 +710,9 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
         _itemExt = _rowH + _rowG;
         _revealSelectedRow();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _reportPageRows();
+          if (!mounted) return;
+          _reportPageRows();
+          _reportCursorRow();
         });
 
         final displayFiles = _displayFiles;

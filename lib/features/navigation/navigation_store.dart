@@ -104,6 +104,7 @@ class NavigationStore {
   void Function()? _sortDefaultsDisposer;
   void Function()? _gitStatusDisposer;
   void Function()? _fileTagsDisposer;
+  void Function()? _treeLoadDisposer;
 
   bool get isTrashView => isTrashPath(currentPath.value);
   bool get isTagView => isTagPath(currentPath.value);
@@ -389,6 +390,28 @@ class NavigationStore {
     _setupGitStatusEffect();
     _setupTagsEffect();
     _setupFileTagsEffect();
+    _setupTreeLoadEffect();
+  }
+
+  void _setupTreeLoadEffect() {
+    _treeLoadDisposer = effect(() {
+      if (SettingsStore.instance.fileViewMode.value != 'tree') return;
+      final children = treeChildren.value;
+      final loading = treeLoadingPaths.value;
+      final missing = [
+        for (final row in treeRows.value)
+          if (row.expanded &&
+              !children.containsKey(row.entry.path) &&
+              !loading.contains(row.entry.path))
+            row.entry.path,
+      ];
+      if (missing.isEmpty) return;
+      scheduleMicrotask(() {
+        for (final path in missing) {
+          _loadTreeChildrenPath(path);
+        }
+      });
+    });
   }
 
   late final _tagDecorations = computed<Map<String, RowDecoration>>(() {
@@ -803,9 +826,13 @@ class NavigationStore {
     final list = _vf;
     final cursorPath = (idx >= 0 && idx < list.length) ? list[idx].path : null;
     final selected = Set<String>.from(selectedPaths.value);
+    final cursorRow = cursorPath == null ? null : scrollLink.cursorRowFor(path);
+    final expanded = Set<String>.from(treeExpandedPaths.value);
     _folderStateCache[path] = _FolderState(
       selectedPaths: selected,
       cursorPath: cursorPath,
+      cursorRow: cursorRow,
+      treeExpanded: expanded,
     );
     if (!s.isLoaded) return;
     final encoded = selected.isEmpty ? null : jsonEncode(selected.toList());
@@ -814,6 +841,10 @@ class NavigationStore {
         path,
         cursorPath: cursorPath,
         selectedPaths: encoded,
+        cursorViewportRow: cursorRow,
+        treeExpandedPaths: expanded.isEmpty
+            ? null
+            : jsonEncode(expanded.toList()),
       );
     } catch (e, st) {
       log.warn(
@@ -849,27 +880,16 @@ class NavigationStore {
     try {
       final pref = await s.db.getFolderViewState(path);
       if (pref == null) return null;
-      Set<String> selected = const {};
-      final raw = pref.selectedPaths;
-      if (raw != null && raw.isNotEmpty) {
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is List) {
-            selected = decoded.whereType<String>().toSet();
-          }
-        } catch (e, st) {
-          log.warn(
-            'navigation',
-            'failed to decode stored folder selection',
-            error: e,
-            stack: st,
-          );
-        }
+      final selected = _decodePathSet(pref.selectedPaths);
+      final expanded = _decodePathSet(pref.treeExpandedPaths);
+      if (pref.cursorPath == null && selected.isEmpty && expanded.isEmpty) {
+        return null;
       }
-      if (pref.cursorPath == null && selected.isEmpty) return null;
       final state = _FolderState(
         selectedPaths: selected,
         cursorPath: pref.cursorPath,
+        cursorRow: pref.cursorViewportRow,
+        treeExpanded: expanded,
       );
       _folderStateCache[path] = state;
 
@@ -886,9 +906,65 @@ class NavigationStore {
     }
   }
 
-  void _applyFolderState(_FolderState? state) {
+  Set<String> _decodePathSet(String? raw) {
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) return decoded.whereType<String>().toSet();
+    } catch (e, st) {
+      log.warn(
+        'navigation',
+        'failed to decode stored folder paths',
+        error: e,
+        stack: st,
+      );
+    }
+
+    return const {};
+  }
+
+  bool _canRestoreInto(_FolderState? state) =>
+      state != null && selectedPaths.peek().isEmpty && cursorIndex.peek() < 0;
+
+  Future<Map<String, List<FileEntry>>> _preloadTreeToCursor(
+    String folder,
+    _FolderState state,
+  ) async {
+    final cursorPath = state.cursorPath;
+    if (cursorPath == null || state.treeExpanded.isEmpty) return const {};
+    if (SettingsStore.instance.fileViewMode.value != 'tree') return const {};
+    final chain = <String>[];
+    var dir = PlatformPaths.parentOf(cursorPath);
+    while (dir != folder && dir.length > folder.length) {
+      if (!state.treeExpanded.contains(dir)) return const {};
+      chain.add(dir);
+      final parent = PlatformPaths.parentOf(dir);
+      if (parent == dir) break;
+      dir = parent;
+    }
+    final loaded = <String, List<FileEntry>>{};
+    await Future.wait([
+      for (final path in chain)
+        _listTreeChildrenPath(path)
+            .then((entries) => loaded[path] = entries)
+            .catchError((Object e) => loaded[path] = const <FileEntry>[]),
+    ]);
+
+    return loaded;
+  }
+
+  void _applyFolderState(
+    _FolderState? state,
+    Map<String, List<FileEntry>> treeChildrenToCursor,
+  ) {
     if (state == null) return;
     if (selectedPaths.value.isNotEmpty || cursorIndex.value >= 0) return;
+    if (state.treeExpanded.isNotEmpty) {
+      treeExpandedPaths.value = Set<String>.from(state.treeExpanded);
+      if (treeChildrenToCursor.isNotEmpty) {
+        treeChildren.value = {...treeChildren.value, ...treeChildrenToCursor};
+      }
+    }
     final list = _vf;
     if (list.isEmpty) return;
     final visiblePaths = {for (final f in list) f.path};
@@ -905,6 +981,8 @@ class NavigationStore {
     if (cursor >= 0) {
       cursorIndex.value = cursor;
       anchorIndex.value = cursor;
+      final row = state.cursorRow;
+      if (row != null) scrollLink.requestCursorRow(currentPath.value, row);
     }
   }
 
@@ -926,6 +1004,10 @@ class NavigationStore {
   ) async {
     final sort = pendingSort == null ? null : await pendingSort;
     final restored = await state;
+    final folder = currentPath.value;
+    final treeToCursor = _canRestoreInto(restored)
+        ? await _preloadTreeToCursor(folder, restored!)
+        : const <String, List<FileEntry>>{};
     if (token != _loadToken) return false;
     if (identical(_pendingSort, pendingSort)) _pendingSort = null;
     batch(() {
@@ -933,7 +1015,7 @@ class NavigationStore {
         _applySort(sort.$1, sort.$2, SettingsStore.instance.foldersFirst.value);
       }
       _publishEntries(entries);
-      _applyFolderState(restored);
+      _applyFolderState(restored, treeToCursor);
       _applyPendingCursorAfterUp();
       _applyPendingSelect();
     });
@@ -2163,6 +2245,8 @@ class NavigationStore {
     _gitStatusDisposer = null;
     _fileTagsDisposer?.call();
     _fileTagsDisposer = null;
+    _treeLoadDisposer?.call();
+    _treeLoadDisposer = null;
     _tagDecorations.dispose();
     gitStatus.dispose();
     _searchController.dispose();
@@ -2491,8 +2575,15 @@ class NavigationStore {
 class _FolderState {
   final Set<String> selectedPaths;
   final String? cursorPath;
+  final double? cursorRow;
+  final Set<String> treeExpanded;
 
-  _FolderState({required this.selectedPaths, required this.cursorPath});
+  _FolderState({
+    required this.selectedPaths,
+    required this.cursorPath,
+    this.cursorRow,
+    this.treeExpanded = const {},
+  });
 }
 
 class MultiRenameOutcome {
