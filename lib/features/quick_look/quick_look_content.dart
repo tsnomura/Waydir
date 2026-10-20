@@ -19,6 +19,7 @@ import 'markdown_preview.dart';
 import 'pdf_preview.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
+import 'quick_look_zoom.dart';
 
 bool defaultCompactFor(FileEntry? entry) {
   if (entry == null || entry.type == FileItemType.folder) return true;
@@ -313,7 +314,10 @@ class QuickLookBody extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      QuickLookZoomArea(child: Builder(builder: _buildContent));
+
+  Widget _buildContent(BuildContext context) {
     final e = entry;
     void release() => WidgetsBinding.instance.addPostFrameCallback(
       (_) => editorActive.value = false,

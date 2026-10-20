@@ -342,7 +342,9 @@ class _CodeEditorState extends State<CodeEditor> {
         final family = useSystem || s.quickLookFontFamily.value.isEmpty
             ? 'monospace'
             : s.quickLookFontFamily.value;
-        final fontSize = s.quickLookFontSize.value.toDouble();
+        final fontSize = MediaQuery.textScalerOf(
+          context,
+        ).scale(s.quickLookFontSize.value.toDouble());
         final lineHeight = s.quickLookLineHeight.value;
         final showLineNumbers = s.quickLookShowLineNumbers.value;
         final relativeLineNumbers = s.quickLookRelativeLineNumbers.value;
@@ -414,34 +416,36 @@ class _CodeEditorState extends State<CodeEditor> {
               : null,
         );
 
-        return Container(
-          color: AppColors.bg,
-          child: Column(
-            children: [
-              Expanded(
-                child: Focus(
-                  canRequestFocus: false,
-                  skipTraversal: true,
-                  onKeyEvent: _onKey,
-                  child: editor,
+        return MediaQuery.withNoTextScaling(
+          child: Container(
+            color: AppColors.bg,
+            child: Column(
+              children: [
+                Expanded(
+                  child: Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onKeyEvent: _onKey,
+                    child: editor,
+                  ),
                 ),
-              ),
-              Container(height: 1, color: AppColors.bgDivider),
-              AnimatedBuilder(
-                animation: _ctrl,
-                builder: (context, _) => _StatusBar(
-                  dirty: _dirty,
-                  saving: _saving,
-                  error: _saveError,
-                  line: _ctrl.selection.extentIndex + 1,
-                  lineCount: _ctrl.lineCount,
-                  onSave: _save,
-                  modeLabel: vimEnabled && !widget.readOnly
-                      ? _vimLabel()
-                      : null,
+                Container(height: 1, color: AppColors.bgDivider),
+                AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (context, _) => _StatusBar(
+                    dirty: _dirty,
+                    saving: _saving,
+                    error: _saveError,
+                    line: _ctrl.selection.extentIndex + 1,
+                    lineCount: _ctrl.lineCount,
+                    onSave: _save,
+                    modeLabel: vimEnabled && !widget.readOnly
+                        ? _vimLabel()
+                        : null,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
