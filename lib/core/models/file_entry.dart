@@ -56,6 +56,8 @@ class FileEntry {
   final int uid;
   final int gid;
 
+  final bool hiddenAttr;
+
   DateTime? _modified;
   DateTime get modified =>
       _modified ??= DateTime.fromMillisecondsSinceEpoch(modifiedMs);
@@ -86,6 +88,7 @@ class FileEntry {
     this.mode = 0,
     this.uid = 0,
     this.gid = 0,
+    this.hiddenAttr = false,
     String? realPath,
   }) : modifiedMs = modified.millisecondsSinceEpoch,
        createdMs = (created ?? modified).millisecondsSinceEpoch,
@@ -107,6 +110,7 @@ class FileEntry {
     this.mode = 0,
     this.uid = 0,
     this.gid = 0,
+    this.hiddenAttr = false,
     String? realPath,
     this.ghostOf,
   }) : _realPath = realPath;
@@ -126,6 +130,7 @@ class FileEntry {
       modified: stat.modified,
       created: stat.changed,
       mode: stat.mode,
+      hiddenAttr: isHiddenOnWindows(entity.path),
     );
   }
 
@@ -140,11 +145,8 @@ class FileEntry {
   bool get isHidden {
     final ghostOf = this.ghostOf;
     if (ghostOf != null) return ghostOf.isHidden;
-    if (PlatformPaths.isWindows) {
-      return name.startsWith('.') || isHiddenOnWindows(path);
-    }
 
-    return name.startsWith('.');
+    return hiddenAttr || name.startsWith('.');
   }
 
   String get kind {
@@ -198,7 +200,10 @@ class FileEntryCodec {
       final nameB = utf8.encode(e.name);
       final pathB = utf8.encode(e.path);
       final rec = ByteData(_recordHead);
-      rec.setUint8(0, e.type == FileItemType.folder ? 0 : 1);
+      rec.setUint8(
+        0,
+        (e.type == FileItemType.folder ? 0 : 1) | (e.hiddenAttr ? 2 : 0),
+      );
       rec.setInt64(1, e.size);
       rec.setInt64(9, e.modifiedMs);
       rec.setInt64(17, e.createdMs);
@@ -234,9 +239,8 @@ class FileEntryCodec {
     final out = <FileEntry>[];
     var off = 8;
     for (var i = 0; i < count; i++) {
-      final type = view.getUint8(off) == 0
-          ? FileItemType.folder
-          : FileItemType.file;
+      final kind = view.getUint8(off);
+      final type = kind & 1 == 0 ? FileItemType.folder : FileItemType.file;
       final size = view.getInt64(off + 1);
       final modifiedMs = view.getInt64(off + 9);
       final createdMs = view.getInt64(off + 17);
@@ -263,6 +267,7 @@ class FileEntryCodec {
           mode: mode,
           uid: uid,
           gid: gid,
+          hiddenAttr: kind & 2 != 0,
         ),
       );
     }

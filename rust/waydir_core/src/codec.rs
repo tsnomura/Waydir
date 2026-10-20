@@ -2,6 +2,7 @@ pub(crate) const MAGIC: u32 = 0x5744_4952; // 'WDIR'
 
 pub(crate) struct Entry {
     pub is_dir: bool,
+    pub hidden: bool,
     pub size: i64,
     pub mtime_ms: i64,
     pub created_ms: i64,
@@ -28,14 +29,17 @@ pub(crate) fn put_u64(buf: &mut Vec<u8>, v: u64) {
 }
 
 /// Fixed-size portion of a serialised record. Layout (big-endian):
-/// u8 is_dir, i64 size, i64 mtime_ms, i64 created_ms, i64 added_ms, u32 mode,
+/// u8 kind, i64 size, i64 mtime_ms, i64 created_ms, i64 added_ms, u32 mode,
 /// u32 uid, u32 gid, u32 name_len, u32 path_len, then name + path bytes.
+/// `kind` bit 0 is set for files (clear for folders); bit 1 marks entries the
+/// platform flags as hidden (Windows hidden/system attribute).
 pub(crate) const RECORD_HEAD: usize = 1 + 8 + 8 + 8 + 8 + 4 + 4 + 4 + 4 + 4;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn put_record(
     buf: &mut Vec<u8>,
     is_dir: bool,
+    hidden: bool,
     size: i64,
     mtime_ms: i64,
     created_ms: i64,
@@ -46,7 +50,7 @@ pub(crate) fn put_record(
     name: &[u8],
     path: &[u8],
 ) {
-    buf.push(if is_dir { 0 } else { 1 });
+    buf.push(u8::from(!is_dir) | (u8::from(hidden) << 1));
     put_i64(buf, size);
     put_i64(buf, mtime_ms);
     put_i64(buf, created_ms);
@@ -70,8 +74,8 @@ pub(crate) fn serialise(entries: &[Entry]) -> Vec<u8> {
     put_u32(&mut buf, entries.len() as u32);
     for e in entries {
         put_record(
-            &mut buf, e.is_dir, e.size, e.mtime_ms, e.created_ms, e.added_ms, e.mode, e.uid,
-            e.gid, &e.name, &e.path,
+            &mut buf, e.is_dir, e.hidden, e.size, e.mtime_ms, e.created_ms, e.added_ms, e.mode,
+            e.uid, e.gid, &e.name, &e.path,
         );
     }
     buf

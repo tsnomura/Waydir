@@ -190,6 +190,7 @@ pub unsafe extern "C" fn waydir_search(
                 put_record(
                     &mut sink.local,
                     is_dir,
+                    false,
                     0,
                     0,
                     0,
@@ -289,6 +290,7 @@ pub unsafe extern "C" fn waydir_search_start(
                     put_record(
                         &mut g.0,
                         is_dir,
+                        false,
                         0,
                         0,
                         0,

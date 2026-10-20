@@ -221,6 +221,7 @@ pub unsafe extern "C" fn waydir_sftp_list(
         put_record(
             &mut buf,
             is_dir,
+            false,
             size,
             mtime,
             0,

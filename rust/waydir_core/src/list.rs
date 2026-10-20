@@ -43,6 +43,7 @@ pub unsafe extern "C" fn waydir_list(
         let dp = de.path();
         entries.push(Entry {
             is_dir,
+            hidden: is_hidden_attr(&de),
             size: 0,
             mtime_ms: 0,
             created_ms: 0,
@@ -87,4 +88,19 @@ pub unsafe extern "C" fn waydir_list(
     });
 
     finish_buffer(serialise(&entries), out_len)
+}
+
+#[cfg(target_os = "windows")]
+fn is_hidden_attr(de: &std::fs::DirEntry) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const HIDDEN: u32 = 0x2;
+    const SYSTEM: u32 = 0x4;
+    de.metadata()
+        .map(|m| m.file_attributes() & (HIDDEN | SYSTEM) != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_hidden_attr(_de: &std::fs::DirEntry) -> bool {
+    false
 }
