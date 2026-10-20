@@ -4,11 +4,12 @@ import 'package:signals/signals.dart';
 import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/settings/settings_store.dart';
+import 'item_cursor.dart';
 
 abstract class SelectionController {
   final Signal<Set<String>> selectedPaths;
-  final Signal<int> cursorIndex;
-  final Signal<int> anchorIndex;
+  final ItemCursor cursorIndex;
+  final ItemCursor anchorIndex;
   final Signal<int> gridColumns;
   final List<FileEntry> Function() visibleFiles;
 

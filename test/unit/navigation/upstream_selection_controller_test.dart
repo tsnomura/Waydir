@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:signals/signals.dart';
 import 'package:waydir/core/models/file_entry.dart';
+import 'package:waydir/features/navigation/item_cursor.dart';
 import 'package:waydir/features/navigation/selection_controller.dart';
 
 FileEntry _entry(String name) => FileEntry.raw(
@@ -17,8 +18,8 @@ void main() {
 
   late List<FileEntry> files;
   late Signal<Set<String>> selectedPaths;
-  late Signal<int> cursorIndex;
-  late Signal<int> anchorIndex;
+  late ItemCursor cursorIndex;
+  late ItemCursor anchorIndex;
   late Signal<int> gridColumns;
   late UpstreamSelectionController controller;
 
@@ -31,8 +32,8 @@ void main() {
       _entry('e.txt'),
     ];
     selectedPaths = signal(<String>{});
-    cursorIndex = signal(-1);
-    anchorIndex = signal(-1);
+    cursorIndex = ItemCursor(() => files);
+    anchorIndex = ItemCursor(() => files);
     gridColumns = signal(4);
     controller = UpstreamSelectionController(
       selectedPaths: selectedPaths,

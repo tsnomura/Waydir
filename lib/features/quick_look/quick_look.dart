@@ -293,7 +293,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   }
 
   void _selectFromStats(FileEntry entry) {
-    final files = widget.store.visibleFiles.value;
+    final files = widget.store.navigableFiles;
     final idx = files.indexWhere((f) => f.path == entry.path);
     if (idx >= 0) {
       widget.store.jumpToIndex(idx);
