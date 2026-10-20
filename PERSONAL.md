@@ -431,6 +431,33 @@ already a dependency.
 
 Relevant commit: `4076f76`.
 
+### LaTeX-style delimiters, operator names, pipes in tables
+
+Documents written for MathJax (and most LLM output) use `\( … \)` and
+`\[ … \]` instead of dollars, and real derivations hit two renderer gaps.
+
+- `\( … \)` renders as inline math and `\[ … \]` as display math, one-line
+  or spanning lines (content may sit on the delimiter lines too). In
+  CommonMark `\(` / `\[` are escapes for literal brackets, so a block is only
+  taken when its closing delimiter actually follows and an inline span only
+  when `\)` closes it — `\[1\] reference` and `f\(x)` stay text. The same
+  closing check now also applies to `$$`, so an unterminated `$$` no longer
+  turns the rest of the document into math. Writing `$` / `$$` stays the
+  portable choice; the backslash forms are for reading such documents.
+- `flutter_math_fork` takes the group after `\operatorname{name}` as its
+  argument and fails when that is `\left`, `\big`, an accent (`\widetilde`,
+  `\hat`, `\vec`), `\sqrt`, a spacing command, … (`\operatorname{diag}\left(`
+  → "Got function '\left' with no arguments"); KaTeX and LaTeX accept these.
+  A formula that fails to parse is retried with an empty group after each
+  such operator name. Only failing formulas are retried, since the extra
+  group changes spacing before a binary operator like `\cdot`.
+- GFM splits table rows at every `|` before inline math is recognised, so
+  `\(|t_i|\to1\)` in a cell was cut apart. In table rows, `|` / `\|` inside
+  inline math become `\vert` / `\Vert` before parsing; code spans are left
+  alone.
+
+Relevant commits: `31f19bc`, `963937b`, `ed2b754`, `d4dee2f`.
+
 ## Window state persistence
 
 Window size and maximized/restored state are remembered across restarts
