@@ -217,11 +217,74 @@ void main() {
     expect(cursorName(), 'd');
   });
 
+  test('the cursor row on screen is saved and requested on return', () async {
+    putCursorOn('c');
+    store.scrollLink.reportCursorRow(tmpDir.path, 3.5);
+    store.navigateTo(p.join(tmpDir.path, 'a'));
+    await settle();
+    store.goBack();
+    await settle();
+
+    expect(cursorName(), 'c');
+    expect(store.scrollLink.takeCursorRow(tmpDir.path), 3.5);
+  });
+
   group('tree view', () {
     late String previousMode;
 
+    Future<void> expandNested() async {
+      Directory(p.join(tmpDir.path, 'a', 'sub')).createSync();
+      File(
+        p.join(tmpDir.path, 'a', 'sub', 'deep.txt'),
+      ).writeAsStringSync('deep');
+      SettingsStore.instance.fileViewMode.value = 'tree';
+      store.toggleTreeFolder(
+        store.navigableFiles.firstWhere((f) => f.name == 'a'),
+      );
+      await settle();
+      store.toggleTreeFolder(
+        store.navigableFiles.firstWhere((f) => f.name == 'sub'),
+      );
+      await settle();
+      putCursorOn('deep.txt');
+    }
+
     setUp(() {
       previousMode = SettingsStore.instance.fileViewMode.value;
+    });
+
+    test(
+      'nested expansion and a deep cursor come back after going back',
+      () async {
+        await expandNested();
+        store.navigateTo(p.join(tmpDir.path, 'c'));
+        await settle();
+        store.goBack();
+        await settle();
+
+        expect(store.treeExpandedPaths.value, {
+          p.join(tmpDir.path, 'a'),
+          p.join(tmpDir.path, 'a', 'sub'),
+        });
+        expect(cursorName(), 'deep.txt');
+      },
+    );
+
+    test('nested expansion and a deep cursor survive a new store', () async {
+      await expandNested();
+      await store.saveFolderState();
+      store.dispose();
+      store = NavigationStore(
+        operationStore: operationStore,
+        initialPath: tmpDir.path,
+      );
+      await settle();
+
+      expect(cursorName(), 'deep.txt');
+      expect(
+        store.navigableFiles.map((f) => f.name),
+        containsAllInOrder(['a', 'sub', 'deep.txt', 'touch.txt', 'b']),
+      );
     });
 
     tearDown(() {

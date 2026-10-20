@@ -899,27 +899,22 @@ class AppDatabase extends _$AppDatabase {
     String path, {
     required String? cursorPath,
     required String? selectedPaths,
+    double? cursorViewportRow,
+    String? treeExpandedPaths,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final updated =
-        await (update(
-          folderViewStates,
-        )..where((t) => t.path.equals(path))).write(
-          FolderViewStatesCompanion(
-            cursorPath: Value(cursorPath),
-            selectedPaths: Value(selectedPaths),
-            updatedAt: Value(now),
-          ),
-        );
+    final values = FolderViewStatesCompanion(
+      cursorPath: Value(cursorPath),
+      selectedPaths: Value(selectedPaths),
+      cursorViewportRow: Value(cursorViewportRow),
+      treeExpandedPaths: Value(treeExpandedPaths),
+      updatedAt: Value(now),
+    );
+    final updated = await (update(
+      folderViewStates,
+    )..where((t) => t.path.equals(path))).write(values);
     if (updated == 0) {
-      await into(folderViewStates).insert(
-        FolderViewStatesCompanion.insert(
-          path: path,
-          cursorPath: Value(cursorPath),
-          selectedPaths: Value(selectedPaths),
-          updatedAt: Value(now),
-        ),
-      );
+      await into(folderViewStates).insert(values.copyWith(path: Value(path)));
     }
     await _pruneFolderViewStates();
   }

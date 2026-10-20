@@ -155,6 +155,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
   void initState() {
     super.initState();
     initScrollLink();
+    _scrollController.addListener(_reportCursorRow);
   }
 
   String? _lastRevealedKey;
@@ -184,6 +185,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
   @override
   void dispose() {
     disposeScrollLink();
+    _scrollController.removeListener(_reportCursorRow);
     _scrollController.dispose();
     super.dispose();
   }
@@ -244,12 +246,49 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
     }
   }
 
+  double get _rowExtent => _tileHeight + _mainAxisGap;
+
+  double? _cursorTileTop() {
+    final index = widget.cursorIndex;
+    if (index < 0 || index >= widget.files.length || _lastColumns <= 0) {
+      return null;
+    }
+
+    return _gridPadding + (index ~/ _lastColumns) * _rowExtent;
+  }
+
+  void _reportCursorRow() {
+    final top = _cursorTileTop();
+    if (top == null || !_scrollController.hasClients) return;
+    widget.scrollLink?.reportCursorRow(
+      widget.currentPath,
+      (top - _scrollController.offset) / _rowExtent,
+    );
+  }
+
   void _revealSelectedTile() {
     final index = widget.cursorIndex;
     if (index < 0 || index >= widget.files.length || _lastColumns <= 0) {
       return;
     }
     final key = '$index:${widget.files[index].path}:$_lastColumns';
+    final restoreRow = widget.scrollLink?.takeCursorRow(widget.currentPath);
+    if (restoreRow != null) {
+      _lastRevealedKey = key;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final top = _cursorTileTop();
+        if (!mounted || !_scrollController.hasClients || top == null) return;
+        final position = _scrollController.position;
+        _scrollController.jumpTo(
+          (top - restoreRow * _rowExtent).clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+        );
+      });
+
+      return;
+    }
     if (key == _lastRevealedKey) return;
     _lastRevealedKey = key;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -283,8 +322,10 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
         .floor()
         .clamp(1, 1 << 20);
     if (columns != _lastColumns) {
+      final first = _lastColumns <= 0;
       _lastColumns = columns;
       widget.onGridColumns?.call(columns);
+      if (first) _revealSelectedTile();
     }
     if (rows != _lastRows) {
       _lastRows = rows;
@@ -328,7 +369,9 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                 (available - (columns - 1) * crossAxisGap) / columns;
             _tileWidth = tileWidth;
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _reportMetrics(constraints, columns);
+              if (!mounted) return;
+              _reportMetrics(constraints, columns);
+              _reportCursorRow();
             });
             _revealSelectedTile();
 
