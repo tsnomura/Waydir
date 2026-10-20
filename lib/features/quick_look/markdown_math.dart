@@ -18,35 +18,59 @@ class MathInlineSyntax extends md.InlineSyntax {
   }
 }
 
-/// `$$...$$` block math, either on one line (`$$ x^2 $$`) or spanning
-/// multiple lines with the delimiters alone on their own line.
+/// Display math, either `$$...$$` or `\[...\]`: on one line (`$$ x^2 $$`) or
+/// spanning lines, where the opening line may carry content after the
+/// delimiter and the closing line content before it. A block is only taken
+/// when its closing delimiter actually follows, so a prose line that merely
+/// starts with an escaped bracket (`\[1\] reference`) stays text.
 class MathBlockSyntax extends md.BlockSyntax {
-  const MathBlockSyntax();
+  final String open;
+  final String close;
 
-  static final _fullLine = RegExp(r'^\s*\$\$(.+?)\$\$\s*$');
-  static final _delimiterLine = RegExp(r'^\s*\$\$\s*$');
+  const MathBlockSyntax.dollars() : open = r'$$', close = r'$$';
+
+  const MathBlockSyntax.brackets() : open = r'\[', close = r'\]';
+
+  String get _open => RegExp.escape(open);
+
+  String get _close => RegExp.escape(close);
+
+  RegExp get _fullLine => RegExp('^\\s*$_open(.+?)$_close\\s*\$');
+
+  RegExp get _closingLine => RegExp('^(.*?)$_close\\s*\$');
 
   @override
-  RegExp get pattern => RegExp(r'^\s*\$\$');
+  RegExp get pattern => RegExp('^\\s*$_open');
+
+  @override
+  bool canParse(md.BlockParser parser) {
+    final line = parser.current.content;
+    if (!pattern.hasMatch(line)) return false;
+    if (_fullLine.hasMatch(line)) return true;
+    for (var ahead = 1; ; ahead++) {
+      final next = parser.peek(ahead);
+      if (next == null) return false;
+      if (_closingLine.hasMatch(next.content)) return true;
+    }
+  }
 
   @override
   md.Node parse(md.BlockParser parser) {
-    final full = _fullLine.firstMatch(parser.current.content);
-    if (full != null) {
-      parser.advance();
-
-      return md.Element.text('math_block', full[1]!.trim());
-    }
-
+    final first = parser.current.content;
+    final full = _fullLine.firstMatch(first);
     parser.advance();
-    final lines = <String>[];
+    if (full != null) return md.Element.text('math_block', full[1]!.trim());
+
+    final lines = [first.substring(first.indexOf(open) + open.length)];
     while (!parser.isDone) {
-      if (_delimiterLine.hasMatch(parser.current.content)) {
-        parser.advance();
+      final line = parser.current.content;
+      parser.advance();
+      final closing = _closingLine.firstMatch(line);
+      if (closing != null) {
+        lines.add(closing[1]!);
         break;
       }
-      lines.add(parser.current.content);
-      parser.advance();
+      lines.add(line);
     }
 
     return md.Element.text('math_block', lines.join('\n').trim());

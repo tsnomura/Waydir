@@ -451,7 +451,10 @@ class _MarkdownBody extends StatelessWidget {
         imageBuilder: _buildImage,
         styleSheet: styleSheet,
         inlineSyntaxes: [MathInlineSyntax()],
-        blockSyntaxes: const [MathBlockSyntax()],
+        blockSyntaxes: const [
+          MathBlockSyntax.dollars(),
+          MathBlockSyntax.brackets(),
+        ],
         builders: {
           'math_inline': MathElementBuilder(
             textStyle: mathTextStyle,
