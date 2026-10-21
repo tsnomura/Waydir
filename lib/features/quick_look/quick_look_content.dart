@@ -142,7 +142,7 @@ class QuickLookHeader extends StatelessWidget {
               ),
               const SizedBox(width: 4),
             ],
-            if (hasPreview && onReload != null) ...[
+            if (!multi && e != null && onReload != null) ...[
               QuickLookHeaderButton(
                 icon: WaydirIconsRegular.arrowClockwise,
                 active: false,

@@ -172,7 +172,9 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                     markdownRendered: _markdownRendered,
                     onToggleMarkdownView: () =>
                         setState(() => _markdownRendered = !_markdownRendered),
-                    onReload: _requestReload,
+                    onReload: QuickLookReloadController.canReload(entry)
+                        ? _requestReload
+                        : null,
                     onHeaderPanStart: (_) => appWindow.startDragging(),
                   ),
                 ),

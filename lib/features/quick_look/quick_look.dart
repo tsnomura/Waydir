@@ -777,7 +777,9 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           editorController: _editorController,
           markdownRendered: _markdownRendered,
           onToggleMarkdownView: _toggleMarkdownRendered,
-          onReload: showDiff ? null : _requestReload,
+          onReload: !showDiff && QuickLookReloadController.canReload(entry)
+              ? _requestReload
+              : null,
           onHeaderPanStart: _handleDragStart,
           onHeaderPanUpdate: _handleDragUpdate,
         ),
