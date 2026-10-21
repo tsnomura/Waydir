@@ -1035,7 +1035,9 @@ class _SidebarState extends State<Sidebar> {
           ),
         ),
         isSelected: currentPath == path,
-        onTap: widget.store.navigateTo,
+        onTap: (target) => currentPath == target
+            ? widget.store.leaveTagView()
+            : widget.store.navigateTo(target),
         onMiddleTap: widget.onOpenInNewTab != null
             ? () => widget.onOpenInNewTab!(path)
             : null,

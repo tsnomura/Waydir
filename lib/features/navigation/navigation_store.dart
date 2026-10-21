@@ -1087,6 +1087,20 @@ class NavigationStore {
     navigateTo(history.value[historyIndex.value], addToHistory: false);
   }
 
+  void leaveTagView() {
+    if (!isTagView) return;
+    final entries = history.value;
+    for (var i = historyIndex.value - 1; i >= 0; i--) {
+      if (isTagPath(entries[i])) continue;
+      historyIndex.value = i;
+      navigateTo(entries[i], addToHistory: false);
+
+      return;
+    }
+    final configured = SettingsStore.instance.defaultStartingPath.value.trim();
+    navigateTo(configured.isNotEmpty ? configured : PlatformPaths.homePath);
+  }
+
   void goForward() {
     if (!canGoForward.value) return;
     historyIndex.value++;
@@ -1094,6 +1108,11 @@ class NavigationStore {
   }
 
   void goUp() async {
+    if (isTagView) {
+      leaveTagView();
+
+      return;
+    }
     if (isTrashView) {
       if (isTrashRoot) return;
       navigateTo(trashParentOf(currentPath.value));
