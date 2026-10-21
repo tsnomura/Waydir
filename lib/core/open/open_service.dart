@@ -65,7 +65,7 @@ class OpenService {
 
   static Future<void> _osOpenDefault(String path) async {
     if (PlatformPaths.isWindows) {
-      shellOpenOnWindows(path);
+      await shellOpenOnWindows(path);
     } else if (Platform.isLinux) {
       await Process.start('xdg-open', [path], mode: ProcessStartMode.detached);
     } else if (Platform.isMacOS) {
@@ -171,10 +171,7 @@ class OpenService {
   /// platforms there is no system equivalent and this is a no-op.
   static Future<void> systemOpenWithDialog(String path) async {
     if (!Platform.isWindows) return;
-    await Process.start('rundll32.exe', [
-      'shell32.dll,OpenAs_RunDLL',
-      path,
-    ], mode: ProcessStartMode.detached);
+    await showOpenWithDialogOnWindows(path);
   }
 
   static Future<List<AppEntry>> _recentFor(MimeType mime) async {

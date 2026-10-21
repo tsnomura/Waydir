@@ -334,7 +334,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     if (sources.isEmpty) return;
     final dir = await store.resolveForOperation(store.currentPath.value);
     if (dir == null) return;
-    final dest = FileSystemService.uniquePath(
+    final dest = await FileSystemService.uniquePathAsync(
       p.join(dir, '${_compressBaseName()}.${format.extension}'),
     );
     store.operationStore.enqueueCompress(
@@ -358,7 +358,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     if (req == null) return;
     final physicalDir = await store.resolveForOperation(dir);
     if (physicalDir == null) return;
-    final dest = FileSystemService.uniquePath(
+    final dest = await FileSystemService.uniquePathAsync(
       p.join(physicalDir, req.fileName),
     );
     store.operationStore.enqueueCompress(
@@ -512,8 +512,9 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
 
     if (toOwnFolder) {
       for (final entry in archives) {
-        final dest = FileSystemService.uniquePath(
+        final dest = await FileSystemService.uniquePathAsync(
           p.join(base, FileSystemService.archiveBaseName(entry.name)),
+          isFolder: true,
         );
         store.operationStore.enqueueExtract(
           [entry.realPath],

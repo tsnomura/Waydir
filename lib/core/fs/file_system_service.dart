@@ -66,6 +66,16 @@ class FileSystemService {
 
   static final int _deleteConcurrency = Platform.numberOfProcessors.clamp(2, 4);
 
+  static Future<RenameResult> renameAsync(String oldPath, String newName) =>
+      Isolate.run(() => rename(oldPath, newName));
+
+  static Future<List<bool>> pathsExist(List<String> paths) => Isolate.run(
+    () => [
+      for (final path in paths)
+        FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound,
+    ],
+  );
+
   static RenameResult rename(String oldPath, String newName) {
     if (!PlatformPaths.isValidFileName(newName)) {
       return const RenameInvalidName();
@@ -184,16 +194,23 @@ class FileSystemService {
     return name;
   }
 
-  static String uniquePath(String desired) {
+  static Future<String> uniquePathAsync(
+    String desired, {
+    bool isFolder = false,
+  }) => Isolate.run(() => uniquePath(desired, isFolder: isFolder));
+
+  static String uniquePath(String desired, {bool isFolder = false}) {
     bool taken(String p) =>
         FileSystemEntity.typeSync(p) != FileSystemEntityType.notFound;
     if (!taken(desired)) return desired;
+    final ext = isFolder ? '' : ArchivePath.extensionOf(p.basename(desired));
+    final stem = desired.substring(0, desired.length - ext.length);
     for (var i = 1; i < 10000; i++) {
-      final candidate = '$desired ($i)';
+      final candidate = '$stem ($i)$ext';
       if (!taken(candidate)) return candidate;
     }
 
-    return '$desired ${DateTime.now().microsecondsSinceEpoch}';
+    return '$stem ${DateTime.now().microsecondsSinceEpoch}$ext';
   }
 
   static Future<void> openArchiveEntry(ArchiveLocation loc) async {

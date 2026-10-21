@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 
@@ -112,7 +113,7 @@ class TrashRepository {
   }
 
   Future<List<TrashEntry>> _listWindowsRoot() async {
-    final items = WaydirCoreLoader.trashList();
+    final items = await Isolate.run(WaydirCoreLoader.trashList);
     final out = <TrashEntry>[];
     for (final e in items) {
       final vpath = '$kTrashPath/${e.id}';

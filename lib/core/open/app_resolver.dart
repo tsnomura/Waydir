@@ -467,7 +467,7 @@ class WindowsAppResolver implements AppResolver {
     final target = app.exec;
     if (File(target).existsSync()) {
       for (final path in paths) {
-        if (shellOpenWithAppOnWindows(target, path)) continue;
+        if (await shellOpenWithAppOnWindows(target, path)) continue;
         await _runCommandTemplate(target, [path]);
       }
 
@@ -492,7 +492,7 @@ class WindowsAppResolver implements AppResolver {
         error: e,
         stack: st,
       );
-      shellOpenOnWindows(paths.first);
+      await shellOpenOnWindows(paths.first);
     }
   }
 

@@ -1056,7 +1056,7 @@ class NavigationStore {
       return true;
     }
 
-    final type = FileSystemEntity.typeSync(normalized);
+    final type = await _typeOffUiThread(normalized);
     if (type == FileSystemEntityType.directory) {
       navigateTo(normalized, enteredPath: trimmed);
 
@@ -1279,19 +1279,32 @@ class NavigationStore {
     final id = tagIdFromPath(path);
     if (id == null) return const [];
     final paths = await SettingsStore.instance.db.getPathsForTag(id);
-    final out = <FileEntry>[];
-    for (final p in paths) {
-      final type = FileSystemEntity.typeSync(p);
-      if (type == FileSystemEntityType.notFound) continue;
-      out.add(
-        FileEntry.fromFileSystemEntity(
-          type == FileSystemEntityType.directory ? Directory(p) : File(p),
-        ),
-      );
-    }
 
-    return out;
+    return _statTaggedPaths(paths);
   }
+
+  static Future<FileSystemEntityType> _typeOffUiThread(String path) =>
+      Isolate.run(() => FileSystemEntity.typeSync(path));
+
+  static Future<List<FileEntry>> _statTaggedPaths(List<String> paths) =>
+      Isolate.run(() {
+        final out = <FileEntry>[];
+        for (final p in paths) {
+          try {
+            final type = FileSystemEntity.typeSync(p);
+            if (type == FileSystemEntityType.notFound) continue;
+            out.add(
+              FileEntry.fromFileSystemEntity(
+                type == FileSystemEntityType.directory ? Directory(p) : File(p),
+              ),
+            );
+          } on FileSystemException {
+            continue;
+          }
+        }
+
+        return out;
+      });
 
   static bool isTaggablePath(String path) =>
       !PlatformPaths.isRemoteUri(path) &&
@@ -1771,7 +1784,7 @@ class NavigationStore {
       return;
     }
     final physicalOld = _physical(oldPath);
-    final result = FileSystemService.rename(physicalOld, trimmed);
+    final result = await FileSystemService.renameAsync(physicalOld, trimmed);
 
     switch (result) {
       case RenameSuccess(:final newPath):
@@ -1922,7 +1935,7 @@ class NavigationStore {
     }
 
     final acc = _MutableOutcome();
-    _multiRenameLocal(localOrSmb, acc, report, shouldStop);
+    await _multiRenameLocal(localOrSmb, acc, report, shouldStop);
     if (!shouldStop()) {
       await _multiRenameSftp(sftp, acc, report, shouldStop);
     }
@@ -1950,12 +1963,12 @@ class NavigationStore {
     return acc.freeze();
   }
 
-  void _multiRenameLocal(
+  Future<void> _multiRenameLocal(
     List<({String path, String newName})> renames,
     _MutableOutcome acc,
     void Function(String currentName) report,
     bool Function() shouldStop,
-  ) {
+  ) async {
     if (renames.isEmpty) return;
 
     final ops = <_LocalRenameOp>[];
@@ -1985,13 +1998,14 @@ class NavigationStore {
     if (ops.isEmpty) return;
 
     final sources = ops.map((o) => _norm(o.physicalOld)).toSet();
+    final targetsExist = await FileSystemService.pathsExist([
+      for (final op in ops) op.physicalNew,
+    ]);
     final filtered = <_LocalRenameOp>[];
-    for (final op in ops) {
+    for (var i = 0; i < ops.length; i++) {
       if (shouldStop()) return;
-      final exists =
-          FileSystemEntity.typeSync(op.physicalNew) !=
-          FileSystemEntityType.notFound;
-      if (exists && !sources.contains(_norm(op.physicalNew))) {
+      final op = ops[i];
+      if (targetsExist[i] && !sources.contains(_norm(op.physicalNew))) {
         acc.collision++;
         report(op.newName);
         continue;
@@ -2004,18 +2018,18 @@ class NavigationStore {
     );
 
     if (needsTwoPhase) {
-      _applyTwoPhase(filtered, acc, report, shouldStop);
+      await _applyTwoPhase(filtered, acc, report, shouldStop);
     } else {
       for (final op in filtered) {
         if (shouldStop()) return;
-        _applyDirect(op, acc);
+        await _applyDirect(op, acc);
         report(op.newName);
       }
     }
   }
 
-  void _applyDirect(_LocalRenameOp op, _MutableOutcome acc) {
-    final r = FileSystemService.rename(op.physicalOld, op.newName);
+  Future<void> _applyDirect(_LocalRenameOp op, _MutableOutcome acc) async {
+    final r = await FileSystemService.renameAsync(op.physicalOld, op.newName);
     switch (r) {
       case RenameSuccess():
         acc.succeeded++;
@@ -2030,12 +2044,12 @@ class NavigationStore {
     }
   }
 
-  void _applyTwoPhase(
+  Future<void> _applyTwoPhase(
     List<_LocalRenameOp> ops,
     _MutableOutcome acc,
     void Function(String currentName) report,
     bool Function() shouldStop,
-  ) {
+  ) async {
     final stamp = DateTime.now().millisecondsSinceEpoch;
     final staged = <({String tempPath, String finalName})>[];
     for (var i = 0; i < ops.length; i++) {
@@ -2044,7 +2058,7 @@ class NavigationStore {
       final tempName = '.waydir-rename-$stamp-$i.tmp';
       final dir = PlatformPaths.parentOf(op.physicalOld);
       final tempPath = '$dir${PlatformPaths.separator}$tempName';
-      final r = FileSystemService.rename(op.physicalOld, tempName);
+      final r = await FileSystemService.renameAsync(op.physicalOld, tempName);
       if (r is RenameSuccess) {
         staged.add((tempPath: tempPath, finalName: op.newName));
       } else {
@@ -2063,7 +2077,7 @@ class NavigationStore {
     }
     for (final s in staged) {
       if (shouldStop()) return;
-      final r = FileSystemService.rename(s.tempPath, s.finalName);
+      final r = await FileSystemService.renameAsync(s.tempPath, s.finalName);
       if (r is RenameSuccess) {
         acc.succeeded++;
       } else {
@@ -2210,8 +2224,7 @@ class NavigationStore {
         : physicalNewPath;
     final exists = PlatformPaths.isSftpUri(physicalNewPath)
         ? await FsWorkerPool.instance.stat(physicalNewPath) != null
-        : FileSystemEntity.typeSync(physicalNewPath) !=
-              FileSystemEntityType.notFound;
+        : (await FileSystemService.pathsExist([physicalNewPath])).single;
     if (exists) {
       renameError.value = t.toast.renameAlreadyExists(name: name);
       renameAttempt.value = renameAttempt.value + 1;
