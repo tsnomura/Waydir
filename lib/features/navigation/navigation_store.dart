@@ -377,10 +377,16 @@ class NavigationStore {
     required this.operationStore,
     String? initialPath,
     String? initialSelect,
+    String? tagOrigin,
   }) {
     final startPath = initialPath ?? PlatformPaths.homePath;
     currentPath.value = startPath;
-    history.value = [startPath];
+    if (tagOrigin != null && isTagPath(startPath) && !isTagPath(tagOrigin)) {
+      history.value = [tagOrigin, startPath];
+      historyIndex.value = 1;
+    } else {
+      history.value = [startPath];
+    }
     showHidden.value = SettingsStore.instance.showHiddenDefault.value;
     _pendingInitialSelect = initialSelect;
     _prepareSortFor(startPath);
@@ -1086,6 +1092,19 @@ class NavigationStore {
     historyIndex.value--;
     navigateTo(history.value[historyIndex.value], addToHistory: false);
   }
+
+  String? get tagOrigin {
+    if (!isTagView) return null;
+    final entries = history.value;
+    for (var i = historyIndex.value - 1; i >= 0; i--) {
+      if (!isTagPath(entries[i])) return entries[i];
+    }
+
+    return null;
+  }
+
+  String get originForNewTagView =>
+      isTagView ? (tagOrigin ?? currentPath.value) : currentPath.value;
 
   void leaveTagView() {
     if (!isTagView) return;

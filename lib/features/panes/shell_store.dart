@@ -212,11 +212,18 @@ class ShellStore {
         ready.value = true;
       });
     } else {
-      final paneMap = <int, List<String>>{};
+      final paneMap = <int, List<TabSpec>>{};
       final activeMap = <int, int>{};
       for (final tab in savedTabs) {
         paneMap.putIfAbsent(tab.paneIndex, () => []);
-        paneMap[tab.paneIndex]!.add(tab.path);
+        final origin = tab.tagOrigin;
+        paneMap[tab.paneIndex]!.add(
+          TabSpec(
+            tab.path,
+            null,
+            origin != null && _isRestorablePath(origin) ? origin : null,
+          ),
+        );
         if (tab.isActive) {
           activeMap[tab.paneIndex] = tab.tabIndex;
         }
@@ -225,12 +232,16 @@ class ShellStore {
       final restored = <PaneStore>[];
       final maxPane = paneMap.keys.reduce((a, b) => a > b ? a : b);
       for (int i = 0; i <= maxPane; i++) {
-        final paths = paneMap[i] ?? [];
-        final validPaths = paths.where(_isRestorablePath).toList();
+        final specs = paneMap[i] ?? [];
+        final validSpecs = specs
+            .where((s) => _isRestorablePath(s.path))
+            .toList();
         restored.add(
-          PaneStore.fromPaths(
+          PaneStore.fromSpecs(
             operationStore: operationStore,
-            paths: validPaths.isEmpty ? [PlatformPaths.homePath] : validPaths,
+            specs: validSpecs.isEmpty
+                ? [TabSpec(PlatformPaths.homePath)]
+                : validSpecs,
             activeTabIndex: activeMap[i] ?? 0,
           ),
         );
@@ -326,6 +337,7 @@ class ShellStore {
               tabIndex: t,
               path: tabs[t].store.currentPath.value,
               isActive: Value(t == activeIdx),
+              tagOrigin: Value(tabs[t].store.tagOrigin),
             ),
           );
         }

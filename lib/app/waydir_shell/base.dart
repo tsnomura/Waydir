@@ -163,8 +163,11 @@ mixin _WaydirStateBase on State<WaydirShell> {
   }
 
   void _openInNewTab(String path) {
-    _shell.activePane.value!.tabs.addTab(path);
+    _shell.activePane.value!.tabs.addTab(path, tagOrigin: _tagOriginFor(path));
   }
+
+  String? _tagOriginFor(String path) =>
+      isTagPath(path) ? _active.originForNewTagView : null;
 
   /// The pane opposite [fromSlot], entering dual-pane mode first if needed
   /// so there is an "other" pane at all.
@@ -181,7 +184,8 @@ mixin _WaydirStateBase on State<WaydirShell> {
   void _openInOtherPaneNewTab(int fromSlot, String path) {
     final pane = _otherPane(fromSlot);
     if (pane == null) return;
-    pane.tabs.addTab(path);
+    final origin = _tagOriginFor(path);
+    pane.tabs.addTab(path, tagOrigin: origin);
     _shell.setActivePane(fromSlot == 0 ? 1 : 0);
   }
 

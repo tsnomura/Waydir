@@ -7,7 +7,8 @@ import 'tab_state.dart';
 class TabSpec {
   final String path;
   final String? select;
-  const TabSpec(this.path, [this.select]);
+  final String? tagOrigin;
+  const TabSpec(this.path, [this.select, this.tagOrigin]);
 }
 
 class TabsStore {
@@ -65,18 +66,29 @@ class TabsStore {
       return;
     }
     for (final spec in specs) {
-      addTab(spec.path, activate: false, select: spec.select);
+      addTab(
+        spec.path,
+        activate: false,
+        select: spec.select,
+        tagOrigin: spec.tagOrigin,
+      );
     }
     activeIndex.value = activeTabIndex.clamp(0, tabs.value.length - 1);
   }
 
-  void addTab(String path, {bool activate = true, String? select}) {
+  void addTab(
+    String path, {
+    bool activate = true,
+    String? select,
+    String? tagOrigin,
+  }) {
     final tab = TabState(
       id: '${_idCounter++}',
       store: NavigationStore(
         operationStore: operationStore,
         initialPath: path,
         initialSelect: select,
+        tagOrigin: tagOrigin,
       ),
     );
     tabs.value = [...tabs.value, tab];
