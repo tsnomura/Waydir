@@ -1743,3 +1743,30 @@ keeping the cursor on an item that is only hidden by a search filter
 
 Relevant commits: `2e9ffe5`, `4da1b3b`, `80c41c0`, `9363857`, `c33ad94`
 (the cursor row's right padding no longer overflows by its 1px border).
+
+## Leaving a tag view returns to the folder it was opened from
+
+A tag view is a virtual listing (`tag://<id>`) with no parent folder, so
+there was no way out of it: going up had no parent to go to, and clicking
+the already-selected tag in the sidebar just re-navigated to the same view.
+Opening the tag in a new tab was worse — that tab's history held only the
+tag path, so back could not return to the folder the tag was opened from,
+and after a restart even a tag view opened in the same tab lost the folder.
+
+- Clicking the selected tag in the sidebar now toggles the view off
+  (`leaveTagView`); going up from a tag view does the same. Both return to
+  the last non-tag folder in the tab's history without adding an entry. A
+  tab that started directly in a tag view leaves to the configured starting
+  folder, or the home folder when none is set.
+- Opening a tag in a new tab, or in the other pane's new tab, records the
+  opening folder as the tab's origin — the folder the current view shows,
+  or, when the current view is itself a tag view, that view's own origin,
+  so nested tag views keep pointing at the real folder. The origin is
+  prepended to the tab's history, which is what makes back, going up and
+  the toggle all return to it.
+- The origin is persisted with the session (`tag_origin` column on
+  `session_tabs`, schema v47) so it survives a restart; on restore, an
+  origin whose folder no longer exists is dropped and the tab behaves as
+  if it had no origin.
+
+Relevant commits: `bdb690e`, `994c5e3`.
