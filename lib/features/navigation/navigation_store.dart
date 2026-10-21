@@ -448,6 +448,11 @@ class NavigationStore {
     });
   }
 
+  List<FileEntry> _withTreeChildren(List<FileEntry> entries) => [
+    ...entries,
+    for (final children in treeChildren.value.values) ...children,
+  ];
+
   Future<void> _loadFileTags(List<FileEntry> entries) async {
     final paths = [for (final e in entries) e.path];
     final rows = await SettingsStore.instance.db.getFileTagsForPaths(paths);
@@ -1184,7 +1189,7 @@ class NavigationStore {
       if (!await _publishFolder(entries, token, pendingSort, state)) {
         return;
       }
-      await _loadFileTags(entries);
+      await _loadFileTags(_withTreeChildren(entries));
       if (token != _loadToken) return;
       if (isTagPath(path) ||
           isTrashPath(path) ||
@@ -1357,7 +1362,7 @@ class NavigationStore {
 
       return;
     }
-    await _loadFileTags(files.value);
+    await _loadFileTags(_withTreeChildren(files.value));
   }
 
   Future<List<FileEntry>> _loadTrash(String path) async {
@@ -1588,6 +1593,7 @@ class NavigationStore {
     try {
       final entries = await _listTreeChildrenPath(path);
       treeChildren.value = {...treeChildren.value, path: entries};
+      if (!isTagView) unawaited(_loadFileTags(_withTreeChildren(files.value)));
     } catch (e, st) {
       log.warn('navigation', 'tree child listing failed', error: e, stack: st);
       treeChildren.value = {...treeChildren.value, path: const <FileEntry>[]};
