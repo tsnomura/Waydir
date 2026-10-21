@@ -66,7 +66,9 @@ jobs:
         shell: pwsh
         run: |
           $env:Path += ";$env:LOCALAPPDATA\Pub\Cache\bin;C:\Program Files (x86)\Inno Setup 6"
-          fastforge package --platform windows --targets exe,zip --build-dart-define-from-file=personal_defines.json
+          $defines = (Get-Content personal_defines.json -Raw | ConvertFrom-Json).PSObject.Properties |
+            ForEach-Object { "--build-dart-define=$($_.Name)=$($_.Value)" }
+          fastforge package --platform windows --targets exe,zip --skip-clean @defines
 
       - name: Name artifacts after the release
         shell: pwsh
