@@ -66,6 +66,16 @@ class FileSystemService {
 
   static final int _deleteConcurrency = Platform.numberOfProcessors.clamp(2, 4);
 
+  static Future<RenameResult> renameAsync(String oldPath, String newName) =>
+      Isolate.run(() => rename(oldPath, newName));
+
+  static Future<List<bool>> pathsExist(List<String> paths) => Isolate.run(
+    () => [
+      for (final path in paths)
+        FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound,
+    ],
+  );
+
   static RenameResult rename(String oldPath, String newName) {
     if (!PlatformPaths.isValidFileName(newName)) {
       return const RenameInvalidName();
@@ -183,6 +193,9 @@ class FileSystemService {
 
     return name;
   }
+
+  static Future<String> uniquePathAsync(String desired) =>
+      Isolate.run(() => uniquePath(desired));
 
   static String uniquePath(String desired) {
     bool taken(String p) =>

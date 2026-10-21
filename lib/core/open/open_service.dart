@@ -65,7 +65,7 @@ class OpenService {
 
   static Future<void> _osOpenDefault(String path) async {
     if (PlatformPaths.isWindows) {
-      shellOpenOnWindows(path);
+      await shellOpenOnWindows(path);
     } else if (Platform.isLinux) {
       await Process.start('xdg-open', [path], mode: ProcessStartMode.detached);
     } else if (Platform.isMacOS) {

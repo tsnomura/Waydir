@@ -950,10 +950,13 @@ class OperationStore {
     final destination = task.destination;
     if (destination == null || destination.isEmpty) return;
     if (PlatformPaths.isSftpUri(destination)) return;
-    _cleanupLocalTempFiles(destination, depth: 3);
+    unawaited(_cleanupLocalTempFilesOffUiThread(destination));
   }
 
-  void _cleanupLocalTempFiles(String root, {required int depth}) {
+  static Future<void> _cleanupLocalTempFilesOffUiThread(String root) =>
+      Isolate.run(() => _cleanupLocalTempFiles(root, depth: 3));
+
+  static void _cleanupLocalTempFiles(String root, {required int depth}) {
     try {
       final dir = Directory(root);
       if (!dir.existsSync()) return;

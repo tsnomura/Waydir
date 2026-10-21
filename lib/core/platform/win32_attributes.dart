@@ -1,6 +1,16 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart';
+import 'package:win32/win32.dart'
+    show
+        COINIT_APARTMENTTHREADED,
+        COINIT_DISABLE_OLE1DDE,
+        CoInitializeEx,
+        CoUninitialize,
+        SHELLEXECUTEINFO,
+        SW_SHOWNORMAL,
+        ShellExecuteEx;
 
 const _fileAttributeHidden = 0x2;
 const _fileAttributeSystem = 0x4;
@@ -9,16 +19,7 @@ const _invalidFileAttributes = 0xFFFFFFFF;
 DynamicLibrary? _kernel32;
 int Function(Pointer<Utf16>)? _getFileAttributesW;
 
-DynamicLibrary? _shell32;
-int Function(
-  int,
-  Pointer<Utf16>,
-  Pointer<Utf16>,
-  Pointer<Utf16>,
-  Pointer<Utf16>,
-  int,
-)?
-_shellExecuteW;
+const _seeMaskNoAsync = 0x100;
 
 void _ensureKernel32() {
   if (_kernel32 != null) return;
@@ -28,30 +29,6 @@ void _ensureKernel32() {
         Uint32 Function(Pointer<Utf16>),
         int Function(Pointer<Utf16>)
       >('GetFileAttributesW');
-}
-
-void _ensureShell32() {
-  if (_shell32 != null) return;
-  _shell32 = DynamicLibrary.open('shell32.dll');
-  _shellExecuteW = _shell32!
-      .lookupFunction<
-        IntPtr Function(
-          IntPtr,
-          Pointer<Utf16>,
-          Pointer<Utf16>,
-          Pointer<Utf16>,
-          Pointer<Utf16>,
-          Int32,
-        ),
-        int Function(
-          int,
-          Pointer<Utf16>,
-          Pointer<Utf16>,
-          Pointer<Utf16>,
-          Pointer<Utf16>,
-          int,
-        )
-      >('ShellExecuteW');
 }
 
 bool isHiddenOnWindows(String path) {
@@ -69,35 +46,44 @@ bool isHiddenOnWindows(String path) {
   }
 }
 
-void shellOpenOnWindows(String path) {
+Future<void> shellOpenOnWindows(String path) async {
   if (!Platform.isWindows) return;
-  _ensureShell32();
-  final verb = 'open'.toNativeUtf16();
-  final file = path.toNativeUtf16();
-  try {
-    _shellExecuteW!(0, verb, file, nullptr, nullptr, 1);
-  } finally {
-    calloc.free(verb);
-    calloc.free(file);
-  }
+  await Isolate.run(() => _shellExecute(path, null));
 }
 
 /// Launches [appExe] with [filePath] as its argument via the shell. Works for
 /// classic Win32 apps; the shell resolves PATH and app paths for us.
-bool shellOpenWithAppOnWindows(String appExe, String filePath) {
+Future<bool> shellOpenWithAppOnWindows(String appExe, String filePath) async {
   if (!Platform.isWindows) return false;
-  _ensureShell32();
-  final verb = 'open'.toNativeUtf16();
-  final exe = appExe.toNativeUtf16();
-  final params = '"$filePath"'.toNativeUtf16();
-  try {
-    final ret = _shellExecuteW!(0, verb, exe, params, nullptr, 1);
 
-    return ret > 32;
+  return Isolate.run(() => _shellExecute(appExe, '"$filePath"'));
+}
+
+bool _shellExecute(String file, String? parameters) {
+  final hr = CoInitializeEx(
+    nullptr,
+    COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE,
+  );
+  final info = calloc<SHELLEXECUTEINFO>();
+  final verb = 'open'.toNativeUtf16();
+  final filePtr = file.toNativeUtf16();
+  final paramsPtr = parameters?.toNativeUtf16() ?? nullptr;
+  try {
+    info.ref
+      ..cbSize = sizeOf<SHELLEXECUTEINFO>()
+      ..fMask = _seeMaskNoAsync
+      ..lpVerb = verb
+      ..lpFile = filePtr
+      ..lpParameters = paramsPtr
+      ..nShow = SW_SHOWNORMAL;
+
+    return ShellExecuteEx(info) != 0;
   } finally {
+    calloc.free(info);
     calloc.free(verb);
-    calloc.free(exe);
-    calloc.free(params);
+    calloc.free(filePtr);
+    if (paramsPtr != nullptr) calloc.free(paramsPtr);
+    if (hr >= 0) CoUninitialize();
   }
 }
 
