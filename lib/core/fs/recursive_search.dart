@@ -257,6 +257,7 @@ class RecursiveSearch {
         name: entry.name,
         path: entry.path,
         type: entry.type,
+        hiddenAttr: entry.hiddenAttr,
         size: stat.size,
         modifiedMs: stat.modified.millisecondsSinceEpoch,
       );

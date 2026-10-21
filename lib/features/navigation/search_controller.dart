@@ -457,6 +457,7 @@ class SearchController {
       path: logical,
       realPath: entry.realPath,
       type: entry.type,
+      hiddenAttr: entry.hiddenAttr,
       size: entry.size,
       modifiedMs: entry.modifiedMs,
     );

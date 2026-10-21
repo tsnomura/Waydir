@@ -66,6 +66,7 @@ pub unsafe extern "C" fn waydir_enumerate(
             let is_dir = dirent.file_type().map(|t| t.is_dir()).unwrap_or(false);
             let mut entry = Entry {
                 is_dir,
+                hidden: false,
                 size: 0,
                 mtime_ms: 0,
                 created_ms: 0,
