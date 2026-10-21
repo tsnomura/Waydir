@@ -1770,3 +1770,31 @@ and after a restart even a tag view opened in the same tab lost the folder.
   if it had no origin.
 
 Relevant commits: `bdb690e`, `994c5e3`.
+
+## Quick Look reloads when the file changes on disk
+
+A Quick Look preview left open went stale whenever an editor or another
+program saved to the file: the rendered content, and the size and modified
+time in the properties panel, stayed at the old values until the preview
+was closed and reopened. The preview now follows the file on disk, with a
+manual reload as a fallback.
+
+- The shown file (its `realPath`) is watched by a `FileChangeWatcher` that
+  stats it every second; a change in (modified time, size) rebuilds the
+  preview subtree with the fresh stats (zoom resets). Image previews are
+  evicted from the image cache before the rebuild.
+- With unsaved editor changes, the auto-reload is skipped and a toast
+  suggests F5. Reloading from F5 or the header's reload button then offers
+  Cancel / Discard / Save: saving keeps the editor and its cursor and only
+  updates the stats; discarding does the full rebuild.
+- After Waydir's own save (Ctrl+S), the watcher's baseline is refreshed
+  through `CodeEditorController.onSaved`, so the save's own write is not
+  reported back as an external change a second later.
+- Manual reload is always available for a local single file: F5 (works with
+  the editor focused; not in the shortcut registry) and the reload button in
+  the header, both also shown in the shortcut bar. The pop-out window
+  (`QuickLookWindow`) has the same behaviour.
+- Not covered: SMB/SFTP files (no stat polling over the network), diff
+  previews, multi-selection and `explicitEntry` lookups.
+
+Relevant commit: `d99771c`.
