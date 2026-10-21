@@ -73,6 +73,7 @@ class _SidebarEntry {
   final _SidebarItem item;
   final bool isSelected;
   final bool isMounted;
+  final bool opensWhenUnmounted;
   final DriveSpace? space;
   final String? tooltip;
   final ValueChanged<String> onTap;
@@ -88,6 +89,7 @@ class _SidebarEntry {
     required this.item,
     required this.isSelected,
     this.isMounted = true,
+    this.opensWhenUnmounted = false,
     this.space,
     this.tooltip,
     required this.onTap,
@@ -728,6 +730,7 @@ class _SidebarState extends State<Sidebar> {
       item: entry.item,
       isSelected: entry.isSelected,
       isMounted: entry.isMounted,
+      opensWhenUnmounted: entry.opensWhenUnmounted,
       space: entry.space,
       collapsed: collapsed,
       tooltip: entry.tooltip,
@@ -804,6 +807,7 @@ class _SidebarState extends State<Sidebar> {
             ? isTrashPath(currentPath)
             : currentPath == item.path,
         isMounted: !isRecycleBin,
+        opensWhenUnmounted: isRecycleBin,
         onTap: widget.store.navigateTo,
         onMiddleTap: widget.onOpenInNewTab != null
             ? () => widget.onOpenInNewTab!(item.path)
@@ -1987,6 +1991,7 @@ class _ItemRow extends StatefulWidget {
   final _SidebarItem item;
   final bool isSelected;
   final bool isMounted;
+  final bool opensWhenUnmounted;
   final DriveSpace? space;
   final bool collapsed;
   final ValueChanged<String> onTap;
@@ -2002,6 +2007,7 @@ class _ItemRow extends StatefulWidget {
     required this.item,
     required this.isSelected,
     this.isMounted = true,
+    this.opensWhenUnmounted = false,
     this.space,
     this.collapsed = false,
     required this.onTap,
@@ -2052,14 +2058,14 @@ class _ItemRowState extends State<_ItemRow> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: () {
-            if (widget.isMounted &&
+            if (_opensInTabs &&
                 HardwareKeyboard.instance.isShiftPressed &&
                 widget.onOpenOtherPaneNewTab != null) {
               widget.onOpenOtherPaneNewTab!();
 
               return;
             }
-            if (widget.isMounted &&
+            if (_opensInTabs &&
                 HardwareKeyboard.instance.isControlPressed &&
                 widget.onMiddleTap != null) {
               widget.onMiddleTap!();
@@ -2069,7 +2075,7 @@ class _ItemRowState extends State<_ItemRow> {
             widget.onTap(widget.item.path);
           },
           onTertiaryTapUp: (_) {
-            if (widget.isMounted) {
+            if (_opensInTabs) {
               widget.onMiddleTap?.call();
             }
           },
@@ -2101,6 +2107,8 @@ class _ItemRowState extends State<_ItemRow> {
 
     return Colors.transparent;
   }
+
+  bool get _opensInTabs => widget.isMounted || widget.opensWhenUnmounted;
 
   Color get _iconColor {
     final brand = widget.item.iconColor;
