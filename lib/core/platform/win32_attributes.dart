@@ -20,6 +20,16 @@ DynamicLibrary? _kernel32;
 int Function(Pointer<Utf16>)? _getFileAttributesW;
 
 const _seeMaskNoAsync = 0x100;
+const _oaifAllowRegistration = 0x1;
+const _oaifRegisterExt = 0x2;
+const _oaifExec = 0x4;
+
+final class _OpenAsInfo extends Struct {
+  external Pointer<Utf16> pcszFile;
+  external Pointer<Utf16> pcszClass;
+  @Int32()
+  external int oaifInFlags;
+}
 
 void _ensureKernel32() {
   if (_kernel32 != null) return;
@@ -57,6 +67,38 @@ Future<bool> shellOpenWithAppOnWindows(String appExe, String filePath) async {
   if (!Platform.isWindows) return false;
 
   return Isolate.run(() => _shellExecute(appExe, '"$filePath"'));
+}
+
+Future<bool> showOpenWithDialogOnWindows(String path) async {
+  if (!Platform.isWindows) return false;
+
+  return Isolate.run(() => _openWithDialog(path));
+}
+
+bool _openWithDialog(String path) {
+  final hr = CoInitializeEx(
+    nullptr,
+    COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE,
+  );
+  final open = DynamicLibrary.open('shell32.dll')
+      .lookupFunction<
+        Int32 Function(IntPtr, Pointer<_OpenAsInfo>),
+        int Function(int, Pointer<_OpenAsInfo>)
+      >('SHOpenWithDialog');
+  final info = calloc<_OpenAsInfo>();
+  final file = path.toNativeUtf16();
+  try {
+    info.ref
+      ..pcszFile = file
+      ..pcszClass = nullptr
+      ..oaifInFlags = _oaifAllowRegistration | _oaifRegisterExt | _oaifExec;
+
+    return open(0, info) >= 0;
+  } finally {
+    calloc.free(info);
+    calloc.free(file);
+    if (hr >= 0) CoUninitialize();
+  }
 }
 
 bool _shellExecute(String file, String? parameters) {
