@@ -1782,19 +1782,29 @@ manual reload as a fallback.
 - The shown file (its `realPath`) is watched by a `FileChangeWatcher` that
   stats it every second; a change in (modified time, size) rebuilds the
   preview subtree with the fresh stats (zoom resets). Image previews are
-  evicted from the image cache before the rebuild.
+  evicted from the image cache before the rebuild, and audio/video playback
+  restarts (the playback key includes the reload generation).
 - With unsaved editor changes, the auto-reload is skipped and a toast
   suggests F5. Reloading from F5 or the header's reload button then offers
   Cancel / Discard / Save: saving keeps the editor and its cursor and only
   updates the stats; discarding does the full rebuild.
-- After Waydir's own save (Ctrl+S), the watcher's baseline is refreshed
-  through `CodeEditorController.onSaved`, so the save's own write is not
-  reported back as an external change a second later.
+- Waydir's own save (Ctrl+S) runs its write through
+  `CodeEditorController.writeGuard`: the watcher is suspended for the
+  write and takes the post-write stats as its new baseline on resume, and a
+  poll already in flight when the write started is discarded. The save's
+  own write is therefore never reported as an external change, so it can't
+  raise the toast or rebuild the editor.
 - Manual reload is always available for a local single file: F5 (works with
   the editor focused; not in the shortcut registry) and the reload button in
-  the header, both also shown in the shortcut bar. The pop-out window
-  (`QuickLookWindow`) has the same behaviour.
+  the header (shown in the compact header too, so text, code and media
+  files get it), both also shown in the shortcut bar.
+- The logic lives in one `QuickLookReloadController`
+  (`quick_look_reload.dart`) shared by the modal, the pop-out window
+  (`QuickLookWindow`) and the side panel (`QuickLookPanel`, which gets
+  auto-reload and the button but no F5). The Cancel / Discard / Save
+  prompt is the shared `confirmUnsavedChanges`, also used by the close
+  guards.
 - Not covered: SMB/SFTP files (no stat polling over the network), diff
   previews, multi-selection and `explicitEntry` lookups.
 
-Relevant commit: `d99771c`.
+Relevant commits: `d99771c`, `6af1ebd`, `0cb8717`.
