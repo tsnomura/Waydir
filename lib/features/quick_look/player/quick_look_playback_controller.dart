@@ -54,10 +54,11 @@ class QuickLookPlaybackController {
     FileEntry? entry,
     GeneratorPageController generatorPage, {
     required bool blocked,
+    int generation = 0,
   }) {
     final playable =
         !blocked && entry != null && entry.type != FileItemType.folder;
-    final key = playable ? entry.realPath : null;
+    final key = playable ? '${entry.realPath}#$generation' : null;
     if (key == _activeKey) return;
     _activeKey = key;
     _generatorPage = playable ? generatorPage : null;

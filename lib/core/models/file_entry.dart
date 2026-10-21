@@ -77,6 +77,26 @@ class FileEntry {
 
   String get realPath => _realPath ?? path;
 
+  FileEntry copyWithStats({required int size, required int modifiedMs}) {
+    if (size == this.size && modifiedMs == this.modifiedMs) return this;
+
+    return FileEntry.raw(
+      name: name,
+      path: path,
+      type: type,
+      size: size,
+      modifiedMs: modifiedMs,
+      createdMs: createdMs,
+      addedMs: addedMs,
+      mode: mode,
+      uid: uid,
+      gid: gid,
+      hiddenAttr: hiddenAttr,
+      realPath: _realPath,
+      ghostOf: ghostOf,
+    );
+  }
+
   FileEntry({
     required this.name,
     required this.path,

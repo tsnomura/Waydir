@@ -1,20 +1,20 @@
+import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:signals/signals_flutter.dart';
-import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../core/models/file_entry.dart';
 import '../../i18n/strings.g.dart';
-import '../../ui/dialogs/dialog.dart';
+import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
-import '../../ui/theme/app_text_styles.dart';
 import '../../ui/window/window.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
+import 'quick_look_reload.dart';
 
 class QuickLookWindow extends StatefulWidget {
   final FileEntry entry;
@@ -38,12 +38,18 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   bool _showInfo = true;
   bool _markdownRendered = true;
   bool _closing = false;
+  bool _confirmingClose = false;
+  late final _reload = QuickLookReloadController(
+    editorController: _editorController,
+    onReloadSkipped: _showReloadSkipped,
+  );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
+    _reload.watch(widget.entry);
     _lifecycle = AppLifecycleListener(onExitRequested: _onExitRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
@@ -53,6 +59,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _reload.dispose();
     _lifecycle.dispose();
     _playback.dispose();
     _editorActive.dispose();
@@ -79,25 +86,16 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   Future<bool> _confirmClose() async {
     if (!mounted) return true;
     if (!_editorController.dirty.value) return true;
-    final result = await showCustomDialog<String>(
-      context: context,
-      title: t.quickLook.unsavedTitle,
-      icon: WaydirIconsRegular.warning,
-      iconColor: AppColors.warning,
-      body: Text(
-        t.quickLook.unsavedMessage,
-        style: context.txt.row.copyWith(color: AppColors.fg),
-      ),
-      actions: [
-        DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-        DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-        DialogAction(label: t.quickLook.save, color: AppColors.accent),
-      ],
-    );
-    if (!mounted || result == null || result == t.quickLook.cancel) {
-      return false;
+    if (_confirmingClose) return false;
+    _confirmingClose = true;
+    final UnsavedChoice choice;
+    try {
+      choice = await confirmUnsavedChanges(context, t.quickLook.unsavedMessage);
+    } finally {
+      _confirmingClose = false;
     }
-    if (result == t.quickLook.save) return await _editorController.save();
+    if (!mounted || choice == UnsavedChoice.cancel) return false;
+    if (choice == UnsavedChoice.save) return await _editorController.save();
 
     return true;
   }
@@ -106,6 +104,16 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     if (!await _confirmClose()) return;
     _closing = true;
     appWindow.close();
+  }
+
+  void _showReloadSkipped() {
+    if (!mounted) return;
+    showToast(context: context, message: t.quickLook.reloadSkipped);
+  }
+
+  void _requestReload() {
+    if (_closing || _confirmingClose) return;
+    unawaited(_reload.request(context));
   }
 
   void _setCompact(bool value) {
@@ -123,14 +131,17 @@ class _QuickLookWindowState extends State<QuickLookWindow>
 
       return KeyEventResult.handled;
     }
+    if (event.logicalKey == LogicalKeyboardKey.f5) {
+      _requestReload();
+
+      return KeyEventResult.handled;
+    }
 
     return KeyEventResult.ignored;
   }
 
   @override
   Widget build(BuildContext context) {
-    final entry = widget.entry;
-
     return Focus(
       focusNode: _focus,
       onKeyEvent: _handleKey,
@@ -138,7 +149,14 @@ class _QuickLookWindowState extends State<QuickLookWindow>
         color: AppColors.bg,
         child: SignalBuilder(
           builder: (_) {
-            _playback.sync(entry, _generatorPage, blocked: false);
+            _reload.revision.value;
+            final entry = _reload.shown(widget.entry)!;
+            _playback.sync(
+              entry,
+              _generatorPage,
+              blocked: false,
+              generation: _reload.generation,
+            );
 
             return Column(
               children: [
@@ -154,12 +172,16 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                     markdownRendered: _markdownRendered,
                     onToggleMarkdownView: () =>
                         setState(() => _markdownRendered = !_markdownRendered),
+                    onReload: QuickLookReloadController.canReload(entry)
+                        ? _requestReload
+                        : null,
                     onHeaderPanStart: (_) => appWindow.startDragging(),
                   ),
                 ),
                 Container(height: 1, color: AppColors.bgDivider),
                 Expanded(
                   child: QuickLookBody(
+                    key: ValueKey('qlw#${_reload.generation}'),
                     entry: entry,
                     editorActive: _editorActive,
                     editorController: _editorController,

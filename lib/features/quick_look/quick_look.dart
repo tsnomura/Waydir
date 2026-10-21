@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 
 import '../../core/keyboard/keyboard_shortcuts.dart';
@@ -11,7 +10,6 @@ import '../../core/models/file_entry.dart';
 import '../../core/settings/settings_store.dart';
 import '../../features/navigation/navigation_store.dart';
 import '../../i18n/strings.g.dart';
-import '../../ui/dialogs/dialog.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
@@ -22,6 +20,7 @@ import 'info_panel.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_pop_out.dart';
+import 'quick_look_reload.dart';
 
 typedef QuickLookDiffResolver =
     (FileEntry, FileEntry)? Function(FileEntry? entry);
@@ -103,6 +102,10 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   bool _showInfo = true;
   bool _markdownRendered = true;
   String? _presentationKey;
+  late final _reload = QuickLookReloadController(
+    editorController: _editorController,
+    onReloadSkipped: _showReloadSkipped,
+  );
   DateTime? _lastCursorRepeatAt;
   Rect? _rect;
   Offset? _dragAnchor;
@@ -245,6 +248,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _reload.dispose();
     _playback.dispose();
     _focus.dispose();
     _editorActive.dispose();
@@ -270,28 +274,23 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
 
       return;
     }
-    final result = await showCustomDialog<String>(
-      context: context,
-      title: t.quickLook.unsavedTitle,
-      icon: WaydirIconsRegular.warning,
-      iconColor: AppColors.warning,
-      body: Text(
-        t.quickLook.unsavedMessage,
-        style: context.txt.row.copyWith(color: AppColors.fg),
-      ),
-      actions: [
-        DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-        DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-        DialogAction(label: t.quickLook.save, color: AppColors.accent),
-      ],
+    final choice = await confirmUnsavedChanges(
+      context,
+      t.quickLook.unsavedMessage,
     );
-    if (!mounted || result == null || result == t.quickLook.cancel) return;
-    if (result == t.quickLook.save && !await _editorController.save()) {
+    if (!mounted || choice == UnsavedChoice.cancel) return;
+    if (choice == UnsavedChoice.save && !await _editorController.save()) {
       return; // save failed - keep the preview open
     }
     if (mounted) Navigator.of(context).pop();
   }
 
+  void _showReloadSkipped() {
+    if (!mounted) return;
+    showToast(context: context, message: t.quickLook.reloadSkipped);
+  }
+
+  void _requestReload() => unawaited(_reload.request(context));
   void _selectFromStats(FileEntry entry) {
     final files = widget.store.navigableFiles;
     final idx = files.indexWhere((f) => f.path == entry.path);
@@ -406,6 +405,11 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     final key = event.logicalKey;
     if (!isRepeat && key == LogicalKeyboardKey.escape) {
       _requestClose();
+
+      return KeyEventResult.handled;
+    }
+    if (!isRepeat && key == LogicalKeyboardKey.f5) {
+      _requestReload();
 
       return KeyEventResult.handled;
     }
@@ -636,6 +640,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         final override = widget.explicitEntry;
         if (override != null) {
           _shownEntry = override;
+          _reload.watch(null);
 
           return Column(
             children: [
@@ -662,6 +667,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           final selected = widget.store.selectedPaths.value;
           if (selected.length > 1) {
             final entries = widget.store.selectedEntries;
+            _reload.watch(null);
 
             return Column(
               children: [
@@ -692,6 +698,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
               final entry = entries.first;
               if (entry.type == FileItemType.folder) {
                 _syncPresentation(entry);
+                _reload.watch(null);
 
                 return Column(
                   children: [
@@ -747,7 +754,15 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         : DiffRunner.cacheKeyFor(diffPair.$1, diffPair.$2);
     final identical =
         diffKey != null && _identicalPairs.value.contains(diffKey);
-    _playback.sync(entry, _generatorPage, blocked: showDiff && !identical);
+    _reload.watch(showDiff ? null : entry);
+    _reload.revision.value;
+    final shown = _reload.shown(entry);
+    _playback.sync(
+      entry,
+      _generatorPage,
+      blocked: showDiff && !identical,
+      generation: _reload.generation,
+    );
 
     return Column(
       children: [
@@ -762,6 +777,9 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           editorController: _editorController,
           markdownRendered: _markdownRendered,
           onToggleMarkdownView: _toggleMarkdownRendered,
+          onReload: !showDiff && QuickLookReloadController.canReload(entry)
+              ? _requestReload
+              : null,
           onHeaderPanStart: _handleDragStart,
           onHeaderPanUpdate: _handleDragUpdate,
         ),
@@ -786,7 +804,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                   ),
                 )
               : QuickLookBody(
-                  entry: entry,
+                  key: ValueKey('ql#${_reload.generation}'),
+                  entry: shown,
                   editorActive: _editorActive,
                   editorController: _editorController,
                   showInfo: _showInfo,
@@ -835,11 +854,19 @@ class _ShortcutBar extends StatelessWidget {
                   caps: _capsOf('quick_look_save'),
                   label: t.quickLook.save,
                 ),
+                _ShortcutHint(
+                  caps: const ['F5'],
+                  label: t.quickLook.hintReload,
+                ),
               ]
             : [
                 _ShortcutHint(
                   caps: const ['↑', '↓'],
                   label: t.quickLook.hintSwitchFile,
+                ),
+                _ShortcutHint(
+                  caps: const ['F5'],
+                  label: t.quickLook.hintReload,
                 ),
                 _ShortcutHint(
                   caps: _capsOf('quick_look_close'),

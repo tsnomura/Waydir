@@ -26,6 +26,7 @@ enum _VimMode { normal, insert, visual }
 class CodeEditorController {
   final dirty = signal(false);
   Future<bool> Function()? _save;
+  Future<void> Function(Future<void> Function() write)? writeGuard;
 
   /// Saves if dirty. Returns true when there is nothing to save or the save
   /// succeeded, false when the save failed.
@@ -113,7 +114,7 @@ class _CodeEditorState extends State<CodeEditor> {
     final text = _ctrl.text;
     final revision = _ctrl.value.codeLines;
     setState(() => _saving = true);
-    try {
+    Future<void> write() async {
       if (PlatformPaths.isSftpUri(widget.path)) {
         await const SftpFs().writeBytes(
           widget.path,
@@ -122,6 +123,11 @@ class _CodeEditorState extends State<CodeEditor> {
       } else {
         await File(widget.path).writeAsString(text, flush: true);
       }
+    }
+
+    try {
+      final guard = widget.controller?.writeGuard;
+      await (guard == null ? write() : guard(write));
       if (!mounted) return true;
       setState(() {
         _saving = false;
