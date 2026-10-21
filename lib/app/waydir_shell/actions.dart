@@ -514,6 +514,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       for (final entry in archives) {
         final dest = await FileSystemService.uniquePathAsync(
           p.join(base, FileSystemService.archiveBaseName(entry.name)),
+          isFolder: true,
         );
         store.operationStore.enqueueExtract(
           [entry.realPath],

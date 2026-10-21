@@ -16,6 +16,17 @@ class ArchivePath {
 
   static const _compoundExtensions = <String>['.tar.gz', '.tar.bz2', '.tar.xz'];
 
+  static String extensionOf(String name) {
+    final lower = name.toLowerCase();
+    for (final ext in _compoundExtensions) {
+      if (lower.endsWith(ext) && name.length > ext.length) {
+        return name.substring(name.length - ext.length);
+      }
+    }
+
+    return p.extension(name);
+  }
+
   static const _extensions = <String>{
     '.zip',
     '.tar',
