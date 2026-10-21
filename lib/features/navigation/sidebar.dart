@@ -355,7 +355,7 @@ class _SidebarState extends State<Sidebar> {
         label: t.menu.open,
         action: 'open',
       ),
-      if (!isTrash && widget.onOpenInNewTab != null)
+      if (widget.onOpenInNewTab != null)
         ContextMenuItem(
           icon: WaydirIconsRegular.arrowSquareOut,
           label: t.menu.openInNewTab,
@@ -805,11 +805,10 @@ class _SidebarState extends State<Sidebar> {
             : currentPath == item.path,
         isMounted: !isRecycleBin,
         onTap: widget.store.navigateTo,
-        onMiddleTap: widget.onOpenInNewTab != null && !isRecycleBin
+        onMiddleTap: widget.onOpenInNewTab != null
             ? () => widget.onOpenInNewTab!(item.path)
             : null,
-        onOpenOtherPaneNewTab:
-            widget.onOpenOtherPaneNewTab != null && !isRecycleBin
+        onOpenOtherPaneNewTab: widget.onOpenOtherPaneNewTab != null
             ? () => widget.onOpenOtherPaneNewTab!(item.path)
             : null,
         onDropFiles: (paths, {bool move = false}) {
