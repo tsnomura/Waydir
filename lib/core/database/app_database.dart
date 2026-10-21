@@ -116,6 +116,7 @@ class SessionTabs extends Table {
   IntColumn get tabIndex => integer()();
   TextColumn get path => text()();
   BoolColumn get isActive => boolean().withDefault(const Constant(false))();
+  TextColumn get tagOrigin => text().nullable()();
 }
 
 class Bookmarks extends Table {
@@ -266,7 +267,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 46;
+  int get schemaVersion => 47;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -466,6 +467,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(folderSortPrefs);
         await m.createTable(folderViewStates);
         await _migrateLegacyFolderPrefs();
+      }
+      if (from < 47) {
+        await m.addColumn(sessionTabs, sessionTabs.tagOrigin);
       }
     },
   );

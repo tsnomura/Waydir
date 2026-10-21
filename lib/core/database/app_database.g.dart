@@ -3520,6 +3520,17 @@ class $SessionTabsTable extends SessionTabs
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _tagOriginMeta = const VerificationMeta(
+    'tagOrigin',
+  );
+  @override
+  late final GeneratedColumn<String> tagOrigin = GeneratedColumn<String>(
+    'tag_origin',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3527,6 +3538,7 @@ class $SessionTabsTable extends SessionTabs
     tabIndex,
     path,
     isActive,
+    tagOrigin,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3573,6 +3585,12 @@ class $SessionTabsTable extends SessionTabs
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('tag_origin')) {
+      context.handle(
+        _tagOriginMeta,
+        tagOrigin.isAcceptableOrUnknown(data['tag_origin']!, _tagOriginMeta),
+      );
+    }
     return context;
   }
 
@@ -3602,6 +3620,10 @@ class $SessionTabsTable extends SessionTabs
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      tagOrigin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_origin'],
+      ),
     );
   }
 
@@ -3617,12 +3639,14 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
   final int tabIndex;
   final String path;
   final bool isActive;
+  final String? tagOrigin;
   const SessionTab({
     required this.id,
     required this.paneIndex,
     required this.tabIndex,
     required this.path,
     required this.isActive,
+    this.tagOrigin,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3632,6 +3656,9 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
     map['tab_index'] = Variable<int>(tabIndex);
     map['path'] = Variable<String>(path);
     map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || tagOrigin != null) {
+      map['tag_origin'] = Variable<String>(tagOrigin);
+    }
     return map;
   }
 
@@ -3642,6 +3669,9 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
       tabIndex: Value(tabIndex),
       path: Value(path),
       isActive: Value(isActive),
+      tagOrigin: tagOrigin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tagOrigin),
     );
   }
 
@@ -3656,6 +3686,7 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
       tabIndex: serializer.fromJson<int>(json['tabIndex']),
       path: serializer.fromJson<String>(json['path']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      tagOrigin: serializer.fromJson<String?>(json['tagOrigin']),
     );
   }
   @override
@@ -3667,6 +3698,7 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
       'tabIndex': serializer.toJson<int>(tabIndex),
       'path': serializer.toJson<String>(path),
       'isActive': serializer.toJson<bool>(isActive),
+      'tagOrigin': serializer.toJson<String?>(tagOrigin),
     };
   }
 
@@ -3676,12 +3708,14 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
     int? tabIndex,
     String? path,
     bool? isActive,
+    Value<String?> tagOrigin = const Value.absent(),
   }) => SessionTab(
     id: id ?? this.id,
     paneIndex: paneIndex ?? this.paneIndex,
     tabIndex: tabIndex ?? this.tabIndex,
     path: path ?? this.path,
     isActive: isActive ?? this.isActive,
+    tagOrigin: tagOrigin.present ? tagOrigin.value : this.tagOrigin,
   );
   SessionTab copyWithCompanion(SessionTabsCompanion data) {
     return SessionTab(
@@ -3690,6 +3724,7 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
       tabIndex: data.tabIndex.present ? data.tabIndex.value : this.tabIndex,
       path: data.path.present ? data.path.value : this.path,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      tagOrigin: data.tagOrigin.present ? data.tagOrigin.value : this.tagOrigin,
     );
   }
 
@@ -3700,13 +3735,15 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
           ..write('paneIndex: $paneIndex, ')
           ..write('tabIndex: $tabIndex, ')
           ..write('path: $path, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('tagOrigin: $tagOrigin')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, paneIndex, tabIndex, path, isActive);
+  int get hashCode =>
+      Object.hash(id, paneIndex, tabIndex, path, isActive, tagOrigin);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3715,7 +3752,8 @@ class SessionTab extends DataClass implements Insertable<SessionTab> {
           other.paneIndex == this.paneIndex &&
           other.tabIndex == this.tabIndex &&
           other.path == this.path &&
-          other.isActive == this.isActive);
+          other.isActive == this.isActive &&
+          other.tagOrigin == this.tagOrigin);
 }
 
 class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
@@ -3724,12 +3762,14 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
   final Value<int> tabIndex;
   final Value<String> path;
   final Value<bool> isActive;
+  final Value<String?> tagOrigin;
   const SessionTabsCompanion({
     this.id = const Value.absent(),
     this.paneIndex = const Value.absent(),
     this.tabIndex = const Value.absent(),
     this.path = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.tagOrigin = const Value.absent(),
   });
   SessionTabsCompanion.insert({
     this.id = const Value.absent(),
@@ -3737,6 +3777,7 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
     required int tabIndex,
     required String path,
     this.isActive = const Value.absent(),
+    this.tagOrigin = const Value.absent(),
   }) : paneIndex = Value(paneIndex),
        tabIndex = Value(tabIndex),
        path = Value(path);
@@ -3746,6 +3787,7 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
     Expression<int>? tabIndex,
     Expression<String>? path,
     Expression<bool>? isActive,
+    Expression<String>? tagOrigin,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3753,6 +3795,7 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
       if (tabIndex != null) 'tab_index': tabIndex,
       if (path != null) 'path': path,
       if (isActive != null) 'is_active': isActive,
+      if (tagOrigin != null) 'tag_origin': tagOrigin,
     });
   }
 
@@ -3762,6 +3805,7 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
     Value<int>? tabIndex,
     Value<String>? path,
     Value<bool>? isActive,
+    Value<String?>? tagOrigin,
   }) {
     return SessionTabsCompanion(
       id: id ?? this.id,
@@ -3769,6 +3813,7 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
       tabIndex: tabIndex ?? this.tabIndex,
       path: path ?? this.path,
       isActive: isActive ?? this.isActive,
+      tagOrigin: tagOrigin ?? this.tagOrigin,
     );
   }
 
@@ -3790,6 +3835,9 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (tagOrigin.present) {
+      map['tag_origin'] = Variable<String>(tagOrigin.value);
+    }
     return map;
   }
 
@@ -3800,7 +3848,8 @@ class SessionTabsCompanion extends UpdateCompanion<SessionTab> {
           ..write('paneIndex: $paneIndex, ')
           ..write('tabIndex: $tabIndex, ')
           ..write('path: $path, ')
-          ..write('isActive: $isActive')
+          ..write('isActive: $isActive, ')
+          ..write('tagOrigin: $tagOrigin')
           ..write(')'))
         .toString();
   }
@@ -9002,6 +9051,7 @@ typedef $$SessionTabsTableCreateCompanionBuilder =
       required int tabIndex,
       required String path,
       Value<bool> isActive,
+      Value<String?> tagOrigin,
     });
 typedef $$SessionTabsTableUpdateCompanionBuilder =
     SessionTabsCompanion Function({
@@ -9010,6 +9060,7 @@ typedef $$SessionTabsTableUpdateCompanionBuilder =
       Value<int> tabIndex,
       Value<String> path,
       Value<bool> isActive,
+      Value<String?> tagOrigin,
     });
 
 class $$SessionTabsTableFilterComposer
@@ -9043,6 +9094,11 @@ class $$SessionTabsTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagOrigin => $composableBuilder(
+    column: $table.tagOrigin,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9080,6 +9136,11 @@ class $$SessionTabsTableOrderingComposer
     column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get tagOrigin => $composableBuilder(
+    column: $table.tagOrigin,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SessionTabsTableAnnotationComposer
@@ -9105,6 +9166,9 @@ class $$SessionTabsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get tagOrigin =>
+      $composableBuilder(column: $table.tagOrigin, builder: (column) => column);
 }
 
 class $$SessionTabsTableTableManager
@@ -9143,12 +9207,14 @@ class $$SessionTabsTableTableManager
                 Value<int> tabIndex = const Value.absent(),
                 Value<String> path = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> tagOrigin = const Value.absent(),
               }) => SessionTabsCompanion(
                 id: id,
                 paneIndex: paneIndex,
                 tabIndex: tabIndex,
                 path: path,
                 isActive: isActive,
+                tagOrigin: tagOrigin,
               ),
           createCompanionCallback:
               ({
@@ -9157,12 +9223,14 @@ class $$SessionTabsTableTableManager
                 required int tabIndex,
                 required String path,
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> tagOrigin = const Value.absent(),
               }) => SessionTabsCompanion.insert(
                 id: id,
                 paneIndex: paneIndex,
                 tabIndex: tabIndex,
                 path: path,
                 isActive: isActive,
+                tagOrigin: tagOrigin,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

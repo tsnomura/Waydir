@@ -79,6 +79,32 @@ void main() {
     );
   });
 
+  test('a tag view opened with an origin leaves to that origin', () async {
+    store = NavigationStore(
+      operationStore: operationStore,
+      initialPath: tagPathFor(1),
+      tagOrigin: tmpDir.path,
+    );
+    await settle();
+
+    expect(store.tagOrigin, tmpDir.path);
+    expect(store.canGoBack.value, isTrue);
+
+    store.leaveTagView();
+    await settle();
+
+    expect(store.currentPath.value, tmpDir.path);
+  });
+
+  test('a new tag view from a tag view inherits its origin', () async {
+    await open(tmpDir.path);
+    expect(store.originForNewTagView, tmpDir.path);
+    store.navigateTo(tagPathFor(1));
+    await settle();
+
+    expect(store.originForNewTagView, tmpDir.path);
+  });
+
   test('going up from a tag view leaves it the same way', () async {
     await open(tmpDir.path);
     store.navigateTo(tagPathFor(3));
