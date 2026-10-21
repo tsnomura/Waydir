@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:signals/signals.dart';
@@ -1209,7 +1210,8 @@ class NavigationStore {
 
         return;
       }
-      if (e is FileSystemException && _isPermissionDenied(path)) {
+      if (e is FileSystemException && await _isPermissionDenied(path)) {
+        if (token != _loadToken) return;
         batch(() {
           files.value = [];
           loadError.value = null;
@@ -1246,9 +1248,19 @@ class NavigationStore {
     });
   }
 
-  bool _isPermissionDenied(String path) {
+  Future<bool> _isPermissionDenied(String path) async {
     try {
-      Directory(path).listSync(followLinks: false);
+      return await Isolate.run(() => _probePermissionDenied(path));
+    } catch (e, st) {
+      log.warn('navigation', 'permission probe failed', error: e, stack: st);
+
+      return false;
+    }
+  }
+
+  static Future<bool> _probePermissionDenied(String path) async {
+    try {
+      await Directory(path).list(followLinks: false).isEmpty;
 
       return false;
     } on FileSystemException catch (e) {
@@ -1259,10 +1271,6 @@ class NavigationStore {
       return msg.contains('operation not permitted') ||
           msg.contains('permission denied') ||
           msg.contains('access is denied');
-    } catch (e, st) {
-      log.warn('navigation', 'permission probe failed', error: e, stack: st);
-
-      return false;
     }
   }
 

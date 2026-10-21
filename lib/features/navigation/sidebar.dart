@@ -571,6 +571,7 @@ class _SidebarState extends State<Sidebar> {
     final currentDrives = driveStore.drives.value;
     final distributions = containerStore.distributions.value;
     final bookmarks = _bookmarkStore.bookmarks.value;
+    final bookmarkMounted = _bookmarkStore.mounted.value;
     final tags = TagStore.instance.tags.value;
 
     final sectionOrder = store.sectionOrder.value;
@@ -624,7 +625,7 @@ class _SidebarState extends State<Sidebar> {
       sidebarSectionBookmarks: _SidebarSection(
         id: sidebarSectionBookmarks,
         title: t.sidebar.bookmarks,
-        entries: _bookmarkEntries(bookmarks, currentPath),
+        entries: _bookmarkEntries(bookmarks, currentPath, bookmarkMounted),
       ),
     };
     final ordered = [
@@ -986,15 +987,14 @@ class _SidebarState extends State<Sidebar> {
   List<_SidebarEntry> _bookmarkEntries(
     List<Bookmark> bookmarks,
     String currentPath,
+    Map<String, bool> mounted,
   ) {
     return bookmarks.map((bookmark) {
       final uri = LocationUri.parse(bookmark.path);
       final icon = uri.isNetwork
           ? WaydirIconsRegular.treeStructure
           : WaydirIconsRegular.bookmarkSimple;
-      final isMounted = uri.isLocal
-          ? Directory(bookmark.path).existsSync()
-          : true;
+      final isMounted = !uri.isLocal || (mounted[bookmark.path] ?? true);
 
       return _SidebarEntry(
         key: 'bookmark:${bookmark.id}',

@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:signals/signals.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/fs/file_system_service.dart';
+import '../../core/logging/app_logger.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../locations/location_resolver.dart';
@@ -14,15 +18,61 @@ class BookmarkStore {
   BookmarkStore._();
 
   final bookmarks = signal<List<Bookmark>>([]);
+  final mounted = signal<Map<String, bool>>({});
+  Timer? _mountTimer;
+  Future<void>? _mountCheck;
+  bool _checkAgain = false;
 
   AppDatabase get _db => SettingsStore.instance.db;
 
   Future<void> load() async {
     bookmarks.value = await _db.getBookmarks();
+    _refreshMounted();
+    _mountTimer ??= Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _refreshMounted(),
+    );
+  }
+
+  void _refreshMounted() {
+    if (_mountCheck != null) {
+      _checkAgain = true;
+
+      return;
+    }
+    final paths = [
+      for (final b in bookmarks.value)
+        if (LocationUri.parse(b.path).isLocal) b.path,
+    ];
+    _mountCheck = _checkPaths(paths)
+        .then((result) => mounted.value = result)
+        .catchError((Object e, StackTrace st) {
+          log.warn('bookmarks', 'mount check failed', error: e, stack: st);
+
+          return mounted.value;
+        })
+        .whenComplete(() {
+          _mountCheck = null;
+          if (_checkAgain) {
+            _checkAgain = false;
+            _refreshMounted();
+          }
+        });
+  }
+
+  static Future<Map<String, bool>> _checkPaths(List<String> paths) =>
+      Isolate.run(() => {for (final p in paths) p: _exists(p)});
+
+  static bool _exists(String path) {
+    try {
+      return Directory(path).existsSync();
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> addPath(String path) async {
-    final storedPath = _storedPathFor(path);
+    final storedPath = await _existingStoredPathFor(path);
     if (storedPath == null) return;
     final uri = LocationUri.parse(storedPath);
     final label = uri.isLocal
@@ -39,7 +89,7 @@ class BookmarkStore {
   }
 
   Future<void> togglePath(String path) async {
-    final storedPath = _storedPathFor(path);
+    final storedPath = await _existingStoredPathFor(path);
     if (storedPath == null) return;
     final existing = await _db.getBookmarkByPath(storedPath);
     if (existing != null) {
@@ -57,16 +107,18 @@ class BookmarkStore {
 
   String? _storedPathFor(String path) {
     final uri = LocationUri.parse(path);
-    if (uri.isLocal) {
-      final normalized = PlatformPaths.normalize(path);
-      final logical = LocationResolver.physicalToLogical(normalized);
-      if (logical != null) return logical;
-      if (!Directory(normalized).existsSync()) return null;
+    if (!uri.isLocal) return uri.raw;
+    final normalized = PlatformPaths.normalize(path);
 
-      return normalized;
-    }
+    return LocationResolver.physicalToLogical(normalized) ?? normalized;
+  }
 
-    return uri.raw;
+  Future<String?> _existingStoredPathFor(String path) async {
+    final stored = _storedPathFor(path);
+    if (stored == null || !LocationUri.parse(stored).isLocal) return stored;
+    if (stored != PlatformPaths.normalize(path)) return stored;
+
+    return await FileSystemService.directoryExists(stored) ? stored : null;
   }
 
   Future<void> addLocation(String location, {String? label}) async {
