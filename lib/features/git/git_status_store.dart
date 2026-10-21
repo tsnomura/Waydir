@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
 
@@ -198,7 +199,7 @@ class GitStatusStore {
   }
 
   Future<GitStatus?> _load(String path) async {
-    if (!_hasGitUpward(path)) return null;
+    if (!await _hasGitUpwardOffUiThread(path)) return null;
 
     final rootResult = await _git(path, ['rev-parse', '--show-toplevel']);
     if (rootResult == null || rootResult.exitCode != 0) return null;
@@ -276,7 +277,7 @@ class GitStatusStore {
     );
   }
 
-  bool _hasGitUpward(String path) {
+  static bool _hasGitUpward(String path) {
     if (path.isEmpty) return false;
     if (!p.isAbsolute(path)) return false;
     var dir = Directory(path);
@@ -383,6 +384,16 @@ class GitStatusStore {
     if (!_isAbsolute(gitDir)) {
       gitDir = '$root${Platform.pathSeparator}$gitDir';
     }
+    return _repoStateOffUiThread(gitDir);
+  }
+
+  static Future<bool> _hasGitUpwardOffUiThread(String path) =>
+      Isolate.run(() => _hasGitUpward(path));
+
+  static Future<RepoState> _repoStateOffUiThread(String gitDir) =>
+      Isolate.run(() => _repoStateIn(gitDir));
+
+  static RepoState _repoStateIn(String gitDir) {
     bool exists(String name) =>
         FileSystemEntity.typeSync('$gitDir${Platform.pathSeparator}$name') !=
         FileSystemEntityType.notFound;

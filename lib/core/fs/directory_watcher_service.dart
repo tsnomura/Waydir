@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../logging/app_logger.dart';
+import 'file_system_service.dart';
 
 /// Coalesced directory-change notifier.
 ///
@@ -42,10 +43,19 @@ class DirectoryWatcherService {
     _subscribe(path);
   }
 
+  Future<void> _resubscribeIfPresent(String path) async {
+    if (_watchedPath != path) return;
+    final exists = await FileSystemService.directoryExists(
+      path,
+    ).catchError((Object _) => false);
+    if (exists && _watchedPath == path && _subscription == null) {
+      _subscribe(path);
+    }
+  }
+
   void _subscribe(String path) {
     try {
       final dir = Directory(path);
-      if (!dir.existsSync()) return;
       _subscription = dir
           .watch(recursive: false)
           .listen(
@@ -66,9 +76,10 @@ class DirectoryWatcherService {
               _subscription?.cancel();
               _subscription = null;
               _restartTimer?.cancel();
-              _restartTimer = Timer(const Duration(milliseconds: 500), () {
-                if (_watchedPath == path) _subscribe(path);
-              });
+              _restartTimer = Timer(
+                const Duration(milliseconds: 500),
+                () => _resubscribeIfPresent(path),
+              );
             },
             cancelOnError: true,
           );
