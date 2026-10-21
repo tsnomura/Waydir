@@ -44,8 +44,17 @@ jobs:
         shell: bash
         run: echo "version=$(grep '^version:' pubspec.yaml | sed -E 's/version:\s*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')" >> $GITHUB_OUTPUT
 
+      - name: Personal build defines
+        shell: bash
+        run: |
+          label="${GITHUB_REF_NAME//\//-}"
+          echo "PERSONAL_LABEL=${label#v}" >> "$GITHUB_ENV"
+          printf '{"WAYDIR_PERSONAL_VERSION":"%s","WAYDIR_PERSONAL_BRANCH":"release","WAYDIR_PERSONAL_COMMIT":"%s","WAYDIR_PERSONAL_BUILD_DATE":"%s"}\n' \
+            "$label" "$GITHUB_SHA" "$(date -u +%Y-%m-%d)" > personal_defines.json
+          cat personal_defines.json
+
       - name: Build Windows release
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define-from-file=personal_defines.json
 
       - name: Include preview generator setup guide
         shell: pwsh
@@ -57,7 +66,18 @@ jobs:
         shell: pwsh
         run: |
           $env:Path += ";$env:LOCALAPPDATA\Pub\Cache\bin;C:\Program Files (x86)\Inno Setup 6"
-          fastforge package --platform windows --targets exe,zip
+          $defines = (Get-Content personal_defines.json -Raw | ConvertFrom-Json).PSObject.Properties |
+            ForEach-Object { "--build-dart-define=$($_.Name)=$($_.Value)" }
+          fastforge package --platform windows --targets exe,zip --skip-clean @defines
+
+      - name: Name artifacts after the release
+        shell: pwsh
+        run: |
+          $pubspec = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)').Matches[0].Groups[1].Value
+          Get-ChildItem dist -Recurse -File |
+            Where-Object { $_.Name.Contains($pubspec) } |
+            ForEach-Object { Rename-Item $_.FullName $_.Name.Replace($pubspec, $env:PERSONAL_LABEL) }
+          Get-ChildItem dist -Recurse -File | Select-Object -ExpandProperty Name
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -96,8 +116,16 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Personal build defines
+        run: |
+          label="${GITHUB_REF_NAME//\//-}"
+          echo "PERSONAL_LABEL=${label#v}" >> "$GITHUB_ENV"
+          printf '{"WAYDIR_PERSONAL_VERSION":"%s","WAYDIR_PERSONAL_BRANCH":"release","WAYDIR_PERSONAL_COMMIT":"%s","WAYDIR_PERSONAL_BUILD_DATE":"%s"}\n' \
+            "$label" "$GITHUB_SHA" "$(date -u +%Y-%m-%d)" > personal_defines.json
+          cat personal_defines.json
+
       - name: Build Linux release
-        run: flutter build linux --release
+        run: flutter build linux --release --dart-define-from-file=personal_defines.json
 
       - name: Package bundle
         run: |
@@ -105,7 +133,7 @@ jobs:
           cp docs/generators.md build/linux/x64/release/bundle/docs/generators.md
           mkdir -p dist
           tar -C build/linux/x64/release -czf \
-            "dist/waydir-${GITHUB_REF_NAME#v}-linux-x64.tar.gz" \
+            "dist/waydir-${PERSONAL_LABEL}-linux-x64.tar.gz" \
             --transform 's,^bundle,waydir,' bundle
 
       - name: Upload artifacts
