@@ -1,19 +1,14 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:signals/signals_flutter.dart';
-import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../core/models/file_entry.dart';
-import '../../core/platform/platform_paths.dart';
 import '../../i18n/strings.g.dart';
-import '../../ui/dialogs/dialog.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
-import '../../ui/theme/app_text_styles.dart';
 import '../../ui/window/window.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
@@ -43,22 +38,18 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   bool _showInfo = true;
   bool _markdownRendered = true;
   bool _closing = false;
-  FileChangeWatcher? _watcher;
-  int _reloadGen = 0;
-  FileEntry? _freshEntry;
+  bool _confirmingClose = false;
+  late final _reload = QuickLookReloadController(
+    editorController: _editorController,
+    onReloadSkipped: _showReloadSkipped,
+  );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
-    _editorController.onSaved = _onEditorSaved;
-    final entry = widget.entry;
-    if (entry.type == FileItemType.file &&
-        !PlatformPaths.isRemoteUri(entry.realPath)) {
-      _watcher = FileChangeWatcher(onChanged: _onDiskChanged);
-      _watcher!.start(entry.realPath);
-    }
+    _reload.watch(widget.entry);
     _lifecycle = AppLifecycleListener(onExitRequested: _onExitRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
@@ -68,7 +59,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _watcher?.stop();
+    _reload.dispose();
     _lifecycle.dispose();
     _playback.dispose();
     _editorActive.dispose();
@@ -95,25 +86,16 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   Future<bool> _confirmClose() async {
     if (!mounted) return true;
     if (!_editorController.dirty.value) return true;
-    final result = await showCustomDialog<String>(
-      context: context,
-      title: t.quickLook.unsavedTitle,
-      icon: WaydirIconsRegular.warning,
-      iconColor: AppColors.warning,
-      body: Text(
-        t.quickLook.unsavedMessage,
-        style: context.txt.row.copyWith(color: AppColors.fg),
-      ),
-      actions: [
-        DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-        DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-        DialogAction(label: t.quickLook.save, color: AppColors.accent),
-      ],
-    );
-    if (!mounted || result == null || result == t.quickLook.cancel) {
-      return false;
+    if (_confirmingClose) return false;
+    _confirmingClose = true;
+    final UnsavedChoice choice;
+    try {
+      choice = await confirmUnsavedChanges(context, t.quickLook.unsavedMessage);
+    } finally {
+      _confirmingClose = false;
     }
-    if (result == t.quickLook.save) return await _editorController.save();
+    if (!mounted || choice == UnsavedChoice.cancel) return false;
+    if (choice == UnsavedChoice.save) return await _editorController.save();
 
     return true;
   }
@@ -124,90 +106,14 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     appWindow.close();
   }
 
-  FileEntry get _shownEntry => _freshEntry ?? widget.entry;
-
-  void _onDiskChanged(String path, int modifiedMs, int size) {
-    if (!mounted || _shownEntry.realPath != path) return;
-    if (_editorController.dirty.value) {
-      showToast(context: context, message: t.quickLook.reloadSkipped);
-
-      return;
-    }
-    _applyReload(modifiedMs, size);
-  }
-
-  void _applyReload(int modifiedMs, int size) {
+  void _showReloadSkipped() {
     if (!mounted) return;
-    final entry = _shownEntry;
-    evictPreviewImage(entry.realPath);
-    setState(() {
-      _freshEntry = entry.copyWithStats(size: size, modifiedMs: modifiedMs);
-      _reloadGen += 1;
-    });
+    showToast(context: context, message: t.quickLook.reloadSkipped);
   }
 
-  void _refreshStats(int modifiedMs, int size) {
-    if (!mounted) return;
-    final entry = _shownEntry;
-    setState(() {
-      _freshEntry = entry.copyWithStats(size: size, modifiedMs: modifiedMs);
-    });
-  }
-
-  Future<FileStat?> _statOf(String path) async {
-    final stat = await File(path).stat();
-    return stat.type == FileSystemEntityType.notFound ? null : stat;
-  }
-
-  void _onEditorSaved() {
-    final watcher = _watcher;
-    final entry = _shownEntry;
-    if (watcher == null || watcher.path != entry.realPath) return;
-    unawaited(
-      _statOf(entry.realPath).then((stat) {
-        if (stat != null) {
-          watcher.refreshBaseline(
-            stat.modified.millisecondsSinceEpoch,
-            stat.size,
-          );
-        }
-      }),
-    );
-  }
-
-  Future<void> _requestReload() async {
-    final entry = _shownEntry;
-    if (entry.type != FileItemType.file) return;
-    if (PlatformPaths.isRemoteUri(entry.realPath)) return;
-    if (_editorController.dirty.value) {
-      final result = await showCustomDialog<String>(
-        context: context,
-        title: t.quickLook.unsavedTitle,
-        icon: WaydirIconsRegular.warning,
-        iconColor: AppColors.warning,
-        body: Text(
-          t.quickLook.reloadMessage,
-          style: context.txt.row.copyWith(color: AppColors.fg),
-        ),
-        actions: [
-          DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-          DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-          DialogAction(label: t.quickLook.save, color: AppColors.accent),
-        ],
-      );
-      if (!mounted || result == null || result == t.quickLook.cancel) return;
-      if (result == t.quickLook.save) {
-        if (!await _editorController.save()) return;
-        final stat = await _statOf(entry.realPath);
-        if (!mounted || stat == null) return;
-        _refreshStats(stat.modified.millisecondsSinceEpoch, stat.size);
-
-        return;
-      }
-    }
-    final stat = await _statOf(entry.realPath);
-    if (!mounted || stat == null) return;
-    _applyReload(stat.modified.millisecondsSinceEpoch, stat.size);
+  void _requestReload() {
+    if (_closing || _confirmingClose) return;
+    unawaited(_reload.request(context));
   }
 
   void _setCompact(bool value) {
@@ -226,7 +132,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.f5) {
-      unawaited(_requestReload());
+      _requestReload();
 
       return KeyEventResult.handled;
     }
@@ -236,8 +142,6 @@ class _QuickLookWindowState extends State<QuickLookWindow>
 
   @override
   Widget build(BuildContext context) {
-    final entry = _shownEntry;
-
     return Focus(
       focusNode: _focus,
       onKeyEvent: _handleKey,
@@ -245,7 +149,14 @@ class _QuickLookWindowState extends State<QuickLookWindow>
         color: AppColors.bg,
         child: SignalBuilder(
           builder: (_) {
-            _playback.sync(entry, _generatorPage, blocked: false);
+            _reload.revision.value;
+            final entry = _reload.shown(widget.entry)!;
+            _playback.sync(
+              entry,
+              _generatorPage,
+              blocked: false,
+              generation: _reload.generation,
+            );
 
             return Column(
               children: [
@@ -268,7 +179,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                 Container(height: 1, color: AppColors.bgDivider),
                 Expanded(
                   child: QuickLookBody(
-                    key: ValueKey('qlw#$_reloadGen'),
+                    key: ValueKey('qlw#${_reload.generation}'),
                     entry: entry,
                     editorActive: _editorActive,
                     editorController: _editorController,

@@ -3,16 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 
 import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/models/file_entry.dart';
-import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../../features/navigation/navigation_store.dart';
 import '../../i18n/strings.g.dart';
-import '../../ui/dialogs/dialog.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
@@ -105,9 +102,10 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   bool _showInfo = true;
   bool _markdownRendered = true;
   String? _presentationKey;
-  FileChangeWatcher? _watcher;
-  int _reloadGen = 0;
-  FileEntry? _freshEntry;
+  late final _reload = QuickLookReloadController(
+    editorController: _editorController,
+    onReloadSkipped: _showReloadSkipped,
+  );
   DateTime? _lastCursorRepeatAt;
   Rect? _rect;
   Offset? _dragAnchor;
@@ -238,7 +236,6 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
-    _editorController.onSaved = _onEditorSaved;
     final cursor = widget.store.cursorEntry.value;
     final entry = cursor?.ghostOf ?? cursor;
     _compact = defaultCompactFor(entry);
@@ -251,7 +248,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _watcher?.stop();
+    _reload.dispose();
     _playback.dispose();
     _focus.dispose();
     _editorActive.dispose();
@@ -277,138 +274,23 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
 
       return;
     }
-    final result = await showCustomDialog<String>(
-      context: context,
-      title: t.quickLook.unsavedTitle,
-      icon: WaydirIconsRegular.warning,
-      iconColor: AppColors.warning,
-      body: Text(
-        t.quickLook.unsavedMessage,
-        style: context.txt.row.copyWith(color: AppColors.fg),
-      ),
-      actions: [
-        DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-        DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-        DialogAction(label: t.quickLook.save, color: AppColors.accent),
-      ],
+    final choice = await confirmUnsavedChanges(
+      context,
+      t.quickLook.unsavedMessage,
     );
-    if (!mounted || result == null || result == t.quickLook.cancel) return;
-    if (result == t.quickLook.save && !await _editorController.save()) {
+    if (!mounted || choice == UnsavedChoice.cancel) return;
+    if (choice == UnsavedChoice.save && !await _editorController.save()) {
       return; // save failed - keep the preview open
     }
     if (mounted) Navigator.of(context).pop();
   }
 
-  void _syncWatch(FileEntry? entry) {
-    final watchable =
-        entry != null &&
-        entry.type == FileItemType.file &&
-        !PlatformPaths.isRemoteUri(entry.realPath) &&
-        widget.diffPair?.call(entry) == null;
-    if (!watchable) {
-      _watcher?.stop();
-      return;
-    }
-    _watcher ??= FileChangeWatcher(onChanged: _onDiskChanged);
-    _watcher!.start(entry.realPath);
+  void _showReloadSkipped() {
+    if (!mounted) return;
+    showToast(context: context, message: t.quickLook.reloadSkipped);
   }
 
-  void _onDiskChanged(String path, int modifiedMs, int size) {
-    final entry = _shownEntry;
-    if (!mounted || entry == null || entry.realPath != path) return;
-    if (_editorController.dirty.value) {
-      showToast(context: context, message: t.quickLook.reloadSkipped);
-
-      return;
-    }
-    _applyReload(modifiedMs, size);
-  }
-
-  void _applyReload(int modifiedMs, int size) {
-    final entry = _shownEntry;
-    if (!mounted || entry == null) return;
-    evictPreviewImage(entry.realPath);
-    setState(() {
-      _freshEntry = entry.copyWithStats(size: size, modifiedMs: modifiedMs);
-      _reloadGen += 1;
-    });
-  }
-
-  void _refreshStats(int modifiedMs, int size) {
-    final entry = _shownEntry;
-    if (!mounted || entry == null) return;
-    setState(() {
-      _freshEntry = entry.copyWithStats(size: size, modifiedMs: modifiedMs);
-    });
-  }
-
-  Future<FileStat?> _statOf(String path) async {
-    final stat = await File(path).stat();
-    return stat.type == FileSystemEntityType.notFound ? null : stat;
-  }
-
-  FileEntry? _shownFileEntry(FileEntry? entry) {
-    final fresh = _freshEntry;
-    if (entry == null || fresh == null) return entry;
-    return fresh.realPath == entry.realPath ? fresh : entry;
-  }
-
-  void _onEditorSaved() {
-    final entry = _shownEntry;
-    final watcher = _watcher;
-    if (entry == null || watcher == null || watcher.path != entry.realPath) {
-      return;
-    }
-    unawaited(
-      _statOf(entry.realPath).then((stat) {
-        if (stat != null) {
-          watcher.refreshBaseline(
-            stat.modified.millisecondsSinceEpoch,
-            stat.size,
-          );
-        }
-      }),
-    );
-  }
-
-  Future<void> _requestReload() async {
-    final entry = _shownEntry;
-    if (entry == null || entry.type != FileItemType.file) return;
-    if (PlatformPaths.isRemoteUri(entry.realPath)) return;
-    if (widget.diffPair?.call(entry) != null) return;
-    if (_editorController.dirty.value) {
-      final result = await showCustomDialog<String>(
-        context: context,
-        title: t.quickLook.unsavedTitle,
-        icon: WaydirIconsRegular.warning,
-        iconColor: AppColors.warning,
-        body: Text(
-          t.quickLook.reloadMessage,
-          style: context.txt.row.copyWith(color: AppColors.fg),
-        ),
-        actions: [
-          DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-          DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-          DialogAction(label: t.quickLook.save, color: AppColors.accent),
-        ],
-      );
-      if (!mounted || result == null || result == t.quickLook.cancel) return;
-      if (result == t.quickLook.save) {
-        if (!await _editorController.save()) return;
-        final stat = await _statOf(entry.realPath);
-        if (!mounted || stat == null) return;
-        if (_shownEntry?.realPath != entry.realPath) return;
-        _refreshStats(stat.modified.millisecondsSinceEpoch, stat.size);
-
-        return;
-      }
-    }
-    final stat = await _statOf(entry.realPath);
-    if (!mounted || stat == null) return;
-    if (_shownEntry?.realPath != entry.realPath) return;
-    _applyReload(stat.modified.millisecondsSinceEpoch, stat.size);
-  }
-
+  void _requestReload() => unawaited(_reload.request(context));
   void _selectFromStats(FileEntry entry) {
     final files = widget.store.navigableFiles;
     final idx = files.indexWhere((f) => f.path == entry.path);
@@ -527,7 +409,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
       return KeyEventResult.handled;
     }
     if (!isRepeat && key == LogicalKeyboardKey.f5) {
-      unawaited(_requestReload());
+      _requestReload();
 
       return KeyEventResult.handled;
     }
@@ -618,7 +500,6 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     final key = entry?.realPath;
     if (_presentationKey == key) return;
     _presentationKey = key;
-    _freshEntry = null;
     _markdownRendered = true;
     _generatorPage.reset();
     _setCompact(defaultCompactFor(entry));
@@ -759,7 +640,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         final override = widget.explicitEntry;
         if (override != null) {
           _shownEntry = override;
-          _syncWatch(null);
+          _reload.watch(null);
 
           return Column(
             children: [
@@ -786,7 +667,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           final selected = widget.store.selectedPaths.value;
           if (selected.length > 1) {
             final entries = widget.store.selectedEntries;
-            _syncWatch(null);
+            _reload.watch(null);
 
             return Column(
               children: [
@@ -817,7 +698,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
               final entry = entries.first;
               if (entry.type == FileItemType.folder) {
                 _syncPresentation(entry);
-                _syncWatch(entry);
+                _reload.watch(null);
 
                 return Column(
                   children: [
@@ -842,7 +723,6 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                 );
               }
               _syncPresentation(entry);
-              _syncWatch(entry);
 
               return _singleFilePreview(entry);
             }
@@ -852,7 +732,6 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         final cursor = widget.store.cursorEntry.value;
         final entry = cursor?.ghostOf ?? cursor;
         _syncPresentation(entry);
-        _syncWatch(entry);
 
         return _singleFilePreview(entry);
       },
@@ -875,8 +754,15 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         : DiffRunner.cacheKeyFor(diffPair.$1, diffPair.$2);
     final identical =
         diffKey != null && _identicalPairs.value.contains(diffKey);
-    final shown = _shownFileEntry(entry);
-    _playback.sync(entry, _generatorPage, blocked: showDiff && !identical);
+    _reload.watch(showDiff ? null : entry);
+    _reload.revision.value;
+    final shown = _reload.shown(entry);
+    _playback.sync(
+      entry,
+      _generatorPage,
+      blocked: showDiff && !identical,
+      generation: _reload.generation,
+    );
 
     return Column(
       children: [
@@ -916,7 +802,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                   ),
                 )
               : QuickLookBody(
-                  key: ValueKey('ql#$_reloadGen'),
+                  key: ValueKey('ql#${_reload.generation}'),
                   entry: shown,
                   editorActive: _editorActive,
                   editorController: _editorController,

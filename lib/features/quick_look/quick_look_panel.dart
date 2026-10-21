@@ -1,17 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:signals/signals_flutter.dart';
-import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../core/models/file_entry.dart';
 import '../../features/navigation/navigation_store.dart';
 import '../../i18n/strings.g.dart';
-import '../../ui/dialogs/dialog.dart';
+import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
-import '../../ui/theme/app_text_styles.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
+import 'quick_look_reload.dart';
 
 typedef QuickLookCloseGuard = Future<bool> Function();
 
@@ -42,6 +43,10 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   bool _showInfo = true;
   bool _markdownRendered = true;
   String? _presentationKey;
+  late final _reload = QuickLookReloadController(
+    editorController: _editorController,
+    onReloadSkipped: _showReloadSkipped,
+  );
 
   @override
   void initState() {
@@ -58,6 +63,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.onRegisterCloseGuard(null);
+    _reload.dispose();
     _playback.dispose();
     _editorActive.dispose();
     _editorController.dispose();
@@ -80,28 +86,22 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   Future<bool> _confirmClose() async {
     if (!mounted) return true;
     if (!_editorController.dirty.value) return true;
-    final result = await showCustomDialog<String>(
-      context: context,
-      title: t.quickLook.unsavedTitle,
-      icon: WaydirIconsRegular.warning,
-      iconColor: AppColors.warning,
-      body: Text(
-        t.quickLook.unsavedMessage,
-        style: context.txt.row.copyWith(color: AppColors.fg),
-      ),
-      actions: [
-        DialogAction(label: t.quickLook.cancel, color: AppColors.fgMuted),
-        DialogAction(label: t.quickLook.discard, color: AppColors.danger),
-        DialogAction(label: t.quickLook.save, color: AppColors.accent),
-      ],
+    final choice = await confirmUnsavedChanges(
+      context,
+      t.quickLook.unsavedMessage,
     );
-    if (!mounted || result == null || result == t.quickLook.cancel) {
-      return false;
-    }
-    if (result == t.quickLook.save) return await _editorController.save();
+    if (!mounted || choice == UnsavedChoice.cancel) return false;
+    if (choice == UnsavedChoice.save) return await _editorController.save();
 
     return true;
   }
+
+  void _showReloadSkipped() {
+    if (!mounted) return;
+    showToast(context: context, message: t.quickLook.reloadSkipped);
+  }
+
+  void _requestReload() => unawaited(_reload.request(context));
 
   void _toggleMarkdownRendered() =>
       setState(() => _markdownRendered = !_markdownRendered);
@@ -129,7 +129,15 @@ class _QuickLookPanelState extends State<QuickLookPanel>
       builder: (_) {
         final entry = _resolveEntry();
         _syncPresentation(entry);
-        _playback.sync(entry, _generatorPage, blocked: false);
+        _reload.watch(entry);
+        _reload.revision.value;
+        final shown = _reload.shown(entry);
+        _playback.sync(
+          entry,
+          _generatorPage,
+          blocked: false,
+          generation: _reload.generation,
+        );
 
         return Column(
           children: [
@@ -142,11 +150,15 @@ class _QuickLookPanelState extends State<QuickLookPanel>
               editorController: _editorController,
               markdownRendered: _markdownRendered,
               onToggleMarkdownView: _toggleMarkdownRendered,
+              onReload: QuickLookReloadController.canReload(entry)
+                  ? _requestReload
+                  : null,
             ),
             Container(height: 1, color: AppColors.bgDivider),
             Expanded(
               child: QuickLookBody(
-                entry: entry,
+                key: ValueKey('qlp#${_reload.generation}'),
+                entry: shown,
                 editorActive: _editorActive,
                 editorController: _editorController,
                 showInfo: _showInfo,

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/models/file_entry.dart';
+import 'package:waydir/features/quick_look/code_editor.dart';
 import 'package:waydir/features/quick_look/quick_look_reload.dart';
 
 void main() {
@@ -174,7 +175,7 @@ void main() {
       },
     );
 
-    test('refreshBaseline suppresses the change it records', () async {
+    test('a write between suspend and resume is not reported', () async {
       final changes = <List<int>>[];
       final watcher = FileChangeWatcher(
         interval: interval,
@@ -182,22 +183,115 @@ void main() {
       );
       watcher.start(file.path);
       await settle();
-      expect(changes, isEmpty);
+      watcher.suspend();
       file.writeAsStringSync('v2-saved-by-the-editor');
-      final stat = file.statSync();
-      watcher.refreshBaseline(stat.modified.millisecondsSinceEpoch, stat.size);
       await settle();
       expect(changes, isEmpty);
+      final stat = await watcher.resume();
+      expect(stat?.size, file.statSync().size);
+      await settle();
+      expect(changes, isEmpty);
+      file.writeAsStringSync('v3-changed-elsewhere-afterwards');
+      await settle();
+      expect(changes, hasLength(1));
       watcher.stop();
     });
 
-    test('refreshBaseline is a no-op when not watching', () {
+    test('resume is a no-op when not watching', () async {
       final watcher = FileChangeWatcher(
         interval: interval,
         onChanged: (path, modifiedMs, size) => fail('should not fire'),
       );
-      watcher.refreshBaseline(123, 456);
+      watcher.suspend();
+      expect(await watcher.resume(), isNull);
       watcher.stop();
+    });
+  });
+
+  group('QuickLookReloadController', () {
+    const interval = Duration(milliseconds: 25);
+
+    late Directory dir;
+    late File file;
+    late FileEntry entry;
+    late CodeEditorController editor;
+    late QuickLookReloadController reload;
+    late int skipped;
+
+    setUp(() async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      dir = await Directory.systemTemp.createTemp('waydir_reload_ctrl_test');
+      file = File('${dir.path}${Platform.pathSeparator}a.txt');
+      file.writeAsStringSync('v1');
+      final stat = file.statSync();
+      entry = FileEntry.raw(
+        name: 'a.txt',
+        path: file.path,
+        type: FileItemType.file,
+        size: stat.size,
+        modifiedMs: stat.modified.millisecondsSinceEpoch,
+      );
+      skipped = 0;
+      editor = CodeEditorController();
+      reload = QuickLookReloadController(
+        editorController: editor,
+        onReloadSkipped: () => skipped++,
+        interval: interval,
+      );
+    });
+
+    tearDown(() async {
+      reload.dispose();
+      editor.dispose();
+      await dir.delete(recursive: true);
+    });
+
+    Future<void> settle([int ms = 150]) =>
+        Future<void>.delayed(Duration(milliseconds: ms));
+
+    test('an outside change bumps the generation and fresh stats', () async {
+      reload.watch(entry);
+      await settle();
+      file.writeAsStringSync('v2-a-lot-longer');
+      await settle();
+      expect(reload.generation, 1);
+      expect(reload.shown(entry)!.size, file.statSync().size);
+    });
+
+    test('a guarded editor write neither reloads nor reports', () async {
+      reload.watch(entry);
+      await settle();
+      await editor.writeGuard!(() async {
+        file.writeAsStringSync('v2-saved-by-the-editor');
+        await settle();
+      });
+      await settle();
+      expect(reload.generation, 0);
+      expect(skipped, 0);
+      expect(reload.shown(entry)!.size, file.statSync().size);
+    });
+
+    test('an outside change while dirty is reported as skipped', () async {
+      reload.watch(entry);
+      await settle();
+      editor.dirty.value = true;
+      file.writeAsStringSync('v2-a-lot-longer');
+      await settle();
+      expect(reload.generation, 0);
+      expect(skipped, 1);
+    });
+
+    test('folders and remote paths are not watched', () {
+      final folder = FileEntry.raw(
+        name: 'd',
+        path: dir.path,
+        type: FileItemType.folder,
+        size: 0,
+        modifiedMs: 0,
+      );
+      expect(QuickLookReloadController.canReload(folder), isFalse);
+      expect(QuickLookReloadController.canReload(entry), isTrue);
+      expect(QuickLookReloadController.canReload(null), isFalse);
     });
   });
 
