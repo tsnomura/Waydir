@@ -26,6 +26,7 @@ enum _VimMode { normal, insert, visual }
 class CodeEditorController {
   final dirty = signal(false);
   Future<bool> Function()? _save;
+  VoidCallback? onSaved;
 
   /// Saves if dirty. Returns true when there is nothing to save or the save
   /// succeeded, false when the save failed.
@@ -129,6 +130,7 @@ class _CodeEditorState extends State<CodeEditor> {
         _saveError = null;
       });
       widget.controller?.dirty.value = _dirty;
+      widget.controller?.onSaved?.call();
 
       return true;
     } catch (e, st) {

@@ -899,7 +899,11 @@
     "popOutUnavailable": "Only local files can open in a Quick Look window",
     "viewSource": "View source",
     "viewRendered": "View rendered",
-    "saveBeforePreview": "Save changes to preview"
+    "saveBeforePreview": "Save changes to preview",
+    "reload": "Reload",
+    "hintReload": "Reload",
+    "reloadMessage": "You have unsaved changes. Save them before reloading?",
+    "reloadSkipped": "File changed - press F5 to reload"
   },
   "toast": {
     "launcherFailed": "Couldn't start $name: $error",

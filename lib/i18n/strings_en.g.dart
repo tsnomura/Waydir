@@ -1420,6 +1420,18 @@ class Translations$quickLook$en {
 
 	/// en: 'Save changes to preview'
 	String get saveBeforePreview => 'Save changes to preview';
+
+	/// en: 'Reload'
+	String get reload => 'Reload';
+
+	/// en: 'Reload'
+	String get hintReload => 'Reload';
+
+	/// en: 'You have unsaved changes. Save them before reloading?'
+	String get reloadMessage => 'You have unsaved changes. Save them before reloading?';
+
+	/// en: 'File changed - press F5 to reload'
+	String get reloadSkipped => 'File changed - press F5 to reload';
 }
 
 // Path: toast
@@ -5186,6 +5198,10 @@ extension on Translations {
 			'quickLook.viewSource' => 'View source',
 			'quickLook.viewRendered' => 'View rendered',
 			'quickLook.saveBeforePreview' => 'Save changes to preview',
+			'quickLook.reload' => 'Reload',
+			'quickLook.hintReload' => 'Reload',
+			'quickLook.reloadMessage' => 'You have unsaved changes. Save them before reloading?',
+			'quickLook.reloadSkipped' => 'File changed - press F5 to reload',
 			'toast.launcherFailed' => ({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}',
 			'toast.copiedItems' => ({required Object count}) => 'Copied ${count} items',
 			'toast.duplicatedItems' => ({required Object count}) => 'Duplicated ${count} items',
@@ -5462,12 +5478,12 @@ extension on Translations {
 			'errors.gioMountFailed' => 'gio mount failed',
 			'errors.mountSmbfsFailed' => ({required Object code}) => 'mount_smbfs failed (${code})',
 			'errors.notEmpty' => 'Directory not empty',
+			_ => null,
+		} ?? switch (path) {
 			'errors.crossDevice' => 'Cannot move across devices',
 			'errors.targetExists' => 'Target exists',
 			'errors.sftpNotSupported' => 'SFTP not supported',
 			'errors.sftpConnectFailed' => 'SFTP connect failed',
-			_ => null,
-		} ?? switch (path) {
 			'errors.sftpError' => ({required Object error}) => 'SFTP: ${error}',
 			'errors.sftpNoActiveSession' => 'No active SFTP session',
 			'errors.sftpNoActiveSessionFor' => ({required Object path}) => 'No active SFTP session for ${path}',
