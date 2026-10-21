@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
@@ -62,6 +63,73 @@ class ContextMenuItem {
   bool get hasChildren => children != null && children!.isNotEmpty;
 }
 
+class _MenuLayer {
+  final OverlayEntry entry;
+  final GlobalKey bodyKey;
+
+  _MenuLayer(this.entry, this.bodyKey);
+
+  bool contains(Offset position) {
+    final box = bodyKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || !box.hasSize) return false;
+
+    return (box.localToGlobal(Offset.zero) & box.size).contains(position);
+  }
+}
+
+class _MenuSession {
+  final List<_MenuLayer> layers = [];
+  late final VoidCallback dismissAll;
+  bool armed = false;
+
+  bool contains(Offset position) => layers.any((l) => l.contains(position));
+}
+
+final _sessions = <_MenuSession>{};
+bool _globalHandlersInstalled = false;
+
+void _installGlobalHandlersIfNeeded() {
+  if (_globalHandlersInstalled) return;
+  _globalHandlersInstalled = true;
+  GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
+  HardwareKeyboard.instance.addHandler(_onGlobalKey);
+}
+
+void _uninstallGlobalHandlersIfIdle() {
+  if (!_globalHandlersInstalled || _sessions.isNotEmpty) return;
+  _globalHandlersInstalled = false;
+  GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
+  HardwareKeyboard.instance.removeHandler(_onGlobalKey);
+}
+
+void _onGlobalPointer(PointerEvent event) {
+  if (event is! PointerDownEvent) return;
+  final outside = [
+    for (final s in _sessions)
+      if (s.armed && !s.contains(event.position)) s,
+  ];
+  for (final s in outside) {
+    s.dismissAll();
+  }
+}
+
+bool _onGlobalKey(KeyEvent event) {
+  if (event is! KeyDownEvent ||
+      event.logicalKey != LogicalKeyboardKey.escape ||
+      _sessions.isEmpty) {
+    return false;
+  }
+  dismissAllContextMenus();
+
+  return true;
+}
+
+void dismissAllContextMenus() {
+  for (final s in _sessions.toList()) {
+    s.dismissAll();
+  }
+}
+
 void showContextMenu({
   required BuildContext context,
   required Offset position,
@@ -70,7 +138,8 @@ void showContextMenu({
   bool keyboard = false,
 }) {
   final overlay = Overlay.of(context);
-  final entries = <OverlayEntry>[];
+  final session = _MenuSession();
+  final entries = session.layers;
   final previousFocus = keyboard ? FocusManager.instance.primaryFocus : null;
   Timer? pendingDismiss;
 
@@ -78,20 +147,24 @@ void showContextMenu({
     pendingDismiss?.cancel();
     pendingDismiss = null;
     final hadEntries = entries.isNotEmpty;
-    for (final e in entries) {
-      if (e.mounted) e.remove();
+    for (final l in entries) {
+      if (l.entry.mounted) l.entry.remove();
     }
     entries.clear();
+    _sessions.remove(session);
+    _uninstallGlobalHandlersIfIdle();
     final restore = previousFocus;
     if (hadEntries && restore != null && restore.context != null) {
       restore.requestFocus();
     }
   }
 
+  session.dismissAll = dismissAll;
+
   void dismissFrom(int depth) {
     while (entries.length > depth) {
-      final e = entries.removeLast();
-      if (e.mounted) e.remove();
+      final l = entries.removeLast();
+      if (l.entry.mounted) l.entry.remove();
     }
   }
 
@@ -117,10 +190,17 @@ void showContextMenu({
     int depth,
     Offset pos,
     List<ContextMenuItem> menuItems, {
+    OverlayEntry? owner,
     FocusNode? parentFocus,
     bool fromKeyboard = false,
   }) {
+    if (depth > 0 &&
+        (entries.length < depth ||
+            !identical(entries[depth - 1].entry, owner))) {
+      return;
+    }
     dismissFromNow(depth);
+    final bodyKey = GlobalKey();
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => PopupOverlay(
@@ -129,12 +209,14 @@ void showContextMenu({
         autoDismiss: depth == 0,
         onDismiss: dismissAll,
         builder: (_) => _ContextMenuBody(
+          key: bodyKey,
           items: menuItems,
           keyboard: keyboard,
           highlightFirst: depth == 0 || fromKeyboard,
           onKeyboardBack: depth == 0
               ? dismissAll
               : () {
+                  if (entries.length < depth) return;
                   dismissFromNow(depth);
                   parentFocus?.requestFocus();
                 },
@@ -156,17 +238,21 @@ void showContextMenu({
                 depth + 1,
                 Offset(rect.right - 4, rect.top),
                 item.children!,
+                owner: entry,
                 parentFocus: fromFocus,
                 fromKeyboard: fromKeyboard,
               ),
         ),
       ),
     );
-    entries.add(entry);
+    entries.add(_MenuLayer(entry, bodyKey));
     overlay.insert(entry);
   }
 
+  _sessions.add(session);
+  _installGlobalHandlersIfNeeded();
   openMenu(0, position, items);
+  WidgetsBinding.instance.addPostFrameCallback((_) => session.armed = true);
 }
 
 typedef _OpenSubmenu =
@@ -190,6 +276,7 @@ class _ContextMenuBody extends StatefulWidget {
   final _OpenSubmenu onOpenSubmenu;
 
   const _ContextMenuBody({
+    super.key,
     required this.items,
     required this.keyboard,
     required this.highlightFirst,
