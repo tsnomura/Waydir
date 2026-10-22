@@ -15,6 +15,15 @@ class DataReader {
     });
   }
 
+  Future<List<DataReaderItem>> refreshItems() {
+    return _mutex.protect(() async {
+      _items = (await ReaderManager.instance.getItems(_handle))
+          .map((handle) => DataReaderItem(handle: handle))
+          .toList(growable: false);
+      return _items!;
+    });
+  }
+
   DataReader({
     required DataReaderHandle handle,
   }) : _handle = handle;

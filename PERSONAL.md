@@ -939,7 +939,13 @@ folder again. Two problems on Waydir's side:
   (via `dependency_overrides` in `pubspec.yaml`) with one change:
   `PlatformDataReader::reset_cache()` (`rust/src/win32/reader.rs`) called
   from `on_drop` (`rust/src/win32/drop.rs`), so the file list is read
-  fresh at drop time. Re-apply this when upgrading the package.
+  fresh at drop time. The Dart half had the same problem: `DataReader`
+  (`lib/src/reader.dart`) caches its item list from drag-enter, and 7-Zip
+  lists only one item until the drop, so a multi-file drop gave readers to
+  the first item only and only one file was copied. `DropEventImpl`
+  (`lib/src/native/drop.dart`) now calls the new
+  `DataReader.refreshItems()` when the event carries more items than the
+  cached list. Re-apply both changes when upgrading the package.
 - Waydir only queued the copy during the drop, and by the time it ran
   7-Zip had deleted its temp folder. External drops whose paths are inside
   the system temp folder are now copied into Waydir's own staging folder
