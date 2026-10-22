@@ -78,7 +78,11 @@ class DropEventImpl extends DropEvent {
     }
 
     final reader = readerProvider(sessionId) ?? getReader();
-    final items = await reader?.getItems();
+    var items = await reader?.getItems();
+    final itemCount = (map['items'] as Iterable).length;
+    if (reader != null && items != null && items.length < itemCount) {
+      items = await reader.refreshItems();
+    }
 
     DropItem deserializeItem(int index, dynamic item) {
       final readerItem =
