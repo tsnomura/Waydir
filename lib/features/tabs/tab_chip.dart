@@ -50,6 +50,18 @@ String? tabDriveLetter(String path) {
   return _driveLetterPattern.firstMatch(path)?.group(1)?.toUpperCase();
 }
 
+/// Carried by a tab chip's [LongPressDraggable] while it's being dragged
+/// toward the other pane's [TabStrip]. [moveToOtherPane] is the dragged
+/// chip's own pane's already-bound move callback, so whichever pane accepts
+/// the drop doesn't need to know anything about where the tab came from —
+/// calling it resolves "the other pane" relative to the source on its own.
+class DraggedTabPayload {
+  final String tabId;
+  final void Function(String tabId) moveToOtherPane;
+
+  const DraggedTabPayload({required this.tabId, required this.moveToOtherPane});
+}
+
 class TabChip extends StatefulWidget {
   final TabState tab;
   final int index;
@@ -138,7 +150,7 @@ class _TabChipState extends State<TabChip> {
           ),
         );
 
-        return MouseRegion(
+        final chip = MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _hovered = true),
           onExit: (_) => setState(() => _hovered = false),
@@ -206,7 +218,66 @@ class _TabChipState extends State<TabChip> {
             ),
           ),
         );
+
+        final canMove = widget.tabsStore.tabs.value.length > 1;
+        if (!canMove || widget.onMoveToOtherPane == null) return chip;
+
+        return LongPressDraggable<DraggedTabPayload>(
+          data: DraggedTabPayload(
+            tabId: widget.tab.id,
+            moveToOtherPane: widget.onMoveToOtherPane!,
+          ),
+          dragAnchorStrategy: pointerDragAnchorStrategy,
+          feedback: _TabDragFeedback(
+            icon: _iconForTabLocation(locationKind),
+            title: title,
+          ),
+          childWhenDragging: Opacity(opacity: 0.4, child: chip),
+          child: chip,
+        );
       },
+    );
+  }
+}
+
+class _TabDragFeedback extends StatelessWidget {
+  final IconData icon;
+  final String title;
+
+  const _TabDragFeedback({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Opacity(
+        opacity: 0.85,
+        child: Container(
+          height: 30,
+          constraints: const BoxConstraints(maxWidth: 220),
+          decoration: BoxDecoration(
+            color: AppColors.bgHover,
+            border: Border.all(color: AppColors.accent),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: AppColors.fg),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: context.txt.row.copyWith(color: AppColors.fg),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
