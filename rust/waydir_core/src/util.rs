@@ -35,10 +35,19 @@ pub(crate) fn path_depth(path: &[u8]) -> usize {
     path.iter().filter(|&&b| b == b'/' || b == b'\\').count()
 }
 
+// Walker thread counts scale off this, uncapped, on a host with a very high
+// logical core count (observed: 128 on a shared machine) that means a single
+// recursive walk spins up well over a hundred OS threads, starving everything
+// else on the box (including Waydir's own UI thread) rather than finishing
+// any faster — directory walks are I/O-bound long before core count becomes
+// the bottleneck, so a modest cap costs nothing on normal hardware.
+const MAX_WALK_THREADS: usize = 8;
+
 pub(crate) fn num_cpus() -> usize {
     std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4)
+        .min(MAX_WALK_THREADS)
 }
 
 pub(crate) fn search_threads() -> usize {
