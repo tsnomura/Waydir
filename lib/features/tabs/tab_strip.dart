@@ -41,8 +41,15 @@ class _TabStripState extends State<TabStrip> {
     super.dispose();
   }
 
+  // `ScrollPosition.maxScrollExtent` null-check-asserts internally until the
+  // first layout has actually measured the scrollable's contents — true
+  // right after this widget mounts, before `hasClients` alone would suggest.
+  bool get _hasMetrics =>
+      _scrollController.hasClients &&
+      _scrollController.position.hasContentDimensions;
+
   void _scrollBy(double delta) {
-    if (!_scrollController.hasClients) return;
+    if (!_hasMetrics) return;
     final position = _scrollController.position;
     final target = (position.pixels + delta).clamp(
       0.0,
@@ -76,8 +83,7 @@ class _TabStripState extends State<TabStrip> {
               AnimatedBuilder(
                 animation: _scrollController,
                 builder: (context, _) {
-                  if (!_scrollController.hasClients ||
-                      _scrollController.position.pixels <= 0) {
+                  if (!_hasMetrics || _scrollController.position.pixels <= 0) {
                     return const SizedBox.shrink();
                   }
 
@@ -117,7 +123,7 @@ class _TabStripState extends State<TabStrip> {
               AnimatedBuilder(
                 animation: _scrollController,
                 builder: (context, _) {
-                  if (!_scrollController.hasClients ||
+                  if (!_hasMetrics ||
                       _scrollController.position.pixels >=
                           _scrollController.position.maxScrollExtent) {
                     return const SizedBox.shrink();
