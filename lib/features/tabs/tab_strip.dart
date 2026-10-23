@@ -4,6 +4,7 @@ import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 import '../../ui/theme/app_theme.dart';
 import 'tab_chip.dart';
+import 'tab_state.dart';
 import 'tabs_store.dart';
 
 const _kScrollStep = 120.0;
@@ -72,11 +73,20 @@ class _TabStripState extends State<TabStrip> {
       builder: (context) {
         final tabs = widget.tabsStore.tabs.value;
 
+        // Falls back to here whenever a drop lands outside every _TabSlot's
+        // own target — empty trailing space past the last tab, or the
+        // scroll/add-button padding — rather than on a specific tab.
         return DragTarget<DraggedTabPayload>(
-          onWillAcceptWithDetails: (details) =>
-              !tabs.any((t) => t.id == details.data.tabId),
-          onAcceptWithDetails: (details) =>
-              details.data.moveToOtherPane(details.data.tabId),
+          onAcceptWithDetails: (details) {
+            final fromIndex = tabs.indexWhere(
+              (t) => t.id == details.data.tabId,
+            );
+            if (fromIndex != -1) {
+              widget.tabsStore.reorderTab(fromIndex, tabs.length - 1);
+            } else {
+              details.data.moveToOtherPane?.call(details.data.tabId);
+            }
+          },
           builder: (context, candidateData, rejectedData) => Container(
             height: 30,
             decoration: BoxDecoration(
@@ -107,27 +117,21 @@ class _TabStripState extends State<TabStrip> {
                 Expanded(
                   child: Listener(
                     onPointerSignal: _onPointerSignal,
-                    child: ReorderableListView.builder(
-                      scrollController: _scrollController,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
                       scrollDirection: Axis.horizontal,
-                      buildDefaultDragHandles: false,
-                      padding: EdgeInsets.zero,
-                      itemCount: tabs.length,
-                      onReorderItem: widget.tabsStore.reorderTab,
-                      itemBuilder: (context, index) {
-                        final tab = tabs[index];
-
-                        return ReorderableDragStartListener(
-                          key: ValueKey('tab:${tab.id}'),
-                          index: index,
-                          child: TabChip(
-                            tab: tab,
-                            index: index,
-                            tabsStore: widget.tabsStore,
-                            onMoveToOtherPane: widget.onMoveToOtherPane,
-                          ),
-                        );
-                      },
+                      child: Row(
+                        children: [
+                          for (final (index, tab) in tabs.indexed)
+                            _TabSlot(
+                              key: ValueKey('tab:${tab.id}'),
+                              tab: tab,
+                              index: index,
+                              tabsStore: widget.tabsStore,
+                              onMoveToOtherPane: widget.onMoveToOtherPane,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -163,6 +167,58 @@ class _TabStripState extends State<TabStrip> {
           ),
         );
       },
+    );
+  }
+}
+
+/// A tab chip plus the drop target for whatever lands on it: another tab
+/// from this same pane (reordered to sit at [index]) or a foreign one from
+/// the other pane (moved here via its own carried callback). One continuous
+/// drag handles both, the same way a browser's tab strip does — there's no
+/// separate gesture for "reorder" versus "move to the other window".
+class _TabSlot extends StatelessWidget {
+  final TabState tab;
+  final int index;
+  final TabsStore tabsStore;
+  final void Function(String tabId)? onMoveToOtherPane;
+
+  const _TabSlot({
+    super.key,
+    required this.tab,
+    required this.index,
+    required this.tabsStore,
+    required this.onMoveToOtherPane,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<DraggedTabPayload>(
+      onWillAcceptWithDetails: (details) => details.data.tabId != tab.id,
+      onAcceptWithDetails: (details) {
+        final fromIndex = tabsStore.tabs.value.indexWhere(
+          (t) => t.id == details.data.tabId,
+        );
+        if (fromIndex != -1) {
+          tabsStore.reorderTab(fromIndex, index);
+        } else {
+          details.data.moveToOtherPane?.call(details.data.tabId);
+        }
+      },
+      builder: (context, candidateData, rejectedData) => Container(
+        decoration: candidateData.isNotEmpty
+            ? BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: AppColors.accent, width: 2),
+                ),
+              )
+            : null,
+        child: TabChip(
+          tab: tab,
+          index: index,
+          tabsStore: tabsStore,
+          onMoveToOtherPane: onMoveToOtherPane,
+        ),
+      ),
     );
   }
 }
