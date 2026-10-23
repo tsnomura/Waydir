@@ -336,6 +336,7 @@ class _TabContent extends StatelessWidget {
                 scrollLink: store.scrollLink,
                 rows: store.treeRows.value,
                 currentPath: currentPath,
+                recursiveResults: recursive,
                 onSelect: store.onSelect,
                 onOpen: store.onOpen,
                 onToggleFolder: store.toggleTreeFolder,

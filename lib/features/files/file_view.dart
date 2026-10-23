@@ -335,6 +335,7 @@ class FileTree extends StatelessWidget {
   final Map<String, RowDecoration> rowDecorations;
   final ValueChanged<FileEntry> onToggleFolder;
   final ScrollLink? scrollLink;
+  final bool recursiveResults;
 
   const FileTree({
     super.key,
@@ -366,6 +367,7 @@ class FileTree extends StatelessWidget {
     this.onOpenInOtherPaneNewTab,
     this.onRectSelect,
     this.onPageRows,
+    this.recursiveResults = false,
   });
 
   @override
@@ -374,6 +376,7 @@ class FileTree extends StatelessWidget {
       files: [for (final row in rows) row.entry],
       treeRows: rows,
       currentPath: currentPath,
+      recursiveResults: recursiveResults,
       onSelect: onSelect,
       onOpen: onOpen,
       onToggleTreeFolder: onToggleFolder,
