@@ -50,14 +50,16 @@ String? tabDriveLetter(String path) {
   return _driveLetterPattern.firstMatch(path)?.group(1)?.toUpperCase();
 }
 
-/// Carried by a tab chip's [LongPressDraggable] while it's being dragged
-/// toward the other pane's [TabStrip]. [moveToOtherPane] is the dragged
-/// chip's own pane's already-bound move callback, so whichever pane accepts
-/// the drop doesn't need to know anything about where the tab came from —
-/// calling it resolves "the other pane" relative to the source on its own.
+/// Carried by a tab chip's [Draggable] for the whole time it's being
+/// dragged, whether it lands back in its own pane's strip (reordered) or
+/// the other pane's (moved there). [moveToOtherPane] is the dragged chip's
+/// own pane's already-bound move callback — null when there's no second
+/// pane to move to — so whichever [TabStrip] accepts the drop doesn't need
+/// to know anything about where the tab came from — calling it resolves
+/// "the other pane" relative to the source on its own.
 class DraggedTabPayload {
   final String tabId;
-  final void Function(String tabId) moveToOtherPane;
+  final void Function(String tabId)? moveToOtherPane;
 
   const DraggedTabPayload({required this.tabId, required this.moveToOtherPane});
 }
@@ -219,13 +221,10 @@ class _TabChipState extends State<TabChip> {
           ),
         );
 
-        final canMove = widget.tabsStore.tabs.value.length > 1;
-        if (!canMove || widget.onMoveToOtherPane == null) return chip;
-
-        return LongPressDraggable<DraggedTabPayload>(
+        return Draggable<DraggedTabPayload>(
           data: DraggedTabPayload(
             tabId: widget.tab.id,
-            moveToOtherPane: widget.onMoveToOtherPane!,
+            moveToOtherPane: widget.onMoveToOtherPane,
           ),
           dragAnchorStrategy: pointerDragAnchorStrategy,
           feedback: _TabDragFeedback(
