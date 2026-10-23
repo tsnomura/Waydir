@@ -72,77 +72,94 @@ class _TabStripState extends State<TabStrip> {
       builder: (context) {
         final tabs = widget.tabsStore.tabs.value;
 
-        return Container(
-          height: 30,
-          decoration: BoxDecoration(
-            color: widget.isActive ? AppColors.bgSidebar : AppColors.bg,
-            border: Border(bottom: BorderSide(color: AppColors.bgDivider)),
-          ),
-          child: Row(
-            children: [
-              AnimatedBuilder(
-                animation: _scrollController,
-                builder: (context, _) {
-                  if (!_hasMetrics || _scrollController.position.pixels <= 0) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return _ScrollButton(
-                    icon: WaydirIconsRegular.caretLeft,
-                    onTap: () => _scrollBy(-_kScrollStep),
-                  );
-                },
+        return DragTarget<DraggedTabPayload>(
+          onWillAcceptWithDetails: (details) =>
+              !tabs.any((t) => t.id == details.data.tabId),
+          onAcceptWithDetails: (details) =>
+              details.data.moveToOtherPane(details.data.tabId),
+          builder: (context, candidateData, rejectedData) => Container(
+            height: 30,
+            decoration: BoxDecoration(
+              color: widget.isActive ? AppColors.bgSidebar : AppColors.bg,
+              border: Border(
+                bottom: BorderSide(color: AppColors.bgDivider),
+                top: candidateData.isNotEmpty
+                    ? BorderSide(color: AppColors.accent, width: 2)
+                    : BorderSide.none,
               ),
-              Expanded(
-                child: Listener(
-                  onPointerSignal: _onPointerSignal,
-                  child: ReorderableListView.builder(
-                    scrollController: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    buildDefaultDragHandles: false,
-                    padding: EdgeInsets.zero,
-                    itemCount: tabs.length,
-                    onReorderItem: widget.tabsStore.reorderTab,
-                    itemBuilder: (context, index) {
-                      final tab = tabs[index];
+            ),
+            child: Row(
+              children: [
+                AnimatedBuilder(
+                  animation: _scrollController,
+                  builder: (context, _) {
+                    if (!_hasMetrics ||
+                        _scrollController.position.pixels <= 0) {
+                      return const SizedBox.shrink();
+                    }
 
-                      return ReorderableDragStartListener(
-                        key: ValueKey('tab:${tab.id}'),
-                        index: index,
-                        child: TabChip(
-                          tab: tab,
+                    return _ScrollButton(
+                      icon: WaydirIconsRegular.caretLeft,
+                      onTap: () => _scrollBy(-_kScrollStep),
+                    );
+                  },
+                ),
+                Expanded(
+                  child: Listener(
+                    onPointerSignal: _onPointerSignal,
+                    child: ReorderableListView.builder(
+                      scrollController: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      buildDefaultDragHandles: false,
+                      padding: EdgeInsets.zero,
+                      itemCount: tabs.length,
+                      onReorderItem: widget.tabsStore.reorderTab,
+                      itemBuilder: (context, index) {
+                        final tab = tabs[index];
+
+                        return ReorderableDragStartListener(
+                          key: ValueKey('tab:${tab.id}'),
                           index: index,
-                          tabsStore: widget.tabsStore,
-                          onMoveToOtherPane: widget.onMoveToOtherPane,
-                        ),
-                      );
-                    },
+                          child: TabChip(
+                            tab: tab,
+                            index: index,
+                            tabsStore: widget.tabsStore,
+                            onMoveToOtherPane: widget.onMoveToOtherPane,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              AnimatedBuilder(
-                animation: _scrollController,
-                builder: (context, _) {
-                  if (!_hasMetrics ||
-                      _scrollController.position.pixels >=
-                          _scrollController.position.maxScrollExtent) {
-                    return const SizedBox.shrink();
-                  }
+                AnimatedBuilder(
+                  animation: _scrollController,
+                  builder: (context, _) {
+                    if (!_hasMetrics ||
+                        _scrollController.position.pixels >=
+                            _scrollController.position.maxScrollExtent) {
+                      return const SizedBox.shrink();
+                    }
 
-                  return _ScrollButton(
-                    icon: WaydirIconsRegular.caretRight,
-                    onTap: () => _scrollBy(_kScrollStep),
-                  );
-                },
-              ),
-              _AddButton(
-                onTap: () {
-                  final activePath =
-                      widget.tabsStore.activeTab.value.store.currentPath.value;
-                  widget.tabsStore.addTab(activePath);
-                },
-              ),
-            ],
+                    return _ScrollButton(
+                      icon: WaydirIconsRegular.caretRight,
+                      onTap: () => _scrollBy(_kScrollStep),
+                    );
+                  },
+                ),
+                _AddButton(
+                  onTap: () {
+                    final activePath = widget
+                        .tabsStore
+                        .activeTab
+                        .value
+                        .store
+                        .currentPath
+                        .value;
+                    widget.tabsStore.addTab(activePath);
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },
