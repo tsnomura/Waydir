@@ -696,7 +696,6 @@ class AppShortcuts {
       group: ShortcutGroup.fileOps,
       key: LogicalKeyboardKey.keyC,
       shift: true,
-      editable: false,
     ),
     ShortcutDef(
       id: 'dired_move_other_pane',
@@ -705,7 +704,6 @@ class AppShortcuts {
       group: ShortcutGroup.fileOps,
       key: LogicalKeyboardKey.keyR,
       shift: true,
-      editable: false,
     ),
     ShortcutDef(
       id: 'dired_delete',
@@ -714,7 +712,6 @@ class AppShortcuts {
       group: ShortcutGroup.fileOps,
       key: LogicalKeyboardKey.keyD,
       shift: true,
-      editable: false,
     ),
     ShortcutDef(
       id: 'select_all',
@@ -756,7 +753,6 @@ class AppShortcuts {
       hint: () => t.keybindings.diredHint,
       group: ShortcutGroup.selection,
       key: LogicalKeyboardKey.keyM,
-      editable: false,
     ),
     ShortcutDef(
       id: 'dired_unmark',
@@ -764,7 +760,6 @@ class AppShortcuts {
       hint: () => t.keybindings.diredHint,
       group: ShortcutGroup.selection,
       key: LogicalKeyboardKey.keyU,
-      editable: false,
     ),
     ShortcutDef(
       id: 'dired_invert',
@@ -772,7 +767,6 @@ class AppShortcuts {
       hint: () => t.keybindings.diredHint,
       group: ShortcutGroup.selection,
       key: LogicalKeyboardKey.keyT,
-      editable: false,
     ),
     ShortcutDef(
       id: 'dired_deselect',
@@ -781,7 +775,6 @@ class AppShortcuts {
       group: ShortcutGroup.selection,
       key: LogicalKeyboardKey.keyU,
       shift: true,
-      editable: false,
     ),
     ShortcutDef(
       id: 'save_selection',
