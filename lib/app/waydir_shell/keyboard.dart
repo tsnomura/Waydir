@@ -147,6 +147,24 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
+    if (AppShortcuts.matches('view_mode_list', key)) {
+      _setViewMode('list');
+
+      return KeyEventResult.handled;
+    }
+
+    if (AppShortcuts.matches('view_mode_tree', key)) {
+      _setViewMode('tree');
+
+      return KeyEventResult.handled;
+    }
+
+    if (AppShortcuts.matches('view_mode_grid', key)) {
+      _setViewMode('grid');
+
+      return KeyEventResult.handled;
+    }
+
     if (AppShortcuts.matches('focus_path', key)) {
       _active.focusPathBar();
 

@@ -766,6 +766,10 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     };
   }
 
+  void _setViewMode(String mode) {
+    SettingsStore.instance.fileViewMode.value = mode;
+  }
+
   void _toggleSidebarCollapsed() {
     final s = SettingsStore.instance.sidebarCollapsed;
     s.value = !s.value;
