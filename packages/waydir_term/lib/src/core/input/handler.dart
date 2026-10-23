@@ -168,6 +168,12 @@ class KeytabInputHandler implements TerminalInputHandler {
 class CtrlInputHandler implements TerminalInputHandler {
   const CtrlInputHandler();
 
+  static const _punctuationControlCodes = {
+    TerminalKey.bracketLeft: 0x1b, // Ctrl+[ == Esc
+    TerminalKey.backslash: 0x1c,
+    TerminalKey.bracketRight: 0x1d,
+  };
+
   @override
   String? call(TerminalKeyboardEvent event) {
     if (!event.ctrl || event.shift || event.alt) {
@@ -180,6 +186,11 @@ class CtrlInputHandler implements TerminalInputHandler {
         key.index <= TerminalKey.keyZ.index) {
       final input = key.index - TerminalKey.keyA.index + 1;
       return String.fromCharCode(input);
+    }
+
+    final punctuationCode = _punctuationControlCodes[key];
+    if (punctuationCode != null) {
+      return String.fromCharCode(punctuationCode);
     }
 
     return null;
