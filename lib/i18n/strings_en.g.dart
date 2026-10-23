@@ -1064,6 +1064,15 @@ class Translations$keybindings$en {
 	/// en: 'Toggle list/tree/grid view'
 	String get toggleView => 'Toggle list/tree/grid view';
 
+	/// en: 'Switch to list view'
+	String get viewModeList => 'Switch to list view';
+
+	/// en: 'Switch to tree view'
+	String get viewModeTree => 'Switch to tree view';
+
+	/// en: 'Switch to grid view'
+	String get viewModeGrid => 'Switch to grid view';
+
 	/// en: 'Copy'
 	String get copy => 'Copy';
 
@@ -5085,6 +5094,9 @@ extension on Translations {
 			'keybindings.fileListZoomReset' => 'Reset file list zoom',
 			'keybindings.toggleSidebar' => 'Toggle sidebar',
 			'keybindings.toggleView' => 'Toggle list/tree/grid view',
+			'keybindings.viewModeList' => 'Switch to list view',
+			'keybindings.viewModeTree' => 'Switch to tree view',
+			'keybindings.viewModeGrid' => 'Switch to grid view',
 			'keybindings.copy' => 'Copy',
 			'keybindings.cut' => 'Cut',
 			'keybindings.paste' => 'Paste',
@@ -5475,11 +5487,11 @@ extension on Translations {
 			'errors.netViewFailed' => ({required Object code}) => 'net view failed (${code})',
 			'errors.smbMountedShareNotFound' => 'Mounted share could not be located in gvfs',
 			'errors.failedToCreatePath' => ({required Object path, required Object error}) => 'Failed to create ${path}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'errors.gioMountFailed' => 'gio mount failed',
 			'errors.mountSmbfsFailed' => ({required Object code}) => 'mount_smbfs failed (${code})',
 			'errors.notEmpty' => 'Directory not empty',
-			_ => null,
-		} ?? switch (path) {
 			'errors.crossDevice' => 'Cannot move across devices',
 			'errors.targetExists' => 'Target exists',
 			'errors.sftpNotSupported' => 'SFTP not supported',
