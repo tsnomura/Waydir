@@ -59,7 +59,7 @@ String? tabDriveLetter(String path) {
 /// "the other pane" relative to the source on its own.
 class DraggedTabPayload {
   final String tabId;
-  final void Function(String tabId)? moveToOtherPane;
+  final void Function(String tabId, {int? index})? moveToOtherPane;
 
   const DraggedTabPayload({required this.tabId, required this.moveToOtherPane});
 }
@@ -68,7 +68,7 @@ class TabChip extends StatefulWidget {
   final TabState tab;
   final int index;
   final TabsStore tabsStore;
-  final void Function(String tabId)? onMoveToOtherPane;
+  final void Function(String tabId, {int? index})? onMoveToOtherPane;
 
   const TabChip({
     super.key,
@@ -226,57 +226,23 @@ class _TabChipState extends State<TabChip> {
             tabId: widget.tab.id,
             moveToOtherPane: widget.onMoveToOtherPane,
           ),
-          dragAnchorStrategy: pointerDragAnchorStrategy,
-          feedback: _TabDragFeedback(
-            icon: _iconForTabLocation(locationKind),
-            title: title,
+          // Mirrors the reorderable list's own feel: a tab only ever moves
+          // left/right, never off into the file list below or out of the
+          // window, so there's nothing to confuse it with dropping onto
+          // something else or detaching the tab entirely.
+          axis: Axis.horizontal,
+          // The default (childDragAnchorStrategy) keeps whatever point you
+          // grabbed under the cursor — pointerDragAnchorStrategy instead
+          // snaps the feedback's top-left to the cursor, which visibly
+          // dropped the chip down to wherever you clicked inside it.
+          feedback: Material(
+            color: Colors.transparent,
+            child: Opacity(opacity: 0.85, child: chip),
           ),
           childWhenDragging: Opacity(opacity: 0.4, child: chip),
           child: chip,
         );
       },
-    );
-  }
-}
-
-class _TabDragFeedback extends StatelessWidget {
-  final IconData icon;
-  final String title;
-
-  const _TabDragFeedback({required this.icon, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Opacity(
-        opacity: 0.85,
-        child: Container(
-          height: 30,
-          constraints: const BoxConstraints(maxWidth: 220),
-          decoration: BoxDecoration(
-            color: AppColors.bgHover,
-            border: Border.all(color: AppColors.accent),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: AppColors.fg),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: context.txt.row.copyWith(color: AppColors.fg),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

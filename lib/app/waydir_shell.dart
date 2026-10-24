@@ -274,7 +274,8 @@ class _WaydirShellState extends State<WaydirShell>
       onMenuAction: _handleMenuAction,
       onOpenInNewTab: _openInNewTab,
       onOpenInOtherPaneNewTab: (path) => _openInOtherPaneNewTab(slot, path),
-      onMoveTabToOtherPane: (tabId) => _moveTabToOtherPane(slot, tabId),
+      onMoveTabToOtherPane: (tabId, {int? index}) =>
+          _moveTabToOtherPane(slot, tabId, index: index),
       onPluginToolbarAction: (id) => _runPluginAction(id, background: true),
       onPluginBarEffects: (effects, target) =>
           _applyPluginEffects(effects, target, background: true),
