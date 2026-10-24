@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +16,7 @@ import '../core/archive/archive_writer.dart';
 import '../core/terminal/bulk_copy_command.dart';
 import '../core/fs/file_system_service.dart';
 import '../core/fs/recursive_search.dart';
+import '../core/fs/sftp_session_manager.dart';
 import '../core/logging/app_logger.dart';
 import '../features/files/sort_menu.dart';
 import '../features/locations/location_resolver.dart';

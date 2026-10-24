@@ -235,8 +235,16 @@ mixin _WaydirStateBase on State<WaydirShell> {
   }
 
   Future<void> _openLinkedDirectory() async {
-    final path = _active.currentPath.value;
-    final result = await RemoteSyncActions.pullLinkedDirectory(path);
+    final current = _active.currentPath.value;
+    final sftpPath = PlatformPaths.isSftpUri(current)
+        ? current
+        : SftpSessionManager.activeRoots().firstOrNull;
+    if (sftpPath == null) {
+      showToast(context: context, message: t.toast.remoteSyncUnavailable);
+
+      return;
+    }
+    final result = await RemoteSyncActions.pullLinkedDirectory(sftpPath);
     if (!mounted) return;
     if (result == null) {
       showToast(context: context, message: t.toast.remoteSyncUnavailable);
