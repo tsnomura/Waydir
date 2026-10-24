@@ -34,4 +34,26 @@ fi
 mkdir -p "$HOME/bin"
 ln -sf "$dest/waydir" "$HOME/bin/waydir"
 
+# A dev install otherwise has no .desktop file, so the window manager has
+# nothing to resolve _NET_WM_ICON from and shows a generic taskbar icon.
+icon_src="linux/packaging/deb/waydir.png"
+if [ -f "$icon_src" ]; then
+  cp "$icon_src" "$dest/waydir.png"
+  apps_dir="$HOME/.local/share/applications"
+  mkdir -p "$apps_dir"
+  cat > "$apps_dir/waydir.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Waydir
+Comment=A fast, keyboard-driven desktop file manager
+Exec=$HOME/bin/waydir %U
+Icon=$dest/waydir.png
+Terminal=false
+Categories=Utility;FileManager;
+StartupWMClass=dev.waydir.app
+DESKTOP
+  command -v update-desktop-database >/dev/null && \
+    update-desktop-database "$apps_dir" 2>/dev/null || true
+fi
+
 "$HOME/bin/waydir" --version
