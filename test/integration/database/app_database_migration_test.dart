@@ -3,6 +3,7 @@ library;
 
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -59,6 +60,34 @@ void main() {
         .getSingleOrNull();
     expect(sidebarPrefsTable, isNotNull);
   });
+
+  test(
+    'reopens a v47 database that an older build stamped back to v46',
+    () async {
+      final path = p.join(tmpDir.path, 'downgraded.sqlite');
+      final current = AppDatabase(NativeDatabase(File(path)));
+      await current.replaceTabs([
+        SessionTabsCompanion.insert(
+          paneIndex: 0,
+          tabIndex: 0,
+          path: 'tag://1',
+          tagOrigin: const Value('/tmp/project'),
+        ),
+      ]);
+      await current.close();
+      sqlite3.open(path)
+        ..execute('PRAGMA user_version = 46')
+        ..close();
+
+      final db = AppDatabase(NativeDatabase(File(path)));
+      addTearDown(db.close);
+
+      final tabs = await db.getTabs();
+      expect(tabs.single.tagOrigin, '/tmp/project');
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.read<int>('user_version'), db.schemaVersion);
+    },
+  );
 
   Future<List<Map<String, Object?>>> rows(AppDatabase db, String sql) async =>
       (await db.customSelect(sql).get()).map((r) => r.data).toList();
