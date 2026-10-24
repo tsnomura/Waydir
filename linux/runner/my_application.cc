@@ -22,6 +22,21 @@ static void first_frame_cb(MyApplication* self, FlView *view)
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Whether `args` (the entrypoint arguments, i.e. argv minus the binary name)
+// requests a standalone Quick Look window — mirrors launch_args.dart's own
+// `--quick-look [path]` / `--quick-look=path` parsing closely enough to
+// decide which icon to show without needing to wait for Dart to start.
+static gboolean has_quick_look_arg(char** args) {
+  if (args == nullptr) return FALSE;
+  for (char** arg = args; *arg != nullptr; arg++) {
+    if (g_strcmp0(*arg, "--quick-look") == 0 ||
+        g_str_has_prefix(*arg, "--quick-look=")) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -38,8 +53,11 @@ static void my_application_activate(GApplication* application) {
   g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
   if (exe_path != nullptr) {
     g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+    const gchar* icon_name = has_quick_look_arg(self->dart_entrypoint_arguments)
+        ? "app_icon_quick_look.png"
+        : "app_icon.png";
     g_autofree gchar* icon_path = g_build_filename(
-        exe_dir, "data", "flutter_assets", "assets", "app_icon.png", nullptr);
+        exe_dir, "data", "flutter_assets", "assets", icon_name, nullptr);
     gtk_window_set_icon_from_file(window, icon_path, nullptr);
   }
 
