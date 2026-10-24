@@ -1441,6 +1441,9 @@ class Translations$quickLook$en {
 
 	/// en: 'File changed - press F5 to reload'
 	String get reloadSkipped => 'File changed - press F5 to reload';
+
+	/// en: 'Maximize / Restore'
+	String get maximizeRestore => 'Maximize / Restore';
 }
 
 // Path: toast
@@ -5214,6 +5217,7 @@ extension on Translations {
 			'quickLook.hintReload' => 'Reload',
 			'quickLook.reloadMessage' => 'You have unsaved changes. Save them before reloading?',
 			'quickLook.reloadSkipped' => 'File changed - press F5 to reload',
+			'quickLook.maximizeRestore' => 'Maximize / Restore',
 			'toast.launcherFailed' => ({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}',
 			'toast.copiedItems' => ({required Object count}) => 'Copied ${count} items',
 			'toast.duplicatedItems' => ({required Object count}) => 'Duplicated ${count} items',
@@ -5486,9 +5490,9 @@ extension on Translations {
 			'errors.netUnavailable' => ({required Object message}) => 'net unavailable: ${message}',
 			'errors.netViewFailed' => ({required Object code}) => 'net view failed (${code})',
 			'errors.smbMountedShareNotFound' => 'Mounted share could not be located in gvfs',
-			'errors.failedToCreatePath' => ({required Object path, required Object error}) => 'Failed to create ${path}: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'errors.failedToCreatePath' => ({required Object path, required Object error}) => 'Failed to create ${path}: ${error}',
 			'errors.gioMountFailed' => 'gio mount failed',
 			'errors.mountSmbfsFailed' => ({required Object code}) => 'mount_smbfs failed (${code})',
 			'errors.notEmpty' => 'Directory not empty',

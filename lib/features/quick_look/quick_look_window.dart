@@ -176,6 +176,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                         ? _requestReload
                         : null,
                     onHeaderPanStart: (_) => appWindow.startDragging(),
+                    onToggleMaximize: appWindow.maximizeOrRestore,
                   ),
                 ),
                 Container(height: 1, color: AppColors.bgDivider),
