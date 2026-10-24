@@ -1593,6 +1593,20 @@ mixin _WaydirMenuMixin
                   enabled: onSftp,
                   toggleSignal: store.remoteThumbnails,
                 ),
+                ContextMenuItem.divider,
+                ContextMenuItem(
+                  icon: WaydirIconsRegular.arrowUp,
+                  label: t.menu.sendDirectoryToLinked,
+                  action: 'send_directory_to_linked',
+                  enabled: onSftp,
+                ),
+                ContextMenuItem(
+                  icon: WaydirIconsRegular.downloadSimple,
+                  label: t.menu.openLinkedDirectory,
+                  action: 'open_linked_directory',
+                  enabled:
+                      onSftp || SftpSessionManager.activeRoots().isNotEmpty,
+                ),
               ],
               onSelect: (action) {
                 switch (action) {
@@ -1608,6 +1622,10 @@ mixin _WaydirMenuMixin
                     _toggleShowHiddenGlobal();
                   case 'toggle_remote_thumbnails':
                     _active.toggleRemoteThumbnails();
+                  case 'send_directory_to_linked':
+                    _sendDirectoryToLinked();
+                  case 'open_linked_directory':
+                    _openLinkedDirectory();
                 }
               },
             ),

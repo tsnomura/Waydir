@@ -32,6 +32,8 @@
     "restoreItems(other)": "Restore $count Items",
     "showHidden": "Show Hidden Files",
     "remoteThumbnails": "Remote Thumbnails (This Tab)",
+    "openLinkedDirectory": "Open Linked Machine's Directory",
+    "sendDirectoryToLinked": "Send This Directory to Linked Machine",
     "selectAll": "Select All",
     "selectByPattern": "Select by Pattern…",
     "deselectAll": "Deselect All",
@@ -940,7 +942,9 @@
     "multiRenameInvalid(other)": "$count invalid names",
     "multiRenameOtherErrors(one)": "1 error",
     "multiRenameOtherErrors(other)": "$count errors",
-    "multiRenameTrashBlocked": "Multi rename is not available in trash"
+    "multiRenameTrashBlocked": "Multi rename is not available in trash",
+    "remoteDirectorySent": "Sent this directory to the linked machine",
+    "remoteSyncUnavailable": "Linked machine isn't reachable or hasn't published a directory yet"
   },
   "terminalInsert": {
     "title": "Insert $count selected items",

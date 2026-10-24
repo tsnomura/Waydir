@@ -176,6 +176,12 @@ class Translations$menu$en {
 	/// en: 'Remote Thumbnails (This Tab)'
 	String get remoteThumbnails => 'Remote Thumbnails (This Tab)';
 
+	/// en: 'Open Linked Machine's Directory'
+	String get openLinkedDirectory => 'Open Linked Machine\'s Directory';
+
+	/// en: 'Send This Directory to Linked Machine'
+	String get sendDirectoryToLinked => 'Send This Directory to Linked Machine';
+
 	/// en: 'Select All'
 	String get selectAll => 'Select All';
 
@@ -1516,6 +1522,12 @@ class Translations$toast$en {
 
 	/// en: 'Multi rename is not available in trash'
 	String get multiRenameTrashBlocked => 'Multi rename is not available in trash';
+
+	/// en: 'Sent this directory to the linked machine'
+	String get remoteDirectorySent => 'Sent this directory to the linked machine';
+
+	/// en: 'Linked machine isn't reachable or hasn't published a directory yet'
+	String get remoteSyncUnavailable => 'Linked machine isn\'t reachable or hasn\'t published a directory yet';
 }
 
 // Path: terminalInsert
@@ -4487,6 +4499,8 @@ extension on Translations {
 			'menu.restoreItems' => ({required Object count}) => 'Restore ${count} Items',
 			'menu.showHidden' => 'Show Hidden Files',
 			'menu.remoteThumbnails' => 'Remote Thumbnails (This Tab)',
+			'menu.openLinkedDirectory' => 'Open Linked Machine\'s Directory',
+			'menu.sendDirectoryToLinked' => 'Send This Directory to Linked Machine',
 			'menu.selectAll' => 'Select All',
 			'menu.selectByPattern' => 'Select by Pattern…',
 			'menu.deselectAll' => 'Deselect All',
@@ -4974,10 +4988,10 @@ extension on Translations {
 			'help.groups.selecting.pattern.body' => 'Select files matching a wildcard pattern instead of picking them by hand.\n\n- `Ctrl+S` opens select-by-pattern.\n- Use wildcards like `*.png` or `report-*.pdf`.\n- The matching set is added to the current selection.',
 			'help.groups.files.title' => 'Working with Files',
 			'help.groups.files.operations.title' => 'Copy, Move & Delete',
-			'help.groups.files.operations.body' => 'Standard clipboard and file actions work everywhere, including across panes and tabs.\n\n- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy, cut and paste.\n- `F2` renames the current item; `F7` creates a new folder.\n- `Delete` moves the selection to the Trash; use the context menu to delete permanently.\n- Long copies, moves and deletes run in the background, and a conflict prompt appears when names collide.',
-			'help.groups.files.dragDrop.title' => 'Drag & Drop',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.files.operations.body' => 'Standard clipboard and file actions work everywhere, including across panes and tabs.\n\n- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy, cut and paste.\n- `F2` renames the current item; `F7` creates a new folder.\n- `Delete` moves the selection to the Trash; use the context menu to delete permanently.\n- Long copies, moves and deletes run in the background, and a conflict prompt appears when names collide.',
+			'help.groups.files.dragDrop.title' => 'Drag & Drop',
 			'help.groups.files.dragDrop.body' => 'Drag files between panes, tabs and the sidebar - or in and out of other apps.\n\n- By default dragging **copies** files; hold `Alt` to **move** them.\n- Flip the default in **Preferences -> General** so dragging moves and `Alt` copies.\n- The drag hint shows whether the drop will copy or move.\n- Drop onto a folder to put files inside it, or onto empty space for the current folder.',
 			'help.groups.files.multiRename.title' => 'Multi Rename',
 			'help.groups.files.multiRename.body' => 'Rename many files at once with a live before / after preview. Select several items, then choose **Multi Rename** from the context menu.\n\n- **Template** mode builds names from tokens: `{name}`, `{ext}`, `{n}` (sequence from 1), `{index}` (from 0) and `{date}`.\n- **Find & Replace** mode swaps text, with optional regular expressions and case sensitivity.\n- The preview lists every result before you commit, and *Show only changed* hides untouched rows.',
@@ -5239,6 +5253,8 @@ extension on Translations {
 			'toast.multiRenameInvalid' => ({required Object count}) => '${count} invalid names',
 			'toast.multiRenameOtherErrors' => ({required Object count}) => '${count} errors',
 			'toast.multiRenameTrashBlocked' => 'Multi rename is not available in trash',
+			'toast.remoteDirectorySent' => 'Sent this directory to the linked machine',
+			'toast.remoteSyncUnavailable' => 'Linked machine isn\'t reachable or hasn\'t published a directory yet',
 			'terminalInsert.title' => ({required Object count}) => 'Insert ${count} selected items',
 			'terminalInsert.separator' => 'Separator',
 			'terminalInsert.customHint' => 'Separator',
@@ -5486,12 +5502,12 @@ extension on Translations {
 			'errors.smbClientUnavailable' => ({required Object message}) => 'smbclient unavailable: ${message}',
 			'errors.smbClientFailed' => ({required Object code}) => 'smbclient failed (${code})',
 			'errors.smbutilUnavailable' => ({required Object message}) => 'smbutil unavailable: ${message}',
+			_ => null,
+		} ?? switch (path) {
 			'errors.smbutilFailed' => ({required Object code}) => 'smbutil failed (${code})',
 			'errors.netUnavailable' => ({required Object message}) => 'net unavailable: ${message}',
 			'errors.netViewFailed' => ({required Object code}) => 'net view failed (${code})',
 			'errors.smbMountedShareNotFound' => 'Mounted share could not be located in gvfs',
-			_ => null,
-		} ?? switch (path) {
 			'errors.failedToCreatePath' => ({required Object path, required Object error}) => 'Failed to create ${path}: ${error}',
 			'errors.gioMountFailed' => 'gio mount failed',
 			'errors.mountSmbfsFailed' => ({required Object code}) => 'mount_smbfs failed (${code})',
