@@ -45,6 +45,7 @@ class QuickLookHeader extends StatelessWidget {
   final VoidCallback? onReload;
   final GestureDragStartCallback? onHeaderPanStart;
   final GestureDragUpdateCallback? onHeaderPanUpdate;
+  final VoidCallback? onToggleMaximize;
 
   const QuickLookHeader({
     super.key,
@@ -62,6 +63,7 @@ class QuickLookHeader extends StatelessWidget {
     this.onReload,
     this.onHeaderPanStart,
     this.onHeaderPanUpdate,
+    this.onToggleMaximize,
   });
 
   @override
@@ -160,6 +162,10 @@ class QuickLookHeader extends StatelessWidget {
               ),
               const SizedBox(width: 4),
             ],
+            if (onToggleMaximize != null) ...[
+              QuickLookMaximizeButton(onTap: onToggleMaximize!),
+              const SizedBox(width: 4),
+            ],
             QuickLookCloseButton(onTap: onClose),
           ],
         ),
@@ -233,6 +239,68 @@ class QuickLookHeaderButtonState extends State<QuickLookHeaderButton> {
       ),
     );
   }
+}
+
+class QuickLookMaximizeButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const QuickLookMaximizeButton({super.key, required this.onTap});
+
+  @override
+  State<QuickLookMaximizeButton> createState() =>
+      _QuickLookMaximizeButtonState();
+}
+
+class _QuickLookMaximizeButtonState extends State<QuickLookMaximizeButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = _hover ? AppColors.fg : AppColors.fgMuted;
+
+    return Tooltip(
+      message: t.quickLook.maximizeRestore,
+      waitDuration: const Duration(milliseconds: 450),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            width: 28,
+            height: 28,
+            color: _hover ? AppColors.bgHover : Colors.transparent,
+            child: Center(
+              child: CustomPaint(
+                size: const Size(10, 10),
+                painter: _MaximizeGlyphPainter(fg),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MaximizeGlyphPainter extends CustomPainter {
+  final Color color;
+
+  const _MaximizeGlyphPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawRect(Rect.fromLTRB(0, 0, size.width - 1, size.height - 1), p);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MaximizeGlyphPainter old) => old.color != color;
 }
 
 class QuickLookCloseButton extends StatefulWidget {

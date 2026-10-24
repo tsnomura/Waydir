@@ -906,7 +906,8 @@
     "reload": "Reload",
     "hintReload": "Reload",
     "reloadMessage": "You have unsaved changes. Save them before reloading?",
-    "reloadSkipped": "File changed - press F5 to reload"
+    "reloadSkipped": "File changed - press F5 to reload",
+    "maximizeRestore": "Maximize / Restore"
   },
   "toast": {
     "launcherFailed": "Couldn't start $name: $error",
