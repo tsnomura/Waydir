@@ -13,6 +13,9 @@ class AppModal extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final VoidCallback onClose;
   final Widget child;
+  final List<Widget> titleBarActions;
+  final GestureDragStartCallback? onTitleBarPanStart;
+  final GestureDragUpdateCallback? onTitleBarPanUpdate;
 
   const AppModal({
     super.key,
@@ -24,6 +27,9 @@ class AppModal extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     required this.onClose,
     required this.child,
+    this.titleBarActions = const [],
+    this.onTitleBarPanStart,
+    this.onTitleBarPanUpdate,
   });
 
   @override
@@ -65,6 +71,9 @@ class AppModal extends StatelessWidget {
                   iconColor: iconColor,
                   title: title,
                   onClose: onClose,
+                  actions: titleBarActions,
+                  onPanStart: onTitleBarPanStart,
+                  onPanUpdate: onTitleBarPanUpdate,
                 ),
                 Container(height: 1, color: AppColors.bgDivider),
                 body,
@@ -88,30 +97,42 @@ class _ModalTitleBar extends StatelessWidget {
   final Color? iconColor;
   final String title;
   final VoidCallback onClose;
+  final List<Widget> actions;
+  final GestureDragStartCallback? onPanStart;
+  final GestureDragUpdateCallback? onPanUpdate;
 
   const _ModalTitleBar({
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.onClose,
+    this.actions = const [],
+    this.onPanStart,
+    this.onPanUpdate,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(color: AppColors.bgSidebar),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 16, color: iconColor ?? AppColors.fgAccent),
-            const SizedBox(width: 8),
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onPanStart: onPanStart,
+      onPanUpdate: onPanUpdate,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(color: AppColors.bgSidebar),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: iconColor ?? AppColors.fgAccent),
+              const SizedBox(width: 8),
+            ],
+            Text(title, style: context.txt.dialogTitle),
+            const Spacer(),
+            for (final action in actions) ...[action, const SizedBox(width: 4)],
+            AppCloseButton(onTap: onClose),
           ],
-          Text(title, style: context.txt.dialogTitle),
-          const Spacer(),
-          AppCloseButton(onTap: onClose),
-        ],
+        ),
       ),
     );
   }

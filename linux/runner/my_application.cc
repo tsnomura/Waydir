@@ -40,6 +40,13 @@ static gboolean has_quick_look_arg(char** args) {
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // GTK3 reserves F10 as a window-level "activate menubar" accelerator by
+  // default (gtk-menu-bar-accel), even though Waydir's menu bar is custom
+  // Flutter UI with no real GtkMenuBar for it to activate. Clear it so F10
+  // reaches Flutter uncontested.
+  g_object_set(gtk_settings_get_default(), "gtk-menu-bar-accel", "", nullptr);
+
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 

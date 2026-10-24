@@ -40,6 +40,16 @@ import '../tags/tag_edit_dialog.dart';
 import '../tags/tag_path.dart';
 import '../tags/tag_store.dart';
 
+/// Lets the shell ask the [Sidebar] to grab keyboard focus (e.g. right after
+/// Ctrl+B expands it) without holding a reference to its state.
+class SidebarKeyboardFocus {
+  SidebarKeyboardFocus._();
+
+  static final request = signal(0);
+
+  static void requestFocus() => request.value++;
+}
+
 const double _sectionGap = 0;
 const double _gutter = 8;
 const double _expandedRightGutter = 4;
@@ -144,12 +154,31 @@ class _SidebarState extends State<Sidebar> {
   _sftpCredentialsRequester;
   final _bookmarkStore = BookmarkStore.instance;
   final _scrollController = ScrollController();
+  final _keyboardFocusNode = FocusNode(debugLabel: 'sidebar-keyboard');
+  List<_SidebarEntry> _flatEntries = [];
+  int _cursorIndex = 0;
+  void Function()? _disposeFocusRequestEffect;
+  bool _skipNextFocusRequest = true;
 
   @override
   void initState() {
     super.initState();
     _credentialsRequester = _requestSmbCredentials;
     _sftpCredentialsRequester = _requestSftpCredentials;
+    _keyboardFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _disposeFocusRequestEffect = effect(() {
+      SidebarKeyboardFocus.request.value;
+      if (_skipNextFocusRequest) {
+        _skipNextFocusRequest = false;
+
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _keyboardFocusNode.requestFocus();
+      });
+    });
     final h = PlatformPaths.homePath;
     _favorites = [
       _SidebarItem(t.sidebar.home, WaydirIconsRegular.house, h, key: 'home'),
@@ -243,6 +272,8 @@ class _SidebarState extends State<Sidebar> {
     if (SftpSessionManager.credentialsRequester == _sftpCredentialsRequester) {
       SftpSessionManager.credentialsRequester = null;
     }
+    _disposeFocusRequestEffect?.call();
+    _keyboardFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -546,9 +577,13 @@ class _SidebarState extends State<Sidebar> {
             ),
           ),
           Expanded(
-            child: _SidebarDropTarget(
-              onDropBookmark: _bookmarkStore.addPath,
-              child: SignalBuilder(builder: _buildBody),
+            child: Focus(
+              focusNode: _keyboardFocusNode,
+              onKeyEvent: _handleKeyEvent,
+              child: _SidebarDropTarget(
+                onDropBookmark: _bookmarkStore.addPath,
+                child: SignalBuilder(builder: _buildBody),
+              ),
             ),
           ),
           _SidebarFooter(
@@ -562,6 +597,60 @@ class _SidebarState extends State<Sidebar> {
         ],
       ),
     );
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (_flatEntries.isEmpty) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        _cursorIndex = (_cursorIndex + 1).clamp(0, _flatEntries.length - 1);
+      });
+
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _cursorIndex = (_cursorIndex - 1).clamp(0, _flatEntries.length - 1);
+      });
+
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      final index = _cursorIndex.clamp(0, _flatEntries.length - 1);
+      _activateEntry(
+        _flatEntries[index],
+        ctrl: HardwareKeyboard.instance.isControlPressed,
+        shift: HardwareKeyboard.instance.isShiftPressed,
+      );
+
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _activateEntry(
+    _SidebarEntry entry, {
+    bool ctrl = false,
+    bool shift = false,
+  }) {
+    final opensInTabs = entry.isMounted || entry.opensWhenUnmounted;
+    if (opensInTabs && shift && entry.onOpenOtherPaneNewTab != null) {
+      entry.onOpenOtherPaneNewTab!();
+
+      return;
+    }
+    if (opensInTabs && ctrl && entry.onMiddleTap != null) {
+      entry.onMiddleTap!();
+
+      return;
+    }
+    entry.onTap(entry.item.path);
   }
 
   Widget _buildBody(BuildContext context) {
@@ -634,6 +723,7 @@ class _SidebarState extends State<Sidebar> {
       for (final id in sectionOrder)
         if (byId.containsKey(id)) byId[id]!,
     ];
+    if (editing) _clearFlatEntries();
 
     return Padding(
       padding: const EdgeInsets.only(
@@ -649,12 +739,18 @@ class _SidebarState extends State<Sidebar> {
     );
   }
 
+  void _clearFlatEntries() {
+    _flatEntries = [];
+    _cursorIndex = 0;
+  }
+
   bool _sectionAlwaysShown(String id) =>
       id != sidebarSectionNetwork && id != sidebarSectionContainers;
 
   Widget _buildNormalList(List<_SidebarSection> sections, bool collapsed) {
     final store = SidebarStore.instance;
     final children = <Widget>[];
+    final flat = <_SidebarEntry>[];
     var first = true;
     for (final section in sections) {
       if (store.isSectionHidden(section.id)) continue;
@@ -687,7 +783,8 @@ class _SidebarState extends State<Sidebar> {
       if (sectionCollapsed) continue;
 
       for (final entry in visible) {
-        children.add(_rowFor(entry, collapsed));
+        flat.add(entry);
+        children.add(_rowFor(entry, collapsed, flat.length - 1));
       }
       if (section.id == sidebarSectionBookmarks &&
           visible.isEmpty &&
@@ -719,6 +816,9 @@ class _SidebarState extends State<Sidebar> {
 
     children.add(const SizedBox(height: 12));
 
+    _flatEntries = flat;
+    _cursorIndex = flat.isEmpty ? 0 : _cursorIndex.clamp(0, flat.length - 1);
+
     return ListView(
       controller: _scrollController,
       padding: EdgeInsets.only(bottom: collapsed ? 6 : _sectionGap),
@@ -726,10 +826,11 @@ class _SidebarState extends State<Sidebar> {
     );
   }
 
-  Widget _rowFor(_SidebarEntry entry, bool collapsed) {
+  Widget _rowFor(_SidebarEntry entry, bool collapsed, int index) {
     return _ItemRow(
       item: entry.item,
       isSelected: entry.isSelected,
+      isKeyboardCursor: _keyboardFocusNode.hasFocus && index == _cursorIndex,
       isMounted: entry.isMounted,
       opensWhenUnmounted: entry.opensWhenUnmounted,
       space: entry.space,
@@ -1992,6 +2093,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
 class _ItemRow extends StatefulWidget {
   final _SidebarItem item;
   final bool isSelected;
+  final bool isKeyboardCursor;
   final bool isMounted;
   final bool opensWhenUnmounted;
   final DriveSpace? space;
@@ -2008,6 +2110,7 @@ class _ItemRow extends StatefulWidget {
   const _ItemRow({
     required this.item,
     required this.isSelected,
+    this.isKeyboardCursor = false,
     this.isMounted = true,
     this.opensWhenUnmounted = false,
     this.space,
@@ -2105,6 +2208,7 @@ class _ItemRowState extends State<_ItemRow> {
   Color get _bg {
     if (_dragOver) return AppColors.accent.withValues(alpha: 0.12);
     if (widget.isSelected) return AppColors.bgSelectedMuted;
+    if (widget.isKeyboardCursor) return AppColors.bgHoverStrong;
     if (_hovered) return AppColors.bgHover;
 
     return Colors.transparent;
@@ -2126,6 +2230,8 @@ class _ItemRowState extends State<_ItemRow> {
 
   Border? get _dragBorder => _dragOver
       ? Border.all(color: AppColors.accent.withValues(alpha: 0.4))
+      : widget.isKeyboardCursor
+      ? Border.all(color: AppColors.accent, width: 2)
       : null;
 
   Widget _railRow() {

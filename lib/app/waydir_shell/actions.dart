@@ -772,7 +772,9 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
 
   void _toggleSidebarCollapsed() {
     final s = SettingsStore.instance.sidebarCollapsed;
+    final expanding = s.value;
     s.value = !s.value;
+    if (expanding) SidebarKeyboardFocus.requestFocus();
   }
 
   void _newTabHere() {
