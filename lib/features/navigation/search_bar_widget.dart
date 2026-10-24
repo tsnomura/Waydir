@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
+import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
@@ -41,6 +42,11 @@ class _AppSearchBarState extends State<AppSearchBar> {
     _focusNode = FocusNode(
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
+          if (AppShortcuts.matches('recursive_search', event.logicalKey)) {
+            widget.store.toggleRecursive();
+
+            return KeyEventResult.handled;
+          }
           if (SettingsStore.instance.searchMode.value == filterSearchMode) {
             final suggestions = _currentSuggestions();
             if (event.logicalKey == LogicalKeyboardKey.escape &&
