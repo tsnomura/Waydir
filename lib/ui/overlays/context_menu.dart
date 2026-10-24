@@ -136,6 +136,8 @@ void showContextMenu({
   required List<ContextMenuItem> items,
   required void Function(String action) onSelect,
   bool keyboard = false,
+  void Function(bool forward)? onRootHorizontalNav,
+  VoidCallback? onClosed,
 }) {
   final overlay = Overlay.of(context);
   final session = _MenuSession();
@@ -143,7 +145,7 @@ void showContextMenu({
   final previousFocus = keyboard ? FocusManager.instance.primaryFocus : null;
   Timer? pendingDismiss;
 
-  void dismissAll() {
+  void dismissAll({bool restoreFocus = true}) {
     pendingDismiss?.cancel();
     pendingDismiss = null;
     final hadEntries = entries.isNotEmpty;
@@ -153,8 +155,12 @@ void showContextMenu({
     entries.clear();
     _sessions.remove(session);
     _uninstallGlobalHandlersIfIdle();
+    if (hadEntries) onClosed?.call();
     final restore = previousFocus;
-    if (hadEntries && restore != null && restore.context != null) {
+    if (restoreFocus &&
+        hadEntries &&
+        restore != null &&
+        restore.context != null) {
       restore.requestFocus();
     }
   }
@@ -213,6 +219,10 @@ void showContextMenu({
           items: menuItems,
           keyboard: keyboard,
           highlightFirst: depth == 0 || fromKeyboard,
+          onRootHorizontalNav: depth == 0 ? onRootHorizontalNav : null,
+          onRootMenuSwitch: depth == 0
+              ? () => dismissAll(restoreFocus: false)
+              : null,
           onKeyboardBack: depth == 0
               ? dismissAll
               : () {
@@ -267,6 +277,8 @@ class _ContextMenuBody extends StatefulWidget {
   final List<ContextMenuItem> items;
   final bool keyboard;
   final bool highlightFirst;
+  final void Function(bool forward)? onRootHorizontalNav;
+  final VoidCallback? onRootMenuSwitch;
   final VoidCallback onKeyboardBack;
   final VoidCallback onEnterMenu;
   final VoidCallback onExitMenu;
@@ -280,6 +292,8 @@ class _ContextMenuBody extends StatefulWidget {
     required this.items,
     required this.keyboard,
     required this.highlightFirst,
+    this.onRootHorizontalNav,
+    this.onRootMenuSwitch,
     required this.onKeyboardBack,
     required this.onEnterMenu,
     required this.onExitMenu,
@@ -348,11 +362,26 @@ class _ContextMenuBodyState extends State<_ContextMenuBody> {
     if (key == LogicalKeyboardKey.arrowDown) {
       setState(() => _highlight = _step(_highlight, 1));
     } else if (key == LogicalKeyboardKey.arrowUp) {
-      setState(() => _highlight = _step(_highlight < 0 ? 0 : _highlight, -1));
+      if (widget.onRootHorizontalNav != null && _highlight == _step(-1, 1)) {
+        widget.onKeyboardBack();
+      } else {
+        setState(() => _highlight = _step(_highlight < 0 ? 0 : _highlight, -1));
+      }
     } else if (key == LogicalKeyboardKey.arrowRight) {
-      if (item != null && item.hasChildren) _openHighlightedSubmenu();
-    } else if (key == LogicalKeyboardKey.arrowLeft ||
-        key == LogicalKeyboardKey.escape) {
+      if (item != null && item.hasChildren) {
+        _openHighlightedSubmenu();
+      } else if (widget.onRootHorizontalNav != null) {
+        widget.onRootHorizontalNav!(true);
+        widget.onRootMenuSwitch?.call();
+      }
+    } else if (key == LogicalKeyboardKey.arrowLeft) {
+      if (widget.onRootHorizontalNav != null) {
+        widget.onRootHorizontalNav!(false);
+        widget.onRootMenuSwitch?.call();
+      } else {
+        widget.onKeyboardBack();
+      }
+    } else if (key == LogicalKeyboardKey.escape) {
       widget.onKeyboardBack();
     } else if (key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter ||

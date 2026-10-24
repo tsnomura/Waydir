@@ -13,6 +13,7 @@ import '../../i18n/strings.g.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/widgets/floating_window_geometry.dart';
 import 'code_editor.dart';
 import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
@@ -84,12 +85,8 @@ class _QuickLook extends StatefulWidget {
   State<_QuickLook> createState() => _QuickLookState();
 }
 
-enum _ResizeEdge { n, s, e, w, ne, nw, se, sw }
-
-const double _kMinWindowWidth = 420;
-const double _kMinWindowHeight = 320;
-
-class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
+class _QuickLookState extends State<_QuickLook>
+    with WidgetsBindingObserver, FloatingWindowGeometry<_QuickLook> {
   final _focus = FocusNode();
   final _editorActive = signal(false);
   final _identicalPairs = signal<Set<String>>(const {});
@@ -107,16 +104,14 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     onReloadSkipped: _showReloadSkipped,
   );
   DateTime? _lastCursorRepeatAt;
-  Rect? _rect;
-  Offset? _dragAnchor;
-  Rect? _dragStartRect;
 
   static const _cursorRepeatInterval = Duration(milliseconds: 70);
 
   /// Centers the window in [screen] — wider by default when opened as a
   /// compare-mode diff, since a side-by-side diff needs more room than a
   /// normal single-file preview.
-  Rect _initialRect(Size screen) {
+  @override
+  Rect computeInitialRect(Size screen) {
     final isDiff =
         widget.diffPair?.call(
           widget.explicitEntry ?? widget.store.cursorEntry.value,
@@ -124,14 +119,14 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
         null;
     final width = _clampSize(
       screen.width * (isDiff ? 0.92 : 0.7),
-      _kMinWindowWidth,
+      minWindowWidth,
       isDiff ? 1600.0 : 1100.0,
     );
-    final height = _clampSize(screen.height * 0.78, _kMinWindowHeight, 900.0);
+    final height = _clampSize(screen.height * 0.78, minWindowHeight, 900.0);
     final originX = (screen.width - width) / 2;
     final originY = (screen.height - height) / 2;
 
-    return _clampToScreen(
+    return clampToScreen(
       Rect.fromLTWH(originX, originY, width, height),
       screen,
     );
@@ -141,94 +136,6 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     if (max < min) return min;
 
     return value.clamp(min, max);
-  }
-
-  Rect _clampToScreen(Rect rect, Size screen) {
-    final width = rect.width.clamp(
-      _kMinWindowWidth,
-      screen.width.clamp(_kMinWindowWidth, double.infinity),
-    );
-    final height = rect.height.clamp(
-      _kMinWindowHeight,
-      screen.height.clamp(_kMinWindowHeight, double.infinity),
-    );
-    final left = rect.left.clamp(
-      0.0,
-      (screen.width - width).clamp(0.0, screen.width),
-    );
-    final top = rect.top.clamp(
-      0.0,
-      (screen.height - height).clamp(0.0, screen.height),
-    );
-
-    return Rect.fromLTWH(left, top, width, height);
-  }
-
-  void _handleDragStart(DragStartDetails details) {
-    _dragAnchor = details.globalPosition;
-    _dragStartRect = _rect;
-  }
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    final anchor = _dragAnchor;
-    final startRect = _dragStartRect;
-    if (anchor == null || startRect == null) return;
-    final delta = details.globalPosition - anchor;
-    final screen = MediaQuery.of(context).size;
-    setState(() {
-      _rect = _clampToScreen(startRect.shift(delta), screen);
-    });
-  }
-
-  void _handleResizeStart(DragStartDetails details) {
-    _dragAnchor = details.globalPosition;
-    _dragStartRect = _rect;
-  }
-
-  void _handleResizeUpdate(_ResizeEdge edge, DragUpdateDetails details) {
-    final anchor = _dragAnchor;
-    final startRect = _dragStartRect;
-    if (anchor == null || startRect == null) return;
-    final delta = details.globalPosition - anchor;
-    final screen = MediaQuery.of(context).size;
-    setState(() {
-      _rect = _resize(startRect, edge, delta, screen);
-    });
-  }
-
-  static Rect _resize(Rect start, _ResizeEdge edge, Offset delta, Size screen) {
-    var left = start.left;
-    var top = start.top;
-    var right = start.right;
-    var bottom = start.bottom;
-    const west = {_ResizeEdge.w, _ResizeEdge.nw, _ResizeEdge.sw};
-    const east = {_ResizeEdge.e, _ResizeEdge.ne, _ResizeEdge.se};
-    const north = {_ResizeEdge.n, _ResizeEdge.nw, _ResizeEdge.ne};
-    const south = {_ResizeEdge.s, _ResizeEdge.sw, _ResizeEdge.se};
-    if (west.contains(edge)) left += delta.dx;
-    if (east.contains(edge)) right += delta.dx;
-    if (north.contains(edge)) top += delta.dy;
-    if (south.contains(edge)) bottom += delta.dy;
-    if (right - left < _kMinWindowWidth) {
-      if (west.contains(edge)) {
-        left = right - _kMinWindowWidth;
-      } else {
-        right = left + _kMinWindowWidth;
-      }
-    }
-    if (bottom - top < _kMinWindowHeight) {
-      if (north.contains(edge)) {
-        top = bottom - _kMinWindowHeight;
-      } else {
-        bottom = top + _kMinWindowHeight;
-      }
-    }
-    left = left.clamp(0.0, screen.width - _kMinWindowWidth);
-    top = top.clamp(0.0, screen.height - _kMinWindowHeight);
-    right = right.clamp(left + _kMinWindowWidth, screen.width);
-    bottom = bottom.clamp(top + _kMinWindowHeight, screen.height);
-
-    return Rect.fromLTRB(left, top, right, bottom);
   }
 
   @override
@@ -390,7 +297,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
     final entry = _shownEntry;
     final menu = widget.onOpenMenu;
     if (entry == null || menu == null) return;
-    final rect = _rect;
+    final rect = this.rect;
     final position = rect == null
         ? const Offset(80, 80)
         : Offset(rect.left + 24, rect.top + 46);
@@ -508,7 +415,7 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
-    final rect = _rect ??= _initialRect(screen);
+    final rect = ensureRect(screen);
 
     return Focus(
       focusNode: _focus,
@@ -542,93 +449,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
               ),
             ),
           ),
-          for (final edge in _ResizeEdge.values) _resizeHandle(edge, rect),
+          ...resizeHandles(rect),
         ],
-      ),
-    );
-  }
-
-  Widget _resizeHandle(_ResizeEdge edge, Rect rect) {
-    const thickness = 8.0;
-    const corner = 12.0;
-    late Rect handleRect;
-    late MouseCursor cursor;
-    switch (edge) {
-      case _ResizeEdge.n:
-        handleRect = Rect.fromLTWH(
-          rect.left + corner,
-          rect.top - thickness / 2,
-          rect.width - corner * 2,
-          thickness,
-        );
-        cursor = SystemMouseCursors.resizeUpDown;
-      case _ResizeEdge.s:
-        handleRect = Rect.fromLTWH(
-          rect.left + corner,
-          rect.bottom - thickness / 2,
-          rect.width - corner * 2,
-          thickness,
-        );
-        cursor = SystemMouseCursors.resizeUpDown;
-      case _ResizeEdge.w:
-        handleRect = Rect.fromLTWH(
-          rect.left - thickness / 2,
-          rect.top + corner,
-          thickness,
-          rect.height - corner * 2,
-        );
-        cursor = SystemMouseCursors.resizeLeftRight;
-      case _ResizeEdge.e:
-        handleRect = Rect.fromLTWH(
-          rect.right - thickness / 2,
-          rect.top + corner,
-          thickness,
-          rect.height - corner * 2,
-        );
-        cursor = SystemMouseCursors.resizeLeftRight;
-      case _ResizeEdge.nw:
-        handleRect = Rect.fromLTWH(
-          rect.left - thickness / 2,
-          rect.top - thickness / 2,
-          corner,
-          corner,
-        );
-        cursor = SystemMouseCursors.resizeUpLeftDownRight;
-      case _ResizeEdge.se:
-        handleRect = Rect.fromLTWH(
-          rect.right - corner + thickness / 2,
-          rect.bottom - corner + thickness / 2,
-          corner,
-          corner,
-        );
-        cursor = SystemMouseCursors.resizeUpLeftDownRight;
-      case _ResizeEdge.ne:
-        handleRect = Rect.fromLTWH(
-          rect.right - corner + thickness / 2,
-          rect.top - thickness / 2,
-          corner,
-          corner,
-        );
-        cursor = SystemMouseCursors.resizeUpRightDownLeft;
-      case _ResizeEdge.sw:
-        handleRect = Rect.fromLTWH(
-          rect.left - thickness / 2,
-          rect.bottom - corner + thickness / 2,
-          corner,
-          corner,
-        );
-        cursor = SystemMouseCursors.resizeUpRightDownLeft;
-    }
-
-    return Positioned.fromRect(
-      rect: handleRect,
-      child: MouseRegion(
-        cursor: cursor,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onPanStart: _handleResizeStart,
-          onPanUpdate: (details) => _handleResizeUpdate(edge, details),
-        ),
       ),
     );
   }
@@ -651,8 +473,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                 onToggleInfo: () {},
                 onClose: _requestClose,
                 editorController: _editorController,
-                onHeaderPanStart: _handleDragStart,
-                onHeaderPanUpdate: _handleDragUpdate,
+                onHeaderPanStart: handleDragStart,
+                onHeaderPanUpdate: handleDragUpdate,
               ),
               Container(height: 1, color: AppColors.bgDivider),
               Expanded(
@@ -679,8 +501,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                   onToggleInfo: () {},
                   onClose: _requestClose,
                   editorController: _editorController,
-                  onHeaderPanStart: _handleDragStart,
-                  onHeaderPanUpdate: _handleDragUpdate,
+                  onHeaderPanStart: handleDragStart,
+                  onHeaderPanUpdate: handleDragUpdate,
                 ),
                 Container(height: 1, color: AppColors.bgDivider),
                 Expanded(
@@ -709,8 +531,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
                       onToggleInfo: () {},
                       onClose: _requestClose,
                       editorController: _editorController,
-                      onHeaderPanStart: _handleDragStart,
-                      onHeaderPanUpdate: _handleDragUpdate,
+                      onHeaderPanStart: handleDragStart,
+                      onHeaderPanUpdate: handleDragUpdate,
                     ),
                     Container(height: 1, color: AppColors.bgDivider),
                     Expanded(
@@ -780,8 +602,8 @@ class _QuickLookState extends State<_QuickLook> with WidgetsBindingObserver {
           onReload: !showDiff && QuickLookReloadController.canReload(entry)
               ? _requestReload
               : null,
-          onHeaderPanStart: _handleDragStart,
-          onHeaderPanUpdate: _handleDragUpdate,
+          onHeaderPanStart: handleDragStart,
+          onHeaderPanUpdate: handleDragUpdate,
         ),
         Container(height: 1, color: AppColors.bgDivider),
         Expanded(

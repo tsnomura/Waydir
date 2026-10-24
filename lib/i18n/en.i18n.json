@@ -536,6 +536,8 @@
   "help": {
     "title": "In-app tutorial",
     "menuLabel": "In-app tutorial",
+    "popOut": "Open in separate window",
+    "popOutUnavailable": "Could not open the tutorial in a separate window",
     "groups": {
       "gettingStarted": {
         "title": "Getting Started",

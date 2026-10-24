@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,9 +7,15 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../i18n/strings.g.dart';
+import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/widgets/app_modal.dart';
+import '../../ui/widgets/floating_window_geometry.dart';
+import '../../ui/widgets/markdown_body_view.dart';
+import '../../ui/window/move_window.dart';
+import '../../ui/window/window_buttons.dart';
+import 'app_tutorial_pop_out.dart';
 
 Future<void> showHelpDialog(BuildContext context) {
   return showDialog<void>(
@@ -265,44 +272,37 @@ final _flatPages = <_PageRef>[
     for (var p = 0; p < _groups[g].pages.length; p++) _PageRef(g, p),
 ];
 
-class _HelpDialog extends StatefulWidget {
-  const _HelpDialog();
+/// Tree/page navigation shared by the Help dialog and its standalone
+/// `--app-tutorial` window counterpart ([HelpTutorialContent]): which page is
+/// selected, which groups are expanded, and arrow-key browsing between them.
+mixin _HelpNavigation<T extends StatefulWidget> on State<T> {
+  int selected = 0;
+  late final Set<int> expandedGroups = {
+    for (var i = 0; i < _groups.length; i++) i,
+  };
 
-  @override
-  State<_HelpDialog> createState() => _HelpDialogState();
-}
+  _PageRef get current => _flatPages[selected];
 
-class _HelpDialogState extends State<_HelpDialog> {
-  int _selected = 0;
-  late final Set<int> _expanded = {for (var i = 0; i < _groups.length; i++) i};
-
-  _PageRef get _current => _flatPages[_selected];
-
-  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+  KeyEventResult handleNavigationKey(KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape) {
-      Navigator.of(context).pop();
-
-      return KeyEventResult.handled;
-    }
     if (key == LogicalKeyboardKey.arrowDown) {
-      _selectFlat((_selected + 1) % _flatPages.length);
+      selectFlat((selected + 1) % _flatPages.length);
 
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowUp) {
-      _selectFlat((_selected - 1 + _flatPages.length) % _flatPages.length);
+      selectFlat((selected - 1 + _flatPages.length) % _flatPages.length);
 
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowLeft) {
-      setState(() => _expanded.remove(_current.group));
+      setState(() => expandedGroups.remove(current.group));
 
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
-      setState(() => _expanded.add(_current.group));
+      setState(() => expandedGroups.add(current.group));
 
       return KeyEventResult.handled;
     }
@@ -310,64 +310,261 @@ class _HelpDialogState extends State<_HelpDialog> {
     return KeyEventResult.ignored;
   }
 
-  void _selectFlat(int index) {
+  void selectFlat(int index) {
     setState(() {
-      _selected = index;
-      _expanded.add(_flatPages[index].group);
+      selected = index;
+      expandedGroups.add(_flatPages[index].group);
     });
   }
 
-  void _selectPage(int group, int page) {
+  void selectPage(int group, int page) {
     final index = _flatPages.indexWhere(
       (ref) => ref.group == group && ref.page == page,
     );
-    if (index >= 0) setState(() => _selected = index);
+    if (index >= 0) setState(() => selected = index);
   }
 
-  void _toggleGroup(int group) {
+  void toggleGroup(int group) {
     setState(() {
-      if (_expanded.contains(group)) {
-        _expanded.remove(group);
+      if (expandedGroups.contains(group)) {
+        expandedGroups.remove(group);
       } else {
-        _expanded.add(group);
+        expandedGroups.add(group);
       }
     });
+  }
+}
+
+class _HelpDialog extends StatefulWidget {
+  const _HelpDialog();
+
+  @override
+  State<_HelpDialog> createState() => _HelpDialogState();
+}
+
+class _HelpDialogState extends State<_HelpDialog>
+    with FloatingWindowGeometry<_HelpDialog>, _HelpNavigation<_HelpDialog> {
+  @override
+  double get minWindowWidth => 640;
+
+  @override
+  double get minWindowHeight => 420;
+
+  @override
+  Rect computeInitialRect(Size screen) {
+    final width = screen.width.clamp(760.0, 1040.0).toDouble();
+    final height = (screen.height * 0.94).clamp(520.0, 1100.0).toDouble();
+    final originX = (screen.width - width) / 2;
+    final originY = (screen.height - height) / 2;
+
+    return Rect.fromLTWH(originX, originY, width, height);
+  }
+
+  void _popOut() {
+    unawaited(
+      AppTutorialPopOut.open().then((opened) {
+        if (!mounted) return;
+        if (opened) {
+          Navigator.of(context).pop();
+        } else {
+          showToast(context: context, message: t.help.popOutUnavailable);
+        }
+      }),
+    );
+  }
+
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+
+      return KeyEventResult.handled;
+    }
+
+    return handleNavigationKey(event);
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final width = size.width.clamp(760.0, 1040.0).toDouble();
-    final height = (size.height * 0.94).clamp(520.0, 1100.0).toDouble();
-    final ref = _current;
+    final screen = MediaQuery.of(context).size;
+    final rect = ensureRect(screen);
+    final ref = current;
     final page = _groups[ref.group].pages[ref.page];
 
     return Focus(
       autofocus: true,
       onKeyEvent: _handleKey,
-      child: AppModal(
-        icon: WaydirIconsRegular.info,
-        title: t.help.title,
-        width: width,
-        height: height,
-        onClose: () => Navigator.of(context).pop(),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: 248,
-              child: _HelpTree(
-                expanded: _expanded,
-                selected: ref,
-                onToggleGroup: _toggleGroup,
-                onSelectPage: _selectPage,
+      child: Stack(
+        children: [
+          Positioned.fromRect(
+            rect: rect,
+            child: AppModal(
+              icon: WaydirIconsRegular.info,
+              title: t.help.title,
+              width: rect.width,
+              height: rect.height,
+              onClose: () => Navigator.of(context).pop(),
+              onTitleBarPanStart: handleDragStart,
+              onTitleBarPanUpdate: handleDragUpdate,
+              titleBarActions: [_HelpPopOutButton(onTap: _popOut)],
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 248,
+                    child: _HelpTree(
+                      expanded: expandedGroups,
+                      selected: ref,
+                      onToggleGroup: toggleGroup,
+                      onSelectPage: selectPage,
+                    ),
+                  ),
+                  Container(width: 1, color: AppColors.bgDivider),
+                  Expanded(
+                    child: _HelpPageView(key: ValueKey(selected), page: page),
+                  ),
+                ],
               ),
             ),
-            Container(width: 1, color: AppColors.bgDivider),
-            Expanded(
-              child: _HelpPageView(key: ValueKey(_selected), page: page),
+          ),
+          ...resizeHandles(rect),
+        ],
+      ),
+    );
+  }
+}
+
+/// Standalone-window counterpart of [_HelpDialog] for the `--app-tutorial`
+/// launch flag: the same tree and page content, without the modal chrome —
+/// there's no parent window to show a dialog over in a standalone process.
+class HelpTutorialContent extends StatefulWidget {
+  const HelpTutorialContent({super.key});
+
+  @override
+  State<HelpTutorialContent> createState() => _HelpTutorialContentState();
+}
+
+class _HelpTutorialContentState extends State<HelpTutorialContent>
+    with _HelpNavigation<HelpTutorialContent> {
+  @override
+  Widget build(BuildContext context) {
+    final ref = current;
+    final page = _groups[ref.group].pages[ref.page];
+
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) => handleNavigationKey(event),
+      child: Column(
+        children: [
+          const _HelpTutorialTitleBar(),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 248,
+                  child: _HelpTree(
+                    expanded: expandedGroups,
+                    selected: ref,
+                    onToggleGroup: toggleGroup,
+                    onSelectPage: selectPage,
+                  ),
+                ),
+                Container(width: 1, color: AppColors.bgDivider),
+                Expanded(
+                  child: _HelpPageView(key: ValueKey(selected), page: page),
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Minimal window chrome for the standalone `--app-tutorial` process: this
+/// window has no OS title bar (the app always draws its own, undecorated),
+/// so without this it could not be moved or closed.
+class _HelpTutorialTitleBar extends StatelessWidget {
+  const _HelpTutorialTitleBar();
+
+  static final _iconColor = AppColors.fgMuted;
+  static final _btnColors = WindowButtonColors(
+    iconNormal: _iconColor,
+    iconMouseOver: AppColors.fg,
+    mouseOver: AppColors.bgHover,
+    mouseDown: AppColors.bgSurface,
+  );
+  static final _closeColors = WindowButtonColors(
+    iconNormal: _iconColor,
+    iconMouseOver: Colors.white,
+    mouseOver: AppColors.windowCloseHover,
+    mouseDown: AppColors.windowClosePressed,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      decoration: BoxDecoration(
+        color: AppColors.bgSidebar,
+        border: Border(bottom: BorderSide(color: AppColors.bgDivider)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          Icon(WaydirIconsRegular.info, size: 14, color: _iconColor),
+          const SizedBox(width: 8),
+          Text(t.help.title, style: context.txt.captionSmall),
+          const Expanded(child: MoveWindow()),
+          MinimizeWindowButton(colors: _btnColors, animate: false),
+          MaximizeWindowButton(colors: _btnColors, animate: false),
+          CloseWindowButton(colors: _closeColors, animate: false),
+        ],
+      ),
+    );
+  }
+}
+
+class _HelpPopOutButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _HelpPopOutButton({required this.onTap});
+
+  @override
+  State<_HelpPopOutButton> createState() => _HelpPopOutButtonState();
+}
+
+class _HelpPopOutButtonState extends State<_HelpPopOutButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: t.help.popOut,
+      waitDuration: const Duration(milliseconds: 450),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _hovered ? AppColors.bgHover : Colors.transparent,
+              borderRadius: BorderRadius.zero,
+            ),
+            child: Icon(
+              WaydirIconsRegular.arrowSquareOut,
+              size: 14,
+              color: _hovered ? AppColors.fg : AppColors.fgMuted,
+            ),
+          ),
         ),
       ),
     );
@@ -589,12 +786,9 @@ class _HelpMarkdown extends StatelessWidget {
       backgroundColor: AppColors.bgInput,
     );
 
-    return MarkdownBody(
-      data: data,
-      selectable: false,
-      onTapLink: (text, href, title) {
-        if (href != null) _openUrl(href);
-      },
+    return MarkdownBodyView(
+      data: sanitizeHtml(data),
+      onTapLink: _openUrl,
       styleSheet: MarkdownStyleSheet(
         p: base,
         listBullet: base,

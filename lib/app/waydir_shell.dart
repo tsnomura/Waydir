@@ -115,6 +115,7 @@ class _WaydirShellState extends State<WaydirShell>
     _operationStore.confirmTransfer = _confirmTransfer;
     ArchivePasswords.prompt = _promptArchivePassword;
     NavigationStore.openInterceptor = _interceptOpen;
+    MenuBarFocus.restoreAppFocus = _restoreFocus;
     _effectDisposers.add(
       effect(() {
         if (!_shell.ready.value) return;
@@ -240,6 +241,9 @@ class _WaydirShellState extends State<WaydirShell>
   void dispose() {
     if (CommandPaletteLauncher.instance.open == _openCommandPalette) {
       CommandPaletteLauncher.instance.open = null;
+    }
+    if (MenuBarFocus.restoreAppFocus == _restoreFocus) {
+      MenuBarFocus.restoreAppFocus = null;
     }
     for (final d in _effectDisposers) {
       d();
