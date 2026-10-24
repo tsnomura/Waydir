@@ -12,7 +12,7 @@ const _kScrollStep = 120.0;
 class TabStrip extends StatefulWidget {
   final TabsStore tabsStore;
   final bool isActive;
-  final void Function(String tabId)? onMoveToOtherPane;
+  final void Function(String tabId, {int? index})? onMoveToOtherPane;
 
   const TabStrip({
     super.key,
@@ -173,14 +173,14 @@ class _TabStripState extends State<TabStrip> {
 
 /// A tab chip plus the drop target for whatever lands on it: another tab
 /// from this same pane (reordered to sit at [index]) or a foreign one from
-/// the other pane (moved here via its own carried callback). One continuous
-/// drag handles both, the same way a browser's tab strip does — there's no
+/// the other pane (moved here to land at [index] too). One continuous drag
+/// handles both, the same way a browser's tab strip does — there's no
 /// separate gesture for "reorder" versus "move to the other window".
 class _TabSlot extends StatelessWidget {
   final TabState tab;
   final int index;
   final TabsStore tabsStore;
-  final void Function(String tabId)? onMoveToOtherPane;
+  final void Function(String tabId, {int? index})? onMoveToOtherPane;
 
   const _TabSlot({
     super.key,
@@ -193,15 +193,18 @@ class _TabSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DragTarget<DraggedTabPayload>(
-      onWillAcceptWithDetails: (details) => details.data.tabId != tab.id,
       onAcceptWithDetails: (details) {
         final fromIndex = tabsStore.tabs.value.indexWhere(
           (t) => t.id == details.data.tabId,
         );
         if (fromIndex != -1) {
-          tabsStore.reorderTab(fromIndex, index);
+          // Dropped on a tab after its own current spot: removing it first
+          // shifts everything from there on back by one, so the target
+          // itself is now one index earlier than when it was hovered.
+          final target = index > fromIndex ? index - 1 : index;
+          tabsStore.reorderTab(fromIndex, target);
         } else {
-          details.data.moveToOtherPane?.call(details.data.tabId);
+          details.data.moveToOtherPane?.call(details.data.tabId, index: index);
         }
       },
       builder: (context, candidateData, rejectedData) => Container(

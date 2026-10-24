@@ -44,7 +44,7 @@ class PaneView extends StatelessWidget {
   final FileMenuActionCallback? onMenuAction;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
-  final void Function(String tabId)? onMoveTabToOtherPane;
+  final void Function(String tabId, {int? index})? onMoveTabToOtherPane;
   final void Function(String fullActionId)? onPluginToolbarAction;
   final PluginBarEffectsHandler? onPluginBarEffects;
   final int terminalSlot;
