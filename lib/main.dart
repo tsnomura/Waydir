@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:path/path.dart' as p;
 import 'ui/window/window.dart';
 import 'app/app_info.dart';
+import 'app/app_tutorial_window_app.dart';
 import 'app/launch_args.dart';
 import 'app/quick_look_window_app.dart';
 import 'app/waydir_app.dart';
@@ -72,6 +73,11 @@ void main(List<String> args) async {
 
         return;
       }
+      if (LaunchArgs.options.isAppTutorialWindow) {
+        await _runAppTutorialWindow();
+
+        return;
+      }
       unawaited(Future(ArchiveTemp.startSession));
       await AppThemeRegistry.instance.load();
       await SettingsStore.instance.load();
@@ -130,6 +136,21 @@ Future<void> _runQuickLookWindow(String path) async {
     appWindow.size = const Size(960, 720);
     appWindow.alignment = Alignment.center;
     appWindow.title = p.basename(path);
+    appWindow.show();
+  }
+}
+
+Future<void> _runAppTutorialWindow() async {
+  await AppThemeRegistry.instance.load();
+  await SettingsStore.instance.load();
+  runApp(TranslationProvider(child: const AppTutorialWindowApp()));
+
+  if (isWindowChromeSupported) {
+    const minSize = Size(640, 420);
+    appWindow.minSize = minSize;
+    appWindow.size = const Size(960, 760);
+    appWindow.alignment = Alignment.center;
+    appWindow.title = t.help.title;
     appWindow.show();
   }
 }

@@ -10,6 +10,7 @@ class LaunchOptions {
   final bool showHelp;
   final bool showVersion;
   final String? quickLookPath;
+  final bool appTutorialWindow;
 
   const LaunchOptions({
     this.folders = const [],
@@ -18,9 +19,12 @@ class LaunchOptions {
     this.showHelp = false,
     this.showVersion = false,
     this.quickLookPath,
+    this.appTutorialWindow = false,
   });
 
   bool get isQuickLookWindow => quickLookPath != null;
+
+  bool get isAppTutorialWindow => appTutorialWindow;
 
   bool get opensLocation => folders.isNotEmpty || selectPath != null;
 }
@@ -44,6 +48,7 @@ Options:
       --select <file>   Alias for --reveal.
       --quick-look <file>
                         Open only <file> in a standalone Quick Look window.
+      --app-tutorial    Open the in-app tutorial in a standalone window.
   -v, --version         Print the version and exit.
   -h, --help            Show this help and exit.
 ''';
@@ -55,6 +60,7 @@ Options:
     var showHelp = false;
     var showVersion = false;
     String? quickLookPath;
+    var appTutorialWindow = false;
 
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
@@ -63,6 +69,8 @@ Options:
           if (i + 1 < args.length) {
             quickLookPath = _resolveFile(args[++i]) ?? quickLookPath;
           }
+        case '--app-tutorial':
+          appTutorialWindow = true;
         case '-h':
         case '--help':
           showHelp = true;
@@ -111,6 +119,7 @@ Options:
       showHelp: showHelp,
       showVersion: showVersion,
       quickLookPath: quickLookPath,
+      appTutorialWindow: appTutorialWindow,
     );
   }
 

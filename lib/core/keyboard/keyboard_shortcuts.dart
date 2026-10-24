@@ -502,6 +502,12 @@ class AppShortcuts {
       ctrl: true,
     ),
     ShortcutDef(
+      id: 'focus_menu_bar',
+      label: () => '',
+      group: ShortcutGroup.general,
+      key: LogicalKeyboardKey.f10,
+    ),
+    ShortcutDef(
       id: 'toggle_view',
       label: () => '',
       group: ShortcutGroup.view,

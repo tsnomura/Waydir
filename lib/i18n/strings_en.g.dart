@@ -850,6 +850,12 @@ class Translations$help$en {
 	/// en: 'In-app tutorial'
 	String get menuLabel => 'In-app tutorial';
 
+	/// en: 'Open in separate window'
+	String get popOut => 'Open in separate window';
+
+	/// en: 'Could not open the tutorial in a separate window'
+	String get popOutUnavailable => 'Could not open the tutorial in a separate window';
+
 	late final Translations$help$groups$en groups = Translations$help$groups$en.internal(_root);
 }
 
@@ -4956,6 +4962,8 @@ extension on Translations {
 			'changelog.loadError' => 'Could not load the changelog.',
 			'help.title' => 'In-app tutorial',
 			'help.menuLabel' => 'In-app tutorial',
+			'help.popOut' => 'Open in separate window',
+			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
@@ -4986,10 +4994,10 @@ extension on Translations {
 			'help.groups.selecting.basics.body' => 'Build up exactly the set of files you want before acting on them.\n\n- `Ctrl+A` selects everything in the folder.\n- `Insert` toggles the current item and moves down.\n- `Esc` clears the selection.\n- Click, `Shift+Click` for a range and `Ctrl+Click` to add or remove single items.\n- `Ctrl+Shift+S` saves the current selection to a file; `Ctrl+Shift+L` loads it back.',
 			'help.groups.selecting.pattern.title' => 'Select by Pattern',
 			'help.groups.selecting.pattern.body' => 'Select files matching a wildcard pattern instead of picking them by hand.\n\n- `Ctrl+S` opens select-by-pattern.\n- Use wildcards like `*.png` or `report-*.pdf`.\n- The matching set is added to the current selection.',
-			'help.groups.files.title' => 'Working with Files',
-			'help.groups.files.operations.title' => 'Copy, Move & Delete',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.files.title' => 'Working with Files',
+			'help.groups.files.operations.title' => 'Copy, Move & Delete',
 			'help.groups.files.operations.body' => 'Standard clipboard and file actions work everywhere, including across panes and tabs.\n\n- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy, cut and paste.\n- `F2` renames the current item; `F7` creates a new folder.\n- `Delete` moves the selection to the Trash; use the context menu to delete permanently.\n- Long copies, moves and deletes run in the background, and a conflict prompt appears when names collide.',
 			'help.groups.files.dragDrop.title' => 'Drag & Drop',
 			'help.groups.files.dragDrop.body' => 'Drag files between panes, tabs and the sidebar - or in and out of other apps.\n\n- By default dragging **copies** files; hold `Alt` to **move** them.\n- Flip the default in **Preferences -> General** so dragging moves and `Alt` copies.\n- The drag hint shows whether the drop will copy or move.\n- Drop onto a folder to put files inside it, or onto empty space for the current folder.',
@@ -5500,10 +5508,10 @@ extension on Translations {
 			'errors.smbPortsNotSupportedOnWindows' => 'SMB ports are not supported on Windows',
 			'errors.smbShareNotMounted' => 'SMB share not mounted',
 			'errors.smbClientUnavailable' => ({required Object message}) => 'smbclient unavailable: ${message}',
-			'errors.smbClientFailed' => ({required Object code}) => 'smbclient failed (${code})',
-			'errors.smbutilUnavailable' => ({required Object message}) => 'smbutil unavailable: ${message}',
 			_ => null,
 		} ?? switch (path) {
+			'errors.smbClientFailed' => ({required Object code}) => 'smbclient failed (${code})',
+			'errors.smbutilUnavailable' => ({required Object message}) => 'smbutil unavailable: ${message}',
 			'errors.smbutilFailed' => ({required Object code}) => 'smbutil failed (${code})',
 			'errors.netUnavailable' => ({required Object message}) => 'net unavailable: ${message}',
 			'errors.netViewFailed' => ({required Object code}) => 'net view failed (${code})',

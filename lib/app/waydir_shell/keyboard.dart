@@ -67,6 +67,14 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
+    if (!Platform.isMacOS &&
+        !_isModalRouteOnTop() &&
+        AppShortcuts.matches('focus_menu_bar', key)) {
+      MenuBarFocus.requestFocus();
+
+      return KeyEventResult.handled;
+    }
+
     final terminalChord = _isModalRouteOnTop()
         ? null
         : AppShortcuts.terminalChord(event.physicalKey);
