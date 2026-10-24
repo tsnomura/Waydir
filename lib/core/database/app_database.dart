@@ -279,15 +279,21 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await m.createTable(bookmarks);
       }
-      Future<void> addSettingColumn(GeneratedColumn column) async {
+      Future<void> addColumnIfMissing(
+        TableInfo table,
+        GeneratedColumn column,
+      ) async {
         final existing = await customSelect(
-          'PRAGMA table_info(app_settings)',
+          'PRAGMA table_info(${table.actualTableName})',
         ).get();
         final names = existing.map((r) => r.read<String>('name')).toSet();
         if (!names.contains(column.name)) {
-          await m.addColumn(appSettings, column);
+          await m.addColumn(table, column);
         }
       }
+
+      Future<void> addSettingColumn(GeneratedColumn column) =>
+          addColumnIfMissing(appSettings, column);
 
       if (from < 3) {
         await addSettingColumn(appSettings.sidebarCollapsed);
@@ -469,7 +475,7 @@ class AppDatabase extends _$AppDatabase {
         await _migrateLegacyFolderPrefs();
       }
       if (from < 47) {
-        await m.addColumn(sessionTabs, sessionTabs.tagOrigin);
+        await addColumnIfMissing(sessionTabs, sessionTabs.tagOrigin);
       }
     },
   );
