@@ -28,6 +28,7 @@ import '../../i18n/strings.g.dart';
 import '../tabs/tabs_store.dart';
 import 'pane_dir_publisher.dart';
 import 'pane_store.dart';
+import 'remote_open_request_watcher.dart';
 import 'terminal_cwd_signal.dart';
 import 'terminal_layout.dart';
 import 'terminal_tab.dart';
@@ -93,6 +94,7 @@ class ShellStore {
       _paneDirRoot = paneDirRoot;
       Directory(paneDirRoot).createSync(recursive: true);
       TerminalCwdSignal.start(_openFromTerminalSignal);
+      RemoteOpenRequestWatcher.start(openInNewTab);
       _setupPaneDirEffect();
       final envVars = {
         'WAYDIR_CWD_DIR': cwdSignalDir,
@@ -640,6 +642,7 @@ class ShellStore {
 
   void dispose() {
     TerminalCwdSignal.stop();
+    RemoteOpenRequestWatcher.stop();
     _paneDirDisposer?.call();
     _paneDirDisposer = null;
     compare.dispose();

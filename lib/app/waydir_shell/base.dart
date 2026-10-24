@@ -233,4 +233,26 @@ mixin _WaydirStateBase on State<WaydirShell> {
     if (!_shell.ready.value) return;
     _setShowHiddenGlobal(!SettingsStore.instance.showHiddenDefault.value);
   }
+
+  Future<void> _openLinkedDirectory() async {
+    final path = _active.currentPath.value;
+    final result = await RemoteSyncActions.pullLinkedDirectory(path);
+    if (!mounted) return;
+    if (result == null) {
+      showToast(context: context, message: t.toast.remoteSyncUnavailable);
+
+      return;
+    }
+    _shell.openInNewTab(result);
+  }
+
+  Future<void> _sendDirectoryToLinked() async {
+    final path = _active.currentPath.value;
+    final ok = await RemoteSyncActions.pushDirectoryToLinked(path);
+    if (!mounted) return;
+    showToast(
+      context: context,
+      message: ok ? t.toast.remoteDirectorySent : t.toast.remoteSyncUnavailable,
+    );
+  }
 }

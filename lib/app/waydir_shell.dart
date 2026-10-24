@@ -51,6 +51,7 @@ import '../features/operations/operation_store.dart';
 import '../features/panes/pane_store.dart';
 import '../features/panes/pane_view.dart';
 import '../features/panes/pane_divider.dart';
+import '../features/panes/remote_sync_actions.dart';
 import '../features/panes/shell_store.dart';
 import '../features/panes/terminal_tab.dart';
 import '../features/plugins/plugin_bar.dart';
