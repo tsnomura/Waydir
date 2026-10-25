@@ -85,6 +85,7 @@ import '../ui/overlays/notification_store.dart';
 import '../ui/overlays/toast.dart';
 import '../ui/theme/app_theme.dart';
 import '../ui/theme/app_text_styles.dart';
+import '../ui/window/cursor_position.dart';
 import '../ui/window/window.dart';
 
 part 'waydir_shell/base.dart';
@@ -115,7 +116,6 @@ class _WaydirShellState extends State<WaydirShell>
     _operationStore.confirmTransfer = _confirmTransfer;
     ArchivePasswords.prompt = _promptArchivePassword;
     NavigationStore.openInterceptor = _interceptOpen;
-    MenuBarFocus.restoreAppFocus = _restoreFocus;
     _effectDisposers.add(
       effect(() {
         if (!_shell.ready.value) return;
@@ -241,9 +241,6 @@ class _WaydirShellState extends State<WaydirShell>
   void dispose() {
     if (CommandPaletteLauncher.instance.open == _openCommandPalette) {
       CommandPaletteLauncher.instance.open = null;
-    }
-    if (MenuBarFocus.restoreAppFocus == _restoreFocus) {
-      MenuBarFocus.restoreAppFocus = null;
     }
     for (final d in _effectDisposers) {
       d();
@@ -392,111 +389,116 @@ class _WaydirShellState extends State<WaydirShell>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Focus(
-        focusNode: _focusNode,
-        autofocus: true,
-        onKeyEvent: _handleKeyEvent,
-        child: Stack(
-          children: [
-            SignalBuilder(
-              builder: (_) {
-                if (_shell.ready.value) {
-                  _active.selectedCount.value;
-                  _active.visibleFiles.value.length;
-                }
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerHover: (event) =>
+          CursorPosition.lastKnownPosition = event.position,
+      child: Scaffold(
+        body: Focus(
+          focusNode: _focusNode,
+          autofocus: true,
+          onKeyEvent: _handleKeyEvent,
+          child: Stack(
+            children: [
+              SignalBuilder(
+                builder: (_) {
+                  if (_shell.ready.value) {
+                    _active.selectedCount.value;
+                    _active.visibleFiles.value.length;
+                  }
 
-                return TitleBar(
-                  menuTrailing: _buildViewMenu(),
-                  platformMenus: _platformViewMenus(),
-                  pluginContributions: PluginStore.instance
-                      .menubarContributions(),
-                  onPluginAction: _runPluginAction,
-                  child: SignalBuilder(
-                    builder: (context) {
-                      if (!_shell.ready.value) {
-                        return Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.fgMuted,
+                  return TitleBar(
+                    menuTrailing: _buildViewMenu(),
+                    platformMenus: _platformViewMenus(),
+                    pluginContributions: PluginStore.instance
+                        .menubarContributions(),
+                    onPluginAction: _runPluginAction,
+                    child: SignalBuilder(
+                      builder: (context) {
+                        if (!_shell.ready.value) {
+                          return Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.fgMuted,
+                              ),
                             ),
-                          ),
-                        );
-                      }
+                          );
+                        }
 
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                _SidebarHost(
-                                  active: _active,
-                                  operationStore: _operationStore,
-                                  onOpenInNewTab: _openInNewTab,
-                                  onOpenOtherPaneNewTab: (path) =>
-                                      _openInOtherPaneNewTab(
-                                        _shell.activePaneIndex.value,
-                                        path,
-                                      ),
-                                ),
-                                Expanded(child: _buildPaneArea()),
-                              ],
-                            ),
-                          ),
-                          SignalBuilder(
-                            builder: (context) {
-                              final bars = PluginStore.instance
-                                  .globalBarContributions();
-
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: Row(
                                 children: [
-                                  if (bars.isNotEmpty)
-                                    Builder(
-                                      builder: (context) {
-                                        final ctx = _pluginBarContext(
-                                          _active,
-                                          scope: 'global',
-                                        );
-
-                                        return PluginBarHost(
-                                          hostId: 'global',
-                                          bars: bars,
-                                          contextData: ctx,
-                                          contextKey: jsonEncode(ctx),
-                                          onEffects: (effects, target) =>
-                                              _applyPluginEffects(
-                                                effects,
-                                                target,
-                                                background: true,
-                                              ),
-                                        );
-                                      },
-                                    ),
-                                  CompareModeBar(controller: _shell.compare),
+                                  _SidebarHost(
+                                    active: _active,
+                                    operationStore: _operationStore,
+                                    onOpenInNewTab: _openInNewTab,
+                                    onOpenOtherPaneNewTab: (path) =>
+                                        _openInOtherPaneNewTab(
+                                          _shell.activePaneIndex.value,
+                                          path,
+                                        ),
+                                  ),
+                                  Expanded(child: _buildPaneArea()),
                                 ],
-                              );
-                            },
-                          ),
-                          SignalBuilder(
-                            builder: (context) => StatusBar(
-                              store: _active,
-                              operationStore: _operationStore,
-                              notificationStore: _notificationStore,
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            NotificationOverlay(store: _notificationStore),
-          ],
+                            SignalBuilder(
+                              builder: (context) {
+                                final bars = PluginStore.instance
+                                    .globalBarContributions();
+
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (bars.isNotEmpty)
+                                      Builder(
+                                        builder: (context) {
+                                          final ctx = _pluginBarContext(
+                                            _active,
+                                            scope: 'global',
+                                          );
+
+                                          return PluginBarHost(
+                                            hostId: 'global',
+                                            bars: bars,
+                                            contextData: ctx,
+                                            contextKey: jsonEncode(ctx),
+                                            onEffects: (effects, target) =>
+                                                _applyPluginEffects(
+                                                  effects,
+                                                  target,
+                                                  background: true,
+                                                ),
+                                          );
+                                        },
+                                      ),
+                                    CompareModeBar(controller: _shell.compare),
+                                  ],
+                                );
+                              },
+                            ),
+                            SignalBuilder(
+                              builder: (context) => StatusBar(
+                                store: _active,
+                                operationStore: _operationStore,
+                                notificationStore: _notificationStore,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+              NotificationOverlay(store: _notificationStore),
+            ],
+          ),
         ),
       ),
     );

@@ -4,7 +4,6 @@ import '../window/move_window.dart';
 import '../window/window_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:signals/signals_flutter.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../app/app_info.dart';
@@ -24,18 +23,6 @@ import '../../i18n/strings.g.dart';
 import '../overlays/context_menu.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_text_styles.dart';
-
-/// Lets the shell ask the menu bar to grab keyboard focus (F10) and hand
-/// focus back to the file list (Escape from a focused menu button) without
-/// either side holding a reference to the other's state.
-class MenuBarFocus {
-  MenuBarFocus._();
-
-  static final focusRequest = signal(0);
-  static void Function()? restoreAppFocus;
-
-  static void requestFocus() => focusRequest.value++;
-}
 
 void _openPreferences() {
   final ctx = waydirNavigatorKey.currentContext;
@@ -288,7 +275,132 @@ class _TitleBarRow extends StatelessWidget {
   }
 }
 
-class _MenuBar extends StatefulWidget {
+/// Items and select-handler for the "Waydir" app-menu category, shared by
+/// the mouse-driven title-bar button and the F10 popup.
+(List<ContextMenuItem>, void Function(String action)) buildAppMenuItems() {
+  return (
+    [
+      ContextMenuItem(
+        icon: WaydirIconsRegular.gearSix,
+        label: t.preferences.menuLabel,
+        action: 'preferences',
+      ),
+      ContextMenuItem(
+        icon: WaydirIconsRegular.info,
+        label: t.preferences.categories.about,
+        action: 'about',
+      ),
+      ContextMenuItem(
+        icon: WaydirIconsRegular.notebook,
+        label: t.appMenu.changelog,
+        action: 'changelog',
+      ),
+      ContextMenuItem.divider,
+      ContextMenuItem(
+        icon: WaydirIconsRegular.signOut,
+        label: t.appMenu.quit,
+        action: 'quit',
+      ),
+    ],
+    (action) {
+      switch (action) {
+        case 'preferences':
+          _openPreferences();
+        case 'about':
+          _openAbout();
+        case 'changelog':
+          _openChangelog();
+        case 'quit':
+          SystemNavigator.pop();
+      }
+    },
+  );
+}
+
+/// Items and select-handler for the "Plugins" menu category, shared by the
+/// mouse-driven title-bar button and the F10 popup.
+(List<ContextMenuItem>, void Function(String action)) buildPluginsMenuItems(
+  List<PluginContribution> pluginContributions,
+  ValueChanged<String>? onPluginAction,
+) {
+  return (
+    [
+      ContextMenuItem(
+        icon: WaydirIconsRegular.gearSix,
+        label: t.appMenu.managePlugins,
+        action: 'manage_plugins',
+      ),
+      if (pluginContributions.isNotEmpty) ContextMenuItem.divider,
+      for (final c in pluginContributions)
+        ContextMenuItem(
+          icon: pluginGlyph(c.icon),
+          label: c.title,
+          action: c.fullActionId,
+          iconPath: c.iconPath,
+          shortcut: c.shortcut,
+        ),
+    ],
+    (action) {
+      if (action == 'manage_plugins') {
+        _openPlugins();
+      } else if (action.startsWith('plugin:')) {
+        onPluginAction?.call(action);
+      }
+    },
+  );
+}
+
+/// Items and select-handler for the "Help" menu category, shared by the
+/// mouse-driven title-bar button and the F10 popup.
+(List<ContextMenuItem>, void Function(String action)) buildHelpMenuItems() {
+  return (
+    [
+      ContextMenuItem(
+        icon: WaydirIconsRegular.info,
+        label: t.help.menuLabel,
+        action: 'tutorial',
+        shortcut: '?',
+      ),
+      ContextMenuItem(
+        icon: WaydirIconsRegular.keyboard,
+        label: t.keybindings.menuLabel,
+        action: 'keybindings',
+      ),
+      ContextMenuItem(
+        icon: WaydirIconsRegular.bug,
+        label: t.preferences.diagnostics.title,
+        action: 'diagnostics',
+      ),
+      ContextMenuItem.divider,
+      ContextMenuItem(
+        icon: WaydirIconsRegular.gitBranch,
+        label: t.appMenu.repository,
+        action: 'repository',
+      ),
+      ContextMenuItem(
+        icon: WaydirIconsRegular.arrowSquareOut,
+        label: t.appMenu.createIssue,
+        action: 'issue',
+      ),
+    ],
+    (action) {
+      switch (action) {
+        case 'tutorial':
+          _openInAppTutorial();
+        case 'keybindings':
+          _openKeybindingsHelp();
+        case 'diagnostics':
+          _openDiagnostics();
+        case 'repository':
+          _openRepository();
+        case 'issue':
+          _openIssue();
+      }
+    },
+  );
+}
+
+class _MenuBar extends StatelessWidget {
   final Widget? trailing;
   final List<PluginContribution> pluginContributions;
   final ValueChanged<String>? onPluginAction;
@@ -300,158 +412,34 @@ class _MenuBar extends StatefulWidget {
   });
 
   @override
-  State<_MenuBar> createState() => _MenuBarState();
-}
-
-class _MenuBarState extends State<_MenuBar> {
-  final _appFocusNode = FocusNode(debugLabel: 'menu-bar-app');
-  void Function()? _disposeFocusRequestEffect;
-  bool _skipNextFocusRequest = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _disposeFocusRequestEffect = effect(() {
-      MenuBarFocus.focusRequest.value;
-      if (_skipNextFocusRequest) {
-        _skipNextFocusRequest = false;
-
-        return;
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _appFocusNode.requestFocus();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _disposeFocusRequestEffect?.call();
-    _appFocusNode.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return FocusTraversalGroup(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TitleMenuButton(
-            focusNode: _appFocusNode,
-            label: t.app.title,
-            items: [
-              ContextMenuItem(
-                icon: WaydirIconsRegular.gearSix,
-                label: t.preferences.menuLabel,
-                action: 'preferences',
-              ),
-              ContextMenuItem(
-                icon: WaydirIconsRegular.info,
-                label: t.preferences.categories.about,
-                action: 'about',
-              ),
-              ContextMenuItem(
-                icon: WaydirIconsRegular.notebook,
-                label: t.appMenu.changelog,
-                action: 'changelog',
-              ),
-              ContextMenuItem.divider,
-              ContextMenuItem(
-                icon: WaydirIconsRegular.signOut,
-                label: t.appMenu.quit,
-                action: 'quit',
-              ),
-            ],
-            onSelect: (action) {
-              switch (action) {
-                case 'preferences':
-                  _openPreferences();
-                case 'about':
-                  _openAbout();
-                case 'changelog':
-                  _openChangelog();
-                case 'quit':
-                  SystemNavigator.pop();
-              }
-            },
-          ),
-          ?widget.trailing,
-          TitleMenuButton(
-            label: t.preferences.plugins.title,
-            items: [
-              ContextMenuItem(
-                icon: WaydirIconsRegular.gearSix,
-                label: t.appMenu.managePlugins,
-                action: 'manage_plugins',
-              ),
-              if (widget.pluginContributions.isNotEmpty)
-                ContextMenuItem.divider,
-              for (final c in widget.pluginContributions)
-                ContextMenuItem(
-                  icon: pluginGlyph(c.icon),
-                  label: c.title,
-                  action: c.fullActionId,
-                  iconPath: c.iconPath,
-                  shortcut: c.shortcut,
-                ),
-            ],
-            onSelect: (action) {
-              if (action == 'manage_plugins') {
-                _openPlugins();
-              } else if (action.startsWith('plugin:')) {
-                widget.onPluginAction?.call(action);
-              }
-            },
-          ),
-          TitleMenuButton(
-            label: t.appMenu.help,
-            items: [
-              ContextMenuItem(
-                icon: WaydirIconsRegular.info,
-                label: t.help.menuLabel,
-                action: 'tutorial',
-                shortcut: '?',
-              ),
-              ContextMenuItem(
-                icon: WaydirIconsRegular.keyboard,
-                label: t.keybindings.menuLabel,
-                action: 'keybindings',
-              ),
-              ContextMenuItem(
-                icon: WaydirIconsRegular.bug,
-                label: t.preferences.diagnostics.title,
-                action: 'diagnostics',
-              ),
-              ContextMenuItem.divider,
-              ContextMenuItem(
-                icon: WaydirIconsRegular.gitBranch,
-                label: t.appMenu.repository,
-                action: 'repository',
-              ),
-              ContextMenuItem(
-                icon: WaydirIconsRegular.arrowSquareOut,
-                label: t.appMenu.createIssue,
-                action: 'issue',
-              ),
-            ],
-            onSelect: (action) {
-              switch (action) {
-                case 'tutorial':
-                  _openInAppTutorial();
-                case 'keybindings':
-                  _openKeybindingsHelp();
-                case 'diagnostics':
-                  _openDiagnostics();
-                case 'repository':
-                  _openRepository();
-                case 'issue':
-                  _openIssue();
-              }
-            },
-          ),
-        ],
-      ),
+    final (appItems, appOnSelect) = buildAppMenuItems();
+    final (pluginItems, pluginsOnSelect) = buildPluginsMenuItems(
+      pluginContributions,
+      onPluginAction,
+    );
+    final (helpItems, helpOnSelect) = buildHelpMenuItems();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TitleMenuButton(
+          label: t.app.title,
+          items: appItems,
+          onSelect: appOnSelect,
+        ),
+        ?trailing,
+        TitleMenuButton(
+          label: t.preferences.plugins.title,
+          items: pluginItems,
+          onSelect: pluginsOnSelect,
+        ),
+        TitleMenuButton(
+          label: t.appMenu.help,
+          items: helpItems,
+          onSelect: helpOnSelect,
+        ),
+      ],
     );
   }
 }
@@ -460,14 +448,12 @@ class TitleMenuButton extends StatefulWidget {
   final String label;
   final List<ContextMenuItem> items;
   final void Function(String action) onSelect;
-  final FocusNode? focusNode;
 
   const TitleMenuButton({
     super.key,
     required this.label,
     required this.items,
     required this.onSelect,
-    this.focusNode,
   });
 
   @override
@@ -478,27 +464,8 @@ class _TitleMenuButtonState extends State<TitleMenuButton> {
   final _key = GlobalKey();
   bool _hovered = false;
   bool _isOpen = false;
-  late final FocusNode _focusNode =
-      widget.focusNode ?? FocusNode(debugLabel: 'title-menu-${widget.label}');
 
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(_onFocusChange);
-  }
-
-  void _onFocusChange() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_onFocusChange);
-    if (widget.focusNode == null) _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _open({bool keyboard = false}) {
+  void _open() {
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset(0, box.size.height));
@@ -508,63 +475,11 @@ class _TitleMenuButtonState extends State<TitleMenuButton> {
       position: pos,
       items: widget.items,
       onSelect: widget.onSelect,
-      keyboard: keyboard,
-      onRootHorizontalNav: _handleRootHorizontalNav,
+      keyboard: true,
       onClosed: () {
         if (mounted) setState(() => _isOpen = false);
       },
     );
-  }
-
-  void _handleRootHorizontalNav(bool forward) {
-    if (forward) {
-      _focusNode.nextFocus();
-    } else {
-      _focusNode.previousFocus();
-    }
-    _clampToMenuBar();
-  }
-
-  /// [FocusNode.nextFocus]/[previousFocus] don't stop at the edge of our
-  /// [FocusTraversalGroup]: at the last/first button they walk on to
-  /// whatever is next in the whole app's traversal order (e.g. the
-  /// sidebar). Undo that so the edge is a no-op instead.
-  void _clampToMenuBar() {
-    final target = FocusManager.instance.primaryFocus;
-    if (target?.context?.findAncestorStateOfType<_TitleMenuButtonState>() ==
-        null) {
-      _focusNode.requestFocus();
-    }
-  }
-
-  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowRight:
-        node.nextFocus();
-        _clampToMenuBar();
-
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowLeft:
-        node.previousFocus();
-        _clampToMenuBar();
-
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowDown:
-      case LogicalKeyboardKey.arrowUp:
-      case LogicalKeyboardKey.enter:
-      case LogicalKeyboardKey.numpadEnter:
-      case LogicalKeyboardKey.space:
-        _open(keyboard: true);
-
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.escape:
-        MenuBarFocus.restoreAppFocus?.call();
-
-        return KeyEventResult.handled;
-      default:
-        return KeyEventResult.ignored;
-    }
   }
 
   @override
@@ -573,33 +488,27 @@ class _TitleMenuButtonState extends State<TitleMenuButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Focus(
-        focusNode: _focusNode,
-        onKeyEvent: _onKeyEvent,
-        child: GestureDetector(
-          key: _key,
-          onTap: () => _open(),
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            height: 24,
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: _hovered ? AppColors.bgHover : Colors.transparent,
-              borderRadius: BorderRadius.zero,
-              border: _focusNode.hasFocus || _isOpen
-                  ? Border.all(color: AppColors.accent, width: 1.5)
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: context.txt.captionSmall.copyWith(
-                color: _hovered || _focusNode.hasFocus || _isOpen
-                    ? AppColors.fg
-                    : AppColors.fgMuted,
-                fontWeight: FontWeight.w500,
-              ),
+      child: GestureDetector(
+        key: _key,
+        onTap: _open,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 24,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.bgHover : Colors.transparent,
+            borderRadius: BorderRadius.zero,
+            border: _isOpen
+                ? Border.all(color: AppColors.accent, width: 1.5)
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: context.txt.captionSmall.copyWith(
+              color: _hovered || _isOpen ? AppColors.fg : AppColors.fgMuted,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),

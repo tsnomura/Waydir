@@ -70,7 +70,7 @@ mixin _WaydirKeyboardMixin
     if (!Platform.isMacOS &&
         !_isModalRouteOnTop() &&
         AppShortcuts.matches('focus_menu_bar', key)) {
-      MenuBarFocus.requestFocus();
+      _showMenuBarPopup();
 
       return KeyEventResult.handled;
     }
