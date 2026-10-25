@@ -1530,207 +1530,310 @@ mixin _WaydirMenuMixin
     });
   }
 
+  /// Items and select-handler for the "View" menu category. Reads signals'
+  /// `.value` directly without subscribing, so it can be called either from
+  /// inside a reactive builder (the mouse-driven button) or as a one-off
+  /// snapshot (the F10 popup).
+  (List<ContextMenuItem>, void Function(String action)) _viewMenuContent() {
+    final store = _active;
+    final onSftp = PlatformPaths.isSftpUri(store.currentPath.value);
+
+    return (
+      [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.columns,
+          label: t.menu.dualPaneMode,
+          action: 'toggle_dual',
+          isToggle: true,
+          toggleSignal: _shell.isDual,
+        ),
+        ContextMenuItem.divider,
+        ContextMenuItem(
+          icon: WaydirIconsRegular.list,
+          label: t.toolbar.listView,
+          action: 'view_list',
+          toggleSignal: computed(
+            () => SettingsStore.instance.fileViewMode.value == 'list',
+          ),
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.treeStructure,
+          label: t.toolbar.treeView,
+          action: 'view_tree',
+          toggleSignal: computed(
+            () => SettingsStore.instance.fileViewMode.value == 'tree',
+          ),
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.squaresFour,
+          label: t.toolbar.gridView,
+          action: 'view_grid',
+          toggleSignal: computed(
+            () => SettingsStore.instance.fileViewMode.value == 'grid',
+          ),
+        ),
+        ContextMenuItem.divider,
+        ContextMenuItem(
+          icon: WaydirIconsRegular.eye,
+          label: t.menu.showHidden,
+          action: 'toggle_hidden',
+          isToggle: true,
+          toggleSignal: SettingsStore.instance.showHiddenDefault,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.image,
+          label: t.menu.remoteThumbnails,
+          action: 'toggle_remote_thumbnails',
+          isToggle: true,
+          enabled: onSftp,
+          toggleSignal: store.remoteThumbnails,
+        ),
+        ContextMenuItem.divider,
+        ContextMenuItem(
+          icon: WaydirIconsRegular.arrowUp,
+          label: t.menu.sendDirectoryToLinked,
+          action: 'send_directory_to_linked',
+          enabled: onSftp,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.downloadSimple,
+          label: t.menu.openLinkedDirectory,
+          action: 'open_linked_directory',
+          enabled: onSftp || SftpSessionManager.activeRoots().isNotEmpty,
+        ),
+      ],
+      (action) {
+        switch (action) {
+          case 'toggle_dual':
+            _shell.toggleDual();
+          case 'view_list':
+            SettingsStore.instance.fileViewMode.value = 'list';
+          case 'view_tree':
+            SettingsStore.instance.fileViewMode.value = 'tree';
+          case 'view_grid':
+            SettingsStore.instance.fileViewMode.value = 'grid';
+          case 'toggle_hidden':
+            _toggleShowHiddenGlobal();
+          case 'toggle_remote_thumbnails':
+            _active.toggleRemoteThumbnails();
+          case 'send_directory_to_linked':
+            _sendDirectoryToLinked();
+          case 'open_linked_directory':
+            _openLinkedDirectory();
+        }
+      },
+    );
+  }
+
+  /// Items and select-handler for the "Selection" menu category. See
+  /// [_viewMenuContent] for why this reads signals outside a reactive
+  /// context.
+  (List<ContextMenuItem>, void Function(String action))
+  _selectionMenuContent() {
+    final store = _active;
+    final selectedCount = store.selectedCount.value;
+    final hasVisibleFiles = store.visibleFiles.value.isNotEmpty;
+
+    return (
+      [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.selectionAll,
+          label: t.menu.selectAll,
+          action: 'select_all',
+          shortcut: AppShortcuts.getById('select_all').displayKeys,
+          enabled: hasVisibleFiles,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.selectionAll,
+          label: t.menu.selectByPattern,
+          action: 'select_pattern',
+          shortcut: AppShortcuts.getById('select_pattern').displayKeys,
+          enabled: hasVisibleFiles,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.selectionAll,
+          label: t.menu.deselectAll,
+          action: 'deselect_all',
+          shortcut: AppShortcuts.getById('deselect_all').displayKeys,
+          enabled: selectedCount > 0,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.arrowsLeftRight,
+          label: t.menu.invertSelection,
+          action: 'invert_selection',
+          shortcut: AppShortcuts.getById('invert_selection').displayKeys,
+          enabled: hasVisibleFiles,
+        ),
+        ContextMenuItem.divider,
+        ContextMenuItem(
+          icon: WaydirIconsRegular.floppyDisk,
+          label: t.menu.saveSelection,
+          action: 'save_selection',
+          shortcut: AppShortcuts.getById('save_selection').displayKeys,
+          enabled: selectedCount > 0,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.fileTxt,
+          label: t.menu.loadSelection,
+          action: 'load_selection',
+          shortcut: AppShortcuts.getById('load_selection').displayKeys,
+          enabled: hasVisibleFiles,
+        ),
+      ],
+      _handleSelectionMenuAction,
+    );
+  }
+
+  /// Items and select-handler for the "Terminal" menu category. See
+  /// [_viewMenuContent] for why this reads signals outside a reactive
+  /// context.
+  (List<ContextMenuItem>, void Function(String action)) _terminalMenuContent() {
+    return (
+      [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.terminal,
+          label: t.menu.toggleTerminal,
+          action: 'terminal_toggle',
+          shortcut: AppShortcuts.getById('toggle_terminal').displayKeys,
+          isToggle: true,
+          toggleSignal: computed(
+            () =>
+                _shell.ready.value &&
+                _shell.terminalVisible.value[_terminalSlotForActivePane()],
+          ),
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.plus,
+          label: t.menu.newTerminalTab,
+          action: 'terminal_new_tab',
+          shortcut: AppShortcuts.getById('new_terminal_tab').displayKeys,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.x,
+          label: t.menu.closeTerminalTab,
+          action: 'terminal_close_tab',
+          shortcut: AppShortcuts.getById('close_terminal_tab').displayKeys,
+        ),
+      ],
+      (action) {
+        if (!_shell.ready.value) return;
+        final slot = _terminalSlotForActivePane();
+        switch (action) {
+          case 'terminal_toggle':
+            _toggleTerminalSlot(slot);
+          case 'terminal_new_tab':
+            _newTerminalTab(slot);
+          case 'terminal_close_tab':
+            final tab = _shell.activeTerminalForSlot(slot);
+            if (tab != null) _closeTerminalTab(tab.id);
+        }
+      },
+    );
+  }
+
   Widget _buildViewMenu() {
     return SignalBuilder(
       builder: (_) {
         if (!_shell.ready.value) return const SizedBox.shrink();
-        final store = _active;
-        final selectedCount = store.selectedCount.value;
-        final hasVisibleFiles = store.visibleFiles.value.isNotEmpty;
-        final onSftp = PlatformPaths.isSftpUri(store.currentPath.value);
+        final (viewItems, viewOnSelect) = _viewMenuContent();
+        final (selectionItems, selectionOnSelect) = _selectionMenuContent();
+        final (terminalItems, terminalOnSelect) = _terminalMenuContent();
 
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             TitleMenuButton(
               label: t.menu.view,
-              items: [
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.columns,
-                  label: t.menu.dualPaneMode,
-                  action: 'toggle_dual',
-                  isToggle: true,
-                  toggleSignal: _shell.isDual,
-                ),
-                ContextMenuItem.divider,
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.list,
-                  label: t.toolbar.listView,
-                  action: 'view_list',
-                  toggleSignal: computed(
-                    () => SettingsStore.instance.fileViewMode.value == 'list',
-                  ),
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.treeStructure,
-                  label: t.toolbar.treeView,
-                  action: 'view_tree',
-                  toggleSignal: computed(
-                    () => SettingsStore.instance.fileViewMode.value == 'tree',
-                  ),
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.squaresFour,
-                  label: t.toolbar.gridView,
-                  action: 'view_grid',
-                  toggleSignal: computed(
-                    () => SettingsStore.instance.fileViewMode.value == 'grid',
-                  ),
-                ),
-                ContextMenuItem.divider,
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.eye,
-                  label: t.menu.showHidden,
-                  action: 'toggle_hidden',
-                  isToggle: true,
-                  toggleSignal: SettingsStore.instance.showHiddenDefault,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.image,
-                  label: t.menu.remoteThumbnails,
-                  action: 'toggle_remote_thumbnails',
-                  isToggle: true,
-                  enabled: onSftp,
-                  toggleSignal: store.remoteThumbnails,
-                ),
-                ContextMenuItem.divider,
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.arrowUp,
-                  label: t.menu.sendDirectoryToLinked,
-                  action: 'send_directory_to_linked',
-                  enabled: onSftp,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.downloadSimple,
-                  label: t.menu.openLinkedDirectory,
-                  action: 'open_linked_directory',
-                  enabled:
-                      onSftp || SftpSessionManager.activeRoots().isNotEmpty,
-                ),
-              ],
-              onSelect: (action) {
-                switch (action) {
-                  case 'toggle_dual':
-                    _shell.toggleDual();
-                  case 'view_list':
-                    SettingsStore.instance.fileViewMode.value = 'list';
-                  case 'view_tree':
-                    SettingsStore.instance.fileViewMode.value = 'tree';
-                  case 'view_grid':
-                    SettingsStore.instance.fileViewMode.value = 'grid';
-                  case 'toggle_hidden':
-                    _toggleShowHiddenGlobal();
-                  case 'toggle_remote_thumbnails':
-                    _active.toggleRemoteThumbnails();
-                  case 'send_directory_to_linked':
-                    _sendDirectoryToLinked();
-                  case 'open_linked_directory':
-                    _openLinkedDirectory();
-                }
-              },
+              items: viewItems,
+              onSelect: viewOnSelect,
             ),
             TitleMenuButton(
               label: t.keybindings.categories.selection,
-              items: [
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.selectionAll,
-                  label: t.menu.selectAll,
-                  action: 'select_all',
-                  shortcut: AppShortcuts.getById('select_all').displayKeys,
-                  enabled: hasVisibleFiles,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.selectionAll,
-                  label: t.menu.selectByPattern,
-                  action: 'select_pattern',
-                  shortcut: AppShortcuts.getById('select_pattern').displayKeys,
-                  enabled: hasVisibleFiles,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.selectionAll,
-                  label: t.menu.deselectAll,
-                  action: 'deselect_all',
-                  shortcut: AppShortcuts.getById('deselect_all').displayKeys,
-                  enabled: selectedCount > 0,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.arrowsLeftRight,
-                  label: t.menu.invertSelection,
-                  action: 'invert_selection',
-                  shortcut: AppShortcuts.getById(
-                    'invert_selection',
-                  ).displayKeys,
-                  enabled: hasVisibleFiles,
-                ),
-                ContextMenuItem.divider,
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.floppyDisk,
-                  label: t.menu.saveSelection,
-                  action: 'save_selection',
-                  shortcut: AppShortcuts.getById('save_selection').displayKeys,
-                  enabled: selectedCount > 0,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.fileTxt,
-                  label: t.menu.loadSelection,
-                  action: 'load_selection',
-                  shortcut: AppShortcuts.getById('load_selection').displayKeys,
-                  enabled: hasVisibleFiles,
-                ),
-              ],
-              onSelect: _handleSelectionMenuAction,
+              items: selectionItems,
+              onSelect: selectionOnSelect,
             ),
             TitleMenuButton(
               label: t.keybindings.categories.terminal,
-              items: [
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.terminal,
-                  label: t.menu.toggleTerminal,
-                  action: 'terminal_toggle',
-                  shortcut: AppShortcuts.getById('toggle_terminal').displayKeys,
-                  isToggle: true,
-                  toggleSignal: computed(
-                    () =>
-                        _shell.ready.value &&
-                        _shell
-                            .terminalVisible
-                            .value[_terminalSlotForActivePane()],
-                  ),
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.plus,
-                  label: t.menu.newTerminalTab,
-                  action: 'terminal_new_tab',
-                  shortcut: AppShortcuts.getById(
-                    'new_terminal_tab',
-                  ).displayKeys,
-                ),
-                ContextMenuItem(
-                  icon: WaydirIconsRegular.x,
-                  label: t.menu.closeTerminalTab,
-                  action: 'terminal_close_tab',
-                  shortcut: AppShortcuts.getById(
-                    'close_terminal_tab',
-                  ).displayKeys,
-                ),
-              ],
-              onSelect: (action) {
-                if (!_shell.ready.value) return;
-                final slot = _terminalSlotForActivePane();
-                switch (action) {
-                  case 'terminal_toggle':
-                    _toggleTerminalSlot(slot);
-                  case 'terminal_new_tab':
-                    _newTerminalTab(slot);
-                  case 'terminal_close_tab':
-                    final tab = _shell.activeTerminalForSlot(slot);
-                    if (tab != null) _closeTerminalTab(tab.id);
-                }
-              },
+              items: terminalItems,
+              onSelect: terminalOnSelect,
             ),
           ],
         );
       },
+    );
+  }
+
+  /// Opens the F10 menu-bar popup at the current mouse cursor position, with
+  /// one top-level item per menu-bar category (each carrying that
+  /// category's real items as [ContextMenuItem.children]). Reuses the
+  /// already-correct cascading-submenu mechanism in [showContextMenu] rather
+  /// than driving keyboard focus across the mouse-only title-bar buttons.
+  void _showMenuBarPopup() {
+    if (!_shell.ready.value) return;
+
+    final (appItems, appOnSelect) = buildAppMenuItems();
+    final (viewItems, viewOnSelect) = _viewMenuContent();
+    final (selectionItems, selectionOnSelect) = _selectionMenuContent();
+    final (terminalItems, terminalOnSelect) = _terminalMenuContent();
+    final (pluginItems, pluginsOnSelect) = buildPluginsMenuItems(
+      PluginStore.instance.menubarContributions(),
+      _runPluginAction,
+    );
+    final (helpItems, helpOnSelect) = buildHelpMenuItems();
+
+    showContextMenu(
+      context: context,
+      position: CursorPosition.lastKnownPosition ?? Offset.zero,
+      items: [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.appWindow,
+          label: t.app.title,
+          action: 'menu_category_waydir',
+          children: appItems,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.eye,
+          label: t.menu.view,
+          action: 'menu_category_view',
+          children: viewItems,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.selectionAll,
+          label: t.keybindings.categories.selection,
+          action: 'menu_category_selection',
+          children: selectionItems,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.terminal,
+          label: t.keybindings.categories.terminal,
+          action: 'menu_category_terminal',
+          children: terminalItems,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.gearSix,
+          label: t.preferences.plugins.title,
+          action: 'menu_category_plugins',
+          children: pluginItems,
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.info,
+          label: t.appMenu.help,
+          action: 'menu_category_help',
+          children: helpItems,
+        ),
+      ],
+      onSelect: (action) {
+        // Top-level category items all have children, so showContextMenu
+        // never fires onSelect for them — only for a leaf picked from
+        // inside one of the per-category children lists below.
+        appOnSelect(action);
+        viewOnSelect(action);
+        selectionOnSelect(action);
+        terminalOnSelect(action);
+        pluginsOnSelect(action);
+        helpOnSelect(action);
+      },
+      keyboard: true,
     );
   }
 
