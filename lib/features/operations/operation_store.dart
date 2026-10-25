@@ -18,6 +18,7 @@ import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/overlays/notification_store.dart';
 import '../../ui/theme/app_theme.dart';
+import '../quick_look/player/playback_registry.dart';
 import '../tags/tag_store.dart';
 import 'sftp_task_executor.dart';
 
@@ -712,10 +713,82 @@ class OperationStore {
   }
 
   void _enqueue(FileTask task) {
+    _stopQuickLookPlaybackFor(task);
     _queue.add(task);
     _addTask(task);
     _showStartNotification(task);
     _processQueue();
+  }
+
+  void _stopQuickLookPlaybackFor(FileTask task) {
+    final paths = _playbackPathsAffectedBy(task);
+    if (paths.isEmpty) return;
+    PlaybackRegistry.instance.stopForPaths(paths);
+  }
+
+  /// Paths a task is about to move, delete or replace — the files Quick Look
+  /// must release before the task runs, so the operation never hits a held
+  /// open file.
+  Set<String> _playbackPathsAffectedBy(FileTask task) {
+    switch (task.type) {
+      case TaskType.copy:
+      case TaskType.move:
+        final destination = task.destination;
+        if (destination == null) return const {};
+        final sep = PlatformPaths.isSftpUri(destination)
+            ? '/'
+            : PlatformPaths.separator;
+        final includeSources = task.type == TaskType.move;
+        return {
+          for (final source in task.sources) ...[
+            if (includeSources) source,
+            '$destination$sep${PlatformPaths.fileName(source)}',
+          ],
+        };
+      case TaskType.trash:
+      case TaskType.delete:
+        return Set.of(task.sources);
+      case TaskType.trashDelete:
+        return _trashPathsAffectedBy(task, includeOriginals: false);
+      case TaskType.trashRestore:
+        return _trashPathsAffectedBy(task, includeOriginals: true);
+      default:
+        return const {};
+    }
+  }
+
+  Set<String> _trashPathsAffectedBy(
+    FileTask task, {
+    required bool includeOriginals,
+  }) {
+    final encoded = task.options['entries'];
+    if (encoded is! String) return const {};
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(encoded);
+    } catch (e, st) {
+      log.warn(
+        'operation',
+        'failed to decode trash entries for playback stop',
+        error: e,
+        stack: st,
+      );
+
+      return const {};
+    }
+    if (decoded is! List) return const {};
+    final paths = <String>{};
+    for (final item in decoded) {
+      if (item is! Map<String, dynamic>) continue;
+      final dataPath = item['realDataPath'];
+      if (dataPath is String) paths.add(dataPath);
+      if (includeOriginals) {
+        final originalPath = item['originalPath'];
+        if (originalPath is String) paths.add(originalPath);
+      }
+    }
+
+    return paths;
   }
 
   void _addTask(FileTask task) {

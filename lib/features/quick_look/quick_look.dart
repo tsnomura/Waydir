@@ -19,6 +19,7 @@ import 'code_editor.dart';
 import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
 import 'info_panel.dart';
+import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_pop_out.dart';
@@ -149,6 +150,7 @@ class _QuickLookState extends State<_QuickLook>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
+    PlaybackRegistry.instance.register(_playback);
     final cursor = widget.store.cursorEntry.value;
     final entry = cursor?.ghostOf ?? cursor;
     _compact = defaultCompactFor(entry);
@@ -161,6 +163,7 @@ class _QuickLookState extends State<_QuickLook>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PlaybackRegistry.instance.unregister(_playback);
     _reload.dispose();
     _playback.dispose();
     _focus.dispose();

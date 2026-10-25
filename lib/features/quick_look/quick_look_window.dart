@@ -12,6 +12,7 @@ import '../../ui/theme/app_theme.dart';
 import '../../ui/window/window.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
+import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_reload.dart';
@@ -49,6 +50,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
+    PlaybackRegistry.instance.register(_playback);
     _reload.watch(widget.entry);
     _lifecycle = AppLifecycleListener(onExitRequested: _onExitRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,6 +61,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PlaybackRegistry.instance.unregister(_playback);
     _reload.dispose();
     _lifecycle.dispose();
     _playback.dispose();

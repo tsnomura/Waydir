@@ -10,6 +10,7 @@ import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
+import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_reload.dart';
@@ -53,6 +54,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _generatorPage.onManualChange = _playback.onManualPageChange;
+    PlaybackRegistry.instance.register(_playback);
     final entry = _resolveEntry();
     _compact = defaultCompactFor(entry);
     _presentationKey = entry?.realPath;
@@ -62,6 +64,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PlaybackRegistry.instance.unregister(_playback);
     widget.onRegisterCloseGuard(null);
     _reload.dispose();
     _playback.dispose();
