@@ -10,6 +10,7 @@ import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../i18n/strings.g.dart';
 import 'quick_look_common.dart';
+import 'text_encoding.dart';
 
 typedef QlSection = ({String title, List<MapEntry<String, String>> rows});
 
@@ -27,8 +28,9 @@ class Probe {
   final QlKind kind;
   final String text;
   final String? note;
+  final TextFormat format;
 
-  const Probe(this.kind, {this.text = '', this.note});
+  const Probe(this.kind, {this.text = '', this.note, this.format = utf8Format});
 }
 
 Future<Uint8List> readHead(String path, int maxBytes) async {
@@ -105,16 +107,14 @@ Future<Probe> probeFile(FileEntry entry) async {
     if (bytes.length > maxTextBytes) {
       return Probe(QlKind.tooLarge, note: t.quickLook.tooLarge);
     }
-    final scanLen = bytes.length > 8000 ? 8000 : bytes.length;
-    var suspicious = 0;
-    for (var i = 0; i < scanLen; i++) {
-      final b = bytes[i];
-      if (b == 0) return const Probe(QlKind.binary);
-      if (b < 9 || (b > 13 && b < 32) || b == 127) suspicious++;
+    final utf16 = detectUtf16(bytes);
+    if (utf16 != null) {
+      final text = decodeText(bytes, utf16);
+      if (_looksBinary(text.codeUnits)) return const Probe(QlKind.binary);
+
+      return Probe(QlKind.text, text: text, format: utf16);
     }
-    if (scanLen > 0 && suspicious / scanLen > 0.1) {
-      return const Probe(QlKind.binary);
-    }
+    if (_looksBinary(bytes)) return const Probe(QlKind.binary);
 
     return Probe(QlKind.text, text: utf8.decode(bytes, allowMalformed: true));
   } catch (e, st) {
@@ -122,4 +122,16 @@ Future<Probe> probeFile(FileEntry entry) async {
 
     return Probe(QlKind.error, note: t.quickLook.readError);
   }
+}
+
+bool _looksBinary(List<int> units) {
+  final scanLen = units.length > 8000 ? 8000 : units.length;
+  var suspicious = 0;
+  for (var i = 0; i < scanLen; i++) {
+    final u = units[i];
+    if (u == 0) return true;
+    if (u < 9 || (u > 13 && u < 32) || u == 127) suspicious++;
+  }
+
+  return scanLen > 0 && suspicious / scanLen > 0.1;
 }
