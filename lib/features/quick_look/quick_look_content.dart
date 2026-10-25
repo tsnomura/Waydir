@@ -563,6 +563,7 @@ class QuickLookProbeLoader extends StatelessWidget {
                 path: entry.realPath,
                 extension: entry.extension,
                 initial: res.text,
+                format: res.format,
                 editorActive: editorActive,
                 controller: editorController,
                 verticalScrollController: scrollController,

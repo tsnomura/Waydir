@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -18,6 +17,7 @@ import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import 'editor_languages.dart';
 import 'quick_look_common.dart';
+import 'text_encoding.dart';
 
 enum _VimMode { normal, insert, visual }
 
@@ -45,6 +45,7 @@ class CodeEditor extends StatefulWidget {
   final CodeEditorController? controller;
   final ScrollController? verticalScrollController;
   final bool readOnly;
+  final TextFormat format;
 
   const CodeEditor({
     super.key,
@@ -55,6 +56,7 @@ class CodeEditor extends StatefulWidget {
     this.controller,
     this.verticalScrollController,
     this.readOnly = false,
+    this.format = utf8Format,
   });
 
   @override
@@ -115,13 +117,11 @@ class _CodeEditorState extends State<CodeEditor> {
     final revision = _ctrl.value.codeLines;
     setState(() => _saving = true);
     Future<void> write() async {
+      final bytes = encodeText(text, widget.format);
       if (PlatformPaths.isSftpUri(widget.path)) {
-        await const SftpFs().writeBytes(
-          widget.path,
-          Uint8List.fromList(utf8.encode(text)),
-        );
+        await const SftpFs().writeBytes(widget.path, bytes);
       } else {
-        await File(widget.path).writeAsString(text, flush: true);
+        await File(widget.path).writeAsBytes(bytes, flush: true);
       }
     }
 
