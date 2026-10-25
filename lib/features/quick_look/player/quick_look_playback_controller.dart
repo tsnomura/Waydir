@@ -100,6 +100,22 @@ class QuickLookPlaybackController {
     _stopEverything();
   }
 
+  /// Real path of the file currently shown in Quick Look, null when nothing
+  /// is shown or a compare-diff is covering the preview.
+  String? get shownPath => _pendingEntry?.realPath;
+
+  /// Stops playback and releases the file — used when a file operation is
+  /// about to move or delete it. Like [stopForLifecycle], never auto-resumes
+  /// for the same file; [sync] only restarts it when the shown file changes.
+  void stopShown() {
+    final entry = _pendingEntry;
+    if (entry == null) return;
+    _entryTimer?.cancel();
+    _pageTimer?.cancel();
+    _generation++;
+    _stopEverything();
+  }
+
   void dispose() {
     _generation++;
     _entryTimer?.cancel();
