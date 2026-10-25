@@ -371,6 +371,11 @@ class _PreferencesDialogState extends State<_PreferencesDialog> {
 
       return KeyEventResult.handled;
     }
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+
+      return KeyEventResult.handled;
+    }
 
     return KeyEventResult.ignored;
   }
