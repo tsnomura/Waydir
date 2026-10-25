@@ -153,6 +153,18 @@
     "identical": "Identical",
     "syncRight": "Sync →",
     "syncLeft": "← Sync",
+    "syncTitle": "Sync folders",
+    "syncAction": "Sync",
+    "syncAdded": "New",
+    "syncUpdated": "Newer here — overwrite",
+    "syncDiffering": "Different, same time — overwrite",
+    "syncSkipped": "Newer at destination — skipped",
+    "syncFiles(one)": "1 file",
+    "syncFiles(other)": "$n files",
+    "syncFolders(one)": "1 folder",
+    "syncFolders(other)": "$n folders",
+    "syncTotal": "Total: $files · $size",
+    "syncNothing": "Nothing to sync — the destination is already up to date.",
     "recursive": "Recursive",
     "done": "Done",
     "cancel": "Cancel",
@@ -595,7 +607,7 @@
         },
         "compare": {
           "title": "Folder Compare & Sync",
-          "body": "Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits."
+          "body": "Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. A summary lists what will be added, overwritten and skipped before anything is copied, so no conflict prompts follow.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits."
         }
       },
       "selecting": {

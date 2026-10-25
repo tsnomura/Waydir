@@ -128,8 +128,18 @@ class OperationStore {
     TagStore.instance.notifyFileTagsChanged();
   }
 
-  void enqueueCopy(List<String> sources, String destination) =>
-      _enqueueTransfer(TaskType.copy, sources, destination);
+  void enqueueCopy(
+    List<String> sources,
+    String destination, {
+    Set<String> overwrite = const {},
+    bool confirm = true,
+  }) => _enqueueTransfer(
+    TaskType.copy,
+    sources,
+    destination,
+    overwrite: overwrite,
+    confirm: confirm,
+  );
 
   void enqueueMove(List<String> sources, String destination) =>
       _enqueueTransfer(TaskType.move, sources, destination);
@@ -180,8 +190,10 @@ class OperationStore {
   Future<void> _enqueueTransfer(
     TaskType type,
     List<String> sources,
-    String destination,
-  ) async {
+    String destination, {
+    Set<String> overwrite = const {},
+    bool confirm = true,
+  }) async {
     assert(
       !destination.startsWith('smb://'),
       'Unresolved smb:// URI reached operation store as destination — '
@@ -210,14 +222,17 @@ class OperationStore {
     }
     if (filtered.isEmpty) return;
 
-    final confirm = confirmTransfer;
-    if (confirm != null && !await confirm(type, filtered, destination)) return;
+    final confirmer = confirm ? confirmTransfer : null;
+    if (confirmer != null && !await confirmer(type, filtered, destination)) {
+      return;
+    }
 
     final task = FileTask(
       id: '${_idCounter++}',
       type: type,
       sources: filtered,
       destination: destination,
+      preapprovedOverwrites: overwrite,
       startTime: DateTime.now(),
     );
     _enqueue(task);
@@ -825,7 +840,11 @@ class OperationStore {
         if (msg is PreScanResultMessage) {
           task.totalFiles = msg.totalFiles;
           task.totalBytes = msg.totalBytes;
-          task.conflicts = msg.conflicts;
+          final preapproved = task.preapprovedOverwrites;
+          task.conflicts = [
+            for (final c in msg.conflicts)
+              if (!preapproved.contains(c.sourcePath)) c,
+          ];
 
           if (task.status == TaskStatus.cancelling) {
             _updateTask(task);
@@ -834,15 +853,33 @@ class OperationStore {
             return;
           }
 
-          task.status = msg.conflicts.isEmpty
+          task.status = task.conflicts.isEmpty
               ? TaskStatus.running
               : TaskStatus.waitingConflicts;
           _updateTask(task);
 
-          handle.sendPort.send(ExecuteCommand(resolutions: {}));
+          handle.sendPort.send(
+            ExecuteCommand(
+              resolutions: {
+                for (final c in msg.conflicts)
+                  if (preapproved.contains(c.sourcePath))
+                    c.sourcePath: ConflictResolution.overwrite,
+              },
+            ),
+          );
         } else if (msg is ConflictPromptMessage) {
           if (task.status == TaskStatus.cancelling) {
             handle.sendPort.send(CancelCommand());
+
+            return;
+          }
+          if (task.preapprovedOverwrites.contains(msg.conflict.sourcePath)) {
+            handle.sendPort.send(
+              ConflictDecisionCommand(
+                sourcePath: msg.conflict.sourcePath,
+                resolution: ConflictResolution.overwrite,
+              ),
+            );
 
             return;
           }

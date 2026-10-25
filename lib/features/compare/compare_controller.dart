@@ -13,6 +13,7 @@ import '../navigation/navigation_store.dart';
 import '../operations/operation_store.dart';
 import '../panes/pane_store.dart';
 import 'compare_diff.dart';
+import 'compare_sync_plan.dart';
 
 class CompareController {
   final Signal<List<PaneStore>> panes;
@@ -26,6 +27,7 @@ class CompareController {
   final leftResults = signal<Map<String, CompareEntryResult>>({});
   final rightResults = signal<Map<String, CompareEntryResult>>({});
   final counts = signal(const CompareCounts());
+  Future<bool> Function(CompareSyncPlan plan)? confirmSync;
 
   int _runId = 0;
   void Function()? _taskDisposer;
@@ -515,46 +517,23 @@ class CompareController {
       final result = sourceResults[ghost.path];
       if (result != null) selectedRel.add(result.relativePath);
     }
-    final candidates = sourceResults.values.where((result) {
-      if (!_shouldSync(result)) return false;
-      if (selectedRel.isEmpty) return true;
-
-      return selectedRel.any(
-        (rel) =>
-            result.relativePath == rel ||
-            result.relativePath.startsWith('$rel/'),
+    final plan = buildCompareSyncPlan(
+      sourceRoot: sourceStore.currentPath.value,
+      destinationRoot: destinationRoot,
+      sourceResults: sourceResults.values,
+      scope: selectedRel,
+    );
+    final confirm = confirmSync;
+    if (confirm != null && !await confirm(plan)) return;
+    for (final group in plan.groups.entries) {
+      await FileSystemService.createDirectory(group.key);
+      operationStore.enqueueCopy(
+        group.value,
+        group.key,
+        overwrite: plan.overwrites,
+        confirm: false,
       );
-    }).toList()..sort((a, b) => a.relativePath.compareTo(b.relativePath));
-    final filtered = <CompareEntryResult>[];
-    for (final candidate in candidates) {
-      final nested = filtered.any(
-        (existing) =>
-            existing.type == FileItemType.folder &&
-            candidate.relativePath.startsWith('${existing.relativePath}/'),
-      );
-      if (!nested) filtered.add(candidate);
     }
-    final grouped = <String, List<String>>{};
-    for (final entry in filtered) {
-      final destination = destinationDirectoryFor(
-        destinationRoot,
-        entry.relativePath,
-      );
-      await FileSystemService.createDirectory(destination);
-      (grouped[destination] ??= <String>[]).add(entry.path);
-    }
-    for (final group in grouped.entries) {
-      operationStore.enqueueCopy(group.value, group.key);
-    }
-  }
-
-  bool _shouldSync(CompareEntryResult result) {
-    return switch (result.status) {
-      CompareStatus.unique => true,
-      CompareStatus.newer => result.type == FileItemType.file,
-      CompareStatus.differ => result.type == FileItemType.file,
-      CompareStatus.older || CompareStatus.identical => false,
-    };
   }
 
   RowDecoration? _decorationFor(CompareStatus status) {
@@ -577,12 +556,5 @@ class CompareController {
       ),
       CompareStatus.identical => null,
     };
-  }
-
-  String destinationDirectoryFor(String destinationRoot, String relativePath) {
-    final dir = p.posix.dirname(relativePath);
-    if (dir == '.') return destinationRoot;
-
-    return p.joinAll([destinationRoot, ...dir.split('/')]);
   }
 }

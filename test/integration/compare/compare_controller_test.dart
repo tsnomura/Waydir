@@ -9,7 +9,9 @@ import 'package:signals/signals.dart';
 import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/core/fs/file_system_service.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
+import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
+import 'package:waydir/features/compare/compare_sync_plan.dart';
 import 'package:waydir/features/navigation/navigation_store.dart';
 import 'package:waydir/features/operations/operation_store.dart';
 import 'package:waydir/features/panes/pane_store.dart';
@@ -258,6 +260,56 @@ void main() {
         ),
         isEmpty,
       );
+    });
+
+    test('sync confirms a summary then overwrites without prompting', () async {
+      await controller.start();
+      CompareSyncPlan? shown;
+      controller.confirmSync = (plan) async {
+        shown = plan;
+
+        return true;
+      };
+
+      await controller.syncRightToLeft();
+      final deadline = DateTime.now().add(const Duration(seconds: 20));
+      while (DateTime.now().isBefore(deadline) &&
+          (ops.tasks.value.isEmpty ||
+              ops.tasks.value.any(
+                (t) =>
+                    t.status != TaskStatus.completed &&
+                    t.status != TaskStatus.failed,
+              ))) {
+        expect(
+          ops.tasks.value.any((t) => t.status == TaskStatus.waitingConflicts),
+          isFalse,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+
+      expect(shown?.updated.map((r) => r.relativePath), [
+        'nested/deep.txt',
+        'top.txt',
+      ]);
+      expect(shown?.skipped, isEmpty);
+      final leftRoot = paneLeft.tabs.activeTab.value.store.currentPath.value;
+      expect(File(p.join(leftRoot, 'top.txt')).readAsStringSync(), 'HELLO');
+      expect(
+        File(p.join(leftRoot, 'nested', 'deep.txt')).readAsStringSync(),
+        'WORLD',
+      );
+    });
+
+    test('declining the sync summary copies nothing', () async {
+      await controller.start();
+      controller.confirmSync = (_) async => false;
+
+      await controller.syncRightToLeft();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(ops.tasks.value, isEmpty);
+      final leftRoot = paneLeft.tabs.activeTab.value.store.currentPath.value;
+      expect(File(p.join(leftRoot, 'top.txt')).readAsStringSync(), 'hello');
     });
 
     test('diffPairFor pairs files by relative path left then right', () async {
