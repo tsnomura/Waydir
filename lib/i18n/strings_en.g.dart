@@ -545,6 +545,36 @@ class Translations$compare$en {
 	/// en: '← Sync'
 	String get syncLeft => '← Sync';
 
+	/// en: 'Sync folders'
+	String get syncTitle => 'Sync folders';
+
+	/// en: 'Sync'
+	String get syncAction => 'Sync';
+
+	/// en: 'New'
+	String get syncAdded => 'New';
+
+	/// en: 'Newer here — overwrite'
+	String get syncUpdated => 'Newer here — overwrite';
+
+	/// en: 'Different, same time — overwrite'
+	String get syncDiffering => 'Different, same time — overwrite';
+
+	/// en: 'Newer at destination — skipped'
+	String get syncSkipped => 'Newer at destination — skipped';
+
+	/// en: '$n files'
+	String syncFiles({required Object n}) => '${n} files';
+
+	/// en: '$n folders'
+	String syncFolders({required Object n}) => '${n} folders';
+
+	/// en: 'Total: $files · $size'
+	String syncTotal({required Object files, required Object size}) => 'Total: ${files} · ${size}';
+
+	/// en: 'Nothing to sync — the destination is already up to date.'
+	String get syncNothing => 'Nothing to sync — the destination is already up to date.';
+
 	/// en: 'Recursive'
 	String get recursive => 'Recursive';
 
@@ -4140,8 +4170,8 @@ class Translations$help$groups$tabsPanes$compare$en {
 	/// en: 'Folder Compare & Sync'
 	String get title => 'Folder Compare & Sync';
 
-	/// en: 'Compare the two panes in dual mode to see what differs, then sync one side to the other. - `F8` turns compare on while dual pane is active. - Colour shows the state: only here or different; identical rows stay plain. - The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here. - Files with the same size but different timestamps are compared by content when both sides are local drives. - In Quick Look, a file is diffed against the file at the same relative path in the other pane. - Toggle **Recursive** to compare nested folders or just the top level. - `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. - Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.'
-	String get body => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.';
+	/// en: 'Compare the two panes in dual mode to see what differs, then sync one side to the other. - `F8` turns compare on while dual pane is active. - Colour shows the state: only here or different; identical rows stay plain. - The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here. - Files with the same size but different timestamps are compared by content when both sides are local drives. - In Quick Look, a file is diffed against the file at the same relative path in the other pane. - Toggle **Recursive** to compare nested folders or just the top level. - `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. A summary lists what will be added, overwritten and skipped before anything is copied, so no conflict prompts follow. - Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.'
+	String get body => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. A summary lists what will be added, overwritten and skipped before anything is copied, so no conflict prompts follow.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.';
 }
 
 // Path: help.groups.selecting.basics
@@ -4613,6 +4643,16 @@ extension on Translations {
 			'compare.identical' => 'Identical',
 			'compare.syncRight' => 'Sync →',
 			'compare.syncLeft' => '← Sync',
+			'compare.syncTitle' => 'Sync folders',
+			'compare.syncAction' => 'Sync',
+			'compare.syncAdded' => 'New',
+			'compare.syncUpdated' => 'Newer here — overwrite',
+			'compare.syncDiffering' => 'Different, same time — overwrite',
+			'compare.syncSkipped' => 'Newer at destination — skipped',
+			'compare.syncFiles' => ({required Object n}) => '${n} files',
+			'compare.syncFolders' => ({required Object n}) => '${n} folders',
+			'compare.syncTotal' => ({required Object files, required Object size}) => 'Total: ${files} · ${size}',
+			'compare.syncNothing' => 'Nothing to sync — the destination is already up to date.',
 			'compare.recursive' => 'Recursive',
 			'compare.done' => 'Done',
 			'compare.cancel' => 'Cancel',
@@ -4984,18 +5024,18 @@ extension on Translations {
 			'help.groups.navigating.typeAhead.body' => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Turn this off in **Preferences -> General** to use dired-style single-letter commands (m/u/t/U/C/R/D) instead.',
 			'help.groups.tabsPanes.title' => 'Tabs & Panes',
 			'help.groups.tabsPanes.tabs.title' => 'Tabs',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.tabsPanes.tabs.body' => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.\n- `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection.',
 			'help.groups.tabsPanes.dualPane.title' => 'Dual Pane',
 			'help.groups.tabsPanes.dualPane.body' => 'Show a source and a destination side by side. The active pane owns keyboard focus, and the copy / move shortcuts target the opposite pane.\n\n- `F9` (or `Ctrl+D`) toggles dual pane mode.\n- `Tab` switches the active pane.\n- `F5` copies the selected files to the other pane.\n- `F6` moves the selected files to the other pane.\n- Drag the divider to change how the space is split.',
 			'help.groups.tabsPanes.compare.title' => 'Folder Compare & Sync',
-			'help.groups.tabsPanes.compare.body' => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.',
+			'help.groups.tabsPanes.compare.body' => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. A summary lists what will be added, overwritten and skipped before anything is copied, so no conflict prompts follow.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.',
 			'help.groups.selecting.title' => 'Selecting',
 			'help.groups.selecting.basics.title' => 'Selection Basics',
 			'help.groups.selecting.basics.body' => 'Build up exactly the set of files you want before acting on them.\n\n- `Ctrl+A` selects everything in the folder.\n- `Insert` toggles the current item and moves down.\n- `Esc` clears the selection.\n- Click, `Shift+Click` for a range and `Ctrl+Click` to add or remove single items.\n- `Ctrl+Shift+S` saves the current selection to a file; `Ctrl+Shift+L` loads it back.',
 			'help.groups.selecting.pattern.title' => 'Select by Pattern',
 			'help.groups.selecting.pattern.body' => 'Select files matching a wildcard pattern instead of picking them by hand.\n\n- `Ctrl+S` opens select-by-pattern.\n- Use wildcards like `*.png` or `report-*.pdf`.\n- The matching set is added to the current selection.',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.files.title' => 'Working with Files',
 			'help.groups.files.operations.title' => 'Copy, Move & Delete',
 			'help.groups.files.operations.body' => 'Standard clipboard and file actions work everywhere, including across panes and tabs.\n\n- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy, cut and paste.\n- `F2` renames the current item; `F7` creates a new folder.\n- `Delete` moves the selection to the Trash; use the context menu to delete permanently.\n- Long copies, moves and deletes run in the background, and a conflict prompt appears when names collide.',
@@ -5498,6 +5538,8 @@ extension on Translations {
 			'errors.noSpace' => 'No space left on device',
 			'errors.readOnly' => 'Read-only file system',
 			'errors.notFound' => 'File not found',
+			_ => null,
+		} ?? switch (path) {
 			'errors.sourceNotFound' => 'Source not found',
 			'errors.pathNotFound' => 'Path not found',
 			'errors.missingSmbHost' => 'Missing host in smb:// URI',
@@ -5508,8 +5550,6 @@ extension on Translations {
 			'errors.smbPortsNotSupportedOnWindows' => 'SMB ports are not supported on Windows',
 			'errors.smbShareNotMounted' => 'SMB share not mounted',
 			'errors.smbClientUnavailable' => ({required Object message}) => 'smbclient unavailable: ${message}',
-			_ => null,
-		} ?? switch (path) {
 			'errors.smbClientFailed' => ({required Object code}) => 'smbclient failed (${code})',
 			'errors.smbutilUnavailable' => ({required Object message}) => 'smbutil unavailable: ${message}',
 			'errors.smbutilFailed' => ({required Object code}) => 'smbutil failed (${code})',

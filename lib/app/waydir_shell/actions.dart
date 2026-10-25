@@ -147,6 +147,14 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     return password;
   }
 
+  Future<bool> _confirmSync(CompareSyncPlan plan) async {
+    if (!mounted) return false;
+    final confirmed = await showCompareSyncDialog(context, plan);
+    if (mounted) _restoreFocus();
+
+    return confirmed;
+  }
+
   Future<bool> _confirmTransfer(
     TaskType type,
     List<String> sources,

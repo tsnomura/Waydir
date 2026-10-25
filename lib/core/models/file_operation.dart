@@ -62,6 +62,7 @@ class FileTask {
   final List<String> sources;
   final String? destination;
   Map<String, String> options;
+  final Set<String> preapprovedOverwrites;
 
   TaskStatus status;
   double progress;
@@ -88,6 +89,7 @@ class FileTask {
     required this.sources,
     this.destination,
     this.options = const {},
+    this.preapprovedOverwrites = const {},
     this.status = TaskStatus.queued,
     this.progress = 0.0,
     this.totalFiles = 0,
