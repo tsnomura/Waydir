@@ -98,6 +98,11 @@ final preferenceNavSections = <PreferenceNavSection>[
     label: () => t.preferences.general.keyboardSection,
   ),
   PreferenceNavSection(
+    id: 'general.accessibility',
+    category: Category.general,
+    label: () => t.preferences.general.accessibilitySection,
+  ),
+  PreferenceNavSection(
     id: 'appearance.theme',
     category: Category.appearance,
     label: () => t.preferences.appearance.themeSection,
@@ -161,6 +166,7 @@ const _visibleSettingIds = <String>{
   'general.typeAheadBuffer',
   'general.deleteKeyBehavior',
   'general.keyboardScheme',
+  'general.reduceMotion',
   'terminal.shell',
   'terminal.external',
   'terminal.externalCustomCommand',
@@ -217,6 +223,7 @@ String? _sectionIdForSetting(String id) {
     'general.confirmMove' ||
     'general.dragMovesByDefault' => 'general.fileOps',
     'general.keyboardScheme' => 'general.keyboard',
+    'general.reduceMotion' => 'general.accessibility',
     'appearance.theme' => 'appearance.theme',
     'appearance.showHiddenDefault' ||
     'appearance.rowDensity' ||

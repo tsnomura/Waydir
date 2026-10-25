@@ -843,6 +843,18 @@ class $AppSettingsTable extends AppSettings
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _reduceMotionMeta = const VerificationMeta(
+    'reduceMotion',
+  );
+  @override
+  late final GeneratedColumn<String> reduceMotion = GeneratedColumn<String>(
+    'reduce_motion',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('system'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -907,6 +919,7 @@ class $AppSettingsTable extends AppSettings
     windowWidth,
     windowHeight,
     windowMaximized,
+    reduceMotion,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1448,6 +1461,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('reduce_motion')) {
+      context.handle(
+        _reduceMotionMeta,
+        reduceMotion.isAcceptableOrUnknown(
+          data['reduce_motion']!,
+          _reduceMotionMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1705,6 +1727,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}window_maximized'],
       )!,
+      reduceMotion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reduce_motion'],
+      )!,
     );
   }
 
@@ -1777,6 +1803,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final double windowWidth;
   final double windowHeight;
   final bool windowMaximized;
+  final String reduceMotion;
   const AppSetting({
     required this.id,
     required this.themeMode,
@@ -1840,6 +1867,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.windowWidth,
     required this.windowHeight,
     required this.windowMaximized,
+    required this.reduceMotion,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1912,6 +1940,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['window_width'] = Variable<double>(windowWidth);
     map['window_height'] = Variable<double>(windowHeight);
     map['window_maximized'] = Variable<bool>(windowMaximized);
+    map['reduce_motion'] = Variable<String>(reduceMotion);
     return map;
   }
 
@@ -1979,6 +2008,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       windowWidth: Value(windowWidth),
       windowHeight: Value(windowHeight),
       windowMaximized: Value(windowMaximized),
+      reduceMotion: Value(reduceMotion),
     );
   }
 
@@ -2084,6 +2114,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       windowWidth: serializer.fromJson<double>(json['windowWidth']),
       windowHeight: serializer.fromJson<double>(json['windowHeight']),
       windowMaximized: serializer.fromJson<bool>(json['windowMaximized']),
+      reduceMotion: serializer.fromJson<String>(json['reduceMotion']),
     );
   }
   @override
@@ -2162,6 +2193,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'windowWidth': serializer.toJson<double>(windowWidth),
       'windowHeight': serializer.toJson<double>(windowHeight),
       'windowMaximized': serializer.toJson<bool>(windowMaximized),
+      'reduceMotion': serializer.toJson<String>(reduceMotion),
     };
   }
 
@@ -2228,6 +2260,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     double? windowWidth,
     double? windowHeight,
     bool? windowMaximized,
+    String? reduceMotion,
   }) => AppSetting(
     id: id ?? this.id,
     themeMode: themeMode ?? this.themeMode,
@@ -2297,6 +2330,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     windowWidth: windowWidth ?? this.windowWidth,
     windowHeight: windowHeight ?? this.windowHeight,
     windowMaximized: windowMaximized ?? this.windowMaximized,
+    reduceMotion: reduceMotion ?? this.reduceMotion,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -2476,6 +2510,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       windowMaximized: data.windowMaximized.present
           ? data.windowMaximized.value
           : this.windowMaximized,
+      reduceMotion: data.reduceMotion.present
+          ? data.reduceMotion.value
+          : this.reduceMotion,
     );
   }
 
@@ -2545,7 +2582,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('dragMovesByDefault: $dragMovesByDefault, ')
           ..write('windowWidth: $windowWidth, ')
           ..write('windowHeight: $windowHeight, ')
-          ..write('windowMaximized: $windowMaximized')
+          ..write('windowMaximized: $windowMaximized, ')
+          ..write('reduceMotion: $reduceMotion')
           ..write(')'))
         .toString();
   }
@@ -2614,6 +2652,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     windowWidth,
     windowHeight,
     windowMaximized,
+    reduceMotion,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2681,7 +2720,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.dragMovesByDefault == this.dragMovesByDefault &&
           other.windowWidth == this.windowWidth &&
           other.windowHeight == this.windowHeight &&
-          other.windowMaximized == this.windowMaximized);
+          other.windowMaximized == this.windowMaximized &&
+          other.reduceMotion == this.reduceMotion);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -2747,6 +2787,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<double> windowWidth;
   final Value<double> windowHeight;
   final Value<bool> windowMaximized;
+  final Value<String> reduceMotion;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
@@ -2810,6 +2851,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.windowWidth = const Value.absent(),
     this.windowHeight = const Value.absent(),
     this.windowMaximized = const Value.absent(),
+    this.reduceMotion = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2874,6 +2916,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.windowWidth = const Value.absent(),
     this.windowHeight = const Value.absent(),
     this.windowMaximized = const Value.absent(),
+    this.reduceMotion = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -2938,6 +2981,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<double>? windowWidth,
     Expression<double>? windowHeight,
     Expression<bool>? windowMaximized,
+    Expression<String>? reduceMotion,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3022,6 +3066,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (windowWidth != null) 'window_width': windowWidth,
       if (windowHeight != null) 'window_height': windowHeight,
       if (windowMaximized != null) 'window_maximized': windowMaximized,
+      if (reduceMotion != null) 'reduce_motion': reduceMotion,
     });
   }
 
@@ -3088,6 +3133,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<double>? windowWidth,
     Value<double>? windowHeight,
     Value<bool>? windowMaximized,
+    Value<String>? reduceMotion,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -3162,6 +3208,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       windowWidth: windowWidth ?? this.windowWidth,
       windowHeight: windowHeight ?? this.windowHeight,
       windowMaximized: windowMaximized ?? this.windowMaximized,
+      reduceMotion: reduceMotion ?? this.reduceMotion,
     );
   }
 
@@ -3380,6 +3427,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (windowMaximized.present) {
       map['window_maximized'] = Variable<bool>(windowMaximized.value);
     }
+    if (reduceMotion.present) {
+      map['reduce_motion'] = Variable<String>(reduceMotion.value);
+    }
     return map;
   }
 
@@ -3449,7 +3499,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('dragMovesByDefault: $dragMovesByDefault, ')
           ..write('windowWidth: $windowWidth, ')
           ..write('windowHeight: $windowHeight, ')
-          ..write('windowMaximized: $windowMaximized')
+          ..write('windowMaximized: $windowMaximized, ')
+          ..write('reduceMotion: $reduceMotion')
           ..write(')'))
         .toString();
   }
@@ -7717,6 +7768,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<double> windowWidth,
       Value<double> windowHeight,
       Value<bool> windowMaximized,
+      Value<String> reduceMotion,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -7782,6 +7834,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<double> windowWidth,
       Value<double> windowHeight,
       Value<bool> windowMaximized,
+      Value<String> reduceMotion,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -8100,6 +8153,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get windowMaximized => $composableBuilder(
     column: $table.windowMaximized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reduceMotion => $composableBuilder(
+    column: $table.reduceMotion,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8422,6 +8480,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.windowMaximized,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get reduceMotion => $composableBuilder(
+    column: $table.reduceMotion,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -8732,6 +8795,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.windowMaximized,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get reduceMotion => $composableBuilder(
+    column: $table.reduceMotion,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -8827,6 +8895,7 @@ class $$AppSettingsTableTableManager
                 Value<double> windowWidth = const Value.absent(),
                 Value<double> windowHeight = const Value.absent(),
                 Value<bool> windowMaximized = const Value.absent(),
+                Value<String> reduceMotion = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 themeMode: themeMode,
@@ -8890,6 +8959,7 @@ class $$AppSettingsTableTableManager
                 windowWidth: windowWidth,
                 windowHeight: windowHeight,
                 windowMaximized: windowMaximized,
+                reduceMotion: reduceMotion,
               ),
           createCompanionCallback:
               ({
@@ -8955,6 +9025,7 @@ class $$AppSettingsTableTableManager
                 Value<double> windowWidth = const Value.absent(),
                 Value<double> windowHeight = const Value.absent(),
                 Value<bool> windowMaximized = const Value.absent(),
+                Value<String> reduceMotion = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 themeMode: themeMode,
@@ -9018,6 +9089,7 @@ class $$AppSettingsTableTableManager
                 windowWidth: windowWidth,
                 windowHeight: windowHeight,
                 windowMaximized: windowMaximized,
+                reduceMotion: reduceMotion,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/motion.dart';
+
 void showPopup({
   required BuildContext context,
   required Offset position,
@@ -57,12 +59,30 @@ class _PopupOverlayState extends State<PopupOverlay>
     curve: Curves.easeOut,
   );
 
+  bool _reduceMotion = false;
+  bool _opened = false;
+
   @override
   void initState() {
     super.initState();
-    _controller.forward();
     if (widget.autoDismiss) {
       HardwareKeyboard.instance.addHandler(_onKey);
+    }
+  }
+
+  // MediaQuery can't be read in initState (its context isn't fully mounted
+  // yet), so the one-time open animation decision is made here instead —
+  // the first lifecycle point where reading an inherited widget is safe.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = context.reduceMotion;
+    if (_opened) return;
+    _opened = true;
+    if (_reduceMotion) {
+      _controller.value = 1;
+    } else {
+      _controller.forward();
     }
   }
 
@@ -88,6 +108,11 @@ class _PopupOverlayState extends State<PopupOverlay>
 
   void _dismiss() {
     if (_controller.isAnimating) return;
+    if (_reduceMotion) {
+      widget.onDismiss();
+
+      return;
+    }
     _controller.reverse().then((_) => widget.onDismiss());
   }
 

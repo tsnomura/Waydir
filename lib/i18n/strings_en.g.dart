@@ -2912,6 +2912,24 @@ class Translations$preferences$general$en {
 	/// en: 'Delete Permanently'
 	String get deleteKeyPermanent => 'Delete Permanently';
 
+	/// en: 'Accessibility'
+	String get accessibilitySection => 'Accessibility';
+
+	/// en: 'Reduce motion'
+	String get reduceMotion => 'Reduce motion';
+
+	/// en: 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.'
+	String get reduceMotionHint => 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.';
+
+	/// en: 'System default'
+	String get reduceMotionSystem => 'System default';
+
+	/// en: 'On'
+	String get reduceMotionOn => 'On';
+
+	/// en: 'Off'
+	String get reduceMotionOff => 'Off';
+
 	/// en: 'Terminal'
 	String get terminalSection => 'Terminal';
 
@@ -4741,6 +4759,12 @@ extension on Translations {
 			'preferences.general.keyboardSchemeUpstream' => 'Upstream (classic)',
 			'preferences.general.deleteKeyTrash' => 'Move to Trash',
 			'preferences.general.deleteKeyPermanent' => 'Delete Permanently',
+			'preferences.general.accessibilitySection' => 'Accessibility',
+			'preferences.general.reduceMotion' => 'Reduce motion',
+			'preferences.general.reduceMotionHint' => 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.',
+			'preferences.general.reduceMotionSystem' => 'System default',
+			'preferences.general.reduceMotionOn' => 'On',
+			'preferences.general.reduceMotionOff' => 'Off',
 			'preferences.general.terminalSection' => 'Terminal',
 			'preferences.general.terminalLabel' => 'Default terminal',
 			'preferences.general.terminalHint' => 'Used by "Open in Terminal".',
@@ -4988,14 +5012,14 @@ extension on Translations {
 			'help.groups.tabsPanes.dualPane.title' => 'Dual Pane',
 			'help.groups.tabsPanes.dualPane.body' => 'Show a source and a destination side by side. The active pane owns keyboard focus, and the copy / move shortcuts target the opposite pane.\n\n- `F9` (or `Ctrl+D`) toggles dual pane mode.\n- `Tab` switches the active pane.\n- `F5` copies the selected files to the other pane.\n- `F6` moves the selected files to the other pane.\n- Drag the divider to change how the space is split.',
 			'help.groups.tabsPanes.compare.title' => 'Folder Compare & Sync',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.tabsPanes.compare.body' => 'Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` turns compare on while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits.',
 			'help.groups.selecting.title' => 'Selecting',
 			'help.groups.selecting.basics.title' => 'Selection Basics',
 			'help.groups.selecting.basics.body' => 'Build up exactly the set of files you want before acting on them.\n\n- `Ctrl+A` selects everything in the folder.\n- `Insert` toggles the current item and moves down.\n- `Esc` clears the selection.\n- Click, `Shift+Click` for a range and `Ctrl+Click` to add or remove single items.\n- `Ctrl+Shift+S` saves the current selection to a file; `Ctrl+Shift+L` loads it back.',
 			'help.groups.selecting.pattern.title' => 'Select by Pattern',
 			'help.groups.selecting.pattern.body' => 'Select files matching a wildcard pattern instead of picking them by hand.\n\n- `Ctrl+S` opens select-by-pattern.\n- Use wildcards like `*.png` or `report-*.pdf`.\n- The matching set is added to the current selection.',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.files.title' => 'Working with Files',
 			'help.groups.files.operations.title' => 'Copy, Move & Delete',
 			'help.groups.files.operations.body' => 'Standard clipboard and file actions work everywhere, including across panes and tabs.\n\n- `Ctrl+C` / `Ctrl+X` / `Ctrl+V` copy, cut and paste.\n- `F2` renames the current item; `F7` creates a new folder.\n- `Delete` moves the selection to the Trash; use the context menu to delete permanently.\n- Long copies, moves and deletes run in the background, and a conflict prompt appears when names collide.',
@@ -5502,14 +5526,14 @@ extension on Translations {
 			'errors.pathNotFound' => 'Path not found',
 			'errors.missingSmbHost' => 'Missing host in smb:// URI',
 			'errors.missingSmbServer' => 'Missing server in smb:// URI',
+			_ => null,
+		} ?? switch (path) {
 			'errors.missingSmbShare' => 'Missing share in smb:// URI',
 			'errors.missingSftpHost' => 'Missing host in sftp:// URI',
 			'errors.invalidSmbUri' => 'Invalid smb:// URI',
 			'errors.smbPortsNotSupportedOnWindows' => 'SMB ports are not supported on Windows',
 			'errors.smbShareNotMounted' => 'SMB share not mounted',
 			'errors.smbClientUnavailable' => ({required Object message}) => 'smbclient unavailable: ${message}',
-			_ => null,
-		} ?? switch (path) {
 			'errors.smbClientFailed' => ({required Object code}) => 'smbclient failed (${code})',
 			'errors.smbutilUnavailable' => ({required Object message}) => 'smbutil unavailable: ${message}',
 			'errors.smbutilFailed' => ({required Object code}) => 'smbutil failed (${code})',
