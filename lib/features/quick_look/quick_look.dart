@@ -13,6 +13,7 @@ import '../../i18n/strings.g.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/theme/motion.dart';
 import '../../ui/widgets/floating_window_geometry.dart';
 import 'code_editor.dart';
 import 'diff/diff_runner.dart';
@@ -37,12 +38,16 @@ Future<void> showQuickLook({
   bool useMarkedSelection = false,
   QuickLookOpenMenu? onOpenMenu,
 }) {
+  final reduceMotion = context.reduceMotion;
+
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: t.quickLook.title,
     barrierColor: Colors.black.withValues(alpha: 0.5),
-    transitionDuration: const Duration(milliseconds: 110),
+    transitionDuration: reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 110),
     pageBuilder: (context, animation, secondaryAnimation) {
       return _QuickLook(
         store: store,
@@ -53,6 +58,7 @@ Future<void> showQuickLook({
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
+      if (reduceMotion) return child;
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
 
       return FadeTransition(
