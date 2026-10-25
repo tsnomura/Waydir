@@ -59,6 +59,7 @@ class _GeneralPaneState extends State<GeneralPane> {
     final deleteKeyBehavior = registry.byId('general.deleteKeyBehavior');
     final dragMovesByDefault = registry.byId('general.dragMovesByDefault');
     final keyboardScheme = registry.byId('general.keyboardScheme');
+    final reduceMotion = registry.byId('general.reduceMotion');
     Widget row(AppSetting<dynamic> setting) {
       return RegistrySettingRow(setting: setting, anchors: widget.anchors);
     }
@@ -98,6 +99,12 @@ class _GeneralPaneState extends State<GeneralPane> {
           anchors: widget.anchors,
           title: t.preferences.general.keyboardSection,
           children: [row(keyboardScheme)],
+        ),
+        SettingsSection(
+          anchorId: 'general.accessibility',
+          anchors: widget.anchors,
+          title: t.preferences.general.accessibilitySection,
+          children: [row(reduceMotion)],
         ),
       ],
     );

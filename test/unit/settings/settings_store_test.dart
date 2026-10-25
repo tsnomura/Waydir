@@ -170,5 +170,9 @@ void main() {
         SettingsStore.defaultTerminalFontSize,
       );
     });
+
+    test('reduceMotion defaults to system', () {
+      expect(store.reduceMotion.value, 'system');
+    });
   });
 }

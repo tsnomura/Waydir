@@ -108,6 +108,7 @@ class AppSettings extends Table {
   RealColumn get windowHeight => real().withDefault(const Constant(700.0))();
   BoolColumn get windowMaximized =>
       boolean().withDefault(const Constant(false))();
+  TextColumn get reduceMotion => text().withDefault(const Constant('system'))();
 }
 
 class SessionTabs extends Table {
@@ -267,7 +268,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 47;
+  int get schemaVersion => 48;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -476,6 +477,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 47) {
         await addColumnIfMissing(sessionTabs, sessionTabs.tagOrigin);
+      }
+      if (from < 48) {
+        await addSettingColumn(appSettings.reduceMotion);
       }
     },
   );

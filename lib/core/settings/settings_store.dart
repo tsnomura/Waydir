@@ -78,6 +78,7 @@ class SettingsStore {
   final windowWidth = signal<double>(1100.0);
   final windowHeight = signal<double>(700.0);
   final windowMaximized = signal<bool>(false);
+  final reduceMotion = signal<String>('system');
 
   late final AppDatabase _db;
   bool _loaded = false;
@@ -167,6 +168,7 @@ class SettingsStore {
     windowWidth.value = row.windowWidth;
     windowHeight.value = row.windowHeight;
     windowMaximized.value = row.windowMaximized;
+    reduceMotion.value = row.reduceMotion;
     final shortcutRows = await _db.getShortcutBindings();
     final bindings = <String, KeyChord>{};
     for (final row in shortcutRows) {
@@ -286,6 +288,7 @@ class SettingsStore {
         windowWidth.value;
         windowHeight.value;
         windowMaximized.value;
+        reduceMotion.value;
         if (!_loaded) return;
         _scheduleSave();
       }),
@@ -364,6 +367,7 @@ class SettingsStore {
           windowWidth: Value(windowWidth.value),
           windowHeight: Value(windowHeight.value),
           windowMaximized: Value(windowMaximized.value),
+          reduceMotion: Value(reduceMotion.value),
         ),
       );
     } catch (e, st) {

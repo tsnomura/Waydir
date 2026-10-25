@@ -2942,6 +2942,24 @@ class Translations$preferences$general$en {
 	/// en: 'Delete Permanently'
 	String get deleteKeyPermanent => 'Delete Permanently';
 
+	/// en: 'Accessibility'
+	String get accessibilitySection => 'Accessibility';
+
+	/// en: 'Reduce motion'
+	String get reduceMotion => 'Reduce motion';
+
+	/// en: 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.'
+	String get reduceMotionHint => 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.';
+
+	/// en: 'System default'
+	String get reduceMotionSystem => 'System default';
+
+	/// en: 'On'
+	String get reduceMotionOn => 'On';
+
+	/// en: 'Off'
+	String get reduceMotionOff => 'Off';
+
 	/// en: 'Terminal'
 	String get terminalSection => 'Terminal';
 
@@ -4781,6 +4799,12 @@ extension on Translations {
 			'preferences.general.keyboardSchemeUpstream' => 'Upstream (classic)',
 			'preferences.general.deleteKeyTrash' => 'Move to Trash',
 			'preferences.general.deleteKeyPermanent' => 'Delete Permanently',
+			'preferences.general.accessibilitySection' => 'Accessibility',
+			'preferences.general.reduceMotion' => 'Reduce motion',
+			'preferences.general.reduceMotionHint' => 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.',
+			'preferences.general.reduceMotionSystem' => 'System default',
+			'preferences.general.reduceMotionOn' => 'On',
+			'preferences.general.reduceMotionOff' => 'Off',
 			'preferences.general.terminalSection' => 'Terminal',
 			'preferences.general.terminalLabel' => 'Default terminal',
 			'preferences.general.terminalHint' => 'Used by "Open in Terminal".',
@@ -5018,14 +5042,14 @@ extension on Translations {
 			'help.groups.navigating.breadcrumb.body' => 'The breadcrumb bar shows where you are and lets you move quickly.\n\n- Click any segment to jump straight to that folder.\n- The path stays in sync as you navigate.\n- Type a path directly to go somewhere specific.',
 			'help.groups.navigating.bookmarks.title' => 'Bookmarks & Sidebar',
 			'help.groups.navigating.bookmarks.body' => 'The sidebar keeps your favourite folders one click away.\n\n- Drag a folder into the sidebar to bookmark it.\n- Reorder, rename or hide sidebar entries to suit your workflow.\n- `Ctrl+B` shows or hides the sidebar entirely.\n- Sections (Favourites, Devices, Network) can be collapsed independently.',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.navigating.drives.title' => 'Drives & Devices',
 			'help.groups.navigating.drives.body' => 'Mounted drives and removable devices appear in the sidebar under Devices.\n\n- Click a device to open it.\n- Eject removable devices from the context menu.\n- Network shares and remote mounts show up alongside local drives.',
 			'help.groups.navigating.typeAhead.title' => 'Type-Ahead Jump',
 			'help.groups.navigating.typeAhead.body' => 'Start typing while the file list is focused to jump to a matching name.\n\n- Matching is incremental - keep typing to refine.\n- The cursor moves to the first match as you type.\n- Turn this off in **Preferences -> General** to use dired-style single-letter commands (m/u/t/U/C/R/D) instead.',
 			'help.groups.tabsPanes.title' => 'Tabs & Panes',
 			'help.groups.tabsPanes.tabs.title' => 'Tabs',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.tabsPanes.tabs.body' => 'Keep several folders open at once and switch between them instantly. Each tab remembers its own folder, selection and history.\n\n- `Ctrl+T` opens a new tab.\n- `Ctrl+W` closes the current tab.\n- `Ctrl+Tab` / `Ctrl+Shift+Tab` cycle to the next or previous tab.\n- `Ctrl+1`…`Ctrl+9` jump straight to a tab by position.\n- The `+` button on the tab strip opens a new tab in the current folder.\n- `Ctrl+Shift+M` (or right-click a tab) moves it to the other pane in dual-pane mode, keeping its history and selection.',
 			'help.groups.tabsPanes.dualPane.title' => 'Dual Pane',
 			'help.groups.tabsPanes.dualPane.body' => 'Show a source and a destination side by side. The active pane owns keyboard focus, and the copy / move shortcuts target the opposite pane.\n\n- `F9` (or `Ctrl+D`) toggles dual pane mode.\n- `Tab` switches the active pane.\n- `F5` copies the selected files to the other pane.\n- `F6` moves the selected files to the other pane.\n- Drag the divider to change how the space is split.',
@@ -5532,14 +5556,14 @@ extension on Translations {
 			'operations.source' => ({required Object size, required Object date}) => 'Source:  ${size} · ${date}',
 			'operations.target' => ({required Object size, required Object date}) => 'Target:  ${size} · ${date}',
 			'operations.newer' => '  ← newer',
+			_ => null,
+		} ?? switch (path) {
 			'operations.applyToAll' => ({required Object count}) => 'Apply to all remaining conflicts (${count})',
 			'errors.permissionDenied' => 'Permission denied',
 			'errors.authenticationRequired' => 'Authentication required',
 			'errors.noSpace' => 'No space left on device',
 			'errors.readOnly' => 'Read-only file system',
 			'errors.notFound' => 'File not found',
-			_ => null,
-		} ?? switch (path) {
 			'errors.sourceNotFound' => 'Source not found',
 			'errors.pathNotFound' => 'Path not found',
 			'errors.missingSmbHost' => 'Missing host in smb:// URI',

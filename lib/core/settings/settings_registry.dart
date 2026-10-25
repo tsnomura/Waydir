@@ -238,6 +238,38 @@ class SettingsRegistry {
       ],
     ),
     ChoiceSetting<String>(
+      id: 'general.reduceMotion',
+      category: SettingsCategory.general,
+      label: () => t.preferences.general.reduceMotion,
+      hint: () => t.preferences.general.reduceMotionHint,
+      searchTerms: const [
+        'motion',
+        'animation',
+        'fade',
+        'accessibility',
+        'xpra',
+        'remote',
+      ],
+      signal: SettingsStore.instance.reduceMotion,
+      choices: [
+        SettingChoice(
+          value: 'system',
+          label: () => t.preferences.general.reduceMotionSystem,
+          icon: WaydirIconsRegular.magicWand,
+        ),
+        SettingChoice(
+          value: 'on',
+          label: () => t.preferences.general.reduceMotionOn,
+          icon: WaydirIconsRegular.eye,
+        ),
+        SettingChoice(
+          value: 'off',
+          label: () => t.preferences.general.reduceMotionOff,
+          icon: WaydirIconsRegular.eye,
+        ),
+      ],
+    ),
+    ChoiceSetting<String>(
       id: 'terminal.shell',
       category: SettingsCategory.terminal,
       label: () => t.preferences.terminal.shellLabel,
