@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'file_operation.dart';
 
 enum NotificationType { autoDismiss, persistent }
 
@@ -29,6 +30,7 @@ class AppNotification {
   final Color? accentColor;
   final bool dismissible;
   final String? applyToAllLabel;
+  final List<TaskError>? errors;
   final DateTime timestamp;
 
   AppNotification({
@@ -42,6 +44,7 @@ class AppNotification {
     this.accentColor,
     this.dismissible = true,
     this.applyToAllLabel,
+    this.errors,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 }

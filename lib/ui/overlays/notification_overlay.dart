@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 import '../../core/models/app_notification.dart';
+import '../../features/operations/conflict_dialog.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_text_styles.dart';
 import 'notification_store.dart';
@@ -68,6 +69,7 @@ class _NotificationCardState extends State<_NotificationCard>
   late final Animation<Offset> _slide;
   bool _dismissed = false;
   bool _applyToAll = false;
+  bool _hovered = false;
 
   @override
   void initState() {
@@ -102,115 +104,139 @@ class _NotificationCardState extends State<_NotificationCard>
     });
   }
 
+  void _setHovered(bool value) {
+    if (_hovered != value) setState(() => _hovered = value);
+  }
+
+  void _showDetails() {
+    final errors = widget.notification.errors;
+    if (errors == null || errors.isEmpty) return;
+    showErrorListDialog(context: context, errors: errors);
+  }
+
   @override
   Widget build(BuildContext context) {
     final n = widget.notification;
     final accent = n.accentColor ?? AppColors.accent;
+    final errors = n.errors;
+    final canShowDetails = errors != null && errors.isNotEmpty;
 
     return SlideTransition(
       position: _slide,
       child: FadeTransition(
         opacity: _opacity,
-        child: Container(
-          width: 280,
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: AppColors.bgSurface,
-            borderRadius: BorderRadius.zero,
-            border: Border.all(color: AppColors.borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.zero,
+        child: MouseRegion(
+          cursor: canShowDetails ? SystemMouseCursors.click : MouseCursor.defer,
+          onEnter: (_) => _setHovered(true),
+          onExit: (_) => _setHovered(false),
+          child: GestureDetector(
+            onTap: canShowDetails ? _showDetails : null,
+            child: Container(
+              width: 280,
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: AppColors.bgSurface,
+                borderRadius: BorderRadius.zero,
+                border: Border.all(
+                  color: canShowDetails && _hovered
+                      ? accent
+                      : AppColors.borderColor,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (n.icon != null)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Icon(n.icon!, size: 16, color: accent),
-                      ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (n.title != null)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Text(
-                                n.title!,
-                                style: context.txt.bodyEmphasis.copyWith(
-                                  color: accent,
-                                ),
-                              ),
-                            ),
-                          Text(
-                            n.message,
-                            style: context.txt.body.copyWith(height: 1.4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.zero,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (n.icon != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Icon(n.icon!, size: 16, color: accent),
                           ),
-                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (n.title != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Text(
+                                    n.title!,
+                                    style: context.txt.bodyEmphasis.copyWith(
+                                      color: accent,
+                                    ),
+                                  ),
+                                ),
+                              Text(
+                                n.message,
+                                style: context.txt.body.copyWith(height: 1.4),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (n.dismissible)
+                          GestureDetector(
+                            onTap: _dismiss,
+                            child: Icon(
+                              WaydirIconsRegular.x,
+                              size: 14,
+                              color: AppColors.fgMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (n.applyToAllLabel != null)
+                    _ApplyToAllCheckbox(
+                      label: n.applyToAllLabel!,
+                      value: _applyToAll,
+                      onChanged: (value) => setState(() => _applyToAll = value),
+                    ),
+                  if (n.actions.isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        n.applyToAllLabel != null ? 6 : 0,
+                        12,
+                        8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: n.actions.map((action) {
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: _ActionButton(
+                              action: action,
+                              onDismiss: _dismiss,
+                              applyToAll: _applyToAll,
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                    if (n.dismissible)
-                      GestureDetector(
-                        onTap: _dismiss,
-                        child: Icon(
-                          WaydirIconsRegular.x,
-                          size: 14,
-                          color: AppColors.fgMuted,
-                        ),
-                      ),
-                  ],
-                ),
+                ],
               ),
-              if (n.applyToAllLabel != null)
-                _ApplyToAllCheckbox(
-                  label: n.applyToAllLabel!,
-                  value: _applyToAll,
-                  onChanged: (value) => setState(() => _applyToAll = value),
-                ),
-              if (n.actions.isNotEmpty)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    12,
-                    n.applyToAllLabel != null ? 6 : 0,
-                    12,
-                    8,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: n.actions.map((action) {
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: _ActionButton(
-                          action: action,
-                          onDismiss: _dismiss,
-                          applyToAll: _applyToAll,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
