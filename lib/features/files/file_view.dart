@@ -1788,13 +1788,8 @@ class _ListRowState extends State<_ListRow> {
     );
   }
 
-  Widget _buildIconWithBadge(BuildContext context, FileEntry e, bool isFolder) {
-    return buildFileIcon(
-      name: e.name,
-      ext: e.extension,
-      isFolder: isFolder,
-      size: widget.iconSize,
-    );
+  Widget _buildIconWithBadge(FileEntry e) {
+    return FileEntryIcon(entry: e, size: widget.iconSize);
   }
 
   Widget _buildStatusCell() {
@@ -1940,7 +1935,6 @@ class _ListRowState extends State<_ListRow> {
     final dragCount = widget.selected ? widget.selectedPaths.length : 1;
 
     final e = widget.entry;
-    final isFolder = e.type == FileItemType.folder;
 
     final visualRow = Container(
       width: 260,
@@ -1960,12 +1954,7 @@ class _ListRowState extends State<_ListRow> {
       ),
       child: Row(
         children: [
-          buildFileIcon(
-            name: e.name,
-            ext: e.extension,
-            isFolder: isFolder,
-            size: 20,
-          ),
+          FileEntryIcon(entry: e, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -2101,7 +2090,7 @@ class _ListRowState extends State<_ListRow> {
               children: [
                 _buildStatusCell(),
                 _buildTreePrefix(isFolder),
-                _buildIconWithBadge(context, e, isFolder),
+                _buildIconWithBadge(e),
                 const SizedBox(width: 6),
                 SizedBox(
                   width: widget.nameWidth,
@@ -2203,7 +2192,7 @@ class _ListRowState extends State<_ListRow> {
               children: [
                 _buildStatusCell(),
                 _buildTreePrefix(isFolder),
-                _buildIconWithBadge(context, e, isFolder),
+                _buildIconWithBadge(e),
                 const SizedBox(width: 6),
                 SizedBox(
                   width: widget.nameWidth,

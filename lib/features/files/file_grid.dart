@@ -746,12 +746,7 @@ class _GridTileState extends State<_GridTile> {
       ),
       child: Row(
         children: [
-          buildFileIcon(
-            name: entry.name,
-            ext: entry.extension,
-            isFolder: entry.type == FileItemType.folder,
-            size: 20,
-          ),
+          FileEntryIcon(entry: entry, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1018,10 +1013,8 @@ class _GridPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFolder = entry.type == FileItemType.folder;
-    final fallbackIcon = buildFileIcon(
-      name: entry.name,
-      ext: entry.extension,
-      isFolder: isFolder,
+    final fallbackIcon = FileEntryIcon(
+      entry: entry,
       size: thumbSize * (isFolder ? 0.78 : 0.7),
     );
 
