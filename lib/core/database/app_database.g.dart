@@ -855,6 +855,18 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant('system'),
   );
+  static const VerificationMeta _compareExcludePatternsMeta =
+      const VerificationMeta('compareExcludePatterns');
+  @override
+  late final GeneratedColumn<String> compareExcludePatterns =
+      GeneratedColumn<String>(
+        'compare_exclude_patterns',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -920,6 +932,7 @@ class $AppSettingsTable extends AppSettings
     windowHeight,
     windowMaximized,
     reduceMotion,
+    compareExcludePatterns,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1470,6 +1483,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('compare_exclude_patterns')) {
+      context.handle(
+        _compareExcludePatternsMeta,
+        compareExcludePatterns.isAcceptableOrUnknown(
+          data['compare_exclude_patterns']!,
+          _compareExcludePatternsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1731,6 +1753,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}reduce_motion'],
       )!,
+      compareExcludePatterns: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}compare_exclude_patterns'],
+      )!,
     );
   }
 
@@ -1804,6 +1830,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final double windowHeight;
   final bool windowMaximized;
   final String reduceMotion;
+  final String compareExcludePatterns;
   const AppSetting({
     required this.id,
     required this.themeMode,
@@ -1868,6 +1895,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.windowHeight,
     required this.windowMaximized,
     required this.reduceMotion,
+    required this.compareExcludePatterns,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1941,6 +1969,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['window_height'] = Variable<double>(windowHeight);
     map['window_maximized'] = Variable<bool>(windowMaximized);
     map['reduce_motion'] = Variable<String>(reduceMotion);
+    map['compare_exclude_patterns'] = Variable<String>(compareExcludePatterns);
     return map;
   }
 
@@ -2009,6 +2038,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       windowHeight: Value(windowHeight),
       windowMaximized: Value(windowMaximized),
       reduceMotion: Value(reduceMotion),
+      compareExcludePatterns: Value(compareExcludePatterns),
     );
   }
 
@@ -2115,6 +2145,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       windowHeight: serializer.fromJson<double>(json['windowHeight']),
       windowMaximized: serializer.fromJson<bool>(json['windowMaximized']),
       reduceMotion: serializer.fromJson<String>(json['reduceMotion']),
+      compareExcludePatterns: serializer.fromJson<String>(
+        json['compareExcludePatterns'],
+      ),
     );
   }
   @override
@@ -2194,6 +2227,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'windowHeight': serializer.toJson<double>(windowHeight),
       'windowMaximized': serializer.toJson<bool>(windowMaximized),
       'reduceMotion': serializer.toJson<String>(reduceMotion),
+      'compareExcludePatterns': serializer.toJson<String>(
+        compareExcludePatterns,
+      ),
     };
   }
 
@@ -2261,6 +2297,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     double? windowHeight,
     bool? windowMaximized,
     String? reduceMotion,
+    String? compareExcludePatterns,
   }) => AppSetting(
     id: id ?? this.id,
     themeMode: themeMode ?? this.themeMode,
@@ -2331,6 +2368,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     windowHeight: windowHeight ?? this.windowHeight,
     windowMaximized: windowMaximized ?? this.windowMaximized,
     reduceMotion: reduceMotion ?? this.reduceMotion,
+    compareExcludePatterns:
+        compareExcludePatterns ?? this.compareExcludePatterns,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -2513,6 +2552,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       reduceMotion: data.reduceMotion.present
           ? data.reduceMotion.value
           : this.reduceMotion,
+      compareExcludePatterns: data.compareExcludePatterns.present
+          ? data.compareExcludePatterns.value
+          : this.compareExcludePatterns,
     );
   }
 
@@ -2583,7 +2625,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('windowWidth: $windowWidth, ')
           ..write('windowHeight: $windowHeight, ')
           ..write('windowMaximized: $windowMaximized, ')
-          ..write('reduceMotion: $reduceMotion')
+          ..write('reduceMotion: $reduceMotion, ')
+          ..write('compareExcludePatterns: $compareExcludePatterns')
           ..write(')'))
         .toString();
   }
@@ -2653,6 +2696,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     windowHeight,
     windowMaximized,
     reduceMotion,
+    compareExcludePatterns,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -2721,7 +2765,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.windowWidth == this.windowWidth &&
           other.windowHeight == this.windowHeight &&
           other.windowMaximized == this.windowMaximized &&
-          other.reduceMotion == this.reduceMotion);
+          other.reduceMotion == this.reduceMotion &&
+          other.compareExcludePatterns == this.compareExcludePatterns);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -2788,6 +2833,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<double> windowHeight;
   final Value<bool> windowMaximized;
   final Value<String> reduceMotion;
+  final Value<String> compareExcludePatterns;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.themeMode = const Value.absent(),
@@ -2852,6 +2898,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.windowHeight = const Value.absent(),
     this.windowMaximized = const Value.absent(),
     this.reduceMotion = const Value.absent(),
+    this.compareExcludePatterns = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2917,6 +2964,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.windowHeight = const Value.absent(),
     this.windowMaximized = const Value.absent(),
     this.reduceMotion = const Value.absent(),
+    this.compareExcludePatterns = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -2982,6 +3030,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<double>? windowHeight,
     Expression<bool>? windowMaximized,
     Expression<String>? reduceMotion,
+    Expression<String>? compareExcludePatterns,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3067,6 +3116,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (windowHeight != null) 'window_height': windowHeight,
       if (windowMaximized != null) 'window_maximized': windowMaximized,
       if (reduceMotion != null) 'reduce_motion': reduceMotion,
+      if (compareExcludePatterns != null)
+        'compare_exclude_patterns': compareExcludePatterns,
     });
   }
 
@@ -3134,6 +3185,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<double>? windowHeight,
     Value<bool>? windowMaximized,
     Value<String>? reduceMotion,
+    Value<String>? compareExcludePatterns,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -3209,6 +3261,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       windowHeight: windowHeight ?? this.windowHeight,
       windowMaximized: windowMaximized ?? this.windowMaximized,
       reduceMotion: reduceMotion ?? this.reduceMotion,
+      compareExcludePatterns:
+          compareExcludePatterns ?? this.compareExcludePatterns,
     );
   }
 
@@ -3430,6 +3484,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (reduceMotion.present) {
       map['reduce_motion'] = Variable<String>(reduceMotion.value);
     }
+    if (compareExcludePatterns.present) {
+      map['compare_exclude_patterns'] = Variable<String>(
+        compareExcludePatterns.value,
+      );
+    }
     return map;
   }
 
@@ -3500,7 +3559,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('windowWidth: $windowWidth, ')
           ..write('windowHeight: $windowHeight, ')
           ..write('windowMaximized: $windowMaximized, ')
-          ..write('reduceMotion: $reduceMotion')
+          ..write('reduceMotion: $reduceMotion, ')
+          ..write('compareExcludePatterns: $compareExcludePatterns')
           ..write(')'))
         .toString();
   }
@@ -7769,6 +7829,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<double> windowHeight,
       Value<bool> windowMaximized,
       Value<String> reduceMotion,
+      Value<String> compareExcludePatterns,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -7835,6 +7896,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<double> windowHeight,
       Value<bool> windowMaximized,
       Value<String> reduceMotion,
+      Value<String> compareExcludePatterns,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -8158,6 +8220,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get reduceMotion => $composableBuilder(
     column: $table.reduceMotion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get compareExcludePatterns => $composableBuilder(
+    column: $table.compareExcludePatterns,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8485,6 +8552,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.reduceMotion,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get compareExcludePatterns => $composableBuilder(
+    column: $table.compareExcludePatterns,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -8800,6 +8872,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.reduceMotion,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get compareExcludePatterns => $composableBuilder(
+    column: $table.compareExcludePatterns,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -8896,6 +8973,7 @@ class $$AppSettingsTableTableManager
                 Value<double> windowHeight = const Value.absent(),
                 Value<bool> windowMaximized = const Value.absent(),
                 Value<String> reduceMotion = const Value.absent(),
+                Value<String> compareExcludePatterns = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 themeMode: themeMode,
@@ -8960,6 +9038,7 @@ class $$AppSettingsTableTableManager
                 windowHeight: windowHeight,
                 windowMaximized: windowMaximized,
                 reduceMotion: reduceMotion,
+                compareExcludePatterns: compareExcludePatterns,
               ),
           createCompanionCallback:
               ({
@@ -9026,6 +9105,7 @@ class $$AppSettingsTableTableManager
                 Value<double> windowHeight = const Value.absent(),
                 Value<bool> windowMaximized = const Value.absent(),
                 Value<String> reduceMotion = const Value.absent(),
+                Value<String> compareExcludePatterns = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 themeMode: themeMode,
@@ -9090,6 +9170,7 @@ class $$AppSettingsTableTableManager
                 windowHeight: windowHeight,
                 windowMaximized: windowMaximized,
                 reduceMotion: reduceMotion,
+                compareExcludePatterns: compareExcludePatterns,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

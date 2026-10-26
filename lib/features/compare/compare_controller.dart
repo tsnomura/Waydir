@@ -7,12 +7,14 @@ import 'package:signals/signals.dart';
 import '../../core/fs/file_system_service.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
+import '../../core/settings/settings_store.dart';
 import '../../ui/theme/app_theme.dart';
 import '../files/row_decorations.dart';
 import '../navigation/navigation_store.dart';
 import '../operations/operation_store.dart';
 import '../panes/pane_store.dart';
 import 'compare_diff.dart';
+import 'compare_excludes.dart';
 import 'compare_sync_plan.dart';
 
 class CompareController {
@@ -259,11 +261,20 @@ class CompareController {
     active.value = true;
     final recursive = this.recursive.value;
     try {
-      final listed = await Future.wait([
+      var listed = await Future.wait([
         _entriesFor(leftRoot, run, recursive),
         _entriesFor(rightRoot, run, recursive),
       ]);
       if (run != _runId) return;
+      final excludes = CompareExcludes.parse(
+        SettingsStore.instance.compareExcludePatterns.value,
+      );
+      if (!excludes.isEmpty) {
+        listed = [
+          _withoutExcluded(leftRoot, listed[0], excludes),
+          _withoutExcluded(rightRoot, listed[1], excludes),
+        ];
+      }
       final contentEqual = await _contentEqual(
         leftRoot,
         rightRoot,
@@ -416,6 +427,21 @@ class CompareController {
     }
 
     return _walkPerDirectory(root, run);
+  }
+
+  List<FileEntry> _withoutExcluded(
+    String root,
+    List<FileEntry> entries,
+    CompareExcludes excludes,
+  ) {
+    final out = <FileEntry>[];
+    for (final entry in entries) {
+      if (!excludes.isExcluded(compareRelativePath(root, entry.path))) {
+        out.add(entry);
+      }
+    }
+
+    return out;
   }
 
   Future<Set<String>> _contentEqual(

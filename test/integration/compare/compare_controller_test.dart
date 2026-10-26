@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
 import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/core/fs/file_system_service.dart';
+import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
 import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
@@ -352,6 +353,79 @@ void main() {
       final leftRoot = paneLeft.tabs.activeTab.value.store.currentPath.value;
       expect(File(p.join(leftRoot, 'top.txt')).readAsStringSync(), 'hello');
     });
+
+    test(
+      'excluded patterns hide entries from results, ghosts and sync',
+      () async {
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final leftRoot = leftStore.currentPath.value;
+        final rightRoot = rightStore.currentPath.value;
+        final gitDir = Directory(p.join(rightRoot, '.git'))..createSync();
+        File(p.join(gitDir.path, 'HEAD')).writeAsStringSync('ref: main');
+        File(p.join(rightRoot, 'data.bin')).writeAsStringSync('payload');
+        File(
+          p.join(rightRoot, 'nested', 'model.bin'),
+        ).writeAsStringSync('payload2');
+
+        final settings = SettingsStore.instance;
+        final previous = settings.compareExcludePatterns.value;
+        settings.compareExcludePatterns.value = '*.bin, .git';
+        try {
+          await controller.start();
+
+          final rightRel = controller.rightResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(rightRel, isNot(contains('data.bin')));
+          expect(rightRel, isNot(contains('nested/model.bin')));
+          expect(rightRel, isNot(contains('.git')));
+          expect(rightRel, isNot(contains('.git/HEAD')));
+          expect(rightRel, contains('top.txt'));
+          expect(rightRel, contains('nested/deep.txt'));
+
+          final leftGhosts = leftStore.ghostPaths.value
+              .map((path) => p.basename(path))
+              .toSet();
+          expect(leftGhosts, isNot(contains('data.bin')));
+          expect(leftGhosts, isNot(contains('.git')));
+
+          CompareSyncPlan? shown;
+          controller.confirmSync = (plan) async {
+            shown = plan;
+
+            return true;
+          };
+          await controller.syncRightToLeft();
+          final deadline = DateTime.now().add(const Duration(seconds: 20));
+          while (DateTime.now().isBefore(deadline) &&
+              (ops.tasks.value.isEmpty ||
+                  ops.tasks.value.any(
+                    (t) =>
+                        t.status != TaskStatus.completed &&
+                        t.status != TaskStatus.failed,
+                  ))) {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          }
+
+          expect(shown, isNotNull);
+          expect(shown!.added.map((r) => r.relativePath), isEmpty);
+          expect(shown!.updated.map((r) => r.relativePath), [
+            'nested/deep.txt',
+            'top.txt',
+          ]);
+          expect(File(p.join(leftRoot, 'data.bin')).existsSync(), isFalse);
+          expect(
+            File(p.join(leftRoot, 'nested', 'model.bin')).existsSync(),
+            isFalse,
+          );
+          expect(Directory(p.join(leftRoot, '.git')).existsSync(), isFalse);
+          expect(File(p.join(leftRoot, 'top.txt')).readAsStringSync(), 'HELLO');
+        } finally {
+          settings.compareExcludePatterns.value = previous;
+        }
+      },
+    );
 
     test('diffPairFor pairs files by relative path left then right', () async {
       await controller.start();

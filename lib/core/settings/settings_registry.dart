@@ -269,6 +269,22 @@ class SettingsRegistry {
         ),
       ],
     ),
+    TextSetting(
+      id: 'general.compareExcludePatterns',
+      category: SettingsCategory.general,
+      label: () => t.preferences.general.compareExcludePatterns,
+      hint: () => t.preferences.general.compareExcludePatternsHint,
+      hintText: t.preferences.general.compareExcludePatternsPlaceholder,
+      searchTerms: const [
+        'compare',
+        'sync',
+        'exclude',
+        'exclusion',
+        'ignore',
+        'pattern',
+      ],
+      signal: SettingsStore.instance.compareExcludePatterns,
+    ),
     ChoiceSetting<String>(
       id: 'terminal.shell',
       category: SettingsCategory.terminal,

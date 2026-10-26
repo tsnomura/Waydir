@@ -1835,3 +1835,30 @@ manual reload as a fallback.
   previews, multi-selection and `explicitEntry` lookups.
 
 Relevant commits: `d99771c`, `6af1ebd`, `0cb8717`.
+
+## Compare & sync exclude patterns
+
+Compare and sync now skip entries that match user-configured glob patterns,
+so `*.bin` scratch files or a `.git` folder never show up in the diff, as
+ghosts, in the counts, or in a sync plan.
+
+- The patterns live in one setting (`compareExcludePatterns`,
+  `app_settings.compare_exclude_patterns`, schema 49): comma-, semicolon- or
+  newline-separated. Editable from Preferences → General → "Compare & sync"
+  and from a new "Excludes" button on the compare mode bar. The button
+  highlights while any pattern is set, and saving while a compare is active
+  re-runs it with the new patterns.
+- `CompareExcludes` (`compare_excludes.dart`) compiles each pattern to an
+  anchored RegExp: `*` → `[^/]*`, `?` → `[^/]`, `[...]` character classes
+  (with `!` negation) pass through, everything else is escaped literal.
+  Matching is case-sensitive, and a pattern hits when it matches either the
+  whole relative path or a single path segment — so `*.bin` finds files at
+  any depth, and `.git` hides the folder plus its entire subtree. A separator
+  in the pattern (e.g. `docs/*.md`) pins it to the relative path from the
+  compared root, rsync-style.
+- `CompareController.start()` filters both listings (via
+  `compareRelativePath`) before `buildCompareDiff`, so results, decorations,
+  ghosts, counts and the sync plan all agree; a selection containing only
+  excluded files syncs nothing.
+- Not covered: plain directory listings, drag & drop and search are
+  unaffected — the filter only applies to compare and sync.

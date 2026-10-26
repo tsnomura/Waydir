@@ -584,6 +584,21 @@ class Translations$compare$en {
 	/// en: 'Recursive'
 	String get recursive => 'Recursive';
 
+	/// en: 'Excludes'
+	String get excludes => 'Excludes';
+
+	/// en: 'Edit the patterns excluded from compare and sync'
+	String get excludesTooltip => 'Edit the patterns excluded from compare and sync';
+
+	/// en: 'Excluded patterns'
+	String get excludeTitle => 'Excluded patterns';
+
+	/// en: 'Save'
+	String get excludeSave => 'Save';
+
+	/// en: '*.bin, .git, build'
+	String get excludePlaceholder => '*.bin, .git, build';
+
 	/// en: 'Done'
 	String get done => 'Done';
 
@@ -2993,6 +3008,18 @@ class Translations$preferences$general$en {
 	/// en: 'Off'
 	String get reduceMotionOff => 'Off';
 
+	/// en: 'Compare & sync'
+	String get syncSection => 'Compare & sync';
+
+	/// en: 'Excluded from compare & sync'
+	String get compareExcludePatterns => 'Excluded from compare & sync';
+
+	/// en: 'Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build'
+	String get compareExcludePatternsHint => 'Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build';
+
+	/// en: '*.bin, .git, build'
+	String get compareExcludePatternsPlaceholder => '*.bin, .git, build';
+
 	/// en: 'Terminal'
 	String get terminalSection => 'Terminal';
 
@@ -4707,6 +4734,11 @@ extension on Translations {
 			'compare.syncTotal' => ({required Object files, required Object size}) => 'Total: ${files} · ${size}',
 			'compare.syncNothing' => 'Nothing to sync — the destination is already up to date.',
 			'compare.recursive' => 'Recursive',
+			'compare.excludes' => 'Excludes',
+			'compare.excludesTooltip' => 'Edit the patterns excluded from compare and sync',
+			'compare.excludeTitle' => 'Excluded patterns',
+			'compare.excludeSave' => 'Save',
+			'compare.excludePlaceholder' => '*.bin, .git, build',
 			'compare.done' => 'Done',
 			'compare.cancel' => 'Cancel',
 			'compare.running' => 'Comparing…',
@@ -4840,6 +4872,10 @@ extension on Translations {
 			'preferences.general.reduceMotionSystem' => 'System default',
 			'preferences.general.reduceMotionOn' => 'On',
 			'preferences.general.reduceMotionOff' => 'Off',
+			'preferences.general.syncSection' => 'Compare & sync',
+			'preferences.general.compareExcludePatterns' => 'Excluded from compare & sync',
+			'preferences.general.compareExcludePatternsHint' => 'Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build',
+			'preferences.general.compareExcludePatternsPlaceholder' => '*.bin, .git, build',
 			'preferences.general.terminalSection' => 'Terminal',
 			'preferences.general.terminalLabel' => 'Default terminal',
 			'preferences.general.terminalHint' => 'Used by "Open in Terminal".',
@@ -5066,6 +5102,8 @@ extension on Translations {
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
@@ -5075,8 +5113,6 @@ extension on Translations {
 			'help.groups.navigating.moving.body' => 'Browse without reaching for the mouse. Waydir keeps the cursor, selection and history close to the main file list.\n\n- `↑` / `↓` move the cursor through visible files.\n- `Enter` opens the selected item; double-click does the same.\n- `Backspace` goes to the parent folder.\n- `Alt+←` / `Alt+→` step back and forward through folder history.\n- `Ctrl+R` refreshes the current folder.',
 			'help.groups.navigating.breadcrumb.title' => 'Breadcrumb Bar',
 			'help.groups.navigating.breadcrumb.body' => 'The breadcrumb bar shows where you are and lets you move quickly.\n\n- Click any segment to jump straight to that folder.\n- The path stays in sync as you navigate.\n- Type a path directly to go somewhere specific.',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.navigating.bookmarks.title' => 'Bookmarks & Sidebar',
 			'help.groups.navigating.bookmarks.body' => 'The sidebar keeps your favourite folders one click away.\n\n- Drag a folder into the sidebar to bookmark it.\n- Reorder, rename or hide sidebar entries to suit your workflow.\n- `Ctrl+B` shows or hides the sidebar entirely.\n- Sections (Favourites, Devices, Network) can be collapsed independently.',
 			'help.groups.navigating.drives.title' => 'Drives & Devices',
@@ -5580,6 +5616,8 @@ extension on Translations {
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',
 			'operations.justNow' => 'just now',
+			_ => null,
+		} ?? switch (path) {
 			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
 			'operations.minutesAgo' => ({required Object count}) => '${count}m ago',
 			'operations.hoursAgo' => ({required Object count}) => '${count}h ago',
@@ -5589,8 +5627,6 @@ extension on Translations {
 			'operations.overwriteAll' => 'Overwrite All',
 			'operations.skipAll' => 'Skip All',
 			'operations.review' => 'Review',
-			_ => null,
-		} ?? switch (path) {
 			'operations.fileConflict' => ({required Object index, required Object total}) => 'File Conflict (${index}/${total})',
 			'operations.replace' => 'Replace',
 			'operations.keepBoth' => 'Keep Both',
