@@ -13,6 +13,7 @@ import 'generators/generator_page_controller.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
+import 'quick_look_find.dart';
 import 'quick_look_reload.dart';
 
 typedef QuickLookCloseGuard = Future<bool> Function();
@@ -109,6 +110,16 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   void _toggleMarkdownRendered() =>
       setState(() => _markdownRendered = !_markdownRendered);
 
+  void _openSearch() {
+    final find = _editorController.find;
+    if (find == null) return;
+    if (find.value == null) {
+      find.findMode();
+    } else {
+      find.close();
+    }
+  }
+
   void _setCompact(bool value) {
     if (_compact == value) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -142,34 +153,44 @@ class _QuickLookPanelState extends State<QuickLookPanel>
           generation: _reload.generation,
         );
 
-        return Column(
+        return Stack(
           children: [
-            QuickLookHeader(
-              entry: entry,
-              compact: _compact,
-              showInfo: _showInfo,
-              onToggleInfo: () => setState(() => _showInfo = !_showInfo),
-              onClose: widget.onClose,
-              editorController: _editorController,
-              markdownRendered: _markdownRendered,
-              onToggleMarkdownView: _toggleMarkdownRendered,
-              onReload: QuickLookReloadController.canReload(entry)
-                  ? _requestReload
-                  : null,
+            Column(
+              children: [
+                QuickLookHeader(
+                  entry: entry,
+                  compact: _compact,
+                  showInfo: _showInfo,
+                  onToggleInfo: () => setState(() => _showInfo = !_showInfo),
+                  onClose: widget.onClose,
+                  editorController: _editorController,
+                  markdownRendered: _markdownRendered,
+                  onToggleMarkdownView: _toggleMarkdownRendered,
+                  onSearch: _openSearch,
+                  onReload: QuickLookReloadController.canReload(entry)
+                      ? _requestReload
+                      : null,
+                ),
+                Container(height: 1, color: AppColors.bgDivider),
+                Expanded(
+                  child: QuickLookBody(
+                    key: ValueKey('qlp#${_reload.generation}'),
+                    entry: shown,
+                    editorActive: _editorActive,
+                    editorController: _editorController,
+                    showInfo: _showInfo,
+                    onCompactChanged: _setCompact,
+                    markdownRendered: _markdownRendered,
+                    scrollController: _contentScroll,
+                    generatorPage: _generatorPage,
+                  ),
+                ),
+              ],
             ),
-            Container(height: 1, color: AppColors.bgDivider),
-            Expanded(
-              child: QuickLookBody(
-                key: ValueKey('qlp#${_reload.generation}'),
-                entry: shown,
-                editorActive: _editorActive,
-                editorController: _editorController,
-                showInfo: _showInfo,
-                onCompactChanged: _setCompact,
-                markdownRendered: _markdownRendered,
-                scrollController: _contentScroll,
-                generatorPage: _generatorPage,
-              ),
+            Positioned(
+              top: 47,
+              right: 14,
+              child: QuickLookFindPopup(controller: _editorController),
             ),
           ],
         );

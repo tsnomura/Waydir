@@ -25,14 +25,27 @@ enum _VimMode { normal, insert, visual }
 /// before closing the preview).
 class CodeEditorController {
   final dirty = signal(false);
+  final findReady = signal(false);
   Future<bool> Function()? _save;
   Future<void> Function(Future<void> Function() write)? writeGuard;
+  re.CodeFindController? find;
+  bool _disposed = false;
 
   /// Saves if dirty. Returns true when there is nothing to save or the save
   /// succeeded, false when the save failed.
   Future<bool> save() async => (await _save?.call()) ?? true;
 
-  void dispose() => dirty.dispose();
+  void _setFindReady(bool value) {
+    if (!_disposed && findReady.value != value) {
+      findReady.value = value;
+    }
+  }
+
+  void dispose() {
+    _disposed = true;
+    dirty.dispose();
+    findReady.dispose();
+  }
 }
 
 /// Text/code preview editor. Backed by re_editor, which renders only the lines
@@ -69,6 +82,7 @@ class _CodeEditorState extends State<CodeEditor> {
   late final _scroll = re.CodeScrollController(
     verticalScroller: widget.verticalScrollController,
   );
+  late final re.CodeFindController _find = re.CodeFindController(_ctrl);
   final _focus = FocusNode();
 
   Object? _savedRevision;
@@ -90,6 +104,13 @@ class _CodeEditorState extends State<CodeEditor> {
         : _VimMode.insert;
     widget.controller?._save = _save;
     widget.controller?.dirty.value = false;
+    widget.controller?.find = _find;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final host = widget.controller;
+      if (mounted && host != null && identical(host.find, _find)) {
+        host._setFindReady(true);
+      }
+    });
     _ctrl.addListener(_syncDirty);
     _focus.addListener(_onFocusChange);
   }
@@ -104,6 +125,14 @@ class _CodeEditorState extends State<CodeEditor> {
     _focus.dispose();
     _ctrl.removeListener(_syncDirty);
     _ctrl.dispose();
+    final host = widget.controller;
+    if (host != null && identical(host.find, _find)) {
+      host.find = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        host._setFindReady(false);
+      });
+    }
+    _find.dispose();
     _scroll.dispose();
     widget.editorActive.value = false;
     super.dispose();
@@ -386,6 +415,7 @@ class _CodeEditorState extends State<CodeEditor> {
           controller: _ctrl,
           scrollController: _scroll,
           focusNode: _focus,
+          findController: _find,
           style: style,
           wordWrap: wrapLines,
           readOnly: readOnly,
