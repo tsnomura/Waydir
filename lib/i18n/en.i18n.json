@@ -170,6 +170,7 @@
     "recursive": "Recursive",
     "excludes": "Excludes",
     "excludesTooltip": "Edit the patterns excluded from compare and sync",
+    "excludesActiveTooltip": "Click to turn off",
     "excludeTitle": "Excluded patterns",
     "excludeSave": "Save",
     "excludePlaceholder": "*.bin, .git, build",

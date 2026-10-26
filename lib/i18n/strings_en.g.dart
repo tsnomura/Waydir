@@ -590,6 +590,9 @@ class Translations$compare$en {
 	/// en: 'Edit the patterns excluded from compare and sync'
 	String get excludesTooltip => 'Edit the patterns excluded from compare and sync';
 
+	/// en: 'Click to turn off'
+	String get excludesActiveTooltip => 'Click to turn off';
+
 	/// en: 'Excluded patterns'
 	String get excludeTitle => 'Excluded patterns';
 
@@ -4742,6 +4745,7 @@ extension on Translations {
 			'compare.recursive' => 'Recursive',
 			'compare.excludes' => 'Excludes',
 			'compare.excludesTooltip' => 'Edit the patterns excluded from compare and sync',
+			'compare.excludesActiveTooltip' => 'Click to turn off',
 			'compare.excludeTitle' => 'Excluded patterns',
 			'compare.excludeSave' => 'Save',
 			'compare.excludePlaceholder' => '*.bin, .git, build',
@@ -5107,9 +5111,9 @@ extension on Translations {
 			'help.menuLabel' => 'In-app tutorial',
 			'help.popOut' => 'Open in separate window',
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
-			'help.groups.gettingStarted.title' => 'Getting Started',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
@@ -5621,9 +5625,9 @@ extension on Translations {
 			'operations.errorsCount' => ({required Object count}) => '${count} errors',
 			'operations.compressing' => 'Compressing…',
 			'operations.compressingGzip' => 'Compressing (gzip)…',
-			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			_ => null,
 		} ?? switch (path) {
+			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',
 			'operations.justNow' => 'just now',
 			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',

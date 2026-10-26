@@ -100,12 +100,14 @@ class CompareModeBar extends StatelessWidget {
               const SizedBox(width: 6),
               Tooltip(
                 message: hasExcludes
-                    ? excludePatterns
+                    ? '$excludePatterns\n${t.compare.excludesActiveTooltip}'
                     : t.compare.excludesTooltip,
                 child: _CompareButton(
                   label: t.compare.excludes,
                   active: hasExcludes,
-                  onTap: () => showCompareExcludesDialog(context, controller),
+                  onTap: hasExcludes
+                      ? () => controller.saveExcludePatterns('')
+                      : () => showCompareExcludesDialog(context, controller),
                 ),
               ),
               const SizedBox(width: 6),

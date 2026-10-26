@@ -32,7 +32,6 @@ Future<void> showCompareExcludesDialog(
     ],
   );
   final raw = result == save ? text.text.trim() : initial;
-  text.dispose();
   if (result != save || raw == initial) return;
   final ok = await controller.saveExcludePatterns(raw);
   if (!ok && context.mounted) {
@@ -40,11 +39,22 @@ Future<void> showCompareExcludesDialog(
   }
 }
 
-class _ExcludesBody extends StatelessWidget {
+class _ExcludesBody extends StatefulWidget {
   final TextEditingController text;
   final bool perDirectory;
 
   const _ExcludesBody({required this.text, required this.perDirectory});
+
+  @override
+  State<_ExcludesBody> createState() => _ExcludesBodyState();
+}
+
+class _ExcludesBodyState extends State<_ExcludesBody> {
+  @override
+  void dispose() {
+    widget.text.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +63,7 @@ class _ExcludesBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextField(
-          controller: text,
+          controller: widget.text,
           autofocus: true,
           minLines: 1,
           maxLines: 4,
@@ -65,7 +75,7 @@ class _ExcludesBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          perDirectory
+          widget.perDirectory
               ? t.compare.excludeSavedHint
               : t.preferences.general.compareExcludePatternsHint,
           style: context.txt.muted,

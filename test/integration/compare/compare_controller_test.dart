@@ -3,6 +3,8 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
@@ -10,12 +12,16 @@ import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/core/fs/file_system_service.dart';
 import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
+import 'package:waydir/features/compare/compare_mode_bar.dart';
 import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
 import 'package:waydir/features/compare/compare_sync_plan.dart';
 import 'package:waydir/features/navigation/navigation_store.dart';
 import 'package:waydir/features/operations/operation_store.dart';
 import 'package:waydir/features/panes/pane_store.dart';
+import 'package:waydir/i18n/strings.g.dart';
+import 'package:waydir/ui/theme/app_theme.dart';
+import 'package:waydir/ui/widgets/app_modal.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -484,6 +490,58 @@ void main() {
         }
       },
     );
+
+    test('saving empty patterns clears the per-directory marker', () async {
+      await controller.start();
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftMarker = p.join(leftStore.currentPath.value, '.waydir-sync');
+      final rightMarker = p.join(rightStore.currentPath.value, '.waydir-sync');
+
+      expect(await controller.saveExcludePatterns('top.txt'), isTrue);
+      expect(await controller.saveExcludePatterns(''), isTrue);
+
+      expect(controller.effectiveExcludePatterns.value, '');
+      expect(File(leftMarker).readAsStringSync().trim(), '');
+      expect(File(rightMarker).readAsStringSync().trim(), '');
+      final rightRel = controller.rightResults.value.values
+          .map((r) => r.relativePath)
+          .toSet();
+      expect(rightRel, contains('top.txt'));
+    });
+
+    testWidgets('excludes button opens dialog when off, not when on', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        await controller.start();
+        expect(await controller.saveExcludePatterns('top.txt'), isTrue);
+      });
+      expect(controller.effectiveExcludePatterns.value, 'top.txt');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.build(),
+          home: Scaffold(body: CompareModeBar(controller: controller)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(t.compare.excludes));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppModal), findsNothing);
+
+      controller.effectiveExcludePatterns.value = '';
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(t.compare.excludes));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppModal), findsWidgets);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(AppModal), findsNothing);
+    });
 
     test('diffPairFor pairs files by relative path left then right', () async {
       await controller.start();
