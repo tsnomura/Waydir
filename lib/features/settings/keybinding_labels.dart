@@ -86,6 +86,7 @@ String shortcutLabel(ShortcutDef s) => switch (s.id) {
   'toggle_dual' => t.keybindings.toggleDual,
   'switch_pane' => t.keybindings.switchPane,
   'compare' => t.keybindings.compare,
+  'compare_recursive' => t.keybindings.compareRecursive,
   'compare_sync_right' => t.keybindings.compareSyncRight,
   'compare_sync_left' => t.keybindings.compareSyncLeft,
   'compare_exit' => t.keybindings.compareExit,

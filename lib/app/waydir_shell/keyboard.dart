@@ -107,13 +107,14 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
-    if (AppShortcuts.matches('compare', key)) {
+    final compareRecursive = AppShortcuts.matches('compare_recursive', key);
+    if (AppShortcuts.matches('compare', key) || compareRecursive) {
       if (!_shell.isDual.value) {
         showToast(context: context, message: t.compare.needsDualPane);
       } else if (!_shell.compare.active.value && !_shell.compare.canStart) {
         showToast(context: context, message: t.compare.needsLocalFolders);
       } else {
-        _shell.compare.toggle();
+        _shell.compare.toggle(recursive: compareRecursive);
       }
 
       return KeyEventResult.handled;

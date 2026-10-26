@@ -690,6 +690,27 @@ cursor, with one marked file per pane as an explicit override.
 
 Relevant commits: `1882923`, `d63eb9d`.
 
+## Compare keys: F8 top level, Shift+F8 recursive
+
+`F8` and `Shift+F8` each own one compare mode, instead of compare starting
+recursive by default with the mode only reachable from the bar's **Recursive**
+button:
+
+- `F8` starts (or stops) compare at the top level only.
+- `Shift+F8` starts (or stops) compare recursing into subfolders.
+- Pressing either while compare is active just exits compare; the mode is
+  chosen at start. The **Recursive** button in the compare bar still toggles
+  the mode live on an active comparison.
+- The activation-time force-off for network roots (UNC/mapped/sftp) is gone:
+  the mode now always follows the key, so an explicit `Shift+F8` on a slow
+  share really does walk it — the running Cancel control / `Esc` is the
+  escape hatch, same as opting in via the button.
+- The command palette's Compare entry is unchanged (no mode argument, keeps
+  the last-used mode).
+
+New reassignable shortcut `compare_recursive` (default `Shift+F8`) in the
+Panes group.
+
 ## Windows Terminal integration
 
 - The terminal shell picker offers installed Windows Terminal profiles

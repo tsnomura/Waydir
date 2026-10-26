@@ -123,6 +123,47 @@ void main() {
     );
 
     test(
+      'toggle starts in the requested mode and a second press exits',
+      () async {
+        await controller.toggle(recursive: false);
+
+        expect(controller.recursive.value, isFalse);
+        expect(controller.active.value, isTrue);
+        final NavigationStore leftStore = paneLeft.tabs.activeTab.value.store;
+        final leftTop = p.join(leftStore.currentPath.value, 'top.txt');
+        expect(
+          controller.leftResults.value[leftTop]?.status,
+          CompareStatus.older,
+        );
+        expect(
+          controller.leftResults.value.values.any(
+            (r) => r.relativePath.startsWith('nested/'),
+          ),
+          isFalse,
+        );
+
+        await controller.toggle(recursive: false);
+
+        expect(controller.active.value, isFalse);
+        expect(controller.leftResults.value, isEmpty);
+
+        await controller.toggle(recursive: true);
+
+        expect(controller.recursive.value, isTrue);
+        expect(controller.active.value, isTrue);
+        final leftDeep = p.join(
+          leftStore.currentPath.value,
+          'nested',
+          'deep.txt',
+        );
+        expect(
+          controller.leftResults.value[leftDeep]?.status,
+          CompareStatus.older,
+        );
+      },
+    );
+
+    test(
       'same content with skewed mtime is identical on local drives',
       () async {
         await controller.start();
