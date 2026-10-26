@@ -17,6 +17,7 @@ class ArchiveEntry {
   final bool isDir;
   final int mtimeSeconds;
   final DateTime? modified;
+  final bool encrypted;
 
   const ArchiveEntry({
     required this.path,
@@ -24,6 +25,7 @@ class ArchiveEntry {
     required this.isDir,
     required this.mtimeSeconds,
     this.modified,
+    this.encrypted = false,
   });
 }
 
@@ -190,8 +192,53 @@ class ArchiveReader {
     }
   }
 
-  static List<ArchiveEntry> listEntries(String archivePath) =>
-      _useArchive(archivePath, (archive) => _listEntries(archivePath, archive));
+  static List<ArchiveEntry> listEntries(String archivePath) {
+    if (_isZipLike(archivePath)) {
+      return _listZipEntries(archivePath);
+    }
+
+    return _useArchive(
+      archivePath,
+      (archive) => _listEntries(archivePath, archive),
+    );
+  }
+
+  static List<ArchiveEntry> _listZipEntries(String archivePath) {
+    final stream = InputFileStream(archivePath);
+    try {
+      final dir = ZipDirectory()..read(stream);
+      final entries = <ArchiveEntry>[];
+      for (final zfh in dir.fileHeaders) {
+        final raw = zfh.filename;
+        final isDir = raw.endsWith('/') || raw.endsWith('\\');
+        final zf = zfh.file;
+        final dos =
+            zf != null && (zf.lastModFileDate > 0 || zf.lastModFileTime > 0)
+            ? zf.lastModFileDate << 16 | zf.lastModFileTime
+            : zfh.lastModifiedFileDate << 16 | zfh.lastModifiedFileTime;
+        final modified = _zipModified(dos);
+        final name = _normalize(raw);
+        if (name.isNotEmpty) {
+          entries.add(
+            ArchiveEntry(
+              path: name,
+              size: zfh.uncompressedSize,
+              isDir: isDir,
+              mtimeSeconds: modified != null
+                  ? modified.millisecondsSinceEpoch ~/ 1000
+                  : dos,
+              modified: modified,
+              encrypted: (zfh.generalPurposeBitFlag & 1) != 0,
+            ),
+          );
+        }
+      }
+
+      return entries;
+    } finally {
+      stream.closeSync();
+    }
+  }
 
   static List<ArchiveEntry> _listEntries(String archivePath, Archive archive) {
     final entries = <ArchiveEntry>[];

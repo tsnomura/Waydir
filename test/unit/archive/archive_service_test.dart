@@ -6,8 +6,18 @@ import 'package:waydir/core/models/file_entry.dart';
 void main() {
   final mtime = DateTime(2020, 1, 1);
 
-  ArchiveEntry e(String path, {bool dir = false, int size = 0}) =>
-      ArchiveEntry(path: path, size: size, isDir: dir, mtimeSeconds: 0);
+  ArchiveEntry e(
+    String path, {
+    bool dir = false,
+    int size = 0,
+    bool encrypted = false,
+  }) => ArchiveEntry(
+    path: path,
+    size: size,
+    isDir: dir,
+    mtimeSeconds: 0,
+    encrypted: encrypted,
+  );
 
   test('root level lists top-level files and synthesized dirs', () {
     final all = [
@@ -45,5 +55,21 @@ void main() {
     final level = ArchiveService.levelEntries('/t/x.zip', '', all, mtime);
     expect(level.single.name, 'only');
     expect(level.single.type, FileItemType.folder);
+  });
+
+  test('per-entry encryption flag is carried to file entries', () {
+    final all = [
+      e('locked.txt', size: 4, encrypted: true),
+      e('open.txt', size: 4),
+      e('sub/', dir: true),
+      e('sub/inner.zip', size: 10, encrypted: true),
+    ];
+    final level = ArchiveService.levelEntries('/t/x.zip', '', all, mtime);
+    final byName = {for (final f in level) f.name: f};
+    expect(byName['locked.txt']!.encrypted, isTrue);
+    expect(byName['open.txt']!.encrypted, isFalse);
+    expect(byName['sub']!.encrypted, isFalse);
+    final subLevel = ArchiveService.levelEntries('/t/x.zip', 'sub', all, mtime);
+    expect(subLevel.single.encrypted, isTrue);
   });
 }

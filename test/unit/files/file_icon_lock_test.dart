@@ -28,12 +28,12 @@ void main() {
     modifiedMs: 1000,
   );
 
-  String assetOf(WidgetTester tester) {
-    final icon = tester.widget<SvgPicture>(find.byType(SvgPicture));
-    return (icon.bytesLoader as SvgAssetLoader).assetName;
-  }
+  List<String> assetsOf(WidgetTester tester) => tester
+      .widgetList<SvgPicture>(find.byType(SvgPicture))
+      .map((w) => (w.bytesLoader as SvgAssetLoader).assetName)
+      .toList();
 
-  testWidgets('shows lock icon for an encrypted zip', (tester) async {
+  testWidgets('shows a lock badge on an encrypted zip', (tester) async {
     await tester.pumpWidget(
       wrap(
         FileEntryIcon(
@@ -45,7 +45,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(assetOf(tester), 'assets/icons/material/lock.svg');
+    expect(assetsOf(tester), [
+      'assets/icons/material/zip.svg',
+      'assets/icons/material/lock.svg',
+    ]);
   });
 
   testWidgets('keeps archive icon for an unencrypted zip', (tester) async {
@@ -60,7 +63,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(assetOf(tester), 'assets/icons/material/zip.svg');
+    expect(assetsOf(tester), ['assets/icons/material/zip.svg']);
   });
 
   testWidgets('does not check encryption for non-zip files', (tester) async {
@@ -88,7 +91,7 @@ void main() {
     await tester.pump();
 
     expect(called, isFalse);
-    expect(assetOf(tester), 'assets/icons/material/document.svg');
+    expect(assetsOf(tester), ['assets/icons/material/document.svg']);
   });
 
   testWidgets('cached result is reused without querying again', (tester) async {
@@ -111,10 +114,13 @@ void main() {
     );
     await tester.pump();
 
-    expect(assetOf(tester), 'assets/icons/material/lock.svg');
+    expect(assetsOf(tester), [
+      'assets/icons/material/zip.svg',
+      'assets/icons/material/lock.svg',
+    ]);
   });
 
-  testWidgets('real password zip made by ZipEncoder shows the lock', (
+  testWidgets('real password zip made by ZipEncoder gets the badge', (
     tester,
   ) async {
     final path = p.join(tmp.path, 'enc.zip');
@@ -140,6 +146,61 @@ void main() {
     );
     await tester.pump();
 
-    expect(assetOf(tester), 'assets/icons/material/lock.svg');
+    expect(assetsOf(tester), [
+      'assets/icons/material/zip.svg',
+      'assets/icons/material/lock.svg',
+    ]);
+  });
+
+  testWidgets('an entry flagged encrypted shows a full lock icon', (
+    tester,
+  ) async {
+    var called = false;
+    final entry = FileEntry.raw(
+      name: 'secret.txt',
+      path: p.join(tmp.path, 'mixed.zip', 'secret.txt'),
+      type: FileItemType.file,
+      size: 10,
+      modifiedMs: 1000,
+      encrypted: true,
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        FileEntryIcon(
+          entry: entry,
+          size: 20,
+          isEncrypted: (_) async {
+            called = true;
+            return true;
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(called, isFalse);
+    expect(assetsOf(tester), ['assets/icons/material/lock.svg']);
+  });
+
+  testWidgets('unflagged entries inside an archive keep their file icon', (
+    tester,
+  ) async {
+    final entry = FileEntry.raw(
+      name: 'open.txt',
+      path: p.join(tmp.path, 'mixed.zip', 'open.txt'),
+      type: FileItemType.file,
+      size: 10,
+      modifiedMs: 1000,
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        FileEntryIcon(entry: entry, size: 20, isEncrypted: (_) async => false),
+      ),
+    );
+    await tester.pump();
+
+    expect(assetsOf(tester), ['assets/icons/material/document.svg']);
   });
 }

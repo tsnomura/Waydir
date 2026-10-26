@@ -121,7 +121,7 @@ class _FileEntryIconState extends State<FileEntryIcon> {
   @override
   Widget build(BuildContext context) {
     final e = widget.entry;
-    if (_locked == true) {
+    if (e.encrypted) {
       return SvgPicture.asset(
         'assets/icons/material/lock.svg',
         width: widget.size,
@@ -129,11 +129,29 @@ class _FileEntryIconState extends State<FileEntryIcon> {
       );
     }
 
-    return buildFileIcon(
+    final icon = buildFileIcon(
       name: e.name,
       ext: e.extension,
       isFolder: e.type == FileItemType.folder,
       size: widget.size,
+    );
+
+    if (_locked != true) return icon;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        Positioned(
+          right: -widget.size * 0.18,
+          bottom: -widget.size * 0.18,
+          child: SvgPicture.asset(
+            'assets/icons/material/lock.svg',
+            width: widget.size * 0.55,
+            height: widget.size * 0.55,
+          ),
+        ),
+      ],
     );
   }
 }

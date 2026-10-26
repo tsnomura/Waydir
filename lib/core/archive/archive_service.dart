@@ -49,6 +49,7 @@ class ArchiveService {
               (e.mtimeSeconds > 0
                   ? DateTime.fromMillisecondsSinceEpoch(e.mtimeSeconds * 1000)
                   : archiveModified),
+          encrypted: e.encrypted,
         );
       }
     }
