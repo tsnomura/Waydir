@@ -401,6 +401,7 @@ class OperationStore {
     String destination, {
     required String format,
     required String level,
+    String? password,
   }) {
     if (sources.isEmpty) return;
 
@@ -409,7 +410,11 @@ class OperationStore {
       type: TaskType.compress,
       sources: sources,
       destination: destination,
-      options: {'format': format, 'level': level},
+      options: {
+        'format': format,
+        'level': level,
+        if (password != null) 'password': password,
+      },
       startTime: DateTime.now(),
     );
     _enqueue(task);

@@ -14,11 +14,13 @@ class CompressRequest {
   final String baseName;
   final ArchiveFormat format;
   final CompressionLevel level;
+  final String? password;
 
   const CompressRequest({
     required this.baseName,
     required this.format,
     required this.level,
+    this.password,
   });
 
   String get fileName => '$baseName.${format.extension}';
@@ -61,6 +63,7 @@ class _CompressBodyState extends State<_CompressBody> {
   late final TextEditingController _name = TextEditingController(
     text: widget.defaultBaseName,
   )..addListener(_onNameChanged);
+  final TextEditingController _password = TextEditingController();
   ArchiveFormat _format = ArchiveFormat.zip;
   CompressionLevel _level = CompressionLevel.normal;
 
@@ -74,15 +77,22 @@ class _CompressBodyState extends State<_CompressBody> {
   void dispose() {
     _name.removeListener(_onNameChanged);
     _name.dispose();
+    _password.dispose();
     super.dispose();
   }
 
   void _submit() {
     final base = _sanitized;
     if (base.isEmpty) return;
-    Navigator.of(
-      context,
-    ).pop(CompressRequest(baseName: base, format: _format, level: _level));
+    final password = _password.text.trim();
+    Navigator.of(context).pop(
+      CompressRequest(
+        baseName: base,
+        format: _format,
+        level: _level,
+        password: password.isEmpty ? null : password,
+      ),
+    );
   }
 
   @override
@@ -141,6 +151,17 @@ class _CompressBodyState extends State<_CompressBody> {
               ],
               onChanged: (v) => setState(() => _level = v),
             ),
+            if (_format == ArchiveFormat.zip) ...[
+              const SizedBox(height: 14),
+              Text(t.compress.password, style: context.txt.fieldLabel),
+              const SizedBox(height: 6),
+              AppTextField(
+                controller: _password,
+                obscureText: true,
+                hintText: t.compress.passwordHint,
+                onSubmitted: (_) => _submit(),
+              ),
+            ],
             const SizedBox(height: 14),
             Text(t.compress.destination, style: context.txt.fieldLabel),
             const SizedBox(height: 6),

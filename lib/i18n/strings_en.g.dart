@@ -428,6 +428,12 @@ class Translations$compress$en {
 	/// en: 'Maximum'
 	String get levelMaximum => 'Maximum';
 
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'Leave empty for no password'
+	String get passwordHint => 'Leave empty for no password';
+
 	/// en: 'Create'
 	String get create => 'Create';
 
@@ -2390,6 +2396,9 @@ class Translations$errors$en {
 
 	/// en: 'Could not create archive: $error'
 	String archiveCreateFailed({required Object error}) => 'Could not create archive: ${error}';
+
+	/// en: 'Password is only supported for ZIP archives'
+	String get archivePasswordUnsupported => 'Password is only supported for ZIP archives';
 
 	/// en: 'Archive error: $error'
 	String archiveReadFailed({required Object error}) => 'Archive error: ${error}';
@@ -4631,6 +4640,8 @@ extension on Translations {
 			'compress.levelStore' => 'Store (no compression)',
 			'compress.levelNormal' => 'Normal',
 			'compress.levelMaximum' => 'Maximum',
+			'compress.password' => 'Password',
+			'compress.passwordHint' => 'Leave empty for no password',
 			'compress.create' => 'Create',
 			'compress.cancel' => 'Cancel',
 			'bulkCopy.title' => ({required Object tool}) => 'Copy with ${tool}',
@@ -5040,10 +5051,10 @@ extension on Translations {
 			'help.groups.navigating.moving.body' => 'Browse without reaching for the mouse. Waydir keeps the cursor, selection and history close to the main file list.\n\n- `↑` / `↓` move the cursor through visible files.\n- `Enter` opens the selected item; double-click does the same.\n- `Backspace` goes to the parent folder.\n- `Alt+←` / `Alt+→` step back and forward through folder history.\n- `Ctrl+R` refreshes the current folder.',
 			'help.groups.navigating.breadcrumb.title' => 'Breadcrumb Bar',
 			'help.groups.navigating.breadcrumb.body' => 'The breadcrumb bar shows where you are and lets you move quickly.\n\n- Click any segment to jump straight to that folder.\n- The path stays in sync as you navigate.\n- Type a path directly to go somewhere specific.',
-			'help.groups.navigating.bookmarks.title' => 'Bookmarks & Sidebar',
-			'help.groups.navigating.bookmarks.body' => 'The sidebar keeps your favourite folders one click away.\n\n- Drag a folder into the sidebar to bookmark it.\n- Reorder, rename or hide sidebar entries to suit your workflow.\n- `Ctrl+B` shows or hides the sidebar entirely.\n- Sections (Favourites, Devices, Network) can be collapsed independently.',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.navigating.bookmarks.title' => 'Bookmarks & Sidebar',
+			'help.groups.navigating.bookmarks.body' => 'The sidebar keeps your favourite folders one click away.\n\n- Drag a folder into the sidebar to bookmark it.\n- Reorder, rename or hide sidebar entries to suit your workflow.\n- `Ctrl+B` shows or hides the sidebar entirely.\n- Sections (Favourites, Devices, Network) can be collapsed independently.',
 			'help.groups.navigating.drives.title' => 'Drives & Devices',
 			'help.groups.navigating.drives.body' => 'Mounted drives and removable devices appear in the sidebar under Devices.\n\n- Click a device to open it.\n- Eject removable devices from the context menu.\n- Network shares and remote mounts show up alongside local drives.',
 			'help.groups.navigating.typeAhead.title' => 'Type-Ahead Jump',
@@ -5554,10 +5565,10 @@ extension on Translations {
 			'operations.filesCount' => ({required Object processed, required Object count}) => '${processed} / ${count} files',
 			'operations.fileExists' => 'A file with this name already exists:',
 			'operations.source' => ({required Object size, required Object date}) => 'Source:  ${size} · ${date}',
-			'operations.target' => ({required Object size, required Object date}) => 'Target:  ${size} · ${date}',
-			'operations.newer' => '  ← newer',
 			_ => null,
 		} ?? switch (path) {
+			'operations.target' => ({required Object size, required Object date}) => 'Target:  ${size} · ${date}',
+			'operations.newer' => '  ← newer',
 			'operations.applyToAll' => ({required Object count}) => 'Apply to all remaining conflicts (${count})',
 			'errors.permissionDenied' => 'Permission denied',
 			'errors.authenticationRequired' => 'Authentication required',
@@ -5606,6 +5617,7 @@ extension on Translations {
 			'errors.appearedDuring' => 'File appeared at destination during operation',
 			'errors.archiveError' => 'Could not read archive',
 			'errors.archiveCreateFailed' => ({required Object error}) => 'Could not create archive: ${error}',
+			'errors.archivePasswordUnsupported' => 'Password is only supported for ZIP archives',
 			'errors.archiveReadFailed' => ({required Object error}) => 'Archive error: ${error}',
 			'errors.archiveEntryNotFound' => ({required Object path}) => 'Archive entry not found: ${path}',
 			'errors.unsupportedArchiveFormat' => 'Unsupported archive format',

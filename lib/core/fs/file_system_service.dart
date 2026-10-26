@@ -1725,6 +1725,7 @@ class FileSystemService {
     String? destination;
     var format = ArchiveFormat.zip;
     var level = CompressionLevel.normal;
+    String? password;
     int totalFiles = 0;
     int totalBytes = 0;
     final errors = <TaskError>[];
@@ -1754,6 +1755,7 @@ class FileSystemService {
           destination!,
           format,
           level,
+          password: password,
           isCancelled: () => cancelled,
           onEntry: (name) {
             processedFiles++;
@@ -1812,6 +1814,7 @@ class FileSystemService {
           level = CompressionLevel.values.byName(
             msg.options['level'] ?? 'normal',
           );
+          password = msg.options['password'];
           totalFiles = ArchiveWriter.planCount(sources);
           totalBytes = ArchiveWriter.planWorkBytes(sources, format);
           mainSendPort.send(
