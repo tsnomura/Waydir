@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 import '../../core/models/app_notification.dart';
+import '../../features/operations/conflict_dialog.dart';
 import '../../i18n/strings.g.dart';
 import '../../utils/format.dart';
 import '../theme/app_theme.dart';
@@ -158,89 +159,104 @@ class _NotificationTileState extends State<_NotificationTile> {
   bool _hovered = false;
   bool _applyToAll = false;
 
+  void _showDetails() {
+    final errors = widget.notification.errors;
+    if (errors == null || errors.isEmpty) return;
+    showErrorListDialog(context: context, errors: errors);
+  }
+
   @override
   Widget build(BuildContext context) {
     final n = widget.notification;
     final accent = n.accentColor ?? AppColors.accent;
+    final errors = n.errors;
+    final canShowDetails = errors != null && errors.isNotEmpty;
 
     return MouseRegion(
+      cursor: canShowDetails ? SystemMouseCursors.click : MouseCursor.defer,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Container(
-        color: _hovered ? AppColors.bgHover : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (n.icon != null) ...[
-              Padding(
-                padding: const EdgeInsets.only(top: 1),
-                child: Icon(n.icon!, size: 14, color: accent),
-              ),
-              const SizedBox(width: 8),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (n.title != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        n.title!,
-                        style: context.txt.rowEmphasis.copyWith(color: accent),
+      child: GestureDetector(
+        onTap: canShowDetails ? _showDetails : null,
+        child: Container(
+          color: _hovered ? AppColors.bgHover : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (n.icon != null) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Icon(n.icon!, size: 14, color: accent),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (n.title != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          n.title!,
+                          style: context.txt.rowEmphasis.copyWith(
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                    Text(
+                      n.message,
+                      style: context.txt.row.copyWith(height: 1.35),
+                    ),
+                    if (n.applyToAllLabel != null) ...[
+                      const SizedBox(height: 7),
+                      _InlineCheckbox(
+                        label: n.applyToAllLabel!,
+                        value: _applyToAll,
+                        onChanged: (value) =>
+                            setState(() => _applyToAll = value),
+                      ),
+                    ],
+                    if (n.actions.isNotEmpty) ...[
+                      const SizedBox(height: 7),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: n.actions
+                            .map(
+                              (action) => _PanelActionButton(
+                                action: action,
+                                applyToAll: _applyToAll,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 3),
+                    Text(
+                      formatTimeAgo(n.timestamp),
+                      style: context.txt.caption.copyWith(
+                        color: AppColors.fgSubtle,
                       ),
                     ),
-                  Text(
-                    n.message,
-                    style: context.txt.row.copyWith(height: 1.35),
-                  ),
-                  if (n.applyToAllLabel != null) ...[
-                    const SizedBox(height: 7),
-                    _InlineCheckbox(
-                      label: n.applyToAllLabel!,
-                      value: _applyToAll,
-                      onChanged: (value) => setState(() => _applyToAll = value),
-                    ),
                   ],
-                  if (n.actions.isNotEmpty) ...[
-                    const SizedBox(height: 7),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: n.actions
-                          .map(
-                            (action) => _PanelActionButton(
-                              action: action,
-                              applyToAll: _applyToAll,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                  const SizedBox(height: 3),
-                  Text(
-                    formatTimeAgo(n.timestamp),
-                    style: context.txt.caption.copyWith(
-                      color: AppColors.fgSubtle,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_hovered && n.dismissible)
-              GestureDetector(
-                onTap: widget.onRemove,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 6, top: 2),
-                  child: Icon(
-                    WaydirIconsRegular.x,
-                    size: 12,
-                    color: AppColors.fgMuted,
-                  ),
                 ),
               ),
-          ],
+              if (_hovered && n.dismissible)
+                GestureDetector(
+                  onTap: widget.onRemove,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 6, top: 2),
+                    child: Icon(
+                      WaydirIconsRegular.x,
+                      size: 12,
+                      color: AppColors.fgMuted,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

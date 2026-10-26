@@ -1191,6 +1191,7 @@ class OperationStore {
         actions: actions,
         icon: icon,
         accentColor: color,
+        errors: task.errors.isEmpty ? null : task.errors,
       ),
     );
   }

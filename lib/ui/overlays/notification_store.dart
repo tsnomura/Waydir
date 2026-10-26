@@ -27,6 +27,7 @@ class NotificationStore {
       accentColor: notification.accentColor,
       dismissible: notification.dismissible,
       applyToAllLabel: notification.applyToAllLabel,
+      errors: notification.errors,
       timestamp: notification.timestamp,
     );
 
