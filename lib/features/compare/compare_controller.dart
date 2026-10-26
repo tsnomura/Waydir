@@ -235,10 +235,11 @@ class CompareController {
         _isComparablePath(pair.$2.currentPath.value);
   }
 
-  Future<void> toggle() async {
+  Future<void> toggle({bool? recursive}) async {
     if (active.value) {
       stop();
     } else {
+      if (recursive != null) this.recursive.value = recursive;
       await start();
     }
   }
@@ -252,11 +253,6 @@ class CompareController {
     final rightStore = pair.$2;
     final leftRoot = leftStore.currentPath.value;
     final rightRoot = rightStore.currentPath.value;
-    if (!active.value &&
-        (PlatformPaths.isNetworkPath(leftRoot) ||
-            PlatformPaths.isNetworkPath(rightRoot))) {
-      this.recursive.value = false;
-    }
     _leftRoot = leftRoot;
     _rightRoot = rightRoot;
     running.value = true;

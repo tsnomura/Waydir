@@ -321,6 +321,36 @@ void main() {
     });
   });
 
+  group('compare_recursive', () {
+    test('is registered in the panes group bound to shift+f8', () {
+      final def = AppShortcuts.getById('compare_recursive');
+
+      expect(def.group, ShortcutGroup.panes);
+      expect(def.defaultBinding.key, LogicalKeyboardKey.f8);
+      expect(def.defaultBinding.ctrl, isFalse);
+      expect(def.defaultBinding.shift, isTrue);
+      expect(def.defaultBinding.alt, isFalse);
+    });
+
+    test('coexists with the plain compare chord', () {
+      final recursive = AppShortcuts.getById(
+        'compare_recursive',
+      ).defaultBinding;
+      final plain = AppShortcuts.getById('compare').defaultBinding;
+
+      expect(recursive.sameChord(plain), isFalse);
+      expect(AppShortcuts.conflictFor(recursive, 'compare_recursive'), isNull);
+    });
+
+    test('is reported as a built-in chord', () {
+      final recursive = AppShortcuts.getById(
+        'compare_recursive',
+      ).defaultBinding;
+
+      expect(AppShortcuts.isChordUsedByBuiltin(recursive), isTrue);
+    });
+  });
+
   group('AppShortcuts.terminalChordFor', () {
     final key = AppShortcuts.terminalTogglePhysicalKey;
 

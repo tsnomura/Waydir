@@ -475,6 +475,13 @@ class AppShortcuts {
       key: LogicalKeyboardKey.f8,
     ),
     ShortcutDef(
+      id: 'compare_recursive',
+      label: () => '',
+      group: ShortcutGroup.panes,
+      key: LogicalKeyboardKey.f8,
+      shift: true,
+    ),
+    ShortcutDef(
       id: 'compare_sync_right',
       label: () => '',
       group: ShortcutGroup.panes,
