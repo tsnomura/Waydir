@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:signals/signals_flutter.dart';
 
+import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/models/file_entry.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/overlays/toast.dart';
@@ -34,6 +35,8 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
   final _playback = QuickLookPlaybackController();
+  DateTime? _lastScrollRepeatAt;
+  static const _scrollRepeatInterval = Duration(milliseconds: 70);
   late final AppLifecycleListener _lifecycle;
   late bool _compact = defaultCompactFor(widget.entry);
   bool _showInfo = true;
@@ -127,17 +130,81 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     });
   }
 
+  bool _acceptScrollRepeat() {
+    final now = DateTime.now();
+    final last = _lastScrollRepeatAt;
+    if (last != null && now.difference(last) < _scrollRepeatInterval) {
+      return false;
+    }
+    _lastScrollRepeatAt = now;
+
+    return true;
+  }
+
+  KeyEventResult _scrollContent(int direction, bool isRepeat, bool fullPage) {
+    if (isRepeat && !_acceptScrollRepeat()) return KeyEventResult.handled;
+    if (!isRepeat) _lastScrollRepeatAt = null;
+    if (_contentScroll.hasClients) {
+      final position = _contentScroll.position;
+      final step = position.viewportDimension * (fullPage ? 0.9 : 0.15);
+      final target = (position.pixels + direction * step).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      _contentScroll.animateTo(
+        target,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    }
+
+    return KeyEventResult.handled;
+  }
+
+  KeyEventResult _stepGeneratorPage(int direction, bool isRepeat) {
+    if (isRepeat && !_acceptScrollRepeat()) return KeyEventResult.handled;
+    if (!isRepeat) _lastScrollRepeatAt = null;
+    if (direction > 0) {
+      _generatorPage.next();
+    } else {
+      _generatorPage.prev();
+    }
+
+    return KeyEventResult.handled;
+  }
+
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    final isRepeat = event is KeyRepeatEvent;
+    if (event is! KeyDownEvent && !isRepeat) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (!isRepeat && key == LogicalKeyboardKey.escape) {
       _close();
 
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.f5) {
+    if (!isRepeat && key == LogicalKeyboardKey.f5) {
       _requestReload();
 
       return KeyEventResult.handled;
+    }
+    if (_editorActive.value) return KeyEventResult.ignored;
+    if (key == LogicalKeyboardKey.pageDown) {
+      return _generatorPage.pageCount > 1
+          ? _stepGeneratorPage(1, isRepeat)
+          : _scrollContent(1, isRepeat, true);
+    }
+    if (key == LogicalKeyboardKey.pageUp) {
+      return _generatorPage.pageCount > 1
+          ? _stepGeneratorPage(-1, isRepeat)
+          : _scrollContent(-1, isRepeat, true);
+    }
+    if (!AppShortcuts.isControl && !AppShortcuts.isAlt) {
+      if (key == LogicalKeyboardKey.arrowDown) {
+        return _scrollContent(1, isRepeat, false);
+      }
+      if (key == LogicalKeyboardKey.arrowUp) {
+        return _scrollContent(-1, isRepeat, false);
+      }
     }
 
     return KeyEventResult.ignored;
