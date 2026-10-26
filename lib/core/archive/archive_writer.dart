@@ -154,13 +154,14 @@ class ArchiveWriter {
     List<_PlannedEntry> planned,
     String destPath,
     CompressionLevel level,
+    String? password,
     void Function(String name)? onEntry,
     void Function(String name, int bytes)? onBytes,
     bool Function()? isCancelled,
   ) {
     final levelInt = _zipLevel(level);
     final output = OutputFileStream(destPath);
-    final encoder = ZipEncoder();
+    final encoder = ZipEncoder(password: password);
     encoder.startEncode(output, level: levelInt);
     var ok = false;
     try {
@@ -304,11 +305,15 @@ class ArchiveWriter {
     String destPath,
     ArchiveFormat format,
     CompressionLevel level, {
+    String? password,
     void Function(String name)? onEntry,
     void Function(String label)? onPhase,
     void Function(String name, int bytes)? onBytes,
     bool Function()? isCancelled,
   }) {
+    if (password != null && format != ArchiveFormat.zip) {
+      throw ArchiveReadException(t.errors.archivePasswordUnsupported);
+    }
     final planned = _plan(sources);
 
     final tmpDir = Directory(
@@ -322,7 +327,15 @@ class ArchiveWriter {
     try {
       switch (format) {
         case ArchiveFormat.zip:
-          _streamZip(planned, stagedPath, level, onEntry, onBytes, isCancelled);
+          _streamZip(
+            planned,
+            stagedPath,
+            level,
+            password,
+            onEntry,
+            onBytes,
+            isCancelled,
+          );
         case ArchiveFormat.tar:
           final output = OutputFileStream(stagedPath);
           try {

@@ -117,6 +117,8 @@
     "levelStore": "Store (no compression)",
     "levelNormal": "Normal",
     "levelMaximum": "Maximum",
+    "password": "Password",
+    "passwordHint": "Leave empty for no password",
     "create": "Create",
     "cancel": "Cancel"
   },
@@ -1315,6 +1317,7 @@
     "appearedDuring": "File appeared at destination during operation",
     "archiveError": "Could not read archive",
     "archiveCreateFailed": "Could not create archive: $error",
+    "archivePasswordUnsupported": "Password is only supported for ZIP archives",
     "archiveReadFailed": "Archive error: $error",
     "archiveEntryNotFound": "Archive entry not found: $path",
     "unsupportedArchiveFormat": "Unsupported archive format",

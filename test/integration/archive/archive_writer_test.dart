@@ -77,6 +77,69 @@ void main() {
       });
     }
 
+    test('zip password round-trips', () {
+      final dest = p.join(tmp.path, 'enc.zip');
+      ArchiveWriter.create(
+        [filePath, dirPath],
+        dest,
+        ArchiveFormat.zip,
+        CompressionLevel.normal,
+        password: 'secret',
+      );
+
+      expect(ArchiveReader.isEncrypted(dest), isTrue);
+      expect(ArchiveReader.verifyPassword(dest, 'wrong'), isFalse);
+      expect(ArchiveReader.verifyPassword(dest, 'secret'), isTrue);
+
+      final out = p.join(tmp.path, 'out');
+      Directory(out).createSync();
+      ArchiveReader.extractAllResolved(
+        dest,
+        (epath, isDir) => p.join(out, epath),
+        password: 'secret',
+      );
+      expect(File(p.join(out, 'note.txt')).readAsStringSync(), 'hello');
+      expect(File(p.join(out, 'folder', 'a.txt')).readAsStringSync(), 'aaa');
+      expect(
+        File(p.join(out, 'folder', 'sub', 'b.txt')).readAsStringSync(),
+        'bbb',
+      );
+    });
+
+    test('zip without password is not encrypted', () {
+      final dest = p.join(tmp.path, 'plain.zip');
+      ArchiveWriter.create(
+        [filePath],
+        dest,
+        ArchiveFormat.zip,
+        CompressionLevel.normal,
+      );
+
+      expect(ArchiveReader.isEncrypted(dest), isFalse);
+    });
+
+    test('password is rejected for non-zip formats', () {
+      for (final format in [
+        ArchiveFormat.tar,
+        ArchiveFormat.tarGz,
+        ArchiveFormat.tarBz2,
+        ArchiveFormat.tarXz,
+      ]) {
+        final dest = p.join(tmp.path, 'pw.${format.extension}');
+        expect(
+          () => ArchiveWriter.create(
+            [filePath],
+            dest,
+            format,
+            CompressionLevel.normal,
+            password: 'secret',
+          ),
+          throwsA(isA<ArchiveReadException>()),
+        );
+        expect(File(dest).existsSync(), isFalse);
+      }
+    });
+
     test('reports byte progress while creating an archive', () {
       final dest = p.join(tmp.path, 'progress.zip');
       var bytes = 0;

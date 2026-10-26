@@ -374,6 +374,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       dest,
       format: req.format.name,
       level: req.level.name,
+      password: req.password,
     );
   }
 
