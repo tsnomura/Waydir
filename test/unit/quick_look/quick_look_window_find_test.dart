@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/models/file_entry.dart';
 import 'package:waydir/features/quick_look/code_editor.dart';
+import 'package:waydir/features/quick_look/quick_look_content.dart';
 import 'package:waydir/features/quick_look/quick_look_window.dart';
 import 'package:waydir/i18n/strings.g.dart';
 import 'package:waydir/ui/theme/app_theme.dart';
@@ -33,6 +34,17 @@ void main() {
     return FileEntry.fromFileSystemEntity(file);
   }
 
+  FileEntry writeMarkdownFile() {
+    final lines = List.generate(
+      120,
+      (i) => i % 12 == 0 ? 'needle in the hay' : 'line $i',
+    );
+    final file = File('${tmp.path}/findme.md');
+    file.writeAsStringSync(lines.join('\n'));
+
+    return FileEntry.fromFileSystemEntity(file);
+  }
+
   Future<void> pumpWindow(WidgetTester tester, FileEntry entry) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(
@@ -48,6 +60,38 @@ void main() {
     }
     expect(find.byType(CodeEditor), findsOneWidget);
     await tester.pumpAndSettle();
+  }
+
+  Future<void> pumpMarkdownWindow(WidgetTester tester, FileEntry entry) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.build(),
+          home: Material(child: QuickLookWindow(entry: entry)),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    await tester.pump();
+  }
+
+  Future<void> waitSwitchedToSource(WidgetTester tester) async {
+    for (var i = 0; i < 50 && find.byType(CodeEditor).evaluate().isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await tester.pump();
+    }
+    for (var i = 0; i < 50 && find.byType(TextField).evaluate().isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await tester.pump();
+    }
+    await tester.pump();
+    expect(find.byType(CodeEditor), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'needle');
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
   }
 
   Future<void> unmountWindow(WidgetTester tester) async {
@@ -142,6 +186,87 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.byTooltip(t.quickLook.search), findsNothing);
+    await unmountWindow(tester);
+  });
+
+  testWidgets('search button is visible for rendered markdown', (tester) async {
+    await pumpMarkdownWindow(tester, writeMarkdownFile());
+    expect(find.byType(CodeEditor), findsNothing);
+    expect(find.byTooltip(t.quickLook.search), findsOneWidget);
+    await unmountWindow(tester);
+  });
+
+  testWidgets('ctrl+f on rendered markdown switches to source and opens find', (
+    tester,
+  ) async {
+    await pumpMarkdownWindow(tester, writeMarkdownFile());
+    expect(find.byType(CodeEditor), findsNothing);
+    await tester.runAsync(() async {
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+      await waitSwitchedToSource(tester);
+    });
+    await tester.pump();
+    expect(find.text('1/10'), findsOneWidget);
+    await unmountWindow(tester);
+  });
+
+  testWidgets(
+    'magnifier button on rendered markdown switches to source and opens find',
+    (tester) async {
+      await pumpMarkdownWindow(tester, writeMarkdownFile());
+      expect(find.byType(CodeEditor), findsNothing);
+      final button = tester.widget<QuickLookHeaderButton>(
+        find.byWidgetPredicate(
+          (w) => w is QuickLookHeaderButton && w.tooltip == t.quickLook.search,
+        ),
+      );
+      await tester.runAsync(() async {
+        button.onTap();
+        await tester.pump();
+        await waitSwitchedToSource(tester);
+      });
+      await tester.pump();
+      expect(find.text('1/10'), findsOneWidget);
+      await unmountWindow(tester);
+    },
+  );
+
+  testWidgets('manual toggle to source then ctrl+f opens find', (tester) async {
+    await pumpMarkdownWindow(tester, writeMarkdownFile());
+    final toggle = tester.widget<QuickLookHeaderButton>(
+      find.byWidgetPredicate(
+        (w) =>
+            w is QuickLookHeaderButton && w.tooltip == t.quickLook.viewSource,
+      ),
+    );
+    await tester.runAsync(() async {
+      toggle.onTap();
+      for (
+        var i = 0;
+        i < 50 && find.byType(CodeEditor).evaluate().isEmpty;
+        i++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await tester.pump();
+      }
+      expect(find.byType(CodeEditor), findsOneWidget);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+      for (
+        var i = 0;
+        i < 50 && find.byType(TextField).evaluate().isEmpty;
+        i++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await tester.pump();
+      }
+    });
+    expect(find.byType(TextField), findsOneWidget);
     await unmountWindow(tester);
   });
 }

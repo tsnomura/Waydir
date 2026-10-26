@@ -141,18 +141,26 @@ class QuickLookHeader extends StatelessWidget {
               SignalBuilder(
                 builder: (context) {
                   final find = editorController.find;
-                  if (!editorController.findReady.value || find == null) {
+                  if (editorController.findReady.value && find != null) {
+                    return ValueListenableBuilder(
+                      valueListenable: find,
+                      builder: (context, value, _) => QuickLookHeaderButton(
+                        icon: WaydirIconsRegular.magnifyingGlass,
+                        active: value != null,
+                        tooltip: t.quickLook.search,
+                        onTap: onSearch!,
+                      ),
+                    );
+                  }
+                  if (!isMarkdown || !markdownRendered) {
                     return const SizedBox.shrink();
                   }
 
-                  return ValueListenableBuilder(
-                    valueListenable: find,
-                    builder: (context, value, _) => QuickLookHeaderButton(
-                      icon: WaydirIconsRegular.magnifyingGlass,
-                      active: value != null,
-                      tooltip: t.quickLook.search,
-                      onTap: onSearch!,
-                    ),
+                  return QuickLookHeaderButton(
+                    icon: WaydirIconsRegular.magnifyingGlass,
+                    active: false,
+                    tooltip: t.quickLook.search,
+                    onTap: onSearch!,
                   );
                 },
               ),
