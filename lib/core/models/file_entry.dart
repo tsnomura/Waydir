@@ -58,6 +58,10 @@ class FileEntry {
 
   final bool hiddenAttr;
 
+  /// True when the entry itself is password-protected (per-entry zip
+  /// encryption bit). Only set for entries listed inside an archive.
+  final bool encrypted;
+
   DateTime? _modified;
   DateTime get modified =>
       _modified ??= DateTime.fromMillisecondsSinceEpoch(modifiedMs);
@@ -92,6 +96,7 @@ class FileEntry {
       uid: uid,
       gid: gid,
       hiddenAttr: hiddenAttr,
+      encrypted: encrypted,
       realPath: _realPath,
       ghostOf: ghostOf,
     );
@@ -109,6 +114,7 @@ class FileEntry {
     this.uid = 0,
     this.gid = 0,
     this.hiddenAttr = false,
+    this.encrypted = false,
     String? realPath,
   }) : modifiedMs = modified.millisecondsSinceEpoch,
        createdMs = (created ?? modified).millisecondsSinceEpoch,
@@ -131,6 +137,7 @@ class FileEntry {
     this.uid = 0,
     this.gid = 0,
     this.hiddenAttr = false,
+    this.encrypted = false,
     String? realPath,
     this.ghostOf,
   }) : _realPath = realPath;

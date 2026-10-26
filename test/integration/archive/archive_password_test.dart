@@ -7,6 +7,7 @@ import 'package:archive/archive_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waydir/core/archive/archive_reader.dart';
+import 'package:waydir/core/archive/archive_service.dart';
 
 void main() {
   late Directory tmp;
@@ -36,6 +37,27 @@ void main() {
   test('verifies the password', () {
     expect(ArchiveReader.verifyPassword(lockedZip, 'secret'), isTrue);
     expect(ArchiveReader.verifyPassword(lockedZip, 'wrong'), isFalse);
+  });
+
+  test('lists per-entry encryption flags', () {
+    final locked = ArchiveReader.listEntries(lockedZip);
+    expect(locked, hasLength(2));
+    expect(locked.every((e) => !e.isDir && e.encrypted), isTrue);
+    final plain = ArchiveReader.listEntries(plainZip);
+    expect(plain, hasLength(2));
+    expect(plain.every((e) => !e.encrypted), isTrue);
+  });
+
+  test('levelEntries exposes the per-entry flag', () {
+    final all = ArchiveReader.listEntries(lockedZip);
+    final level = ArchiveService.levelEntries(
+      lockedZip,
+      'a',
+      all,
+      DateTime.now(),
+    );
+    expect(level, hasLength(2));
+    expect(level.every((e) => e.encrypted), isTrue);
   });
 
   test('extracts with the password', () {
