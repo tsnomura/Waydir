@@ -1,4 +1,6 @@
 class CompareExcludes {
+  static const markerFileName = '.waydir-sync';
+
   final List<RegExp> _patterns;
 
   const CompareExcludes._(this._patterns);
@@ -16,8 +18,12 @@ class CompareExcludes {
   bool get isEmpty => _patterns.isEmpty;
 
   bool isExcluded(String relativePath) {
-    if (_patterns.isEmpty || relativePath.isEmpty) return false;
+    if (relativePath.isEmpty) return false;
     final segments = relativePath.split('/');
+    for (final segment in segments) {
+      if (segment == markerFileName) return true;
+    }
+    if (_patterns.isEmpty) return false;
     for (final pattern in _patterns) {
       if (pattern.hasMatch(relativePath)) return true;
       for (final segment in segments) {

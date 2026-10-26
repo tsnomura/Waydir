@@ -1842,12 +1842,20 @@ Compare and sync now skip entries that match user-configured glob patterns,
 so `*.bin` scratch files or a `.git` folder never show up in the diff, as
 ghosts, in the counts, or in a sync plan.
 
-- The patterns live in one setting (`compareExcludePatterns`,
-  `app_settings.compare_exclude_patterns`, schema 49): comma-, semicolon- or
-  newline-separated. Editable from Preferences → General → "Compare & sync"
-  and from a new "Excludes" button on the compare mode bar. The button
-  highlights while any pattern is set, and saving while a compare is active
-  re-runs it with the new patterns.
+- Patterns are resolved per compare: if either compared folder contains a
+  hidden `.waydir-sync` file (left folder wins), its content is used;
+  otherwise the global setting (`compareExcludePatterns`,
+  `app_settings.compare_exclude_patterns`, schema 49) applies — so the
+  Preferences value is the default. Both accept comma-, semicolon- or
+  newline-separated globs. The "Excludes" button on the compare mode bar
+  shows the effective patterns, highlights while any are set, and saving
+  re-runs the compare.
+- Saving from the "Excludes" button while a compare is active writes the
+  patterns to `.waydir-sync` in both compared folders (local folders only;
+  archive and remote roots fall back to the global setting). An empty
+  `.waydir-sync` file explicitly means "exclude nothing" for that folder.
+  The `.waydir-sync` file itself is always excluded from compare and sync,
+  at any depth, so it never appears in the diff or gets copied.
 - `CompareExcludes` (`compare_excludes.dart`) compiles each pattern to an
   anchored RegExp: `*` → `[^/]*`, `?` → `[^/]`, `[...]` character classes
   (with `!` negation) pass through, everything else is escaped literal.

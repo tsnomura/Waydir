@@ -427,6 +427,64 @@ void main() {
       },
     );
 
+    test(
+      'per-directory .waydir-sync file overrides the global setting',
+      () async {
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final leftRoot = leftStore.currentPath.value;
+        final rightRoot = rightStore.currentPath.value;
+        File(p.join(rightRoot, 'scratch.bin')).writeAsStringSync('scratch');
+
+        final settings = SettingsStore.instance;
+        final previous = settings.compareExcludePatterns.value;
+        settings.compareExcludePatterns.value = '*.txt, .git';
+        try {
+          File(
+            p.join(leftRoot, '.waydir-sync'),
+          ).writeAsStringSync('scratch.bin');
+          await controller.start();
+
+          expect(controller.effectiveExcludePatterns.value, 'scratch.bin');
+
+          final rightRel = controller.rightResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(rightRel, isNot(contains('scratch.bin')));
+          expect(rightRel, contains('top.txt'));
+          expect(rightRel, isNot(contains('.waydir-sync')));
+          final leftRel = controller.leftResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(leftRel, isNot(contains('.waydir-sync')));
+          expect(
+            rightStore.ghostPaths.value.map(p.basename),
+            isNot(contains('.waydir-sync')),
+          );
+
+          final saved = await controller.saveExcludePatterns('top.txt');
+          expect(saved, isTrue);
+          expect(
+            File(p.join(leftRoot, '.waydir-sync')).readAsStringSync().trim(),
+            'top.txt',
+          );
+          expect(
+            File(p.join(rightRoot, '.waydir-sync')).readAsStringSync().trim(),
+            'top.txt',
+          );
+          expect(controller.effectiveExcludePatterns.value, 'top.txt');
+
+          final rightRel2 = controller.rightResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(rightRel2, contains('scratch.bin'));
+          expect(rightRel2, isNot(contains('top.txt')));
+        } finally {
+          settings.compareExcludePatterns.value = previous;
+        }
+      },
+    );
+
     test('diffPairFor pairs files by relative path left then right', () async {
       await controller.start();
 

@@ -4,6 +4,7 @@ import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/dialogs/dialog.dart';
 import '../../ui/icons/waydir_icons.dart';
+import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/app_text_field.dart';
@@ -13,33 +14,37 @@ Future<void> showCompareExcludesDialog(
   BuildContext context,
   CompareController controller,
 ) async {
-  final store = SettingsStore.instance;
-  final text = TextEditingController(text: store.compareExcludePatterns.value);
+  final active = controller.active.value;
+  final initial = active
+      ? controller.effectiveExcludePatterns.value
+      : SettingsStore.instance.compareExcludePatterns.value;
+  final text = TextEditingController(text: initial);
   final save = t.compare.excludeSave;
   final result = await showCustomDialog<String>(
     context: context,
     title: t.compare.excludeTitle,
     icon: WaydirIconsRegular.prohibit,
     width: 460,
-    body: _ExcludesBody(text: text),
+    body: _ExcludesBody(text: text, perDirectory: active),
     actions: [
       DialogAction(label: t.dialog.cancel, color: AppColors.fgMuted),
       DialogAction(label: save, color: AppColors.accent),
     ],
   );
-  final raw = result == save
-      ? text.text.trim()
-      : store.compareExcludePatterns.value;
+  final raw = result == save ? text.text.trim() : initial;
   text.dispose();
-  if (raw == store.compareExcludePatterns.value) return;
-  store.compareExcludePatterns.value = raw;
-  if (controller.active.value) await controller.start();
+  if (result != save || raw == initial) return;
+  final ok = await controller.saveExcludePatterns(raw);
+  if (!ok && context.mounted) {
+    showToast(context: context, message: t.compare.excludeSaveFailed);
+  }
 }
 
 class _ExcludesBody extends StatelessWidget {
   final TextEditingController text;
+  final bool perDirectory;
 
-  const _ExcludesBody({required this.text});
+  const _ExcludesBody({required this.text, required this.perDirectory});
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +65,9 @@ class _ExcludesBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          t.preferences.general.compareExcludePatternsHint,
+          perDirectory
+              ? t.compare.excludeSavedHint
+              : t.preferences.general.compareExcludePatternsHint,
           style: context.txt.muted,
         ),
       ],

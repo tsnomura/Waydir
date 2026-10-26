@@ -599,6 +599,12 @@ class Translations$compare$en {
 	/// en: '*.bin, .git, build'
 	String get excludePlaceholder => '*.bin, .git, build';
 
+	/// en: 'Saved to the .waydir-sync file in the compared folders. Folders without that file use the global setting.'
+	String get excludeSavedHint => 'Saved to the .waydir-sync file in the compared folders. Folders without that file use the global setting.';
+
+	/// en: 'Could not save the excluded patterns.'
+	String get excludeSaveFailed => 'Could not save the excluded patterns.';
+
 	/// en: 'Done'
 	String get done => 'Done';
 
@@ -3014,8 +3020,8 @@ class Translations$preferences$general$en {
 	/// en: 'Excluded from compare & sync'
 	String get compareExcludePatterns => 'Excluded from compare & sync';
 
-	/// en: 'Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build'
-	String get compareExcludePatternsHint => 'Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build';
+	/// en: 'Default for folders without a .waydir-sync file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build'
+	String get compareExcludePatternsHint => 'Default for folders without a .waydir-sync file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build';
 
 	/// en: '*.bin, .git, build'
 	String get compareExcludePatternsPlaceholder => '*.bin, .git, build';
@@ -4739,6 +4745,8 @@ extension on Translations {
 			'compare.excludeTitle' => 'Excluded patterns',
 			'compare.excludeSave' => 'Save',
 			'compare.excludePlaceholder' => '*.bin, .git, build',
+			'compare.excludeSavedHint' => 'Saved to the .waydir-sync file in the compared folders. Folders without that file use the global setting.',
+			'compare.excludeSaveFailed' => 'Could not save the excluded patterns.',
 			'compare.done' => 'Done',
 			'compare.cancel' => 'Cancel',
 			'compare.running' => 'Comparing…',
@@ -4874,7 +4882,7 @@ extension on Translations {
 			'preferences.general.reduceMotionOff' => 'Off',
 			'preferences.general.syncSection' => 'Compare & sync',
 			'preferences.general.compareExcludePatterns' => 'Excluded from compare & sync',
-			'preferences.general.compareExcludePatternsHint' => 'Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build',
+			'preferences.general.compareExcludePatternsHint' => 'Default for folders without a .waydir-sync file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build',
 			'preferences.general.compareExcludePatternsPlaceholder' => '*.bin, .git, build',
 			'preferences.general.terminalSection' => 'Terminal',
 			'preferences.general.terminalLabel' => 'Default terminal',
@@ -5100,10 +5108,10 @@ extension on Translations {
 			'help.popOut' => 'Open in separate window',
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
-			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
-			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
+			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
@@ -5614,10 +5622,10 @@ extension on Translations {
 			'operations.compressing' => 'Compressing…',
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
-			'operations.compressingXz' => 'Compressing (xz)…',
-			'operations.justNow' => 'just now',
 			_ => null,
 		} ?? switch (path) {
+			'operations.compressingXz' => 'Compressing (xz)…',
+			'operations.justNow' => 'just now',
 			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
 			'operations.minutesAgo' => ({required Object count}) => '${count}m ago',
 			'operations.hoursAgo' => ({required Object count}) => '${count}h ago',

@@ -101,5 +101,17 @@ void main() {
     test('empty relative path is never excluded', () {
       expect(CompareExcludes.parse('.git').isExcluded(''), isFalse);
     });
+
+    test('the .waydir-sync marker file is always excluded', () {
+      final excludes = CompareExcludes.parse('');
+      expect(excludes.isExcluded('.waydir-sync'), isTrue);
+      expect(excludes.isExcluded('sub/nested/.waydir-sync'), isTrue);
+      expect(
+        CompareExcludes.parse('*.bin').isExcluded('a/.waydir-sync'),
+        isTrue,
+      );
+      expect(excludes.isExcluded('.waydir-sync.bak'), isFalse);
+      expect(excludes.isExcluded('a.waydir-sync'), isFalse);
+    });
   });
 }
