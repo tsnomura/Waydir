@@ -90,8 +90,32 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
     if (widget.pageCount <= 1) return;
     for (var i = 0; i < widget.pageCount; i++) {
       if (_disposed) return;
-      await GeneratorRunner.preview(widget.entry, position: i);
+      final path = await GeneratorRunner.preview(widget.entry, position: i);
+      if (path != null) await _warm(path);
     }
+  }
+
+  Future<String?> _loadPage(int position) async {
+    final path = await GeneratorRunner.preview(
+      widget.entry,
+      position: position,
+    );
+    if (path != null) await _warm(path);
+
+    return path;
+  }
+
+  // Decodes a fresh frame into Flutter's image cache before it's shown, so
+  // swapping to it doesn't spend its first frames decoding (a visible gap
+  // on top of the generation hold). A failed decode is swallowed: the frame
+  // simply isn't cached, and Image.file's error view takes over.
+  Future<void> _warm(String path) async {
+    final def = GeneratorRegistry.instance.forExtension(widget.entry.extension);
+    if (def != null && def.textOutput) return;
+    if (!mounted) return;
+    try {
+      await precacheImage(FileImage(File(path)), context, onError: (_, _) {});
+    } catch (_) {}
   }
 
   @override
@@ -115,8 +139,10 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
                   cacheKey:
                       '${widget.entry.realPath}|${widget.entry.modifiedMs}|'
                       '${widget.entry.size}|$position',
-                  loader: () =>
-                      GeneratorRunner.preview(widget.entry, position: position),
+                  holdKey:
+                      '${widget.entry.realPath}|${widget.entry.modifiedMs}|'
+                      '${widget.entry.size}',
+                  loader: () => _loadPage(position),
                   loading: const QlCentered.spinner(),
                   builder: (path) {
                     if (path == null) {
@@ -138,7 +164,14 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
                       );
                     }
 
-                    return Image.file(File(path), fit: BoxFit.contain);
+                    return Image.file(
+                      File(path),
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => QlCentered(
+                        icon: WaydirIconsRegular.file,
+                        message: t.quickLook.noPreview,
+                      ),
+                    );
                   },
                 ),
               ),

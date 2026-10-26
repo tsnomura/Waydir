@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 
 import '../../../core/logging/app_logger.dart';
@@ -45,6 +46,18 @@ class GeneratorRegistry {
         stack: stack,
       );
     }
+  }
+
+  @visibleForTesting
+  void registerForTesting(GeneratorDef def) {
+    for (final ext in def.extensions) {
+      _byExtension[ext] = def;
+    }
+  }
+
+  @visibleForTesting
+  void clearForTesting() {
+    _byExtension.clear();
   }
 
   Future<void> _loadFile(File file) async {

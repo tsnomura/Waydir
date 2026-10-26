@@ -151,6 +151,14 @@ class QlHudChip extends StatelessWidget {
 
 class AsyncRetain<T> extends StatefulWidget {
   final String cacheKey;
+
+  /// When set, a [cacheKey] change that leaves [holdKey] unchanged keeps
+  /// showing the previous data while the new load is in flight and swaps to
+  /// it only once it resolves — double-buffering (Quick Look holds the
+  /// previous video frame until the next one is generated) instead of
+  /// flashing [loading]. A changed or missing [holdKey] falls back to the
+  /// plain reset-and-reload behaviour.
+  final String? holdKey;
   final Future<T> Function() loader;
   final Widget Function(T data) builder;
   final Widget? loading;
@@ -158,6 +166,7 @@ class AsyncRetain<T> extends StatefulWidget {
   const AsyncRetain({
     super.key,
     required this.cacheKey,
+    this.holdKey,
     required this.loader,
     required this.builder,
     this.loading,
@@ -182,13 +191,20 @@ class _AsyncRetainState<T> extends State<AsyncRetain<T>> {
   void didUpdateWidget(AsyncRetain<T> old) {
     super.didUpdateWidget(old);
     if (old.cacheKey != widget.cacheKey) {
-      // Otherwise builder(_data) keeps rendering the previous cacheKey's
-      // data for the frames between the key changing and the new load
-      // resolving, which callers can bake into a fresh child keyed off the
-      // new cacheKey (e.g. Quick Look's CodeEditor) before that child ever
-      // sees the right content.
-      _has = false;
-      _data = null;
+      final hold =
+          widget.holdKey != null &&
+          widget.holdKey == old.holdKey &&
+          _has &&
+          _data != null;
+      if (!hold) {
+        // Otherwise builder(_data) keeps rendering the previous cacheKey's
+        // data for the frames between the key changing and the new load
+        // resolving, which callers can bake into a fresh child keyed off the
+        // new cacheKey (e.g. Quick Look's CodeEditor) before that child ever
+        // sees the right content.
+        _has = false;
+        _data = null;
+      }
       _load();
     }
   }
@@ -205,7 +221,10 @@ class _AsyncRetainState<T> extends State<AsyncRetain<T>> {
     } catch (e, st) {
       log.warn('quick-look', 'async preview load failed', error: e, stack: st);
       if (!mounted || gen != _gen) return;
-      setState(() => _has = true);
+      setState(() {
+        _data = null;
+        _has = true;
+      });
     }
   }
 
