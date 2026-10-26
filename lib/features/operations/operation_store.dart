@@ -410,11 +410,7 @@ class OperationStore {
       type: TaskType.compress,
       sources: sources,
       destination: destination,
-      options: {
-        'format': format,
-        'level': level,
-        if (password != null) 'password': password,
-      },
+      options: {'format': format, 'level': level, 'password': ?password},
       startTime: DateTime.now(),
     );
     _enqueue(task);
