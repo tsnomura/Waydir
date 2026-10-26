@@ -22,6 +22,7 @@ import 'info_panel.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
+import 'quick_look_find.dart';
 import 'quick_look_pop_out.dart';
 import 'quick_look_reload.dart';
 
@@ -319,7 +320,21 @@ class _QuickLookState extends State<_QuickLook>
     final isRepeat = event is KeyRepeatEvent;
     if (event is! KeyDownEvent && !isRepeat) return KeyEventResult.ignored;
     final key = event.logicalKey;
+    if (!isRepeat &&
+        key == LogicalKeyboardKey.keyF &&
+        AppShortcuts.isControl &&
+        !AppShortcuts.isAlt) {
+      _openSearch();
+
+      return KeyEventResult.handled;
+    }
     if (!isRepeat && key == LogicalKeyboardKey.escape) {
+      final find = _editorController.find;
+      if (find?.value != null) {
+        find!.close();
+
+        return KeyEventResult.handled;
+      }
       _requestClose();
 
       return KeyEventResult.handled;
@@ -410,6 +425,16 @@ class _QuickLookState extends State<_QuickLook>
 
   void _toggleMarkdownRendered() =>
       setState(() => _markdownRendered = !_markdownRendered);
+
+  void _openSearch() {
+    final find = _editorController.find;
+    if (find == null) return;
+    if (find.value == null) {
+      find.findMode();
+    } else {
+      find.close();
+    }
+  }
 
   void _syncPresentation(FileEntry? entry) {
     _shownEntry = entry;
@@ -595,56 +620,66 @@ class _QuickLookState extends State<_QuickLook>
       generation: _reload.generation,
     );
 
-    return Column(
+    return Stack(
       children: [
-        QuickLookHeader(
-          entry: entry,
-          nameSuffix: identical ? t.quickLook.identicalSuffix : null,
-          onOpen: entry == null ? null : _openShown,
-          compact: _compact,
-          showInfo: _showInfo,
-          onToggleInfo: () => setState(() => _showInfo = !_showInfo),
-          onClose: _requestClose,
-          editorController: _editorController,
-          markdownRendered: _markdownRendered,
-          onToggleMarkdownView: _toggleMarkdownRendered,
-          onReload: !showDiff && QuickLookReloadController.canReload(entry)
-              ? _requestReload
-              : null,
-          onHeaderPanStart: handleDragStart,
-          onHeaderPanUpdate: handleDragUpdate,
+        Column(
+          children: [
+            QuickLookHeader(
+              entry: entry,
+              nameSuffix: identical ? t.quickLook.identicalSuffix : null,
+              onOpen: entry == null ? null : _openShown,
+              compact: _compact,
+              showInfo: _showInfo,
+              onToggleInfo: () => setState(() => _showInfo = !_showInfo),
+              onClose: _requestClose,
+              editorController: _editorController,
+              markdownRendered: _markdownRendered,
+              onToggleMarkdownView: _toggleMarkdownRendered,
+              onSearch: _openSearch,
+              onReload: !showDiff && QuickLookReloadController.canReload(entry)
+                  ? _requestReload
+                  : null,
+              onHeaderPanStart: handleDragStart,
+              onHeaderPanUpdate: handleDragUpdate,
+            ),
+            Container(height: 1, color: AppColors.bgDivider),
+            Expanded(
+              child: showDiff
+                  ? QuickLookDiffAttempt(
+                      left: diffPair.$1,
+                      right: diffPair.$2,
+                      editorActive: _editorActive,
+                      onCompactChanged: _setCompact,
+                      onIdentical: () => _markIdentical(diffKey!),
+                      fallback: (context) => QuickLookBody(
+                        entry: entry,
+                        editorActive: _editorActive,
+                        editorController: _editorController,
+                        showInfo: _showInfo,
+                        onCompactChanged: _setCompact,
+                        markdownRendered: _markdownRendered,
+                        scrollController: _contentScroll,
+                        generatorPage: _generatorPage,
+                      ),
+                    )
+                  : QuickLookBody(
+                      key: ValueKey('ql#${_reload.generation}'),
+                      entry: shown,
+                      editorActive: _editorActive,
+                      editorController: _editorController,
+                      showInfo: _showInfo,
+                      onCompactChanged: _setCompact,
+                      markdownRendered: _markdownRendered,
+                      scrollController: _contentScroll,
+                      generatorPage: _generatorPage,
+                    ),
+            ),
+          ],
         ),
-        Container(height: 1, color: AppColors.bgDivider),
-        Expanded(
-          child: showDiff
-              ? QuickLookDiffAttempt(
-                  left: diffPair.$1,
-                  right: diffPair.$2,
-                  editorActive: _editorActive,
-                  onCompactChanged: _setCompact,
-                  onIdentical: () => _markIdentical(diffKey!),
-                  fallback: (context) => QuickLookBody(
-                    entry: entry,
-                    editorActive: _editorActive,
-                    editorController: _editorController,
-                    showInfo: _showInfo,
-                    onCompactChanged: _setCompact,
-                    markdownRendered: _markdownRendered,
-                    scrollController: _contentScroll,
-                    generatorPage: _generatorPage,
-                  ),
-                )
-              : QuickLookBody(
-                  key: ValueKey('ql#${_reload.generation}'),
-                  entry: shown,
-                  editorActive: _editorActive,
-                  editorController: _editorController,
-                  showInfo: _showInfo,
-                  onCompactChanged: _setCompact,
-                  markdownRendered: _markdownRendered,
-                  scrollController: _contentScroll,
-                  generatorPage: _generatorPage,
-                ),
+        Positioned(
+          top: 47,
+          right: 14,
+          child: QuickLookFindPopup(controller: _editorController),
         ),
       ],
     );

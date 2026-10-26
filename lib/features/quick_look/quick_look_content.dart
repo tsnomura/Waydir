@@ -42,6 +42,7 @@ class QuickLookHeader extends StatelessWidget {
   final CodeEditorController editorController;
   final bool markdownRendered;
   final VoidCallback? onToggleMarkdownView;
+  final VoidCallback? onSearch;
   final VoidCallback? onReload;
   final GestureDragStartCallback? onHeaderPanStart;
   final GestureDragUpdateCallback? onHeaderPanUpdate;
@@ -60,6 +61,7 @@ class QuickLookHeader extends StatelessWidget {
     this.multiCount,
     this.markdownRendered = true,
     this.onToggleMarkdownView,
+    this.onSearch,
     this.onReload,
     this.onHeaderPanStart,
     this.onHeaderPanUpdate,
@@ -130,6 +132,27 @@ class QuickLookHeader extends StatelessWidget {
                         ? t.quickLook.viewSource
                         : t.quickLook.viewRendered,
                     onTap: onToggleMarkdownView!,
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+            ],
+            if (onSearch != null) ...[
+              SignalBuilder(
+                builder: (context) {
+                  final find = editorController.find;
+                  if (!editorController.findReady.value || find == null) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return ValueListenableBuilder(
+                    valueListenable: find,
+                    builder: (context, value, _) => QuickLookHeaderButton(
+                      icon: WaydirIconsRegular.magnifyingGlass,
+                      active: value != null,
+                      tooltip: t.quickLook.search,
+                      onTap: onSearch!,
+                    ),
                   );
                 },
               ),
