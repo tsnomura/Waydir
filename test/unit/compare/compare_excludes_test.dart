@@ -102,16 +102,36 @@ void main() {
       expect(CompareExcludes.parse('.git').isExcluded(''), isFalse);
     });
 
-    test('the .waydir-sync marker file is always excluded', () {
+    test('the .waydir-sync-ignore marker file is always excluded', () {
       final excludes = CompareExcludes.parse('');
-      expect(excludes.isExcluded('.waydir-sync'), isTrue);
-      expect(excludes.isExcluded('sub/nested/.waydir-sync'), isTrue);
+      expect(excludes.isExcluded('.waydir-sync-ignore'), isTrue);
+      expect(excludes.isExcluded('sub/nested/.waydir-sync-ignore'), isTrue);
       expect(
-        CompareExcludes.parse('*.bin').isExcluded('a/.waydir-sync'),
+        CompareExcludes.parse('*.bin').isExcluded('a/.waydir-sync-ignore'),
         isTrue,
       );
-      expect(excludes.isExcluded('.waydir-sync.bak'), isFalse);
-      expect(excludes.isExcluded('a.waydir-sync'), isFalse);
+      expect(excludes.isExcluded('.waydir-sync-ignore.bak'), isFalse);
+      expect(excludes.isExcluded('a.waydir-sync-ignore'), isFalse);
+    });
+
+    test('# comment lines are skipped', () {
+      final excludes = CompareExcludes.parse('# ignore binaries\n*.bin');
+      expect(excludes.isEmpty, isFalse);
+      expect(excludes.isExcluded('a.bin'), isTrue);
+      expect(excludes.isExcluded('# note.txt'), isFalse);
+      expect(CompareExcludes.parse('# only a comment').isEmpty, isTrue);
+      expect(
+        CompareExcludes.parse('*.bin\n# comment, build').isExcluded('build'),
+        isFalse,
+      );
+    });
+
+    test('splitPatterns returns trimmed slash-free patterns', () {
+      expect(CompareExcludes.splitPatterns(' *.bin , .git/ ; \n# c'), [
+        '*.bin',
+        '.git',
+      ]);
+      expect(CompareExcludes.splitPatterns(''), isEmpty);
     });
   });
 }

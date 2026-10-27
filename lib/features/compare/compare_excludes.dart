@@ -1,5 +1,5 @@
 class CompareExcludes {
-  static const markerFileName = '.waydir-sync';
+  static const markerFileName = '.waydir-sync-ignore';
 
   final List<RegExp> _patterns;
 
@@ -7,12 +7,24 @@ class CompareExcludes {
 
   static CompareExcludes parse(String raw) {
     final patterns = <RegExp>[];
-    for (final part in raw.split(RegExp(r'[\r\n,;]+'))) {
-      final pattern = _trimSlashes(part.trim());
-      if (pattern.isNotEmpty) patterns.add(_compile(pattern));
+    for (final pattern in splitPatterns(raw)) {
+      patterns.add(_compile(pattern));
     }
 
     return CompareExcludes._(patterns);
+  }
+
+  static List<String> splitPatterns(String raw) {
+    final patterns = <String>[];
+    for (final line in raw.split(RegExp(r'[\r\n]+'))) {
+      if (line.trim().startsWith('#')) continue;
+      for (final part in line.split(RegExp(r'[;,]+'))) {
+        final pattern = _trimSlashes(part.trim());
+        if (pattern.isNotEmpty) patterns.add(pattern);
+      }
+    }
+
+    return patterns;
   }
 
   bool get isEmpty => _patterns.isEmpty;

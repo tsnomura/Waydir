@@ -596,8 +596,8 @@ class Translations$compare$en {
 	/// en: '*.bin, .git, build'
 	String get excludePlaceholder => '*.bin, .git, build';
 
-	/// en: 'Saved to the .waydir-sync file in the compared folders. Folders without that file use the global setting.'
-	String get excludeSavedHint => 'Saved to the .waydir-sync file in the compared folders. Folders without that file use the global setting.';
+	/// en: 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.'
+	String get excludeSavedHint => 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.';
 
 	/// en: 'Could not save the excluded patterns.'
 	String get excludeSaveFailed => 'Could not save the excluded patterns.';
@@ -3026,8 +3026,8 @@ class Translations$preferences$general$en {
 	/// en: 'Excluded from compare & sync'
 	String get compareExcludePatterns => 'Excluded from compare & sync';
 
-	/// en: 'Default for folders without a .waydir-sync file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build'
-	String get compareExcludePatternsHint => 'Default for folders without a .waydir-sync file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build';
+	/// en: 'Default for folders without a .waydir-sync-ignore file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build'
+	String get compareExcludePatternsHint => 'Default for folders without a .waydir-sync-ignore file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build';
 
 	/// en: '*.bin, .git, build'
 	String get compareExcludePatternsPlaceholder => '*.bin, .git, build';
@@ -4750,7 +4750,7 @@ extension on Translations {
 			'compare.excludesTooltip' => 'Edit the patterns excluded from compare and sync',
 			'compare.excludesActiveTooltip' => 'Click to edit',
 			'compare.excludePlaceholder' => '*.bin, .git, build',
-			'compare.excludeSavedHint' => 'Saved to the .waydir-sync file in the compared folders. Folders without that file use the global setting.',
+			'compare.excludeSavedHint' => 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.',
 			'compare.excludeSaveFailed' => 'Could not save the excluded patterns.',
 			'compare.excludeApply' => 'Apply',
 			'compare.excludeClear' => 'Clear',
@@ -4890,7 +4890,7 @@ extension on Translations {
 			'preferences.general.reduceMotionOff' => 'Off',
 			'preferences.general.syncSection' => 'Compare & sync',
 			'preferences.general.compareExcludePatterns' => 'Excluded from compare & sync',
-			'preferences.general.compareExcludePatternsHint' => 'Default for folders without a .waydir-sync file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build',
+			'preferences.general.compareExcludePatternsHint' => 'Default for folders without a .waydir-sync-ignore file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build',
 			'preferences.general.compareExcludePatternsPlaceholder' => '*.bin, .git, build',
 			'preferences.general.terminalSection' => 'Terminal',
 			'preferences.general.terminalLabel' => 'Default terminal',

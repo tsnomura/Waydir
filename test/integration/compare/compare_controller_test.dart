@@ -434,7 +434,7 @@ void main() {
     );
 
     test(
-      'per-directory .waydir-sync file overrides the global setting',
+      'per-directory .waydir-sync-ignore file overrides the global setting',
       () async {
         final leftStore = paneLeft.tabs.activeTab.value.store;
         final rightStore = paneRight.tabs.activeTab.value.store;
@@ -447,7 +447,7 @@ void main() {
         settings.compareExcludePatterns.value = '*.txt, .git';
         try {
           File(
-            p.join(leftRoot, '.waydir-sync'),
+            p.join(leftRoot, '.waydir-sync-ignore'),
           ).writeAsStringSync('scratch.bin');
           await controller.start();
 
@@ -458,24 +458,28 @@ void main() {
               .toSet();
           expect(rightRel, isNot(contains('scratch.bin')));
           expect(rightRel, contains('top.txt'));
-          expect(rightRel, isNot(contains('.waydir-sync')));
+          expect(rightRel, isNot(contains('.waydir-sync-ignore')));
           final leftRel = controller.leftResults.value.values
               .map((r) => r.relativePath)
               .toSet();
-          expect(leftRel, isNot(contains('.waydir-sync')));
+          expect(leftRel, isNot(contains('.waydir-sync-ignore')));
           expect(
             rightStore.ghostPaths.value.map(p.basename),
-            isNot(contains('.waydir-sync')),
+            isNot(contains('.waydir-sync-ignore')),
           );
 
           final saved = await controller.saveExcludePatterns('top.txt');
           expect(saved, isTrue);
           expect(
-            File(p.join(leftRoot, '.waydir-sync')).readAsStringSync().trim(),
+            File(
+              p.join(leftRoot, '.waydir-sync-ignore'),
+            ).readAsStringSync().trim(),
             'top.txt',
           );
           expect(
-            File(p.join(rightRoot, '.waydir-sync')).readAsStringSync().trim(),
+            File(
+              p.join(rightRoot, '.waydir-sync-ignore'),
+            ).readAsStringSync().trim(),
             'top.txt',
           );
           expect(controller.effectiveExcludePatterns.value, 'top.txt');
@@ -495,8 +499,14 @@ void main() {
       await controller.start();
       final leftStore = paneLeft.tabs.activeTab.value.store;
       final rightStore = paneRight.tabs.activeTab.value.store;
-      final leftMarker = p.join(leftStore.currentPath.value, '.waydir-sync');
-      final rightMarker = p.join(rightStore.currentPath.value, '.waydir-sync');
+      final leftMarker = p.join(
+        leftStore.currentPath.value,
+        '.waydir-sync-ignore',
+      );
+      final rightMarker = p.join(
+        rightStore.currentPath.value,
+        '.waydir-sync-ignore',
+      );
 
       expect(await controller.saveExcludePatterns('top.txt'), isTrue);
       expect(await controller.saveExcludePatterns(''), isTrue);
@@ -553,9 +563,24 @@ void main() {
         final leftStore = paneLeft.tabs.activeTab.value.store;
         expect(
           File(
-            p.join(leftStore.currentPath.value, '.waydir-sync'),
+            p.join(leftStore.currentPath.value, '.waydir-sync-ignore'),
           ).readAsStringSync().trim(),
           '*.bin',
+        );
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
+
+        await tester.enterText(field, '*.bin, build');
+        await tester.runAsync(() async {
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+        });
+        expect(controller.effectiveExcludePatterns.value, '*.bin, build');
+        expect(
+          File(
+            p.join(leftStore.currentPath.value, '.waydir-sync-ignore'),
+          ).readAsStringSync(),
+          '*.bin\nbuild\n',
         );
         expect(find.byType(CompareExcludesBar), findsOneWidget);
 
@@ -563,7 +588,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pumpAndSettle();
         expect(find.byType(CompareExcludesBar), findsNothing);
-        expect(controller.effectiveExcludePatterns.value, '*.bin');
+        expect(controller.effectiveExcludePatterns.value, '*.bin, build');
 
         await tester.tap(find.text(t.compare.excludes));
         await tester.pumpAndSettle();

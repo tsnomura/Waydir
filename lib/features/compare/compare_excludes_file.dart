@@ -18,7 +18,9 @@ class CompareExcludesFile {
     try {
       final file = File(markerPath(root));
       if (!await file.exists()) return null;
-      return (await file.readAsString()).trim();
+      return CompareExcludes.splitPatterns(
+        await file.readAsString(),
+      ).join(', ');
     } catch (_) {
       return null;
     }
@@ -27,7 +29,9 @@ class CompareExcludesFile {
   static Future<bool> write(String root, String value) async {
     if (!isCapable(root)) return false;
     try {
-      await File(markerPath(root)).writeAsString(value.trim());
+      final patterns = CompareExcludes.splitPatterns(value);
+      final content = patterns.isEmpty ? '' : '${patterns.join('\n')}\n';
+      await File(markerPath(root)).writeAsString(content);
       return true;
     } catch (_) {
       return false;
