@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/models/file_entry.dart';
 import 'package:waydir/features/quick_look/code_editor.dart';
+import 'package:waydir/features/quick_look/markdown_preview.dart';
 import 'package:waydir/features/quick_look/quick_look_content.dart';
 import 'package:waydir/features/quick_look/quick_look_window.dart';
 import 'package:waydir/i18n/strings.g.dart';
@@ -15,9 +18,11 @@ void main() {
 
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('ql_window_find');
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
   });
 
   tearDown(() {
+    debugDefaultTargetPlatformOverride = null;
     if (tmp.existsSync()) {
       tmp.deleteSync(recursive: true);
     }
@@ -95,6 +100,7 @@ void main() {
   }
 
   Future<void> unmountWindow(WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = null;
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
@@ -112,6 +118,28 @@ void main() {
       await tester.pump();
       for (var i = 0; i < 10; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+    });
+    await tester.pump();
+  }
+
+  Future<void> gestureTap(WidgetTester tester, Finder target) async {
+    final loc = tester.getCenter(target);
+    final gesture = await tester.startGesture(
+      loc,
+      pointer: 7,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump(const Duration(milliseconds: 60));
+    await gesture.up();
+    await tester.runAsync(() async {
+      for (
+        var i = 0;
+        i < 30 && find.byType(CodeEditor).evaluate().isEmpty;
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
       }
     });
     await tester.pump();
@@ -267,6 +295,120 @@ void main() {
       }
     });
     expect(find.byType(TextField), findsOneWidget);
+    await unmountWindow(tester);
+  });
+
+  testWidgets(
+    'gesture press on view-source toggle switches without opening find',
+    (tester) async {
+      await pumpMarkdownWindow(tester, writeMarkdownFile());
+      final toggle = find.byWidgetPredicate(
+        (w) =>
+            w is QuickLookHeaderButton && w.tooltip == t.quickLook.viewSource,
+      );
+      await gestureTap(tester, toggle);
+      expect(find.byType(CodeEditor), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      await unmountWindow(tester);
+    },
+  );
+
+  testWidgets(
+    'gesture press on rendered markdown magnifier switches to source and opens find',
+    (tester) async {
+      await pumpMarkdownWindow(tester, writeMarkdownFile());
+      expect(find.byType(CodeEditor), findsNothing);
+      final magnifier = find.byWidgetPredicate(
+        (w) => w is QuickLookHeaderButton && w.tooltip == t.quickLook.search,
+      );
+      await gestureTap(tester, magnifier);
+      await tester.runAsync(() async {
+        await waitSwitchedToSource(tester);
+      });
+      await tester.pump();
+      expect(find.text('1/10'), findsOneWidget);
+      await unmountWindow(tester);
+    },
+  );
+
+  testWidgets(
+    'gesture press with tooltip showing switches to source and opens find',
+    (tester) async {
+      await pumpMarkdownWindow(tester, writeMarkdownFile());
+      final magnifier = find.byWidgetPredicate(
+        (w) => w is QuickLookHeaderButton && w.tooltip == t.quickLook.search,
+      );
+      final loc = tester.getCenter(magnifier);
+      await tester.runAsync(() async {
+        await tester.sendEventToBinding(
+          PointerHoverEvent(
+            position: loc,
+            pointer: 7,
+            device: 7,
+            kind: PointerDeviceKind.mouse,
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+        await tester.pump();
+      });
+      expect(find.text(t.quickLook.search), findsWidgets);
+      await gestureTap(tester, magnifier);
+      await tester.runAsync(() async {
+        await waitSwitchedToSource(tester);
+      });
+      await tester.pump();
+      expect(find.text('1/10'), findsOneWidget);
+      await unmountWindow(tester);
+    },
+  );
+
+  testWidgets('returning to rendered markdown closes the find bar', (
+    tester,
+  ) async {
+    await pumpMarkdownWindow(tester, writeMarkdownFile());
+    final magnifier = find.byWidgetPredicate(
+      (w) => w is QuickLookHeaderButton && w.tooltip == t.quickLook.search,
+    );
+    await tester.runAsync(() async {
+      tester.widget<QuickLookHeaderButton>(magnifier).onTap();
+      await tester.pump();
+      await waitSwitchedToSource(tester);
+    });
+    await tester.pump();
+    expect(find.byType(TextField), findsOneWidget);
+
+    final toggle = find.byWidgetPredicate(
+      (w) =>
+          w is QuickLookHeaderButton && w.tooltip == t.quickLook.viewRendered,
+    );
+    expect(toggle, findsOneWidget);
+    await tester.runAsync(() async {
+      tester.widget<QuickLookHeaderButton>(toggle).onTap();
+      for (
+        var i = 0;
+        i < 50 && find.byType(MarkdownPreview).evaluate().isEmpty;
+        i++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await tester.pump();
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await tester.pump();
+    });
+    expect(find.byType(MarkdownPreview), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+
+    final magnifier2 = find.byWidgetPredicate(
+      (w) => w is QuickLookHeaderButton && w.tooltip == t.quickLook.search,
+    );
+    expect(magnifier2, findsOneWidget);
+    await tester.runAsync(() async {
+      tester.widget<QuickLookHeaderButton>(magnifier2).onTap();
+      await tester.pump();
+      await waitSwitchedToSource(tester);
+    });
+    await tester.pump();
+    expect(find.text('1/10'), findsOneWidget);
     await unmountWindow(tester);
   });
 }

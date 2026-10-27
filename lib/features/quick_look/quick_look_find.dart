@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:signals/signals_flutter.dart';
 
 import '../../i18n/strings.g.dart';
 import '../../ui/icons/waydir_icons.dart';
@@ -41,117 +42,126 @@ class _QuickLookFindPopupState extends State<QuickLookFindPopup> {
 
   @override
   Widget build(BuildContext context) {
-    final find = widget.controller.find;
-    if (find == null) return const SizedBox.shrink();
+    return SignalBuilder(
+      builder: (context) {
+        if (!widget.controller.findReady.value) {
+          return const SizedBox.shrink();
+        }
+        final find = widget.controller.find;
+        if (find == null) return const SizedBox.shrink();
 
-    return ValueListenableBuilder(
-      valueListenable: find,
-      builder: (context, value, _) {
-        if (value == null) return const SizedBox.shrink();
-        final result = value.result;
-        final counter = result == null
-            ? (value.searching || value.option.pattern.isEmpty
-                  ? ''
-                  : t.quickLook.searchNoMatches)
-            : '${result.index + 1}/${result.matches.length}';
+        return ValueListenableBuilder(
+          valueListenable: find,
+          builder: (context, value, _) {
+            if (value == null) return const SizedBox.shrink();
+            final result = value.result;
+            final counter = result == null
+                ? (value.searching || value.option.pattern.isEmpty
+                      ? ''
+                      : t.quickLook.searchNoMatches)
+                : '${result.index + 1}/${result.matches.length}';
 
-        return Focus(
-          focusNode: _escFocus,
-          canRequestFocus: false,
-          onKeyEvent: _onKeyEvent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: AppColors.bgToolbar,
-              border: Border.all(color: AppColors.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+            return Focus(
+              focusNode: _escFocus,
+              canRequestFocus: false,
+              onKeyEvent: _onKeyEvent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.bgToolbar,
+                  border: Border.all(color: AppColors.borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  WaydirIconsRegular.magnifyingGlass,
-                  size: 14,
-                  color: AppColors.fgMuted,
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 220,
-                  child: TextField(
-                    controller: find.findInputController,
-                    focusNode: find.findInputFocusNode,
-                    onEditingComplete: () =>
-                        find.findInputFocusNode.requestFocus(),
-                    onSubmitted: (_) => find.nextMatch(),
-                    style: context.txt.body,
-                    cursorColor: AppColors.accent,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 5),
-                      border: InputBorder.none,
-                      hintText: t.quickLook.search,
-                      hintStyle: context.txt.body.copyWith(
-                        color: AppColors.fgSubtle,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      WaydirIconsRegular.magnifyingGlass,
+                      size: 14,
+                      color: AppColors.fgMuted,
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 220,
+                      child: TextField(
+                        controller: find.findInputController,
+                        focusNode: find.findInputFocusNode,
+                        onEditingComplete: () =>
+                            find.findInputFocusNode.requestFocus(),
+                        onSubmitted: (_) => find.nextMatch(),
+                        style: context.txt.body,
+                        cursorColor: AppColors.accent,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 5,
+                          ),
+                          border: InputBorder.none,
+                          hintText: t.quickLook.search,
+                          hintStyle: context.txt.body.copyWith(
+                            color: AppColors.fgSubtle,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                _FindToggle(
-                  label: 'Aa',
-                  active: value.option.caseSensitive,
-                  tooltip: t.quickLook.searchCase,
-                  onTap: find.toggleCaseSensitive,
-                ),
-                const SizedBox(width: 2),
-                _FindToggle(
-                  label: '.*',
-                  active: value.option.regex,
-                  tooltip: t.quickLook.searchRegex,
-                  onTap: find.toggleRegex,
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 54,
-                  child: Text(
-                    counter,
-                    textAlign: TextAlign.right,
-                    style: context.txt.caption.copyWith(
-                      color: result == null
-                          ? AppColors.danger
-                          : AppColors.fgMuted,
+                    const SizedBox(width: 6),
+                    _FindToggle(
+                      label: 'Aa',
+                      active: value.option.caseSensitive,
+                      tooltip: t.quickLook.searchCase,
+                      onTap: find.toggleCaseSensitive,
                     ),
-                  ),
+                    const SizedBox(width: 2),
+                    _FindToggle(
+                      label: '.*',
+                      active: value.option.regex,
+                      tooltip: t.quickLook.searchRegex,
+                      onTap: find.toggleRegex,
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 54,
+                      child: Text(
+                        counter,
+                        textAlign: TextAlign.right,
+                        style: context.txt.caption.copyWith(
+                          color: result == null
+                              ? AppColors.danger
+                              : AppColors.fgMuted,
+                        ),
+                      ),
+                    ),
+                    QuickLookHeaderButton(
+                      icon: WaydirIconsRegular.caretUp,
+                      active: false,
+                      enabled: result != null,
+                      tooltip: t.quickLook.searchPrevious,
+                      onTap: find.previousMatch,
+                    ),
+                    QuickLookHeaderButton(
+                      icon: WaydirIconsRegular.caretDown,
+                      active: false,
+                      enabled: result != null,
+                      tooltip: t.quickLook.searchNext,
+                      onTap: find.nextMatch,
+                    ),
+                    QuickLookHeaderButton(
+                      icon: WaydirIconsRegular.x,
+                      active: false,
+                      tooltip: t.quickLook.searchClose,
+                      onTap: _close,
+                    ),
+                  ],
                 ),
-                QuickLookHeaderButton(
-                  icon: WaydirIconsRegular.caretUp,
-                  active: false,
-                  enabled: result != null,
-                  tooltip: t.quickLook.searchPrevious,
-                  onTap: find.previousMatch,
-                ),
-                QuickLookHeaderButton(
-                  icon: WaydirIconsRegular.caretDown,
-                  active: false,
-                  enabled: result != null,
-                  tooltip: t.quickLook.searchNext,
-                  onTap: find.nextMatch,
-                ),
-                QuickLookHeaderButton(
-                  icon: WaydirIconsRegular.x,
-                  active: false,
-                  tooltip: t.quickLook.searchClose,
-                  onTap: _close,
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

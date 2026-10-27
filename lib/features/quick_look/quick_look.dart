@@ -438,8 +438,13 @@ class _QuickLookState extends State<_QuickLook>
     });
   }
 
-  void _toggleMarkdownRendered() =>
-      setState(() => _markdownRendered = !_markdownRendered);
+  void _toggleMarkdownRendered() {
+    if (!_markdownRendered) {
+      final find = _editorController.find;
+      if (find != null && find.value != null) find.close();
+    }
+    setState(() => _markdownRendered = !_markdownRendered);
+  }
 
   void _openSearch() {
     final find = _editorController.find;
@@ -454,6 +459,15 @@ class _QuickLookState extends State<_QuickLook>
     if (!_renderedMarkdown) return;
     _pendingSearch = true;
     setState(() => _markdownRendered = false);
+  }
+
+  void _onSearchTap() {
+    if (_editorController.find != null) {
+      _openSearch();
+      return;
+    }
+    _toggleMarkdownRendered();
+    _openSearch();
   }
 
   void _syncPresentation(FileEntry? entry) {
@@ -663,7 +677,7 @@ class _QuickLookState extends State<_QuickLook>
               editorController: _editorController,
               markdownRendered: _markdownRendered,
               onToggleMarkdownView: _toggleMarkdownRendered,
-              onSearch: _openSearch,
+              onSearch: _onSearchTap,
               onReload: !showDiff && QuickLookReloadController.canReload(entry)
                   ? _requestReload
                   : null,

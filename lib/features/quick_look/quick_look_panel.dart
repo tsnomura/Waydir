@@ -122,8 +122,13 @@ class _QuickLookPanelState extends State<QuickLookPanel>
 
   void _requestReload() => unawaited(_reload.request(context));
 
-  void _toggleMarkdownRendered() =>
-      setState(() => _markdownRendered = !_markdownRendered);
+  void _toggleMarkdownRendered() {
+    if (!_markdownRendered) {
+      final find = _editorController.find;
+      if (find != null && find.value != null) find.close();
+    }
+    setState(() => _markdownRendered = !_markdownRendered);
+  }
 
   void _openSearch() {
     final find = _editorController.find;
@@ -138,6 +143,15 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     if (!_renderedMarkdown) return;
     _pendingSearch = true;
     setState(() => _markdownRendered = false);
+  }
+
+  void _onSearchTap() {
+    if (_editorController.find != null) {
+      _openSearch();
+      return;
+    }
+    _toggleMarkdownRendered();
+    _openSearch();
   }
 
   void _setCompact(bool value) {
@@ -192,7 +206,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                   editorController: _editorController,
                   markdownRendered: _markdownRendered,
                   onToggleMarkdownView: _toggleMarkdownRendered,
-                  onSearch: _openSearch,
+                  onSearch: _onSearchTap,
                   onReload: QuickLookReloadController.canReload(entry)
                       ? _requestReload
                       : null,
