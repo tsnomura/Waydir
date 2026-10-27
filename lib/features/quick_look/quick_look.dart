@@ -18,9 +18,11 @@ import '../../ui/widgets/floating_window_geometry.dart';
 import 'code_editor.dart';
 import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
+import 'generators/generator_registry.dart';
 import 'info_panel.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
+import 'quick_look_common.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
 import 'quick_look_pop_out.dart';
@@ -106,6 +108,9 @@ class _QuickLookState extends State<_QuickLook>
   bool _compact = true;
   bool _showInfo = true;
   bool _markdownRendered = true;
+  bool _pendingSearch = false;
+  bool _renderedMarkdown = false;
+  late final void Function() _findReadySub;
   String? _presentationKey;
   late final _reload = QuickLookReloadController(
     editorController: _editorController,
@@ -156,6 +161,15 @@ class _QuickLookState extends State<_QuickLook>
     final entry = cursor?.ghostOf ?? cursor;
     _compact = defaultCompactFor(entry);
     _presentationKey = entry?.realPath;
+    _findReadySub = _editorController.findReady.subscribe((ready) {
+      if (!ready || !mounted) return;
+      setState(() {});
+      if (!_pendingSearch) return;
+      _pendingSearch = false;
+      final find = _editorController.find;
+      if (find == null) return;
+      find.findMode();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
     });
@@ -167,6 +181,7 @@ class _QuickLookState extends State<_QuickLook>
     PlaybackRegistry.instance.unregister(_playback);
     _reload.dispose();
     _playback.dispose();
+    _findReadySub();
     _focus.dispose();
     _editorActive.dispose();
     _editorController.dispose();
@@ -423,17 +438,36 @@ class _QuickLookState extends State<_QuickLook>
     });
   }
 
-  void _toggleMarkdownRendered() =>
-      setState(() => _markdownRendered = !_markdownRendered);
+  void _toggleMarkdownRendered() {
+    if (!_markdownRendered) {
+      final find = _editorController.find;
+      if (find != null && find.value != null) find.close();
+    }
+    setState(() => _markdownRendered = !_markdownRendered);
+  }
 
   void _openSearch() {
     final find = _editorController.find;
-    if (find == null) return;
-    if (find.value == null) {
-      find.findMode();
-    } else {
-      find.close();
+    if (find != null) {
+      if (find.value == null) {
+        find.findMode();
+      } else {
+        find.close();
+      }
+      return;
     }
+    if (!_renderedMarkdown) return;
+    _pendingSearch = true;
+    setState(() => _markdownRendered = false);
+  }
+
+  void _onSearchTap() {
+    if (_editorController.find != null) {
+      _openSearch();
+      return;
+    }
+    _toggleMarkdownRendered();
+    _openSearch();
   }
 
   void _syncPresentation(FileEntry? entry) {
@@ -441,6 +475,7 @@ class _QuickLookState extends State<_QuickLook>
     final key = entry?.realPath;
     if (_presentationKey == key) return;
     _presentationKey = key;
+    _pendingSearch = false;
     _markdownRendered = true;
     _generatorPage.reset();
     _setCompact(defaultCompactFor(entry));
@@ -493,6 +528,7 @@ class _QuickLookState extends State<_QuickLook>
     return SignalBuilder(
       builder: (_) {
         _shownEntry = null;
+        _renderedMarkdown = false;
         final override = widget.explicitEntry;
         if (override != null) {
           _shownEntry = override;
@@ -613,6 +649,12 @@ class _QuickLookState extends State<_QuickLook>
     _reload.watch(showDiff ? null : entry);
     _reload.revision.value;
     final shown = _reload.shown(entry);
+    _renderedMarkdown =
+        !showDiff &&
+        shown != null &&
+        markdownExts.contains(shown.extension) &&
+        _markdownRendered &&
+        GeneratorRegistry.instance.forExtension(shown.extension) == null;
     _playback.sync(
       entry,
       _generatorPage,
@@ -635,7 +677,7 @@ class _QuickLookState extends State<_QuickLook>
               editorController: _editorController,
               markdownRendered: _markdownRendered,
               onToggleMarkdownView: _toggleMarkdownRendered,
-              onSearch: _openSearch,
+              onSearch: _onSearchTap,
               onReload: !showDiff && QuickLookReloadController.canReload(entry)
                   ? _requestReload
                   : null,

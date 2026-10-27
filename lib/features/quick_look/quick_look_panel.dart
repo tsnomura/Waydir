@@ -10,8 +10,10 @@ import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
+import 'generators/generator_registry.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
+import 'quick_look_common.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
 import 'quick_look_reload.dart';
@@ -44,6 +46,9 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   bool _compact = true;
   bool _showInfo = true;
   bool _markdownRendered = true;
+  bool _pendingSearch = false;
+  bool _renderedMarkdown = false;
+  late final void Function() _findReadySub;
   String? _presentationKey;
   late final _reload = QuickLookReloadController(
     editorController: _editorController,
@@ -59,6 +64,15 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     final entry = _resolveEntry();
     _compact = defaultCompactFor(entry);
     _presentationKey = entry?.realPath;
+    _findReadySub = _editorController.findReady.subscribe((ready) {
+      if (!ready || !mounted) return;
+      setState(() {});
+      if (!_pendingSearch) return;
+      _pendingSearch = false;
+      final find = _editorController.find;
+      if (find == null) return;
+      find.findMode();
+    });
     widget.onRegisterCloseGuard(_confirmClose);
   }
 
@@ -69,6 +83,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     widget.onRegisterCloseGuard(null);
     _reload.dispose();
     _playback.dispose();
+    _findReadySub();
     _editorActive.dispose();
     _editorController.dispose();
     _contentScroll.dispose();
@@ -107,17 +122,36 @@ class _QuickLookPanelState extends State<QuickLookPanel>
 
   void _requestReload() => unawaited(_reload.request(context));
 
-  void _toggleMarkdownRendered() =>
-      setState(() => _markdownRendered = !_markdownRendered);
+  void _toggleMarkdownRendered() {
+    if (!_markdownRendered) {
+      final find = _editorController.find;
+      if (find != null && find.value != null) find.close();
+    }
+    setState(() => _markdownRendered = !_markdownRendered);
+  }
 
   void _openSearch() {
     final find = _editorController.find;
-    if (find == null) return;
-    if (find.value == null) {
-      find.findMode();
-    } else {
-      find.close();
+    if (find != null) {
+      if (find.value == null) {
+        find.findMode();
+      } else {
+        find.close();
+      }
+      return;
     }
+    if (!_renderedMarkdown) return;
+    _pendingSearch = true;
+    setState(() => _markdownRendered = false);
+  }
+
+  void _onSearchTap() {
+    if (_editorController.find != null) {
+      _openSearch();
+      return;
+    }
+    _toggleMarkdownRendered();
+    _openSearch();
   }
 
   void _setCompact(bool value) {
@@ -132,6 +166,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     final key = entry?.realPath;
     if (_presentationKey == key) return;
     _presentationKey = key;
+    _pendingSearch = false;
     _markdownRendered = true;
     _generatorPage.reset();
     _setCompact(defaultCompactFor(entry));
@@ -146,6 +181,11 @@ class _QuickLookPanelState extends State<QuickLookPanel>
         _reload.watch(entry);
         _reload.revision.value;
         final shown = _reload.shown(entry);
+        _renderedMarkdown =
+            shown != null &&
+            markdownExts.contains(shown.extension) &&
+            _markdownRendered &&
+            GeneratorRegistry.instance.forExtension(shown.extension) == null;
         _playback.sync(
           entry,
           _generatorPage,
@@ -166,7 +206,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                   editorController: _editorController,
                   markdownRendered: _markdownRendered,
                   onToggleMarkdownView: _toggleMarkdownRendered,
-                  onSearch: _openSearch,
+                  onSearch: _onSearchTap,
                   onReload: QuickLookReloadController.canReload(entry)
                       ? _requestReload
                       : null,
