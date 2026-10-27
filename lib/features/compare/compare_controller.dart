@@ -7,12 +7,15 @@ import 'package:signals/signals.dart';
 import '../../core/fs/file_system_service.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
+import '../../core/settings/settings_store.dart';
 import '../../ui/theme/app_theme.dart';
 import '../files/row_decorations.dart';
 import '../navigation/navigation_store.dart';
 import '../operations/operation_store.dart';
 import '../panes/pane_store.dart';
 import 'compare_diff.dart';
+import 'compare_excludes.dart';
+import 'compare_excludes_file.dart';
 import 'compare_sync_plan.dart';
 
 class CompareController {
@@ -27,6 +30,7 @@ class CompareController {
   final leftResults = signal<Map<String, CompareEntryResult>>({});
   final rightResults = signal<Map<String, CompareEntryResult>>({});
   final counts = signal(const CompareCounts());
+  final effectiveExcludePatterns = signal('');
   Future<bool> Function(CompareSyncPlan plan)? confirmSync;
 
   int _runId = 0;
@@ -259,11 +263,24 @@ class CompareController {
     active.value = true;
     final recursive = this.recursive.value;
     try {
-      final listed = await Future.wait([
+      final marker =
+          await CompareExcludesFile.read(leftRoot) ??
+          await CompareExcludesFile.read(rightRoot);
+      if (run != _runId) return;
+      effectiveExcludePatterns.value =
+          marker ?? SettingsStore.instance.compareExcludePatterns.value;
+      var listed = await Future.wait([
         _entriesFor(leftRoot, run, recursive),
         _entriesFor(rightRoot, run, recursive),
       ]);
       if (run != _runId) return;
+      final excludes = CompareExcludes.parse(effectiveExcludePatterns.value);
+      if (!excludes.isEmpty) {
+        listed = [
+          _withoutExcluded(leftRoot, listed[0], excludes),
+          _withoutExcluded(rightRoot, listed[1], excludes),
+        ];
+      }
       final contentEqual = await _contentEqual(
         leftRoot,
         rightRoot,
@@ -333,6 +350,32 @@ class CompareController {
     if (active.value) await start();
   }
 
+  Future<bool> saveExcludePatterns(String value) async {
+    if (!active.value) {
+      SettingsStore.instance.compareExcludePatterns.value = value;
+      return true;
+    }
+    final left = _leftRoot;
+    final right = _rightRoot;
+    if (left == null || right == null) return false;
+    final targets = <String>{
+      left,
+      right,
+    }.where(CompareExcludesFile.isCapable).toList();
+    if (targets.isEmpty) {
+      SettingsStore.instance.compareExcludePatterns.value = value;
+      return true;
+    }
+    var saved = false;
+    for (final root in targets) {
+      if (await CompareExcludesFile.write(root, value)) saved = true;
+    }
+    if (!saved) return false;
+    effectiveExcludePatterns.value = value;
+    await start();
+    return true;
+  }
+
   void stop() {
     _runId++;
     running.value = false;
@@ -340,6 +383,7 @@ class CompareController {
     leftResults.value = const {};
     rightResults.value = const {};
     counts.value = const CompareCounts();
+    effectiveExcludePatterns.value = '';
     _leftRoot = null;
     _rightRoot = null;
     _linked.value = null;
@@ -374,6 +418,7 @@ class CompareController {
     leftResults.dispose();
     rightResults.dispose();
     counts.dispose();
+    effectiveExcludePatterns.dispose();
   }
 
   (NavigationStore, NavigationStore)? _activeStores() {
@@ -416,6 +461,21 @@ class CompareController {
     }
 
     return _walkPerDirectory(root, run);
+  }
+
+  List<FileEntry> _withoutExcluded(
+    String root,
+    List<FileEntry> entries,
+    CompareExcludes excludes,
+  ) {
+    final out = <FileEntry>[];
+    for (final entry in entries) {
+      if (!excludes.isExcluded(compareRelativePath(root, entry.path))) {
+        out.add(entry);
+      }
+    }
+
+    return out;
   }
 
   Future<Set<String>> _contentEqual(

@@ -3,18 +3,25 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
 import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/core/fs/file_system_service.dart';
+import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
+import 'package:waydir/features/compare/compare_excludes_bar.dart';
+import 'package:waydir/features/compare/compare_mode_bar.dart';
 import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
 import 'package:waydir/features/compare/compare_sync_plan.dart';
 import 'package:waydir/features/navigation/navigation_store.dart';
 import 'package:waydir/features/operations/operation_store.dart';
 import 'package:waydir/features/panes/pane_store.dart';
+import 'package:waydir/i18n/strings.g.dart';
+import 'package:waydir/ui/theme/app_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -352,6 +359,252 @@ void main() {
       final leftRoot = paneLeft.tabs.activeTab.value.store.currentPath.value;
       expect(File(p.join(leftRoot, 'top.txt')).readAsStringSync(), 'hello');
     });
+
+    test(
+      'excluded patterns hide entries from results, ghosts and sync',
+      () async {
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final leftRoot = leftStore.currentPath.value;
+        final rightRoot = rightStore.currentPath.value;
+        final gitDir = Directory(p.join(rightRoot, '.git'))..createSync();
+        File(p.join(gitDir.path, 'HEAD')).writeAsStringSync('ref: main');
+        File(p.join(rightRoot, 'data.bin')).writeAsStringSync('payload');
+        File(
+          p.join(rightRoot, 'nested', 'model.bin'),
+        ).writeAsStringSync('payload2');
+
+        final settings = SettingsStore.instance;
+        final previous = settings.compareExcludePatterns.value;
+        settings.compareExcludePatterns.value = '*.bin, .git';
+        try {
+          await controller.start();
+
+          final rightRel = controller.rightResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(rightRel, isNot(contains('data.bin')));
+          expect(rightRel, isNot(contains('nested/model.bin')));
+          expect(rightRel, isNot(contains('.git')));
+          expect(rightRel, isNot(contains('.git/HEAD')));
+          expect(rightRel, contains('top.txt'));
+          expect(rightRel, contains('nested/deep.txt'));
+
+          final leftGhosts = leftStore.ghostPaths.value
+              .map((path) => p.basename(path))
+              .toSet();
+          expect(leftGhosts, isNot(contains('data.bin')));
+          expect(leftGhosts, isNot(contains('.git')));
+
+          CompareSyncPlan? shown;
+          controller.confirmSync = (plan) async {
+            shown = plan;
+
+            return true;
+          };
+          await controller.syncRightToLeft();
+          final deadline = DateTime.now().add(const Duration(seconds: 20));
+          while (DateTime.now().isBefore(deadline) &&
+              (ops.tasks.value.isEmpty ||
+                  ops.tasks.value.any(
+                    (t) =>
+                        t.status != TaskStatus.completed &&
+                        t.status != TaskStatus.failed,
+                  ))) {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+          }
+
+          expect(shown, isNotNull);
+          expect(shown!.added.map((r) => r.relativePath), isEmpty);
+          expect(shown!.updated.map((r) => r.relativePath), [
+            'nested/deep.txt',
+            'top.txt',
+          ]);
+          expect(File(p.join(leftRoot, 'data.bin')).existsSync(), isFalse);
+          expect(
+            File(p.join(leftRoot, 'nested', 'model.bin')).existsSync(),
+            isFalse,
+          );
+          expect(Directory(p.join(leftRoot, '.git')).existsSync(), isFalse);
+          expect(File(p.join(leftRoot, 'top.txt')).readAsStringSync(), 'HELLO');
+        } finally {
+          settings.compareExcludePatterns.value = previous;
+        }
+      },
+    );
+
+    test(
+      'per-directory .waydir-sync-ignore file overrides the global setting',
+      () async {
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final leftRoot = leftStore.currentPath.value;
+        final rightRoot = rightStore.currentPath.value;
+        File(p.join(rightRoot, 'scratch.bin')).writeAsStringSync('scratch');
+
+        final settings = SettingsStore.instance;
+        final previous = settings.compareExcludePatterns.value;
+        settings.compareExcludePatterns.value = '*.txt, .git';
+        try {
+          File(
+            p.join(leftRoot, '.waydir-sync-ignore'),
+          ).writeAsStringSync('scratch.bin');
+          await controller.start();
+
+          expect(controller.effectiveExcludePatterns.value, 'scratch.bin');
+
+          final rightRel = controller.rightResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(rightRel, isNot(contains('scratch.bin')));
+          expect(rightRel, contains('top.txt'));
+          expect(rightRel, isNot(contains('.waydir-sync-ignore')));
+          final leftRel = controller.leftResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(leftRel, isNot(contains('.waydir-sync-ignore')));
+          expect(
+            rightStore.ghostPaths.value.map(p.basename),
+            isNot(contains('.waydir-sync-ignore')),
+          );
+
+          final saved = await controller.saveExcludePatterns('top.txt');
+          expect(saved, isTrue);
+          expect(
+            File(
+              p.join(leftRoot, '.waydir-sync-ignore'),
+            ).readAsStringSync().trim(),
+            'top.txt',
+          );
+          expect(
+            File(
+              p.join(rightRoot, '.waydir-sync-ignore'),
+            ).readAsStringSync().trim(),
+            'top.txt',
+          );
+          expect(controller.effectiveExcludePatterns.value, 'top.txt');
+
+          final rightRel2 = controller.rightResults.value.values
+              .map((r) => r.relativePath)
+              .toSet();
+          expect(rightRel2, contains('scratch.bin'));
+          expect(rightRel2, isNot(contains('top.txt')));
+        } finally {
+          settings.compareExcludePatterns.value = previous;
+        }
+      },
+    );
+
+    test('saving empty patterns clears the per-directory marker', () async {
+      await controller.start();
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftMarker = p.join(
+        leftStore.currentPath.value,
+        '.waydir-sync-ignore',
+      );
+      final rightMarker = p.join(
+        rightStore.currentPath.value,
+        '.waydir-sync-ignore',
+      );
+
+      expect(await controller.saveExcludePatterns('top.txt'), isTrue);
+      expect(await controller.saveExcludePatterns(''), isTrue);
+
+      expect(controller.effectiveExcludePatterns.value, '');
+      expect(File(leftMarker).readAsStringSync().trim(), '');
+      expect(File(rightMarker).readAsStringSync().trim(), '');
+      final rightRel = controller.rightResults.value.values
+          .map((r) => r.relativePath)
+          .toSet();
+      expect(rightRel, contains('top.txt'));
+    });
+
+    testWidgets(
+      'excludes button toggles the inline bar; Enter saves, Esc closes',
+      (tester) async {
+        await tester.runAsync(() async {
+          await controller.start();
+          expect(await controller.saveExcludePatterns('top.txt'), isTrue);
+        });
+        expect(controller.effectiveExcludePatterns.value, 'top.txt');
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.build(),
+            home: Scaffold(body: CompareModeBar(controller: controller)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsNothing);
+
+        await tester.tap(find.text(t.compare.excludes));
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
+
+        final field = find.byType(TextField);
+        expect(find.text('top.txt'), findsOneWidget);
+        expect(
+          tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
+          isTrue,
+        );
+
+        await tester.enterText(field, '*.bin');
+        await tester.runAsync(() async {
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+        });
+        expect(controller.effectiveExcludePatterns.value, '*.bin');
+        expect(
+          tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
+          isTrue,
+        );
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        expect(
+          File(
+            p.join(leftStore.currentPath.value, '.waydir-sync-ignore'),
+          ).readAsStringSync().trim(),
+          '*.bin',
+        );
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
+
+        await tester.enterText(field, '*.bin, build');
+        await tester.runAsync(() async {
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+        });
+        expect(controller.effectiveExcludePatterns.value, '*.bin, build');
+        expect(
+          File(
+            p.join(leftStore.currentPath.value, '.waydir-sync-ignore'),
+          ).readAsStringSync(),
+          '*.bin\nbuild\n',
+        );
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
+
+        await tester.enterText(field, 'scratch.bin');
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsNothing);
+        expect(controller.effectiveExcludePatterns.value, '*.bin, build');
+
+        await tester.tap(find.text(t.compare.excludes));
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
+        await tester.runAsync(() async {
+          await tester.tap(find.text(t.compare.excludeClear));
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+        });
+        expect(controller.effectiveExcludePatterns.value, '');
+        expect(find.text(t.compare.excludeClear), findsOneWidget);
+        await tester.tap(find.text(t.compare.excludes));
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsNothing);
+      },
+    );
 
     test('diffPairFor pairs files by relative path left then right', () async {
       await controller.start();

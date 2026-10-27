@@ -584,6 +584,33 @@ class Translations$compare$en {
 	/// en: 'Recursive'
 	String get recursive => 'Recursive';
 
+	/// en: 'Excludes'
+	String get excludes => 'Excludes';
+
+	/// en: 'Edit the patterns excluded from compare and sync'
+	String get excludesTooltip => 'Edit the patterns excluded from compare and sync';
+
+	/// en: 'Click to edit'
+	String get excludesActiveTooltip => 'Click to edit';
+
+	/// en: '*.bin, .git, build'
+	String get excludePlaceholder => '*.bin, .git, build';
+
+	/// en: 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.'
+	String get excludeSavedHint => 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.';
+
+	/// en: 'Could not save the excluded patterns.'
+	String get excludeSaveFailed => 'Could not save the excluded patterns.';
+
+	/// en: 'Apply'
+	String get excludeApply => 'Apply';
+
+	/// en: 'Clear'
+	String get excludeClear => 'Clear';
+
+	/// en: 'Close without saving'
+	String get excludeClose => 'Close without saving';
+
 	/// en: 'Done'
 	String get done => 'Done';
 
@@ -2993,6 +3020,18 @@ class Translations$preferences$general$en {
 	/// en: 'Off'
 	String get reduceMotionOff => 'Off';
 
+	/// en: 'Compare & sync'
+	String get syncSection => 'Compare & sync';
+
+	/// en: 'Excluded from compare & sync'
+	String get compareExcludePatterns => 'Excluded from compare & sync';
+
+	/// en: 'Default for folders without a .waydir-sync-ignore file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build'
+	String get compareExcludePatternsHint => 'Default for folders without a .waydir-sync-ignore file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build';
+
+	/// en: '*.bin, .git, build'
+	String get compareExcludePatternsPlaceholder => '*.bin, .git, build';
+
 	/// en: 'Terminal'
 	String get terminalSection => 'Terminal';
 
@@ -4707,6 +4746,15 @@ extension on Translations {
 			'compare.syncTotal' => ({required Object files, required Object size}) => 'Total: ${files} · ${size}',
 			'compare.syncNothing' => 'Nothing to sync — the destination is already up to date.',
 			'compare.recursive' => 'Recursive',
+			'compare.excludes' => 'Excludes',
+			'compare.excludesTooltip' => 'Edit the patterns excluded from compare and sync',
+			'compare.excludesActiveTooltip' => 'Click to edit',
+			'compare.excludePlaceholder' => '*.bin, .git, build',
+			'compare.excludeSavedHint' => 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.',
+			'compare.excludeSaveFailed' => 'Could not save the excluded patterns.',
+			'compare.excludeApply' => 'Apply',
+			'compare.excludeClear' => 'Clear',
+			'compare.excludeClose' => 'Close without saving',
 			'compare.done' => 'Done',
 			'compare.cancel' => 'Cancel',
 			'compare.running' => 'Comparing…',
@@ -4840,6 +4888,10 @@ extension on Translations {
 			'preferences.general.reduceMotionSystem' => 'System default',
 			'preferences.general.reduceMotionOn' => 'On',
 			'preferences.general.reduceMotionOff' => 'Off',
+			'preferences.general.syncSection' => 'Compare & sync',
+			'preferences.general.compareExcludePatterns' => 'Excluded from compare & sync',
+			'preferences.general.compareExcludePatternsHint' => 'Default for folders without a .waydir-sync-ignore file. Glob patterns skipped by compare and sync, separated by commas or newlines. A pattern matching a folder hides everything under it. Matching is case-sensitive. For example: *.bin, .git, build',
+			'preferences.general.compareExcludePatternsPlaceholder' => '*.bin, .git, build',
 			'preferences.general.terminalSection' => 'Terminal',
 			'preferences.general.terminalLabel' => 'Default terminal',
 			'preferences.general.terminalHint' => 'Used by "Open in Terminal".',
@@ -5062,6 +5114,8 @@ extension on Translations {
 			'help.title' => 'In-app tutorial',
 			'help.menuLabel' => 'In-app tutorial',
 			'help.popOut' => 'Open in separate window',
+			_ => null,
+		} ?? switch (path) {
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
@@ -5075,8 +5129,6 @@ extension on Translations {
 			'help.groups.navigating.moving.body' => 'Browse without reaching for the mouse. Waydir keeps the cursor, selection and history close to the main file list.\n\n- `↑` / `↓` move the cursor through visible files.\n- `Enter` opens the selected item; double-click does the same.\n- `Backspace` goes to the parent folder.\n- `Alt+←` / `Alt+→` step back and forward through folder history.\n- `Ctrl+R` refreshes the current folder.',
 			'help.groups.navigating.breadcrumb.title' => 'Breadcrumb Bar',
 			'help.groups.navigating.breadcrumb.body' => 'The breadcrumb bar shows where you are and lets you move quickly.\n\n- Click any segment to jump straight to that folder.\n- The path stays in sync as you navigate.\n- Type a path directly to go somewhere specific.',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.navigating.bookmarks.title' => 'Bookmarks & Sidebar',
 			'help.groups.navigating.bookmarks.body' => 'The sidebar keeps your favourite folders one click away.\n\n- Drag a folder into the sidebar to bookmark it.\n- Reorder, rename or hide sidebar entries to suit your workflow.\n- `Ctrl+B` shows or hides the sidebar entirely.\n- Sections (Favourites, Devices, Network) can be collapsed independently.',
 			'help.groups.navigating.drives.title' => 'Drives & Devices',
@@ -5576,6 +5628,8 @@ extension on Translations {
 			'operations.resolveConflicts' => 'Resolve Conflicts',
 			'operations.errorsCount' => ({required Object count}) => '${count} errors',
 			'operations.compressing' => 'Compressing…',
+			_ => null,
+		} ?? switch (path) {
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',
@@ -5589,8 +5643,6 @@ extension on Translations {
 			'operations.overwriteAll' => 'Overwrite All',
 			'operations.skipAll' => 'Skip All',
 			'operations.review' => 'Review',
-			_ => null,
-		} ?? switch (path) {
 			'operations.fileConflict' => ({required Object index, required Object total}) => 'File Conflict (${index}/${total})',
 			'operations.replace' => 'Replace',
 			'operations.keepBoth' => 'Keep Both',

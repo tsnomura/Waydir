@@ -1835,3 +1835,38 @@ manual reload as a fallback.
   previews, multi-selection and `explicitEntry` lookups.
 
 Relevant commits: `d99771c`, `6af1ebd`, `0cb8717`.
+
+## Compare & sync exclude patterns
+
+Compare and sync now skip entries that match user-configured glob patterns,
+so `*.bin` scratch files or a `.git` folder never show up in the diff, as
+ghosts, in the counts, or in a sync plan.
+
+- Patterns are resolved per compare: if either compared folder contains a
+  hidden `.waydir-sync` file (left folder wins), its content is used;
+  otherwise the global setting (`compareExcludePatterns`,
+  `app_settings.compare_exclude_patterns`, schema 49) applies — so the
+  Preferences value is the default. Both accept comma-, semicolon- or
+  newline-separated globs. The "Excludes" button on the compare mode bar
+  shows the effective patterns, highlights while any are set, and saving
+  re-runs the compare.
+- Saving from the "Excludes" button while a compare is active writes the
+  patterns to `.waydir-sync` in both compared folders (local folders only;
+  archive and remote roots fall back to the global setting). An empty
+  `.waydir-sync` file explicitly means "exclude nothing" for that folder.
+  The `.waydir-sync` file itself is always excluded from compare and sync,
+  at any depth, so it never appears in the diff or gets copied.
+- `CompareExcludes` (`compare_excludes.dart`) compiles each pattern to an
+  anchored RegExp: `*` → `[^/]*`, `?` → `[^/]`, `[...]` character classes
+  (with `!` negation) pass through, everything else is escaped literal.
+  Matching is case-sensitive, and a pattern hits when it matches either the
+  whole relative path or a single path segment — so `*.bin` finds files at
+  any depth, and `.git` hides the folder plus its entire subtree. A separator
+  in the pattern (e.g. `docs/*.md`) pins it to the relative path from the
+  compared root, rsync-style.
+- `CompareController.start()` filters both listings (via
+  `compareRelativePath`) before `buildCompareDiff`, so results, decorations,
+  ghosts, counts and the sync plan all agree; a selection containing only
+  excluded files syncs nothing.
+- Not covered: plain directory listings, drag & drop and search are
+  unaffected — the filter only applies to compare and sync.

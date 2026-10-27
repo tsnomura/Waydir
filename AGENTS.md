@@ -40,7 +40,7 @@ Each feature has its own folder with views and store.
 
 ## Commands
 
-- `scripts/check.sh` - **run after every change**: builds native core if missing, then `dart format` + `flutter analyze` + full `flutter test`
+- `scripts/check.sh` - builds native core if missing, then `dart format` + `flutter analyze` + full `flutter test` (not the per-change gate; see Rules)
 - `dart format .` - format code
 - `flutter analyze` - static analysis
 - `flutter test` - run tests
@@ -67,7 +67,7 @@ Each feature has its own folder with views and store.
 
 ## Rules
 
-- After any change: run `dart format .` to reformat, then `scripts/check.sh` and make sure it passes
+- After any change: run `dart format .`, `flutter analyze`, and `flutter test --exclude-tags=integration` individually and make sure each passes, then build (do NOT call `scripts/check.sh` as the gate)
 - No code comments
 - No unnecessary dependencies
 - Tests split into `unit/` and `integration/` under `test/`

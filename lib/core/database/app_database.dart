@@ -109,6 +109,8 @@ class AppSettings extends Table {
   BoolColumn get windowMaximized =>
       boolean().withDefault(const Constant(false))();
   TextColumn get reduceMotion => text().withDefault(const Constant('system'))();
+  TextColumn get compareExcludePatterns =>
+      text().withDefault(const Constant(''))();
 }
 
 class SessionTabs extends Table {
@@ -268,7 +270,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 48;
+  int get schemaVersion => 49;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -480,6 +482,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 48) {
         await addSettingColumn(appSettings.reduceMotion);
+      }
+      if (from < 49) {
+        await addSettingColumn(appSettings.compareExcludePatterns);
       }
     },
   );

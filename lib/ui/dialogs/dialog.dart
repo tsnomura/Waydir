@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_text_styles.dart';
@@ -98,7 +100,20 @@ class _CustomDialogBody extends StatelessWidget {
 /// no matter which control inside the dialog currently has focus (a checkbox,
 /// a toggle chip, a button — not just a text field with its own `onSubmitted`).
 /// A null callback leaves that key unhandled, so it falls through as usual.
-class DialogKeyBindings extends StatelessWidget {
+///
+/// Key events start at the primary focus and bubble up the focus chain, so a
+/// focused field's own key handling (e.g. Enter for a newline in a multiline
+/// field) always wins over these bindings. The wrapper must never autofocus:
+/// the first autofocus added to a scope wins, and the wrapper is built before
+/// its children, so it would steal focus from autofocused text fields.
+/// Instead it takes focus itself only after the first frame, and only if
+/// nothing inside the dialog has it — that covers dialogs with no focusable
+/// control, where Enter/Escape would otherwise have nowhere to land (the
+/// route's first focus is the modal scope node itself, which sits above the
+/// wrapper). The check runs in a microtask scheduled from the post-frame
+/// callback because pending autofocuses are applied by the framework in
+/// microtasks that run after the frame.
+class DialogKeyBindings extends StatefulWidget {
   final Widget child;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
@@ -110,18 +125,45 @@ class DialogKeyBindings extends StatelessWidget {
     this.onCancel,
   });
 
+  @override
+  State<DialogKeyBindings> createState() => _DialogKeyBindingsState();
+}
+
+class _DialogKeyBindingsState extends State<DialogKeyBindings> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      scheduleMicrotask(_parkFocusIfIdle);
+    });
+  }
+
+  void _parkFocusIfIdle() {
+    if (!mounted) return;
+    if (!_focusNode.hasFocus) _focusNode.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
     if ((key == LogicalKeyboardKey.enter ||
             key == LogicalKeyboardKey.numpadEnter) &&
-        onConfirm != null) {
-      onConfirm!();
+        widget.onConfirm != null) {
+      widget.onConfirm!();
 
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.escape && onCancel != null) {
-      onCancel!();
+    if (key == LogicalKeyboardKey.escape && widget.onCancel != null) {
+      widget.onCancel!();
 
       return KeyEventResult.handled;
     }
@@ -131,7 +173,11 @@ class DialogKeyBindings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Focus(autofocus: true, onKeyEvent: _handleKey, child: child);
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: _handleKey,
+      child: widget.child,
+    );
   }
 }
 

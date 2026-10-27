@@ -60,6 +60,9 @@ class _GeneralPaneState extends State<GeneralPane> {
     final dragMovesByDefault = registry.byId('general.dragMovesByDefault');
     final keyboardScheme = registry.byId('general.keyboardScheme');
     final reduceMotion = registry.byId('general.reduceMotion');
+    final compareExcludePatterns = registry.byId(
+      'general.compareExcludePatterns',
+    );
     Widget row(AppSetting<dynamic> setting) {
       return RegistrySettingRow(setting: setting, anchors: widget.anchors);
     }
@@ -93,6 +96,12 @@ class _GeneralPaneState extends State<GeneralPane> {
             row(confirmMove),
             row(dragMovesByDefault),
           ],
+        ),
+        SettingsSection(
+          anchorId: 'general.sync',
+          anchors: widget.anchors,
+          title: t.preferences.general.syncSection,
+          children: [row(compareExcludePatterns)],
         ),
         SettingsSection(
           anchorId: 'general.keyboard',
