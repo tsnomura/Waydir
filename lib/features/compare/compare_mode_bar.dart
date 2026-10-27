@@ -9,18 +9,43 @@ import '../../ui/theme/app_text_styles.dart';
 import '../files/status_chip.dart';
 import 'compare_controller.dart';
 import 'compare_excludes.dart';
-import 'compare_excludes_dialog.dart';
+import 'compare_excludes_bar.dart';
 
-class CompareModeBar extends StatelessWidget {
+class CompareModeBar extends StatefulWidget {
   final CompareController controller;
 
   const CompareModeBar({super.key, required this.controller});
 
   @override
+  State<CompareModeBar> createState() => _CompareModeBarState();
+}
+
+class _CompareModeBarState extends State<CompareModeBar> {
+  bool _excludesEditing = false;
+  void Function()? _activeEffect;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeEffect = effect(() {
+      if (!widget.controller.active.value && _excludesEditing) {
+        setState(() => _excludesEditing = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _activeEffect?.call();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SignalBuilder(
       builder: (context) {
-        if (!controller.active.value) return const SizedBox.shrink();
+        if (!widget.controller.active.value) return const SizedBox.shrink();
+        final controller = widget.controller;
         final counts = controller.counts.value;
         final running = controller.running.value;
         final recursive = controller.recursive.value;
@@ -28,102 +53,121 @@ class CompareModeBar extends StatelessWidget {
         final hasExcludes = !CompareExcludes.parse(excludePatterns).isEmpty;
 
         return Container(
-          height: 34,
           decoration: BoxDecoration(
             color: AppColors.bgToolbar,
             border: Border(top: BorderSide(color: AppColors.bgDivider)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: ClipRect(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _LegendDot(
-                          color: AppColors.compareUnique,
-                          label: t.compare.unique,
-                        ),
-                        const SizedBox(width: 12),
-                        _LegendDot(
-                          color: AppColors.compareDiffer,
-                          label: t.compare.differ,
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 1,
-                          height: 12,
-                          color: AppColors.bgDivider,
-                        ),
-                        const SizedBox(width: 12),
-                        _LegendGlyph(glyph: '↑', label: t.compare.newer),
-                        const SizedBox(width: 12),
-                        _LegendGlyph(glyph: '↓', label: t.compare.older),
-                        const SizedBox(width: 12),
-                        _LegendGlyph(glyph: '≠', label: t.compare.sameTime),
-                        const SizedBox(width: 16),
-                        if (running) ...[
-                          Text(
-                            t.compare.running,
-                            style: context.txt.captionSmall,
+              SizedBox(
+                height: 34,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ClipRect(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Row(
+                            children: [
+                              _LegendDot(
+                                color: AppColors.compareUnique,
+                                label: t.compare.unique,
+                              ),
+                              const SizedBox(width: 12),
+                              _LegendDot(
+                                color: AppColors.compareDiffer,
+                                label: t.compare.differ,
+                              ),
+                              const SizedBox(width: 12),
+                              Container(
+                                width: 1,
+                                height: 12,
+                                color: AppColors.bgDivider,
+                              ),
+                              const SizedBox(width: 12),
+                              _LegendGlyph(glyph: '↑', label: t.compare.newer),
+                              const SizedBox(width: 12),
+                              _LegendGlyph(glyph: '↓', label: t.compare.older),
+                              const SizedBox(width: 12),
+                              _LegendGlyph(
+                                glyph: '≠',
+                                label: t.compare.sameTime,
+                              ),
+                              const SizedBox(width: 16),
+                              if (running) ...[
+                                Text(
+                                  t.compare.running,
+                                  style: context.txt.captionSmall,
+                                ),
+                                const SizedBox(width: 8),
+                                _CompareButton(
+                                  label: t.compare.cancel,
+                                  shortcutId: 'compare_exit',
+                                  onTap: controller.stop,
+                                ),
+                              ] else
+                                Text(
+                                  t.compare.counts(
+                                    identical: counts.identical,
+                                    differ: counts.differ,
+                                    uniqueLeft: counts.uniqueLeft,
+                                    uniqueRight: counts.uniqueRight,
+                                  ),
+                                  style: context.txt.captionSmall,
+                                ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          _CompareButton(
-                            label: t.compare.cancel,
-                            shortcutId: 'compare_exit',
-                            onTap: controller.stop,
-                          ),
-                        ] else
-                          Text(
-                            t.compare.counts(
-                              identical: counts.identical,
-                              differ: counts.differ,
-                              uniqueLeft: counts.uniqueLeft,
-                              uniqueRight: counts.uniqueRight,
-                            ),
-                            style: context.txt.captionSmall,
-                          ),
-                      ],
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    _CompareButton(
+                      label: t.compare.recursive,
+                      active: recursive,
+                      onTap: () => controller.setRecursive(!recursive),
+                    ),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: hasExcludes
+                          ? '$excludePatterns\n'
+                                '${t.compare.excludesActiveTooltip}'
+                          : t.compare.excludesTooltip,
+                      child: _CompareButton(
+                        label: t.compare.excludes,
+                        active: hasExcludes || _excludesEditing,
+                        onTap: () => setState(
+                          () => _excludesEditing = !_excludesEditing,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _CompareButton(
+                      label: t.compare.syncRight,
+                      shortcutId: 'compare_sync_right',
+                      onTap: controller.syncLeftToRight,
+                    ),
+                    const SizedBox(width: 6),
+                    _CompareButton(
+                      label: t.compare.syncLeft,
+                      shortcutId: 'compare_sync_left',
+                      onTap: controller.syncRightToLeft,
+                    ),
+                    const SizedBox(width: 6),
+                    _CompareCloseButton(
+                      onTap: controller.stop,
+                      running: running,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _CompareButton(
-                label: t.compare.recursive,
-                active: recursive,
-                onTap: () => controller.setRecursive(!recursive),
-              ),
-              const SizedBox(width: 6),
-              Tooltip(
-                message: hasExcludes
-                    ? '$excludePatterns\n${t.compare.excludesActiveTooltip}'
-                    : t.compare.excludesTooltip,
-                child: _CompareButton(
-                  label: t.compare.excludes,
-                  active: hasExcludes,
-                  onTap: hasExcludes
-                      ? () => controller.saveExcludePatterns('')
-                      : () => showCompareExcludesDialog(context, controller),
+              if (_excludesEditing)
+                CompareExcludesBar(
+                  controller: controller,
+                  onClose: () => setState(() => _excludesEditing = false),
                 ),
-              ),
-              const SizedBox(width: 6),
-              _CompareButton(
-                label: t.compare.syncRight,
-                shortcutId: 'compare_sync_right',
-                onTap: controller.syncLeftToRight,
-              ),
-              const SizedBox(width: 6),
-              _CompareButton(
-                label: t.compare.syncLeft,
-                shortcutId: 'compare_sync_left',
-                onTap: controller.syncRightToLeft,
-              ),
-              const SizedBox(width: 6),
-              _CompareCloseButton(onTap: controller.stop, running: running),
             ],
           ),
         );

@@ -12,6 +12,7 @@ import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/core/fs/file_system_service.dart';
 import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
+import 'package:waydir/features/compare/compare_excludes_bar.dart';
 import 'package:waydir/features/compare/compare_mode_bar.dart';
 import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
@@ -21,7 +22,6 @@ import 'package:waydir/features/operations/operation_store.dart';
 import 'package:waydir/features/panes/pane_store.dart';
 import 'package:waydir/i18n/strings.g.dart';
 import 'package:waydir/ui/theme/app_theme.dart';
-import 'package:waydir/ui/widgets/app_modal.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -510,38 +510,76 @@ void main() {
       expect(rightRel, contains('top.txt'));
     });
 
-    testWidgets('excludes button opens dialog when off, not when on', (
-      tester,
-    ) async {
-      await tester.runAsync(() async {
-        await controller.start();
-        expect(await controller.saveExcludePatterns('top.txt'), isTrue);
-      });
-      expect(controller.effectiveExcludePatterns.value, 'top.txt');
+    testWidgets(
+      'excludes button toggles the inline bar; Enter saves, Esc closes',
+      (tester) async {
+        await tester.runAsync(() async {
+          await controller.start();
+          expect(await controller.saveExcludePatterns('top.txt'), isTrue);
+        });
+        expect(controller.effectiveExcludePatterns.value, 'top.txt');
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.build(),
-          home: Scaffold(body: CompareModeBar(controller: controller)),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.build(),
+            home: Scaffold(body: CompareModeBar(controller: controller)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsNothing);
 
-      await tester.tap(find.text(t.compare.excludes));
-      await tester.pumpAndSettle();
-      expect(find.byType(AppModal), findsNothing);
+        await tester.tap(find.text(t.compare.excludes));
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
 
-      controller.effectiveExcludePatterns.value = '';
-      await tester.pumpAndSettle();
+        final field = find.byType(TextField);
+        expect(find.text('top.txt'), findsOneWidget);
+        expect(
+          tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
+          isTrue,
+        );
 
-      await tester.tap(find.text(t.compare.excludes));
-      await tester.pumpAndSettle();
-      expect(find.byType(AppModal), findsWidgets);
+        await tester.enterText(field, '*.bin');
+        await tester.runAsync(() async {
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+        });
+        expect(controller.effectiveExcludePatterns.value, '*.bin');
+        expect(
+          tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
+          isTrue,
+        );
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        expect(
+          File(
+            p.join(leftStore.currentPath.value, '.waydir-sync'),
+          ).readAsStringSync().trim(),
+          '*.bin',
+        );
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pumpAndSettle();
-      expect(find.byType(AppModal), findsNothing);
-    });
+        await tester.enterText(field, 'scratch.bin');
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsNothing);
+        expect(controller.effectiveExcludePatterns.value, '*.bin');
+
+        await tester.tap(find.text(t.compare.excludes));
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsOneWidget);
+        await tester.runAsync(() async {
+          await tester.tap(find.text(t.compare.excludeClear));
+          await tester.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+        });
+        expect(controller.effectiveExcludePatterns.value, '');
+        expect(find.text(t.compare.excludeClear), findsOneWidget);
+        await tester.tap(find.text(t.compare.excludes));
+        await tester.pumpAndSettle();
+        expect(find.byType(CompareExcludesBar), findsNothing);
+      },
+    );
 
     test('diffPairFor pairs files by relative path left then right', () async {
       await controller.start();
