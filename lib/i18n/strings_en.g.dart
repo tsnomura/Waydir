@@ -584,15 +584,6 @@ class Translations$compare$en {
 	/// en: 'Recursive'
 	String get recursive => 'Recursive';
 
-	/// en: 'Excludes'
-	String get excludes => 'Excludes';
-
-	/// en: 'Edit the patterns excluded from compare and sync'
-	String get excludesTooltip => 'Edit the patterns excluded from compare and sync';
-
-	/// en: 'Click to edit'
-	String get excludesActiveTooltip => 'Click to edit';
-
 	/// en: '*.bin, .git, build'
 	String get excludePlaceholder => '*.bin, .git, build';
 
@@ -602,14 +593,8 @@ class Translations$compare$en {
 	/// en: 'Could not save the excluded patterns.'
 	String get excludeSaveFailed => 'Could not save the excluded patterns.';
 
-	/// en: 'Apply'
-	String get excludeApply => 'Apply';
-
 	/// en: 'Clear'
 	String get excludeClear => 'Clear';
-
-	/// en: 'Close without saving'
-	String get excludeClose => 'Close without saving';
 
 	/// en: 'Done'
 	String get done => 'Done';
@@ -4746,15 +4731,10 @@ extension on Translations {
 			'compare.syncTotal' => ({required Object files, required Object size}) => 'Total: ${files} · ${size}',
 			'compare.syncNothing' => 'Nothing to sync — the destination is already up to date.',
 			'compare.recursive' => 'Recursive',
-			'compare.excludes' => 'Excludes',
-			'compare.excludesTooltip' => 'Edit the patterns excluded from compare and sync',
-			'compare.excludesActiveTooltip' => 'Click to edit',
 			'compare.excludePlaceholder' => '*.bin, .git, build',
 			'compare.excludeSavedHint' => 'Saved to the .waydir-sync-ignore file in the compared folders, one pattern per line. # comments are allowed. Folders without that file use the global setting.',
 			'compare.excludeSaveFailed' => 'Could not save the excluded patterns.',
-			'compare.excludeApply' => 'Apply',
 			'compare.excludeClear' => 'Clear',
-			'compare.excludeClose' => 'Close without saving',
 			'compare.done' => 'Done',
 			'compare.cancel' => 'Cancel',
 			'compare.running' => 'Comparing…',
@@ -5114,13 +5094,13 @@ extension on Translations {
 			'help.title' => 'In-app tutorial',
 			'help.menuLabel' => 'In-app tutorial',
 			'help.popOut' => 'Open in separate window',
-			_ => null,
-		} ?? switch (path) {
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
 			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
@@ -5628,13 +5608,13 @@ extension on Translations {
 			'operations.resolveConflicts' => 'Resolve Conflicts',
 			'operations.errorsCount' => ({required Object count}) => '${count} errors',
 			'operations.compressing' => 'Compressing…',
-			_ => null,
-		} ?? switch (path) {
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',
 			'operations.justNow' => 'just now',
 			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
+			_ => null,
+		} ?? switch (path) {
 			'operations.minutesAgo' => ({required Object count}) => '${count}m ago',
 			'operations.hoursAgo' => ({required Object count}) => '${count}h ago',
 			'operations.eta' => ({required Object time}) => 'ETA ${time}',
