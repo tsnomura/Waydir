@@ -12,7 +12,7 @@ import 'package:waydir/core/fs/file_sort.dart';
 import 'package:waydir/core/fs/file_system_service.dart';
 import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
-import 'package:waydir/features/compare/compare_excludes_bar.dart';
+import 'package:waydir/features/compare/compare_excludes_field.dart';
 import 'package:waydir/features/compare/compare_mode_bar.dart';
 import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
@@ -521,7 +521,7 @@ void main() {
     });
 
     testWidgets(
-      'excludes button toggles the inline bar; Enter saves, Esc closes',
+      'excludes field is always in the mode bar; Enter saves, Esc reverts',
       (tester) async {
         await tester.runAsync(() async {
           await controller.start();
@@ -536,19 +536,17 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byType(CompareExcludesBar), findsNothing);
-
-        await tester.tap(find.text(t.compare.excludes));
-        await tester.pumpAndSettle();
-        expect(find.byType(CompareExcludesBar), findsOneWidget);
+        expect(find.byType(CompareExcludesField), findsOneWidget);
 
         final field = find.byType(TextField);
         expect(find.text('top.txt'), findsOneWidget);
         expect(
           tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
-          isTrue,
+          isFalse,
         );
 
+        await tester.tap(field);
+        await tester.pumpAndSettle();
         await tester.enterText(field, '*.bin');
         await tester.runAsync(() async {
           await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -558,7 +556,7 @@ void main() {
         expect(controller.effectiveExcludePatterns.value, '*.bin');
         expect(
           tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
-          isTrue,
+          isFalse,
         );
         final leftStore = paneLeft.tabs.activeTab.value.store;
         expect(
@@ -567,8 +565,10 @@ void main() {
           ).readAsStringSync().trim(),
           '*.bin',
         );
-        expect(find.byType(CompareExcludesBar), findsOneWidget);
+        expect(find.byType(CompareExcludesField), findsOneWidget);
 
+        await tester.tap(field);
+        await tester.pumpAndSettle();
         await tester.enterText(field, '*.bin, build');
         await tester.runAsync(() async {
           await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -582,29 +582,49 @@ void main() {
           ).readAsStringSync(),
           '*.bin\nbuild\n',
         );
-        expect(find.byType(CompareExcludesBar), findsOneWidget);
+        expect(find.byType(CompareExcludesField), findsOneWidget);
 
+        await tester.tap(field);
+        await tester.pumpAndSettle();
         await tester.enterText(field, 'scratch.bin');
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pumpAndSettle();
-        expect(find.byType(CompareExcludesBar), findsNothing);
+        expect(find.byType(CompareExcludesField), findsOneWidget);
+        expect(find.text('scratch.bin'), findsNothing);
+        expect(find.text('*.bin, build'), findsOneWidget);
         expect(controller.effectiveExcludePatterns.value, '*.bin, build');
 
-        await tester.tap(find.text(t.compare.excludes));
-        await tester.pumpAndSettle();
-        expect(find.byType(CompareExcludesBar), findsOneWidget);
         await tester.runAsync(() async {
-          await tester.tap(find.text(t.compare.excludeClear));
+          await tester.tap(find.byTooltip(t.compare.excludeClear));
           await tester.pump();
           await Future<void>.delayed(const Duration(milliseconds: 300));
         });
         expect(controller.effectiveExcludePatterns.value, '');
-        expect(find.text(t.compare.excludeClear), findsOneWidget);
-        await tester.tap(find.text(t.compare.excludes));
-        await tester.pumpAndSettle();
-        expect(find.byType(CompareExcludesBar), findsNothing);
+        expect(find.byType(CompareExcludesField), findsOneWidget);
       },
     );
+
+    testWidgets('mode bar fits the minimum window width without overflow', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        await controller.start();
+        expect(await controller.saveExcludePatterns('*.bin, build'), isTrue);
+      });
+
+      tester.view.physicalSize = const Size(700, 450);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.build(),
+          home: Scaffold(body: CompareModeBar(controller: controller)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(CompareExcludesField), findsOneWidget);
+    });
 
     test('diffPairFor pairs files by relative path left then right', () async {
       await controller.start();
