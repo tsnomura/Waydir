@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/models/file_entry.dart';
 import 'package:waydir/features/quick_look/code_editor.dart';
+import 'package:waydir/features/quick_look/markdown_preview.dart';
+import 'package:waydir/features/quick_look/info_panel.dart';
 import 'package:waydir/features/quick_look/quick_look_window.dart';
 import 'package:waydir/ui/theme/app_theme.dart';
 
@@ -177,9 +179,7 @@ void main() {
     await unmountWindow(tester);
   });
 
-  testWidgets('control arrows step files while the editor has focus', (
-    tester,
-  ) async {
+  testWidgets('F6 toggles between viewing and editing', (tester) async {
     for (final name in ['a.txt', 'b.txt', 'c.txt']) {
       File('${tmp.path}/$name').writeAsStringSync('content of $name');
     }
@@ -187,8 +187,6 @@ void main() {
       tester,
       FileEntry.fromFileSystemEntity(File('${tmp.path}/b.txt')),
     );
-    await tester.tap(find.byType(CodeEditor));
-    await tester.pumpAndSettle();
 
     Future<void> press(LogicalKeyboardKey key, {bool control = false}) async {
       await tester.runAsync(() async {
@@ -207,14 +205,86 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    bool editorFocused() {
+      final focus = FocusManager.instance.primaryFocus;
+      final context = focus?.context;
+      if (context == null) return false;
+
+      return context.findAncestorWidgetOfExactType<CodeEditor>() != null;
+    }
+
+    expect(editorFocused(), isFalse);
+    expect(find.text('Scroll'), findsOneWidget);
+    await press(LogicalKeyboardKey.f6);
+    expect(editorFocused(), isTrue);
+    expect(find.text('Back to view'), findsOneWidget);
     await press(LogicalKeyboardKey.arrowRight);
     expect(find.text('b.txt'), findsWidgets);
     await press(LogicalKeyboardKey.arrowDown, control: true);
+    expect(find.text('b.txt'), findsWidgets);
+
+    await press(LogicalKeyboardKey.f6);
+    expect(editorFocused(), isFalse);
+    await press(LogicalKeyboardKey.arrowRight);
     expect(find.text('c.txt'), findsWidgets);
-    await press(LogicalKeyboardKey.arrowUp, control: true);
-    await press(LogicalKeyboardKey.arrowUp, control: true);
-    expect(find.text('a.txt'), findsWidgets);
 
     await unmountWindow(tester);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+  });
+
+  Future<void> pressKey(WidgetTester tester, LogicalKeyboardKey key) async {
+    await tester.runAsync(() async {
+      await tester.sendKeyEvent(key);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await tester.pump();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('F6 switches markdown between rendered view and editing', (
+    tester,
+  ) async {
+    final file = File('${tmp.path}/note.md')
+      ..writeAsStringSync('# Title\n\nbody text\n');
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.build(),
+          home: Material(
+            child: QuickLookWindow(entry: FileEntry.fromFileSystemEntity(file)),
+          ),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byType(MarkdownPreview), findsOneWidget);
+    expect(find.byType(CodeEditor), findsNothing);
+
+    await pressKey(tester, LogicalKeyboardKey.f6);
+    expect(find.byType(CodeEditor), findsOneWidget);
+    expect(find.text('Back to view'), findsOneWidget);
+
+    await pressKey(tester, LogicalKeyboardKey.f6);
+    expect(find.byType(MarkdownPreview), findsOneWidget);
+    expect(find.byType(CodeEditor), findsNothing);
+    expect(find.text('Scroll'), findsOneWidget);
+
+    await unmountWindow(tester);
+  });
+
+  testWidgets('F7 toggles the properties panel', (tester) async {
+    await pumpWindow(tester, writeTextFile(10));
+    final before = find.byType(InfoPanel).evaluate().length;
+
+    await pressKey(tester, LogicalKeyboardKey.f7);
+    expect(find.byType(InfoPanel).evaluate().length, isNot(before));
+
+    await pressKey(tester, LogicalKeyboardKey.f7);
+    expect(find.byType(InfoPanel).evaluate().length, before);
+
+    await unmountWindow(tester);
+  });
 }

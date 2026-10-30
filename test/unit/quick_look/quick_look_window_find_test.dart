@@ -411,4 +411,45 @@ void main() {
     expect(find.text('1/10'), findsOneWidget);
     await unmountWindow(tester);
   });
+
+  testWidgets('ctrl+f opens the find popup while editing', (tester) async {
+    await pumpWindow(tester, writeTextFile());
+    await tester.runAsync(() async {
+      await tester.sendKeyEvent(LogicalKeyboardKey.f6);
+      await tester.pump();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump();
+    final focused = FocusManager.instance.primaryFocus?.context;
+    expect(focused?.findAncestorWidgetOfExactType<CodeEditor>(), isNotNull);
+
+    await openFindAndType(tester, 'needle');
+    expect(find.text('1/10'), findsOneWidget);
+
+    await unmountWindow(tester);
+  });
+
+  testWidgets('ctrl+g steps to the next match and ctrl+shift+g back', (
+    tester,
+  ) async {
+    await pumpWindow(tester, writeTextFile());
+    await openFindAndType(tester, 'needle');
+    expect(find.text('1/10'), findsOneWidget);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(find.text('2/10'), findsOneWidget);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyG);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(find.text('1/10'), findsOneWidget);
+
+    await unmountWindow(tester);
+  });
 }
