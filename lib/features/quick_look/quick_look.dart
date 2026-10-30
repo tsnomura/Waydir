@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +11,6 @@ import '../../features/navigation/navigation_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
-import '../../ui/theme/app_text_styles.dart';
 import '../../ui/theme/motion.dart';
 import '../../ui/widgets/floating_window_geometry.dart';
 import 'code_editor.dart';
@@ -27,6 +25,7 @@ import 'quick_look_content.dart';
 import 'quick_look_find.dart';
 import 'quick_look_pop_out.dart';
 import 'quick_look_reload.dart';
+import 'quick_look_shortcut_bar.dart';
 
 typedef QuickLookDiffResolver =
     (FileEntry, FileEntry)? Function(FileEntry? entry);
@@ -110,6 +109,8 @@ class _QuickLookState extends State<_QuickLook>
   bool _markdownRendered = true;
   bool _pendingSearch = false;
   bool _renderedMarkdown = false;
+  bool _markdownRenderable = false;
+  bool _pendingEdit = false;
   late final void Function() _findReadySub;
   String? _presentationKey;
   late final _reload = QuickLookReloadController(
@@ -164,6 +165,10 @@ class _QuickLookState extends State<_QuickLook>
     _findReadySub = _editorController.findReady.subscribe((ready) {
       if (!ready || !mounted) return;
       setState(() {});
+      if (_pendingEdit) {
+        _pendingEdit = false;
+        _editorController.focus();
+      }
       if (!_pendingSearch) return;
       _pendingSearch = false;
       final find = _editorController.find;
@@ -360,20 +365,31 @@ class _QuickLookState extends State<_QuickLook>
       return KeyEventResult.handled;
     }
 
-    if (_editorActive.value) {
-      if (AppShortcuts.matches('quick_look_next_file_edit', key)) {
-        _focus.requestFocus();
+    if (!isRepeat && key == LogicalKeyboardKey.f6) {
+      _toggleEditMode();
 
-        return _stepCursor(1, isRepeat);
-      }
-      if (AppShortcuts.matches('quick_look_prev_file_edit', key)) {
-        _focus.requestFocus();
-
-        return _stepCursor(-1, isRepeat);
-      }
-
-      return KeyEventResult.ignored;
+      return KeyEventResult.handled;
     }
+    if (!isRepeat && key == LogicalKeyboardKey.f7) {
+      setState(() => _showInfo = !_showInfo);
+
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyG &&
+        AppShortcuts.isControl &&
+        !AppShortcuts.isAlt) {
+      final find = _editorController.find;
+      if (find != null && find.value != null) {
+        if (AppShortcuts.isShift) {
+          find.previousMatch();
+        } else {
+          find.nextMatch();
+        }
+
+        return KeyEventResult.handled;
+      }
+    }
+    if (_editorActive.value) return KeyEventResult.ignored;
 
     if (!isRepeat &&
         (AppShortcuts.matches('quick_look_close', key) ||
@@ -418,12 +434,10 @@ class _QuickLookState extends State<_QuickLook>
         key == LogicalKeyboardKey.arrowLeft) {
       return _stepCursorHorizontally(-1, isRepeat);
     }
-    if (AppShortcuts.matches('quick_look_next_file', key) ||
-        AppShortcuts.matches('quick_look_next_file_edit', key)) {
+    if (AppShortcuts.matches('quick_look_next_file', key)) {
       return _stepCursor(1, isRepeat);
     }
-    if (AppShortcuts.matches('quick_look_prev_file', key) ||
-        AppShortcuts.matches('quick_look_prev_file_edit', key)) {
+    if (AppShortcuts.matches('quick_look_prev_file', key)) {
       return _stepCursor(-1, isRepeat);
     }
 
@@ -444,6 +458,22 @@ class _QuickLookState extends State<_QuickLook>
       if (find != null && find.value != null) find.close();
     }
     setState(() => _markdownRendered = !_markdownRendered);
+  }
+
+  void _toggleEditMode() {
+    if (_editorActive.value) {
+      _focus.requestFocus();
+      if (_markdownRenderable && !_markdownRendered) _toggleMarkdownRendered();
+
+      return;
+    }
+    if (_renderedMarkdown) {
+      _pendingEdit = true;
+      _toggleMarkdownRendered();
+
+      return;
+    }
+    _editorController.focus();
   }
 
   void _openSearch() {
@@ -476,9 +506,37 @@ class _QuickLookState extends State<_QuickLook>
     if (_presentationKey == key) return;
     _presentationKey = key;
     _pendingSearch = false;
+    _pendingEdit = false;
     _markdownRendered = true;
     _generatorPage.reset();
     _setCompact(defaultCompactFor(entry));
+  }
+
+  List<QuickLookShortcutHint> _shortcutHints(bool editing) {
+    if (editing) return QuickLookShortcutHint.editing();
+
+    return [
+      QuickLookShortcutHint(
+        caps: const ['↑', '↓'],
+        label: t.quickLook.hintSwitchFile,
+      ),
+      QuickLookShortcutHint(caps: const ['F5'], label: t.quickLook.hintReload),
+      QuickLookShortcutHint(caps: const ['F6'], label: t.quickLook.hintEdit),
+      QuickLookShortcutHint(caps: const ['F7'], label: t.quickLook.info),
+      QuickLookShortcutHint(
+        caps: QuickLookShortcutHint.capsOf('quick_look_close'),
+        label: t.quickLook.hintClose,
+      ),
+      QuickLookShortcutHint(caps: const ['Enter'], label: t.quickLook.hintOpen),
+      QuickLookShortcutHint(
+        caps: const ['Shift', 'Enter'],
+        label: t.quickLook.hintOpenWith,
+      ),
+      QuickLookShortcutHint(
+        caps: [QuickLookShortcutHint.ctrlCap, 'Enter'],
+        label: t.quickLook.hintPopOut,
+      ),
+    ];
   }
 
   @override
@@ -512,7 +570,10 @@ class _QuickLookState extends State<_QuickLook>
                   children: [
                     Expanded(child: _buildContent()),
                     Container(height: 1, color: AppColors.bgDivider),
-                    _ShortcutBar(editorActive: _editorActive),
+                    QuickLookShortcutBar(
+                      editorActive: _editorActive,
+                      hints: _shortcutHints,
+                    ),
                   ],
                 ),
               ),
@@ -649,12 +710,12 @@ class _QuickLookState extends State<_QuickLook>
     _reload.watch(showDiff ? null : entry);
     _reload.revision.value;
     final shown = _reload.shown(entry);
-    _renderedMarkdown =
+    _markdownRenderable =
         !showDiff &&
         shown != null &&
         markdownExts.contains(shown.extension) &&
-        _markdownRendered &&
         GeneratorRegistry.instance.forExtension(shown.extension) == null;
+    _renderedMarkdown = _markdownRenderable && _markdownRendered;
     _playback.sync(
       entry,
       _generatorPage,
@@ -722,118 +783,6 @@ class _QuickLookState extends State<_QuickLook>
           top: 47,
           right: 14,
           child: QuickLookFindPopup(controller: _editorController),
-        ),
-      ],
-    );
-  }
-}
-
-class _ShortcutBar extends StatelessWidget {
-  final Signal<bool> editorActive;
-
-  const _ShortcutBar({required this.editorActive});
-
-  String get _ctrlCap => Platform.isMacOS ? '⌘' : 'Ctrl';
-
-  List<String> _capsOf(String id) =>
-      AppShortcuts.getById(id).displayKeys.split('+');
-
-  List<String> _editStepCaps() {
-    final parts = _capsOf('quick_look_next_file_edit');
-    final mods = parts.length > 1
-        ? parts.sublist(0, parts.length - 1)
-        : const <String>[];
-
-    return [...mods, '↑', '↓'];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SignalBuilder(
-      builder: (context) {
-        final editing = editorActive.value;
-        final hints = editing
-            ? [
-                _ShortcutHint(
-                  caps: _editStepCaps(),
-                  label: t.quickLook.hintSwitchFile,
-                ),
-                _ShortcutHint(
-                  caps: _capsOf('quick_look_save'),
-                  label: t.quickLook.save,
-                ),
-                _ShortcutHint(
-                  caps: const ['F5'],
-                  label: t.quickLook.hintReload,
-                ),
-              ]
-            : [
-                _ShortcutHint(
-                  caps: const ['↑', '↓'],
-                  label: t.quickLook.hintSwitchFile,
-                ),
-                _ShortcutHint(
-                  caps: const ['F5'],
-                  label: t.quickLook.hintReload,
-                ),
-                _ShortcutHint(
-                  caps: _capsOf('quick_look_close'),
-                  label: t.quickLook.hintClose,
-                ),
-                _ShortcutHint(
-                  caps: const ['Enter'],
-                  label: t.quickLook.hintOpen,
-                ),
-                _ShortcutHint(
-                  caps: const ['Shift', 'Enter'],
-                  label: t.quickLook.hintOpenWith,
-                ),
-                _ShortcutHint(
-                  caps: [_ctrlCap, 'Enter'],
-                  label: t.quickLook.hintPopOut,
-                ),
-              ];
-
-        return Container(
-          height: 30,
-          color: AppColors.bgStatus,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: [
-              for (var i = 0; i < hints.length; i++) ...[
-                if (i > 0) const SizedBox(width: 18),
-                hints[i],
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ShortcutHint extends StatelessWidget {
-  final List<String> caps;
-  final String label;
-
-  const _ShortcutHint({required this.caps, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < caps.length; i++) ...[
-          if (i > 0) const SizedBox(width: 3),
-          Text(
-            caps[i],
-            style: context.txt.keyCap.copyWith(color: AppColors.fg),
-          ),
-        ],
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: context.txt.caption.copyWith(color: AppColors.fgMuted),
         ),
       ],
     );

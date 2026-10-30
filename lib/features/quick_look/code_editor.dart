@@ -9,7 +9,6 @@ import 'package:signals/signals_flutter.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../core/fs/sftp_fs.dart';
-import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
@@ -28,6 +27,7 @@ class CodeEditorController {
   final dirty = signal(false);
   final findReady = signal(false);
   Future<bool> Function()? _save;
+  VoidCallback? _focus;
   Future<void> Function(Future<void> Function() write)? writeGuard;
   re.CodeFindController? find;
   bool _disposed = false;
@@ -35,6 +35,14 @@ class CodeEditorController {
   /// Saves if dirty. Returns true when there is nothing to save or the save
   /// succeeded, false when the save failed.
   Future<bool> save() async => (await _save?.call()) ?? true;
+
+  bool focus() {
+    final focus = _focus;
+    if (focus == null) return false;
+    focus();
+
+    return true;
+  }
 
   void _setFindReady(bool value) {
     if (!_disposed && findReady.value != value) {
@@ -104,6 +112,7 @@ class _CodeEditorState extends State<CodeEditor> {
         ? _VimMode.normal
         : _VimMode.insert;
     widget.controller?._save = _save;
+    widget.controller?._focus = _focus.requestFocus;
     widget.controller?.dirty.value = false;
     widget.controller?.find = _find;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -127,6 +136,9 @@ class _CodeEditorState extends State<CodeEditor> {
     _ctrl.removeListener(_syncDirty);
     _ctrl.dispose();
     final host = widget.controller;
+    if (host != null && host._focus == _focus.requestFocus) {
+      host._focus = null;
+    }
     if (host != null && identical(host.find, _find)) {
       host.find = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -135,7 +147,10 @@ class _CodeEditorState extends State<CodeEditor> {
     }
     _find.dispose();
     _scroll.dispose();
-    widget.editorActive.value = false;
+    final active = widget.editorActive;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!active.disposed) active.value = false;
+    });
     super.dispose();
   }
 
@@ -421,8 +436,15 @@ class _CodeEditorState extends State<CodeEditor> {
           wordWrap: wrapLines,
           readOnly: readOnly,
           showCursorWhenReadOnly: readOnly,
-          shortcutsActivatorsBuilder: const _QuickLookShortcutsBuilder(),
           shortcutOverrideActions: <Type, Action<Intent>>{
+            re.CodeShortcutFindIntent:
+                CallbackAction<re.CodeShortcutFindIntent>(
+                  onInvoke: (intent) {
+                    _find.findMode();
+
+                    return null;
+                  },
+                ),
             re.CodeShortcutSaveIntent:
                 CallbackAction<re.CodeShortcutSaveIntent>(
                   onInvoke: (intent) {
@@ -612,44 +634,5 @@ class _SaveButtonState extends State<_SaveButton> {
         ),
       ),
     );
-  }
-}
-
-class _QuickLookShortcutsBuilder extends re.CodeShortcutsActivatorsBuilder {
-  const _QuickLookShortcutsBuilder();
-
-  static const _reserved = [
-    'quick_look_prev_file_edit',
-    'quick_look_next_file_edit',
-  ];
-
-  @override
-  List<ShortcutActivator>? build(re.CodeShortcutType type) {
-    final defaults = const re.DefaultCodeShortcutsActivatorsBuilder().build(
-      type,
-    );
-    if (defaults == null) return null;
-
-    return [
-      for (final activator in defaults)
-        if (!_isReserved(activator)) activator,
-    ];
-  }
-
-  bool _isReserved(ShortcutActivator activator) {
-    if (activator is! SingleActivator) return false;
-    final mac = Platform.isMacOS;
-    for (final id in _reserved) {
-      final b = AppShortcuts.effectiveBinding(id);
-      if (activator.trigger == b.key &&
-          activator.control == (b.ctrl && !mac) &&
-          activator.meta == (b.ctrl && mac) &&
-          activator.alt == b.alt &&
-          activator.shift == b.shift) {
-        return true;
-      }
-    }
-
-    return false;
   }
 }

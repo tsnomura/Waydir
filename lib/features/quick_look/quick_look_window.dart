@@ -25,6 +25,7 @@ import 'quick_look_common.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
 import 'quick_look_reload.dart';
+import 'quick_look_shortcut_bar.dart';
 
 class QuickLookWindow extends StatefulWidget {
   final FileEntry entry;
@@ -57,6 +58,8 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   bool _confirmingClose = false;
   bool _pendingSearch = false;
   bool _renderedMarkdown = false;
+  bool _markdownRenderable = false;
+  bool _pendingEdit = false;
   late final void Function() _findReadySub;
   late final _reload = QuickLookReloadController(
     editorController: _editorController,
@@ -74,6 +77,10 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     _findReadySub = _editorController.findReady.subscribe((ready) {
       if (!ready || !mounted) return;
       setState(() {});
+      if (_pendingEdit) {
+        _pendingEdit = false;
+        _editorController.focus();
+      }
       if (!_pendingSearch) return;
       _pendingSearch = false;
       final find = _editorController.find;
@@ -153,6 +160,22 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       if (find != null && find.value != null) find.close();
     }
     setState(() => _markdownRendered = !_markdownRendered);
+  }
+
+  void _toggleEditMode() {
+    if (_editorActive.value) {
+      _focus.requestFocus();
+      if (_markdownRenderable && !_markdownRendered) _toggleMarkdownRendered();
+
+      return;
+    }
+    if (_renderedMarkdown) {
+      _pendingEdit = true;
+      _toggleMarkdownRendered();
+
+      return;
+    }
+    _editorController.focus();
   }
 
   void _openSearch() {
@@ -292,6 +315,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       _compact = defaultCompactFor(entry);
       _markdownRendered = true;
       _pendingSearch = false;
+      _pendingEdit = false;
     });
     _reload.watch(entry);
     widget.onEntryChanged?.call(entry);
@@ -326,15 +350,29 @@ class _QuickLookWindowState extends State<QuickLookWindow>
 
       return KeyEventResult.handled;
     }
-    if (AppShortcuts.matches('quick_look_next_file_edit', key)) {
-      _focus.requestFocus();
+    if (!isRepeat && key == LogicalKeyboardKey.f6) {
+      _toggleEditMode();
 
-      return _stepFile(1, isRepeat);
+      return KeyEventResult.handled;
     }
-    if (AppShortcuts.matches('quick_look_prev_file_edit', key)) {
-      _focus.requestFocus();
+    if (!isRepeat && key == LogicalKeyboardKey.f7) {
+      setState(() => _showInfo = !_showInfo);
 
-      return _stepFile(-1, isRepeat);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.keyG &&
+        AppShortcuts.isControl &&
+        !AppShortcuts.isAlt) {
+      final find = _editorController.find;
+      if (find != null && find.value != null) {
+        if (AppShortcuts.isShift) {
+          find.previousMatch();
+        } else {
+          find.nextMatch();
+        }
+
+        return KeyEventResult.handled;
+      }
     }
     if (_editorActive.value) return KeyEventResult.ignored;
     if (key == LogicalKeyboardKey.pageDown) {
@@ -361,6 +399,25 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     return KeyEventResult.ignored;
   }
 
+  List<QuickLookShortcutHint> _shortcutHints(bool editing) {
+    if (editing) return QuickLookShortcutHint.editing();
+
+    return [
+      QuickLookShortcutHint(
+        caps: const ['←', '→'],
+        label: t.quickLook.hintSwitchFile,
+      ),
+      QuickLookShortcutHint(
+        caps: const ['↑', '↓'],
+        label: t.quickLook.hintScroll,
+      ),
+      QuickLookShortcutHint(caps: const ['F5'], label: t.quickLook.hintReload),
+      QuickLookShortcutHint(caps: const ['F6'], label: t.quickLook.hintEdit),
+      QuickLookShortcutHint(caps: const ['F7'], label: t.quickLook.info),
+      QuickLookShortcutHint(caps: const ['Esc'], label: t.quickLook.hintClose),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Focus(
@@ -372,11 +429,11 @@ class _QuickLookWindowState extends State<QuickLookWindow>
           builder: (_) {
             _reload.revision.value;
             final entry = _reload.shown(_entry)!;
-            _renderedMarkdown =
+            _markdownRenderable =
                 markdownExts.contains(entry.extension) &&
-                _markdownRendered &&
                 GeneratorRegistry.instance.forExtension(entry.extension) ==
                     null;
+            _renderedMarkdown = _markdownRenderable && _markdownRendered;
             _playback.sync(
               entry,
               _generatorPage,
@@ -423,6 +480,11 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
                       ),
+                    ),
+                    Container(height: 1, color: AppColors.bgDivider),
+                    QuickLookShortcutBar(
+                      editorActive: _editorActive,
+                      hints: _shortcutHints,
                     ),
                   ],
                 ),

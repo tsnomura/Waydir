@@ -1016,12 +1016,6 @@ class Translations$keybindings$en {
 	/// en: 'Next file'
 	String get quickLookNextFile => 'Next file';
 
-	/// en: 'Previous file while editing'
-	String get quickLookPrevFileEdit => 'Previous file while editing';
-
-	/// en: 'Next file while editing'
-	String get quickLookNextFileEdit => 'Next file while editing';
-
 	/// en: 'Save changes'
 	String get quickLookSave => 'Save changes';
 
@@ -1498,6 +1492,15 @@ class Translations$quickLook$en {
 
 	/// en: 'Reload'
 	String get hintReload => 'Reload';
+
+	/// en: 'Edit'
+	String get hintEdit => 'Edit';
+
+	/// en: 'Back to view'
+	String get hintView => 'Back to view';
+
+	/// en: 'Scroll'
+	String get hintScroll => 'Scroll';
 
 	/// en: 'You have unsaved changes. Save them before reloading?'
 	String get reloadMessage => 'You have unsaved changes. Save them before reloading?';
@@ -5214,8 +5217,6 @@ extension on Translations {
 			'keybindings.quickLookClose' => 'Close Quick Look',
 			'keybindings.quickLookPrevFile' => 'Previous file',
 			'keybindings.quickLookNextFile' => 'Next file',
-			'keybindings.quickLookPrevFileEdit' => 'Previous file while editing',
-			'keybindings.quickLookNextFileEdit' => 'Next file while editing',
 			'keybindings.quickLookSave' => 'Save changes',
 			'keybindings.cursorUp' => 'Move up',
 			'keybindings.cursorDown' => 'Move down',
@@ -5369,6 +5370,9 @@ extension on Translations {
 			'quickLook.saveBeforePreview' => 'Save changes to preview',
 			'quickLook.reload' => 'Reload',
 			'quickLook.hintReload' => 'Reload',
+			'quickLook.hintEdit' => 'Edit',
+			'quickLook.hintView' => 'Back to view',
+			'quickLook.hintScroll' => 'Scroll',
 			'quickLook.reloadMessage' => 'You have unsaved changes. Save them before reloading?',
 			'quickLook.reloadSkipped' => 'File changed - press F5 to reload',
 			'quickLook.maximizeRestore' => 'Maximize / Restore',
@@ -5612,9 +5616,9 @@ extension on Translations {
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',
 			'operations.justNow' => 'just now',
-			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
 			_ => null,
 		} ?? switch (path) {
+			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
 			'operations.minutesAgo' => ({required Object count}) => '${count}m ago',
 			'operations.hoursAgo' => ({required Object count}) => '${count}h ago',
 			'operations.eta' => ({required Object time}) => 'ETA ${time}',
