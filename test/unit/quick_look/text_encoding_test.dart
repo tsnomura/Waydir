@@ -103,5 +103,29 @@ void main() {
       );
       expect(probe.kind, QlKind.binary);
     });
+
+    test('isLikelyTextFile accepts UTF-8 and UTF-16 text', () async {
+      expect(
+        await isLikelyTextFile(entryFor('a.txt', 'hello\n'.codeUnits)),
+        true,
+      );
+      expect(
+        await isLikelyTextFile(
+          entryFor('b.ini', _utf16(sample, Endian.little, bom: true)),
+        ),
+        true,
+      );
+    });
+
+    test('isLikelyTextFile rejects binary content and extensions', () async {
+      expect(
+        await isLikelyTextFile(entryFor('a.conf', [0x7F, 0x45, 0, 0, 1, 2])),
+        false,
+      );
+      expect(
+        await isLikelyTextFile(entryFor('a.xlsx', 'text'.codeUnits)),
+        false,
+      );
+    });
   });
 }

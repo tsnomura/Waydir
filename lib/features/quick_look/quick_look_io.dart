@@ -124,6 +124,21 @@ Future<Probe> probeFile(FileEntry entry) async {
   }
 }
 
+Future<bool> isLikelyTextFile(FileEntry entry) async {
+  if (binaryExts.contains(entry.extension)) return false;
+  try {
+    final bytes = await readHead(entry.realPath, 8000);
+    final utf16 = detectUtf16(bytes);
+    if (utf16 != null) return !_looksBinary(decodeText(bytes, utf16).codeUnits);
+
+    return !_looksBinary(bytes);
+  } catch (e, st) {
+    log.warn('quick-look', 'text probe failed', error: e, stack: st);
+
+    return false;
+  }
+}
+
 bool _looksBinary(List<int> units) {
   final scanLen = units.length > 8000 ? 8000 : units.length;
   var suspicious = 0;
