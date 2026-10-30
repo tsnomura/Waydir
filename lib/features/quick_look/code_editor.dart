@@ -9,6 +9,7 @@ import 'package:signals/signals_flutter.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 
 import '../../core/fs/sftp_fs.dart';
+import '../../core/keyboard/keyboard_shortcuts.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
@@ -420,6 +421,7 @@ class _CodeEditorState extends State<CodeEditor> {
           wordWrap: wrapLines,
           readOnly: readOnly,
           showCursorWhenReadOnly: readOnly,
+          shortcutsActivatorsBuilder: const _QuickLookShortcutsBuilder(),
           shortcutOverrideActions: <Type, Action<Intent>>{
             re.CodeShortcutSaveIntent:
                 CallbackAction<re.CodeShortcutSaveIntent>(
@@ -610,5 +612,44 @@ class _SaveButtonState extends State<_SaveButton> {
         ),
       ),
     );
+  }
+}
+
+class _QuickLookShortcutsBuilder extends re.CodeShortcutsActivatorsBuilder {
+  const _QuickLookShortcutsBuilder();
+
+  static const _reserved = [
+    'quick_look_prev_file_edit',
+    'quick_look_next_file_edit',
+  ];
+
+  @override
+  List<ShortcutActivator>? build(re.CodeShortcutType type) {
+    final defaults = const re.DefaultCodeShortcutsActivatorsBuilder().build(
+      type,
+    );
+    if (defaults == null) return null;
+
+    return [
+      for (final activator in defaults)
+        if (!_isReserved(activator)) activator,
+    ];
+  }
+
+  bool _isReserved(ShortcutActivator activator) {
+    if (activator is! SingleActivator) return false;
+    final mac = Platform.isMacOS;
+    for (final id in _reserved) {
+      final b = AppShortcuts.effectiveBinding(id);
+      if (activator.trigger == b.key &&
+          activator.control == (b.ctrl && !mac) &&
+          activator.meta == (b.ctrl && mac) &&
+          activator.alt == b.alt &&
+          activator.shift == b.shift) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

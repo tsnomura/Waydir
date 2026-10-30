@@ -10,6 +10,7 @@ import '../features/quick_look/quick_look_window.dart';
 import '../i18n/strings.g.dart';
 import '../ui/theme/app_theme.dart';
 import '../ui/theme/app_theme_registry.dart';
+import '../ui/window/window.dart';
 
 class QuickLookWindowApp extends StatelessWidget {
   final String path;
@@ -37,7 +38,12 @@ class QuickLookWindowApp extends StatelessWidget {
           theme: AppTheme.build(theme),
           home: Material(
             color: AppColors.bg,
-            child: QuickLookWindow(entry: entry),
+            child: QuickLookWindow(
+              entry: entry,
+              onEntryChanged: isWindowChromeSupported
+                  ? (e) => appWindow.title = e.name
+                  : null,
+            ),
           ),
         );
       },
