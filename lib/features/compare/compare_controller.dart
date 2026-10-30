@@ -140,7 +140,76 @@ class CompareController {
         return () => _followFolder(leftLeads, path, pair.$2);
       }),
     );
+    _followDisposers.add(_followTreeExpansion(leftLeads));
   }
+
+  void Function() _followTreeExpansion(bool leftLeads) {
+    (NavigationStore, NavigationStore)? seenPair;
+    var previous = const <String>{};
+
+    return effect(() {
+      final pair = _linked.value;
+      if (pair == null) {
+        seenPair = null;
+
+        return;
+      }
+      final ordered = leftLeads ? pair : (pair.$2, pair.$1);
+      final current = ordered.$1.treeExpandedPaths.value;
+      final fresh = !identical(pair, seenPair);
+      seenPair = pair;
+      final before = previous;
+      previous = current;
+      if (fresh) {
+        if (leftLeads) {
+          untracked(() => _alignTreeExpansion(ordered.$1, ordered.$2));
+        }
+
+        return;
+      }
+      final added = current.difference(before);
+      final removed = before.difference(current);
+      if (added.isEmpty && removed.isEmpty) return;
+      untracked(
+        () => ordered.$2.updateTreeExpansion(
+          expand: _mapTreePaths(leftLeads, added),
+          collapse: _mapTreePaths(leftLeads, removed),
+        ),
+      );
+    });
+  }
+
+  void _alignTreeExpansion(NavigationStore from, NavigationStore to) {
+    final followerRoot = _rightRoot;
+    if (followerRoot == null) return;
+    to.updateTreeExpansion(
+      collapse: [
+        for (final path in to.treeExpandedPaths.value)
+          if (_relativeIn(followerRoot, path) != null) path,
+      ],
+      expand: _mapTreePaths(true, from.treeExpandedPaths.value),
+    );
+  }
+
+  List<String> _mapTreePaths(bool leftLeads, Set<String> paths) {
+    final leaderRoot = leftLeads ? _leftRoot : _rightRoot;
+    final followerRoot = leftLeads ? _rightRoot : _leftRoot;
+    if (followerRoot == null) return const [];
+    final leaderOnly = {
+      for (final r in (leftLeads ? leftResults : rightResults).value.values)
+        if (r.status == CompareStatus.unique) r.relativePath,
+    };
+
+    return [
+      for (final path in paths)
+        if (_relativeIn(leaderRoot, path) case final rel?)
+          if (rel.isNotEmpty && !leaderOnly.contains(rel))
+            _pathIn(followerRoot, rel),
+    ];
+  }
+
+  String _pathIn(String root, String rel) =>
+      rel.isEmpty ? root : rel.split('/').fold(root, PlatformPaths.join);
 
   void Function() _skipFirst(bool runFirst, void Function()? Function() track) {
     (NavigationStore, NavigationStore)? seenPair;
@@ -180,9 +249,7 @@ class CompareController {
     if (followerRoot == null) return;
     final rel = _relativeIn(leaderRoot, leaderPath);
     if (rel == null) return;
-    final target = rel.isEmpty
-        ? followerRoot
-        : rel.split('/').fold(followerRoot, PlatformPaths.join);
+    final target = _pathIn(followerRoot, rel);
     if (to.currentPath.value == target) return;
     if (rel.isNotEmpty) {
       final results = leftLeads ? rightResults.value : leftResults.value;

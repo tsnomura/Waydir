@@ -1621,6 +1621,18 @@ class NavigationStore {
     }
   }
 
+  void updateTreeExpansion({
+    Iterable<String> expand = const [],
+    Iterable<String> collapse = const [],
+  }) {
+    final current = treeExpandedPaths.value;
+    final next = Set<String>.from(current)
+      ..removeAll(collapse)
+      ..addAll(expand);
+    if (next.length == current.length && next.containsAll(current)) return;
+    treeExpandedPaths.value = next;
+  }
+
   void _clearTreeState() {
     treeExpandedPaths.value = {};
     treeLoadingPaths.value = {};

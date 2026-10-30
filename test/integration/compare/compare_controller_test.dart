@@ -251,6 +251,68 @@ void main() {
       expect(rightStore.sortLeader.value, isNull);
     });
 
+    test('tree expansion follows to the other pane', () async {
+      Directory(p.join(tmpDir.path, 'left', 'left_only_dir')).createSync();
+      await controller.start();
+
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftRoot = leftStore.currentPath.value;
+      final rightRoot = rightStore.currentPath.value;
+
+      leftStore.updateTreeExpansion(
+        expand: [p.join(leftRoot, 'nested'), p.join(leftRoot, 'left_only_dir')],
+      );
+      expect(rightStore.treeExpandedPaths.value, {p.join(rightRoot, 'nested')});
+      expect(leftStore.treeExpandedPaths.value, {
+        p.join(leftRoot, 'nested'),
+        p.join(leftRoot, 'left_only_dir'),
+      });
+
+      rightStore.updateTreeExpansion(collapse: [p.join(rightRoot, 'nested')]);
+      expect(rightStore.treeExpandedPaths.value, isEmpty);
+      expect(leftStore.treeExpandedPaths.value, {
+        p.join(leftRoot, 'left_only_dir'),
+      });
+
+      controller.stop();
+      leftStore.updateTreeExpansion(expand: [p.join(leftRoot, 'nested')]);
+      expect(rightStore.treeExpandedPaths.value, isEmpty);
+    });
+
+    test('nested tree expansion follows in top-level compare', () async {
+      controller.recursive.value = false;
+      await controller.start();
+
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftRoot = leftStore.currentPath.value;
+      final rightRoot = rightStore.currentPath.value;
+
+      leftStore.updateTreeExpansion(expand: [p.join(leftRoot, 'nested')]);
+      leftStore.updateTreeExpansion(
+        expand: [p.join(leftRoot, 'nested', 'inner')],
+      );
+      expect(rightStore.treeExpandedPaths.value, {
+        p.join(rightRoot, 'nested'),
+        p.join(rightRoot, 'nested', 'inner'),
+      });
+    });
+
+    test('starting compare aligns the right tree to the left', () async {
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftRoot = leftStore.currentPath.value;
+      final rightRoot = rightStore.currentPath.value;
+      leftStore.updateTreeExpansion(expand: [p.join(leftRoot, 'nested')]);
+      rightStore.updateTreeExpansion(expand: [p.join(rightRoot, 'other')]);
+
+      await controller.start();
+
+      expect(rightStore.treeExpandedPaths.value, {p.join(rightRoot, 'nested')});
+      expect(leftStore.treeExpandedPaths.value, {p.join(leftRoot, 'nested')});
+    });
+
     test('cursor steps through ghost rows one at a time', () async {
       await controller.start();
 
