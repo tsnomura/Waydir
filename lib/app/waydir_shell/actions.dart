@@ -23,10 +23,21 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     return _shell.compare.diffPairFor(entry.path);
   }
 
+  (FileEntry, FileEntry)? _launchableComparePairFor(FileEntry entry) {
+    final pair = _comparePairFor(entry);
+    if (pair == null || !_canLaunch(pair.$1) || !_canLaunch(pair.$2)) {
+      return null;
+    }
+
+    return pair;
+  }
+
   Future<bool> _interceptOpen(FileEntry entry) async {
     if (!_canLaunch(entry)) return false;
-    final pair = _comparePairFor(entry);
-    if (pair != null) {
+    final pair = _launchableComparePairFor(entry);
+    if (pair != null &&
+        await isLikelyTextFile(pair.$1) &&
+        await isLikelyTextFile(pair.$2)) {
       final def = LauncherRegistry.instance.defaultForCompare(entry.extension);
       if (def != null) {
         await _runLauncher(
@@ -85,7 +96,8 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     if (entries.isEmpty || !entries.every(_canLaunch)) return const [];
     final registry = LauncherRegistry.instance;
     final items = <ContextMenuItem>[];
-    if (entries.length == 1 && _comparePairFor(entries.first) != null) {
+    if (entries.length == 1 &&
+        _launchableComparePairFor(entries.first) != null) {
       for (final def in registry.forCompare(entries.first.extension)) {
         items.add(
           ContextMenuItem(
@@ -119,7 +131,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     final entries = _launcherTargets.where(_canLaunch).toList();
     if (entries.isEmpty) return;
     if (def.context == LauncherContext.compare) {
-      final pair = _comparePairFor(entries.first);
+      final pair = _launchableComparePairFor(entries.first);
       if (pair == null) return;
       unawaited(
         _runLauncher(def, left: pair.$1.realPath, right: pair.$2.realPath),
