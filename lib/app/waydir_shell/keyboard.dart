@@ -37,6 +37,64 @@ mixin _WaydirKeyboardMixin
         : AppShortcuts.matchesIgnoringShiftAndCtrl(id, key);
   }
 
+  bool _isSearchBoxFocused() {
+    final ctx = WidgetsBinding.instance.focusManager.primaryFocus?.context;
+    if (ctx == null) return false;
+    var found = false;
+    ctx.visitAncestorElements((el) {
+      if (el.widget is AppSearchBar) {
+        found = true;
+
+        return false;
+      }
+
+      return true;
+    });
+
+    return found;
+  }
+
+  bool _isTextEditingKey(LogicalKeyboardKey key) {
+    final keyboard = HardwareKeyboard.instance;
+
+    return !passesThroughTextInput(
+      key,
+      control: keyboard.isControlPressed,
+      alt: keyboard.isAltPressed,
+      meta: keyboard.isMetaPressed,
+    );
+  }
+
+  bool _runViewShortcut(LogicalKeyboardKey key) {
+    final settings = SettingsStore.instance;
+    final VoidCallback? action;
+    if (AppShortcuts.matches('toggle_sidebar', key)) {
+      action = _toggleSidebarCollapsed;
+    } else if (AppShortcuts.matches('toggle_hidden', key)) {
+      action = _toggleShowHiddenGlobal;
+    } else if (AppShortcuts.matches('toggle_view', key)) {
+      action = _toggleViewMode;
+    } else if (AppShortcuts.matches('view_mode_list', key)) {
+      action = () => _setViewMode('list');
+    } else if (AppShortcuts.matches('view_mode_tree', key)) {
+      action = () => _setViewMode('tree');
+    } else if (AppShortcuts.matches('view_mode_grid', key)) {
+      action = () => _setViewMode('grid');
+    } else if (AppShortcuts.matches('file_list_zoom_in', key)) {
+      action = settings.increaseFileListScale;
+    } else if (AppShortcuts.matches('file_list_zoom_out', key)) {
+      action = settings.decreaseFileListScale;
+    } else if (AppShortcuts.matches('file_list_zoom_reset', key)) {
+      action = settings.resetFileListScale;
+    } else {
+      action = null;
+    }
+    if (action == null) return false;
+    action();
+
+    return true;
+  }
+
   KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
     final isRepeat = event is KeyRepeatEvent;
     if (event is! KeyDownEvent && !isRepeat) return KeyEventResult.ignored;
@@ -89,7 +147,17 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
-    if (_isEditableFocused() || _isModalRouteOnTop() || _isTerminalFocused()) {
+    if (_isModalRouteOnTop() || _isTerminalFocused()) {
+      return KeyEventResult.ignored;
+    }
+
+    if (_isEditableFocused()) {
+      if (_isSearchBoxFocused() &&
+          !_isTextEditingKey(key) &&
+          _runViewShortcut(key)) {
+        return KeyEventResult.handled;
+      }
+
       return KeyEventResult.ignored;
     }
 
@@ -138,61 +206,10 @@ mixin _WaydirKeyboardMixin
       }
     }
 
-    if (AppShortcuts.matches('toggle_sidebar', key)) {
-      _toggleSidebarCollapsed();
-
-      return KeyEventResult.handled;
-    }
-
-    if (AppShortcuts.matches('toggle_hidden', key)) {
-      _toggleShowHiddenGlobal();
-
-      return KeyEventResult.handled;
-    }
-
-    if (AppShortcuts.matches('toggle_view', key)) {
-      _toggleViewMode();
-
-      return KeyEventResult.handled;
-    }
-
-    if (AppShortcuts.matches('view_mode_list', key)) {
-      _setViewMode('list');
-
-      return KeyEventResult.handled;
-    }
-
-    if (AppShortcuts.matches('view_mode_tree', key)) {
-      _setViewMode('tree');
-
-      return KeyEventResult.handled;
-    }
-
-    if (AppShortcuts.matches('view_mode_grid', key)) {
-      _setViewMode('grid');
-
-      return KeyEventResult.handled;
-    }
+    if (_runViewShortcut(key)) return KeyEventResult.handled;
 
     if (AppShortcuts.matches('focus_path', key)) {
       _active.focusPathBar();
-
-      return KeyEventResult.handled;
-    }
-
-    final settings = SettingsStore.instance;
-    if (AppShortcuts.matches('file_list_zoom_in', key)) {
-      settings.increaseFileListScale();
-
-      return KeyEventResult.handled;
-    }
-    if (AppShortcuts.matches('file_list_zoom_out', key)) {
-      settings.decreaseFileListScale();
-
-      return KeyEventResult.handled;
-    }
-    if (AppShortcuts.matches('file_list_zoom_reset', key)) {
-      settings.resetFileListScale();
 
       return KeyEventResult.handled;
     }
