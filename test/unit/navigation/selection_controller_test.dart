@@ -518,18 +518,15 @@ void main() {
       expect(selectedPaths.value, {'/dir/b.txt'});
     });
 
-    test(
-      'overwrites the mark to just the clicked item when it was unmarked',
-      () {
-        selectedPaths.value = {'/dir/a.txt', '/dir/b.txt'};
-        cursorIndex.value = 0;
+    test('leaves the marks untouched when the clicked item was unmarked', () {
+      selectedPaths.value = {'/dir/a.txt', '/dir/b.txt'};
+      cursorIndex.value = 0;
 
-        controller.onContextMenu(FileSelectionEvent(entry: files[2], index: 2));
+      controller.onContextMenu(FileSelectionEvent(entry: files[2], index: 2));
 
-        expect(selectedPaths.value, {'/dir/c.txt'});
-        expect(cursorIndex.value, 2);
-      },
-    );
+      expect(selectedPaths.value, {'/dir/a.txt', '/dir/b.txt'});
+      expect(cursorIndex.value, 2);
+    });
   });
 
   group('SelectionController.onRectSelect', () {

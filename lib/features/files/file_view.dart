@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart' show WaydirIconsRegular;
@@ -461,6 +462,16 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   List<FileEntry> get _displayFiles => widget.treeRows == null
       ? widget.files
       : [for (final row in widget.treeRows!) row.entry];
+
+  List<double> _markFractions(List<FileEntry> files) {
+    final selected = widget.selectedPaths;
+    if (selected.isEmpty || files.isEmpty) return const [];
+
+    return [
+      for (var i = 0; i < files.length; i++)
+        if (selected.contains(files[i].path)) (i + 0.5) / files.length,
+    ];
+  }
 
   double _measureWidth(String text, TextStyle style) {
     if (text.isEmpty) return 0;
@@ -1071,6 +1082,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                   width: _kScrollbarGutterWidth,
                   child: _PinnedVerticalScrollbar(
                     controller: _scrollController,
+                    marks: _markFractions(displayFiles),
                   ),
                 ),
                 if (displayFiles.isEmpty)
@@ -2330,7 +2342,11 @@ String _formatDateBy(
 
 class _PinnedVerticalScrollbar extends StatelessWidget {
   final ScrollController controller;
-  const _PinnedVerticalScrollbar({required this.controller});
+  final List<double> marks;
+  const _PinnedVerticalScrollbar({
+    required this.controller,
+    this.marks = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2363,6 +2379,17 @@ class _PinnedVerticalScrollbar extends StatelessWidget {
 
             return Stack(
               children: [
+                if (marks.isNotEmpty)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _ScrollbarMarksPainter(
+                          marks: marks,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: top,
                   right: 0,
@@ -2380,7 +2407,11 @@ class _PinnedVerticalScrollbar extends StatelessWidget {
                       );
                     },
                     child: DecoratedBox(
-                      decoration: BoxDecoration(color: AppColors.fgSubtle),
+                      decoration: BoxDecoration(
+                        color: AppColors.fgSubtle.withValues(
+                          alpha: marks.isEmpty ? 1 : 0.6,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -2391,4 +2422,25 @@ class _PinnedVerticalScrollbar extends StatelessWidget {
       },
     );
   }
+}
+
+class _ScrollbarMarksPainter extends CustomPainter {
+  final List<double> marks;
+  final Color color;
+
+  const _ScrollbarMarksPainter({required this.marks, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    const tick = 2.0;
+    for (final f in marks) {
+      final y = (f * size.height - tick / 2).clamp(0.0, size.height - tick);
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, tick), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ScrollbarMarksPainter old) =>
+      old.color != color || !listEquals(old.marks, marks);
 }

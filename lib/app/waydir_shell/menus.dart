@@ -131,8 +131,14 @@ mixin _WaydirMenuMixin
   ) async {
     final store = _active;
     store.onContextMenu(event);
+    store.setTargetOverride(
+      store.selectedPaths.value.contains(event.entry.path)
+          ? null
+          : [event.entry],
+    );
+    void clearTargets() => store.setTargetOverride(null);
 
-    final entries = store.selectedEntries;
+    final entries = store.targetEntries;
     final count = entries.length;
     final isSingleFolder =
         count == 1 && entries.first.type == FileItemType.folder;
@@ -302,6 +308,7 @@ mixin _WaydirMenuMixin
         position: position,
         items: binItems,
         onSelect: _handleMenuAction,
+        onClosed: clearTargets,
       );
 
       return;
@@ -429,6 +436,7 @@ mixin _WaydirMenuMixin
       position: position,
       items: items,
       onSelect: _handleMenuAction,
+      onClosed: clearTargets,
     );
   }
 
@@ -540,7 +548,7 @@ mixin _WaydirMenuMixin
       final store = _active;
       final paths = background
           ? const <String>[]
-          : store.selectedEntries.map((e) => e.realPath).toList();
+          : store.targetEntries.map((e) => e.realPath).toList();
       final effects = await PluginStore.instance.invoke(
         contribution,
         paths: paths,
@@ -568,7 +576,7 @@ mixin _WaydirMenuMixin
   Map<String, dynamic> _paneContext(NavigationStore store) {
     return {
       'dir': store.currentPath.value,
-      'paths': store.selectedEntries.map((e) => e.realPath).toList(),
+      'paths': store.targetEntries.map((e) => e.realPath).toList(),
     };
   }
 
@@ -1318,20 +1326,20 @@ mixin _WaydirMenuMixin
     if (action.startsWith('tag_toggle:')) {
       final id = int.tryParse(action.substring('tag_toggle:'.length));
       if (id != null) {
-        final paths = [for (final e in store.selectedEntries) e.path];
+        final paths = [for (final e in store.targetEntries) e.path];
         store.toggleTag(paths, id);
       }
 
       return;
     }
     if (action == 'tag_clear') {
-      final paths = [for (final e in store.selectedEntries) e.path];
+      final paths = [for (final e in store.targetEntries) e.path];
       store.clearTags(paths);
 
       return;
     }
     if (action == 'tag_new') {
-      final paths = [for (final e in store.selectedEntries) e.path];
+      final paths = [for (final e in store.targetEntries) e.path];
       showTagEditDialog(context).then((created) {
         if (!mounted) return;
         _restoreFocus();
@@ -1347,7 +1355,7 @@ mixin _WaydirMenuMixin
       case 'open':
         store.openSelected();
       case 'open_all':
-        _openAll(store.selectedEntries);
+        _openAll(store.targetEntries);
       case 'open_with_choose':
         final entry = _openWithEntry;
         if (entry != null) {
@@ -1363,7 +1371,7 @@ mixin _WaydirMenuMixin
         }
       case 'copy':
         store.copySelected();
-        final count = store.selectedPaths.value.length;
+        final count = store.targetEntries.length;
         if (count > 0) {
           showToast(
             context: context,
@@ -1372,7 +1380,7 @@ mixin _WaydirMenuMixin
         }
       case 'cut':
         store.cutSelected();
-        final count = store.selectedPaths.value.length;
+        final count = store.targetEntries.length;
         if (count > 0) {
           showToast(
             context: context,
@@ -1402,7 +1410,7 @@ mixin _WaydirMenuMixin
       case 'copy_path':
         store.copySelectedPaths();
       case 'verify_checksum':
-        final entries = store.selectedEntries;
+        final entries = store.targetEntries;
         if (entries.length == 1 && entries.first.type == FileItemType.file) {
           showChecksumDialog(
             context: context,
@@ -1422,17 +1430,17 @@ mixin _WaydirMenuMixin
       case 'delete_permanent_bin':
         store.deletePermanentlySelectedFromTrash();
       case 'open_in_terminal':
-        final entries = store.selectedEntries;
+        final entries = store.targetEntries;
         if (entries.length == 1 && entries.first.type == FileItemType.folder) {
           _openInTerminal(entries.first.path);
         }
       case 'open_location':
-        final entries = store.selectedEntries;
+        final entries = store.targetEntries;
         if (entries.length == 1) {
           store.revealInFolder(entries.first.path);
         }
       case 'open_in_new_tab':
-        final entries = store.selectedEntries;
+        final entries = store.targetEntries;
         if (entries.length == 1 && entries.first.type == FileItemType.folder) {
           _shell.activePane.value!.tabs.addTab(entries.first.path);
         }
@@ -1465,7 +1473,7 @@ mixin _WaydirMenuMixin
   /// running it themselves.
   Future<void> _openBulkCopyDialog() async {
     final store = _active;
-    final entries = store.selectedEntries;
+    final entries = store.targetEntries;
     if (entries.isEmpty) return;
     final slot = _shell.activePaneIndex.value;
     final panes = _shell.panes.value;
