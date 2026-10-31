@@ -264,6 +264,7 @@ class FileList extends StatefulWidget {
   final ValueChanged<int>? onPageRows;
   final Map<String, int> folderSizes;
   final Map<String, RowDecoration> rowDecorations;
+  final bool showStatusColumn;
   final List<FileTreeRow>? treeRows;
   final ValueChanged<FileEntry>? onToggleTreeFolder;
   final ScrollLink? scrollLink;
@@ -275,6 +276,7 @@ class FileList extends StatefulWidget {
     this.scrollLink,
     this.folderSizes = const {},
     this.rowDecorations = const {},
+    this.showStatusColumn = false,
     this.treeRows,
     this.onToggleTreeFolder,
     required this.onSelect,
@@ -333,6 +335,7 @@ class FileTree extends StatelessWidget {
   final ValueChanged<int>? onPageRows;
   final Map<String, int> folderSizes;
   final Map<String, RowDecoration> rowDecorations;
+  final bool showStatusColumn;
   final ValueChanged<FileEntry> onToggleFolder;
   final ScrollLink? scrollLink;
   final bool recursiveResults;
@@ -347,6 +350,7 @@ class FileTree extends StatelessWidget {
     required this.onToggleFolder,
     this.folderSizes = const {},
     this.rowDecorations = const {},
+    this.showStatusColumn = false,
     this.sortColumn = SortKey.name,
     this.sortAscending = true,
     this.onSortColumn,
@@ -402,6 +406,7 @@ class FileTree extends StatelessWidget {
       onPageRows: onPageRows,
       folderSizes: folderSizes,
       rowDecorations: rowDecorations,
+      showStatusColumn: showStatusColumn,
       scrollLink: scrollLink,
     );
   }
@@ -745,9 +750,9 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
             final treeLeading = widget.treeRows == null
                 ? 0.0
                 : maxTreeDepth * _kTreeIndentWidth + _kTreeDisclosureWidth;
-            final showStatus = widget.rowDecorations.values.any(
-              (d) => d.badge != null,
-            );
+            final showStatus =
+                widget.showStatusColumn ||
+                widget.rowDecorations.values.any((d) => d.badge != null);
             final statusSlot = showStatus ? 16 * _scale + 6 : 0.0;
             final iconSlot = statusSlot + 16 * _scale + 6 + treeLeading;
             final rowChrome =

@@ -140,9 +140,13 @@ String _glyphFor(CompareStatus status) => switch (status) {
   CompareStatus.identical => '=',
 };
 
-Color _colorFor(CompareStatus status) => status == CompareStatus.unique
-    ? AppColors.compareUnique
-    : AppColors.compareDiffer;
+Color _colorFor(CompareStatus status) => switch (status) {
+  CompareStatus.unique => AppColors.compareUnique,
+  CompareStatus.newer => AppColors.compareNewer,
+  CompareStatus.older => AppColors.compareOlder,
+  CompareStatus.differ => AppColors.compareSameTime,
+  CompareStatus.identical => AppColors.fgMuted,
+};
 
 class _SummaryRow extends StatelessWidget {
   final CompareStatus status;
