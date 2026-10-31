@@ -7,11 +7,7 @@ mixin _WaydirCommandPaletteMixin
         _WaydirActionsMixin,
         _WaydirTerminalMixin,
         _WaydirMenuMixin {
-  bool _hasTarget(NavigationStore s) {
-    if (s.selectedCount.value > 0) return true;
-    final entry = s.cursorEntry.value;
-    return entry != null && !entry.isGhost;
-  }
+  bool _hasTarget(NavigationStore s) => s.targetEntries.isNotEmpty;
 
   AppCommand _cmd(
     String id,
