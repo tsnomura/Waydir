@@ -78,6 +78,7 @@ class NavigationStore {
   final renameError = signal<String?>(null);
   final pendingCreate = signal<FileEntry?>(null);
   final fileListFocusRequest = signal(0);
+  final searchExitRequest = signal(0);
   final _trashEntries = <String, TrashEntry>{};
   int _loadToken = 0;
   String? _pendingInitialSelect;
@@ -616,6 +617,13 @@ class NavigationStore {
       _searchController.openSearch(recursive: recursive);
 
   void closeSearch() => _searchController.closeSearch();
+
+  void focusFileListFromSearch() {
+    if (cursorIndex.value < 0 && navigableFiles.isNotEmpty) {
+      moveCursorToStart();
+    }
+    searchExitRequest.value++;
+  }
 
   void setSearchQuery(String query) => _searchController.setSearchQuery(query);
 

@@ -61,15 +61,19 @@ mixin _WaydirStateBase on State<WaydirShell> {
         if (!_renameFocusDisposers.containsKey(store)) {
           String? previousRenaming = store.renamingPath.peek();
           int previousFocusRequest = store.fileListFocusRequest.peek();
+          int previousSearchExit = store.searchExitRequest.peek();
           _renameFocusDisposers[store] = effect(() {
             final current = store.renamingPath.value;
             final focusRequest = store.fileListFocusRequest.value;
+            final searchExit = store.searchExitRequest.value;
             final closed = previousRenaming != null && current == null;
             final requested = focusRequest != previousFocusRequest;
+            final leavingSearch = searchExit != previousSearchExit;
             previousRenaming = current;
             previousFocusRequest = focusRequest;
-            if (closed || requested) {
-              _scheduleListRefocus(store);
+            previousSearchExit = searchExit;
+            if (closed || requested || leavingSearch) {
+              _scheduleListRefocus(store, fromSearch: leavingSearch);
             }
           });
         }
@@ -82,7 +86,11 @@ mixin _WaydirStateBase on State<WaydirShell> {
     }
   }
 
-  void _scheduleListRefocus(NavigationStore store, [int attempt = 0]) {
+  void _scheduleListRefocus(
+    NavigationStore store, {
+    bool fromSearch = false,
+    int attempt = 0,
+  }) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final panes = _shell.panes.peek();
@@ -98,9 +106,10 @@ mixin _WaydirStateBase on State<WaydirShell> {
       if (_shell.activePaneIndex.peek() != paneIndex) {
         _shell.setActivePane(paneIndex);
       }
-      if (store.searchActive.peek()) return;
+      if (store.searchActive.peek() && !fromSearch) return;
       _focusNode.requestFocus();
-      if (attempt < 8) _scheduleListRefocus(store, attempt + 1);
+      if (fromSearch) return;
+      if (attempt < 8) _scheduleListRefocus(store, attempt: attempt + 1);
     });
   }
 

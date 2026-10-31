@@ -87,6 +87,12 @@ class _AppSearchBarState extends State<AppSearchBar> {
 
             return KeyEventResult.handled;
           }
+          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+            _dismissSuggestions();
+            widget.store.focusFileListFromSearch();
+
+            return KeyEventResult.handled;
+          }
         }
 
         return KeyEventResult.ignored;
