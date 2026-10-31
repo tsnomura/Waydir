@@ -45,6 +45,9 @@ void main() {
     expect(diff.left['/left/same.txt']!.status, CompareStatus.identical);
     expect(diff.counts.identical, 1);
     expect(diff.counts.differ, 2);
+    expect(diff.counts.leftNewer, 1);
+    expect(diff.counts.rightNewer, 1);
+    expect(diff.counts.sameTime, 0);
     expect(diff.counts.uniqueLeft, 1);
     expect(diff.counts.uniqueRight, 1);
   });
@@ -72,6 +75,8 @@ void main() {
 
     expect(diff.left['/left/file.txt']!.status, CompareStatus.differ);
     expect(diff.right['/right/file.txt']!.status, CompareStatus.differ);
+    expect(diff.counts.sameTime, 1);
+    expect(diff.counts.differ, 1);
   });
 
   test('content check candidates are same size with skewed mtime only', () {

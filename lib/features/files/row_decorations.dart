@@ -14,6 +14,7 @@ class RowDecoration {
 }
 
 class RowDecorationStore {
+  final statusColumn = signal(false);
   final _layers = signal<Map<String, Map<String, RowDecoration>>>({});
   final _reactiveLayers = <ReadonlySignal<Map<String, RowDecoration>>>[];
 
@@ -47,5 +48,6 @@ class RowDecorationStore {
   void dispose() {
     byPath.dispose();
     _layers.dispose();
+    statusColumn.dispose();
   }
 }

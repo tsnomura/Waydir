@@ -362,6 +362,7 @@ class _TabContent extends StatelessWidget {
                 onPageRows: store.setPageRows,
                 folderSizes: store.folderSizes.displaySizes.value,
                 rowDecorations: rowDecorations,
+                showStatusColumn: store.decorations.statusColumn.value,
               );
             }
 
@@ -394,6 +395,7 @@ class _TabContent extends StatelessWidget {
               onPageRows: store.setPageRows,
               folderSizes: store.folderSizes.displaySizes.value,
               rowDecorations: rowDecorations,
+              showStatusColumn: store.decorations.statusColumn.value,
             );
           },
         );

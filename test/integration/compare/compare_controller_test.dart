@@ -313,6 +313,23 @@ void main() {
       expect(leftStore.treeExpandedPaths.value, {p.join(leftRoot, 'nested')});
     });
 
+    test('status column shows while comparing and clears on stop', () async {
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      expect(leftStore.decorations.statusColumn.value, isFalse);
+
+      final started = controller.start();
+      expect(controller.running.value, isTrue);
+      expect(leftStore.decorations.statusColumn.value, isTrue);
+      expect(rightStore.decorations.statusColumn.value, isTrue);
+      await started;
+      expect(leftStore.decorations.statusColumn.value, isTrue);
+
+      controller.stop();
+      expect(leftStore.decorations.statusColumn.value, isFalse);
+      expect(rightStore.decorations.statusColumn.value, isFalse);
+    });
+
     test('cursor steps through ghost rows one at a time', () async {
       await controller.start();
 

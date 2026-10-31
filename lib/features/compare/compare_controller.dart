@@ -43,6 +43,7 @@ class CompareController {
   String? _rightRoot;
   NavigationStore? _leftDecorated;
   NavigationStore? _rightDecorated;
+  (NavigationStore, NavigationStore)? _statusColumnStores;
 
   CompareController({
     required this.panes,
@@ -328,6 +329,7 @@ class CompareController {
     _rightRoot = rightRoot;
     running.value = true;
     active.value = true;
+    _showStatusColumn(leftStore, rightStore);
     final recursive = this.recursive.value;
     try {
       final marker =
@@ -455,6 +457,28 @@ class CompareController {
     _rightRoot = null;
     _linked.value = null;
     _clearDecorations();
+    _hideStatusColumn();
+  }
+
+  void _showStatusColumn(NavigationStore left, NavigationStore right) {
+    final current = _statusColumnStores;
+    if (current != null &&
+        identical(current.$1, left) &&
+        identical(current.$2, right)) {
+      return;
+    }
+    _hideStatusColumn();
+    _statusColumnStores = (left, right);
+    left.decorations.statusColumn.value = true;
+    right.decorations.statusColumn.value = true;
+  }
+
+  void _hideStatusColumn() {
+    final stores = _statusColumnStores;
+    if (stores == null) return;
+    _statusColumnStores = null;
+    stores.$1.decorations.statusColumn.value = false;
+    stores.$2.decorations.statusColumn.value = false;
   }
 
   void _clearDecorations() {
@@ -666,15 +690,15 @@ class CompareController {
         badge: '+',
       ),
       CompareStatus.newer => RowDecoration(
-        tint: AppColors.compareDiffer,
+        tint: AppColors.compareNewer,
         badge: '↑',
       ),
       CompareStatus.older => RowDecoration(
-        tint: AppColors.compareDiffer,
+        tint: AppColors.compareOlder,
         badge: '↓',
       ),
       CompareStatus.differ => RowDecoration(
-        tint: AppColors.compareDiffer,
+        tint: AppColors.compareSameTime,
         badge: '≠',
       ),
       CompareStatus.identical => null,

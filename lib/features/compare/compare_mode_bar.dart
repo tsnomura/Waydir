@@ -42,27 +42,29 @@ class CompareModeBar extends StatelessWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       child: Row(
                         children: [
-                          _LegendDot(
+                          _LegendGlyph(
+                            glyph: '+',
                             color: AppColors.compareUnique,
                             label: t.compare.unique,
                           ),
                           const SizedBox(width: 12),
-                          _LegendDot(
-                            color: AppColors.compareDiffer,
-                            label: t.compare.differ,
+                          _LegendGlyph(
+                            glyph: '↑',
+                            color: AppColors.compareNewer,
+                            label: t.compare.newer,
                           ),
                           const SizedBox(width: 12),
-                          Container(
-                            width: 1,
-                            height: 12,
-                            color: AppColors.bgDivider,
+                          _LegendGlyph(
+                            glyph: '↓',
+                            color: AppColors.compareOlder,
+                            label: t.compare.older,
                           ),
                           const SizedBox(width: 12),
-                          _LegendGlyph(glyph: '↑', label: t.compare.newer),
-                          const SizedBox(width: 12),
-                          _LegendGlyph(glyph: '↓', label: t.compare.older),
-                          const SizedBox(width: 12),
-                          _LegendGlyph(glyph: '≠', label: t.compare.sameTime),
+                          _LegendGlyph(
+                            glyph: '≠',
+                            color: AppColors.compareSameTime,
+                            label: t.compare.sameTime,
+                          ),
                           const SizedBox(width: 16),
                           if (running) ...[
                             Text(
@@ -79,7 +81,9 @@ class CompareModeBar extends StatelessWidget {
                             Text(
                               t.compare.counts(
                                 identical: counts.identical,
-                                differ: counts.differ,
+                                leftNewer: counts.leftNewer,
+                                rightNewer: counts.rightNewer,
+                                sameTime: counts.sameTime,
                                 uniqueLeft: counts.uniqueLeft,
                                 uniqueRight: counts.uniqueRight,
                               ),
@@ -162,37 +166,23 @@ class _CompareCloseButtonState extends State<_CompareCloseButton> {
   }
 }
 
-class _LegendDot extends StatelessWidget {
+class _LegendGlyph extends StatelessWidget {
+  final String glyph;
   final Color color;
   final String label;
 
-  const _LegendDot({required this.color, required this.label});
+  const _LegendGlyph({
+    required this.glyph,
+    required this.color,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 14, height: 14, color: color),
-        const SizedBox(width: 5),
-        Text(label, style: context.txt.captionSmall),
-      ],
-    );
-  }
-}
-
-class _LegendGlyph extends StatelessWidget {
-  final String glyph;
-  final String label;
-
-  const _LegendGlyph({required this.glyph, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        StatusChip(glyph: glyph, color: AppColors.compareDiffer, size: 14),
+        StatusChip(glyph: glyph, color: color, size: 14),
         const SizedBox(width: 4),
         Text(label, style: context.txt.captionSmall),
       ],

@@ -150,7 +150,6 @@
     "unique": "Only here",
     "newer": "Newer",
     "older": "Older",
-    "differ": "Different",
     "sameTime": "Same time",
     "identical": "Identical",
     "syncRight": "Sync →",
@@ -175,7 +174,7 @@
     "done": "Done",
     "cancel": "Cancel",
     "running": "Comparing…",
-    "counts": "$identical identical · $differ different · $uniqueLeft left only · $uniqueRight right only",
+    "counts": "$identical identical · $leftNewer newer on left · $rightNewer newer on right · $sameTime same time · $uniqueLeft left only · $uniqueRight right only",
     "needsDualPane": "Compare needs two panes — press F9 for dual-pane mode first",
     "needsLocalFolders": "Compare doesn't work with smb paths, trash, or tags"
   },
@@ -617,7 +616,7 @@
         },
         "compare": {
           "title": "Folder Compare & Sync",
-          "body": "Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` compares the top level only, `Shift+F8` recurses into subfolders; either turns compare on or off while dual pane is active.\n- Colour shows the state: only here or different; identical rows stay plain.\n- The badge shows the direction: `↑` newer, `↓` older, `≠` same time but different content, `+` only here.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. A summary lists what will be added, overwritten and skipped before anything is copied, so no conflict prompts follow.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits."
+          "body": "Compare the two panes in dual mode to see what differs, then sync one side to the other.\n\n- `F8` compares the top level only, `Shift+F8` recurses into subfolders; either turns compare on or off while dual pane is active.\n- A status column appears as soon as compare starts and fills in when the comparison finishes.\n- The badge shows the state: green `+` only here, yellow `↑` newer, blue `↓` older, red `≠` same time but different content; identical rows stay plain.\n- Files with the same size but different timestamps are compared by content when both sides are local drives.\n- In Quick Look, a file is diffed against the file at the same relative path in the other pane.\n- Toggle **Recursive** to compare nested folders or just the top level.\n- `Ctrl+→` / `Ctrl+←` sync the differences left-to-right or right-to-left. A summary lists what will be added, overwritten and skipped before anything is copied, so no conflict prompts follow.\n- Compare turns off automatically when you navigate out of the compared folders. `Esc` exits."
         }
       },
       "selecting": {

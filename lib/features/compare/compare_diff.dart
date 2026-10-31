@@ -9,16 +9,22 @@ enum CompareStatus { unique, newer, older, identical, differ }
 
 class CompareCounts {
   final int identical;
-  final int differ;
+  final int leftNewer;
+  final int rightNewer;
+  final int sameTime;
   final int uniqueLeft;
   final int uniqueRight;
 
   const CompareCounts({
     this.identical = 0,
-    this.differ = 0,
+    this.leftNewer = 0,
+    this.rightNewer = 0,
+    this.sameTime = 0,
     this.uniqueLeft = 0,
     this.uniqueRight = 0,
   });
+
+  int get differ => leftNewer + rightNewer + sameTime;
 }
 
 class CompareEntryResult {
@@ -127,7 +133,9 @@ CompareDiffResult buildCompareDiff({
   final leftResults = <String, CompareEntryResult>{};
   final rightResults = <String, CompareEntryResult>{};
   var identical = 0;
-  var differ = 0;
+  var leftNewer = 0;
+  var rightNewer = 0;
+  var sameTime = 0;
   var uniqueLeft = 0;
   var uniqueRight = 0;
 
@@ -157,8 +165,12 @@ CompareDiffResult buildCompareDiff({
     if (l != null && r != null) {
       if (ls == CompareStatus.identical && rs == CompareStatus.identical) {
         identical++;
+      } else if (ls == CompareStatus.newer) {
+        leftNewer++;
+      } else if (ls == CompareStatus.older) {
+        rightNewer++;
       } else {
-        differ++;
+        sameTime++;
       }
     } else if (l != null) {
       uniqueLeft++;
@@ -172,7 +184,9 @@ CompareDiffResult buildCompareDiff({
     right: Map.unmodifiable(rightResults),
     counts: CompareCounts(
       identical: identical,
-      differ: differ,
+      leftNewer: leftNewer,
+      rightNewer: rightNewer,
+      sameTime: sameTime,
       uniqueLeft: uniqueLeft,
       uniqueRight: uniqueRight,
     ),
