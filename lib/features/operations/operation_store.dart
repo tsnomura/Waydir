@@ -142,8 +142,11 @@ class OperationStore {
     confirm: confirm,
   );
 
-  void enqueueMove(List<String> sources, String destination) =>
-      _enqueueTransfer(TaskType.move, sources, destination);
+  void enqueueMove(
+    List<String> sources,
+    String destination, {
+    bool confirm = true,
+  }) => _enqueueTransfer(TaskType.move, sources, destination, confirm: confirm);
 
   Future<void> enqueueDuplicate(
     List<String> sources,

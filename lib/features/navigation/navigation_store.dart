@@ -1471,8 +1471,8 @@ class NavigationStore {
   List<TrashEntry> _selectedTrashEntries() {
     if (!isTrashView) return const [];
     final entries = <TrashEntry>[];
-    for (final p in selectedPaths.value.toList()) {
-      final e = _trashEntries[p];
+    for (final target in targetEntries) {
+      final e = _trashEntries[target.path];
       if (e != null) entries.add(e);
     }
 
@@ -1771,7 +1771,7 @@ class NavigationStore {
 
   void startRename() {
     if (isTrashView) return;
-    final entries = selectedEntries;
+    final entries = targetEntries;
     if (entries.length != 1) return;
     renamingPath.value = entries.first.path;
   }
@@ -2463,13 +2463,39 @@ class NavigationStore {
 
   List<FileEntry> get selectedEntries => _selectionController.selectedEntries;
 
-  void deleteSelected({bool? toTrash}) async {
+  List<FileEntry>? _targetOverride;
+
+  List<FileEntry> get targetEntries {
+    final override = _targetOverride;
+    if (override != null) return override;
+    final marked = selectedEntries;
+    if (marked.isNotEmpty) return marked;
+    final cursor = cursorEntry.value;
+
+    return cursor != null && !cursor.isGhost ? [cursor] : const [];
+  }
+
+  bool get marksExcludeCursor {
+    if (_targetOverride != null || selectedEntries.isEmpty) return false;
+    final cursor = cursorEntry.value;
+
+    return cursor != null &&
+        !cursor.isGhost &&
+        !selectedPaths.value.contains(cursor.path);
+  }
+
+  void setTargetOverride(List<FileEntry>? entries) {
+    _targetOverride = entries;
+  }
+
+  void deleteSelected({bool? toTrash, List<FileEntry>? targets}) async {
     if (isTrashView) return;
-    final entries = selectedEntries;
+    final entries = targets ?? targetEntries;
     if (entries.isEmpty) return;
     final paths = entries.map((e) => e.realPath).toList();
+    final removed = {for (final e in entries) e.path};
     batch(() {
-      selectedPaths.value = {};
+      selectedPaths.value = selectedPaths.value.difference(removed);
       anchorIndex.value = -1;
     });
     final archiveLoc = await _archiveLocationFor(currentPath.value);
@@ -2499,7 +2525,9 @@ class NavigationStore {
   }
 
   void copySelectedPaths() {
-    _clipboardController.copySelectedPaths(selectedPaths.value);
+    _clipboardController.copySelectedPaths({
+      for (final e in targetEntries) e.path,
+    });
   }
 
   void onContextMenu(FileSelectionEvent event) =>
@@ -2507,12 +2535,12 @@ class NavigationStore {
 
   void copySelected() async {
     if (isTrashView) return;
-    await _clipboardController.copyEntries(selectedEntries);
+    await _clipboardController.copyEntries(targetEntries);
   }
 
   void cutSelected() async {
     if (isTrashView) return;
-    await _clipboardController.cutEntries(selectedEntries);
+    await _clipboardController.cutEntries(targetEntries);
   }
 
   Future<void> dropFiles(

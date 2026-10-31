@@ -302,12 +302,7 @@ class PersonalSelectionController extends SelectionController {
 
   @override
   void onContextMenu(FileSelectionEvent event) {
-    batch(() {
-      if (!selectedPaths.value.contains(event.entry.path)) {
-        selectedPaths.value = {event.entry.path};
-      }
-      cursorIndex.value = event.index;
-    });
+    cursorIndex.value = event.index;
   }
 
   @override
