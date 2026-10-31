@@ -5,7 +5,7 @@ import '../../core/platform/platform_paths.dart';
 
 const compareMtimeToleranceMs = 2000;
 
-enum CompareStatus { unique, newer, older, identical, differ }
+enum CompareStatus { unique, newer, older, identical, differ, pending }
 
 class CompareCounts {
   final int identical;
@@ -14,6 +14,7 @@ class CompareCounts {
   final int sameTime;
   final int uniqueLeft;
   final int uniqueRight;
+  final int pending;
 
   const CompareCounts({
     this.identical = 0,
@@ -22,6 +23,7 @@ class CompareCounts {
     this.sameTime = 0,
     this.uniqueLeft = 0,
     this.uniqueRight = 0,
+    this.pending = 0,
   });
 
   int get differ => leftNewer + rightNewer + sameTime;
@@ -78,6 +80,7 @@ CompareDiffResult buildCompareDiff({
   required List<FileEntry> leftEntries,
   required List<FileEntry> rightEntries,
   Set<String> contentEqual = const {},
+  Set<String> pending = const {},
 }) {
   final left = _mapByRelativePath(leftRoot, leftEntries);
   final right = _mapByRelativePath(rightRoot, rightEntries);
@@ -85,12 +88,20 @@ CompareDiffResult buildCompareDiff({
   final leftStatuses = <String, CompareStatus>{};
   final rightStatuses = <String, CompareStatus>{};
   final aggregates = <String, _FolderAggregate>{};
+  final pendingFolders = <String>{};
 
   for (final rel in rels) {
     final l = left[rel]?.entry;
     final r = right[rel]?.entry;
     if (l == null && r == null) continue;
-    if (l == null) {
+    if (pending.contains(rel) && l != null && r != null) {
+      leftStatuses[rel] = CompareStatus.pending;
+      rightStatuses[rel] = CompareStatus.pending;
+      var dir = p.posix.dirname(rel);
+      while (dir != '.' && pendingFolders.add(dir)) {
+        dir = p.posix.dirname(dir);
+      }
+    } else if (l == null) {
       rightStatuses[rel] = CompareStatus.unique;
       _addDifferenceToParents(aggregates, rel, null, r!.modifiedMs);
     } else if (r == null) {
@@ -123,6 +134,11 @@ CompareDiffResult buildCompareDiff({
     if (l.type != FileItemType.folder || r.type != FileItemType.folder) {
       continue;
     }
+    if (pendingFolders.contains(rel)) {
+      leftStatuses[rel] = CompareStatus.pending;
+      rightStatuses[rel] = CompareStatus.pending;
+      continue;
+    }
     final aggregate = aggregates[rel];
     if (aggregate == null) continue;
     final pair = _aggregateStatus(aggregate.leftMs, aggregate.rightMs);
@@ -138,6 +154,7 @@ CompareDiffResult buildCompareDiff({
   var sameTime = 0;
   var uniqueLeft = 0;
   var uniqueRight = 0;
+  var pendingCount = 0;
 
   for (final rel in rels) {
     final l = left[rel]?.entry;
@@ -163,7 +180,10 @@ CompareDiffResult buildCompareDiff({
       );
     }
     if (l != null && r != null) {
-      if (ls == CompareStatus.identical && rs == CompareStatus.identical) {
+      if (ls == CompareStatus.pending) {
+        pendingCount++;
+      } else if (ls == CompareStatus.identical &&
+          rs == CompareStatus.identical) {
         identical++;
       } else if (ls == CompareStatus.newer) {
         leftNewer++;
@@ -189,6 +209,7 @@ CompareDiffResult buildCompareDiff({
       sameTime: sameTime,
       uniqueLeft: uniqueLeft,
       uniqueRight: uniqueRight,
+      pending: pendingCount,
     ),
   );
 }

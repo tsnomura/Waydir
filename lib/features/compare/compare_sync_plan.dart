@@ -116,7 +116,9 @@ bool _shouldSync(CompareEntryResult result) {
     CompareStatus.unique => true,
     CompareStatus.newer => result.type == FileItemType.file,
     CompareStatus.differ => result.type == FileItemType.file,
-    CompareStatus.older || CompareStatus.identical => false,
+    CompareStatus.older ||
+    CompareStatus.identical ||
+    CompareStatus.pending => false,
   };
 }
 
