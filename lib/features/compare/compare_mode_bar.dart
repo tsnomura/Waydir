@@ -65,10 +65,20 @@ class CompareModeBar extends StatelessWidget {
                             color: AppColors.compareSameTime,
                             label: t.compare.sameTime,
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 12),
                           if (running) ...[
+                            _LegendGlyph(
+                              glyph: '?',
+                              color: AppColors.fgMuted,
+                              label: t.compare.pending,
+                            ),
+                            const SizedBox(width: 16),
                             Text(
-                              t.compare.running,
+                              counts.pending > 0
+                                  ? t.compare.runningRemaining(
+                                      count: counts.pending,
+                                    )
+                                  : t.compare.running,
                               style: context.txt.captionSmall,
                             ),
                             const SizedBox(width: 8),
@@ -77,7 +87,8 @@ class CompareModeBar extends StatelessWidget {
                               shortcutId: 'compare_exit',
                               onTap: controller.stop,
                             ),
-                          ] else
+                          ] else ...[
+                            const SizedBox(width: 4),
                             Text(
                               t.compare.counts(
                                 identical: counts.identical,
@@ -89,6 +100,7 @@ class CompareModeBar extends StatelessWidget {
                               ),
                               style: context.txt.captionSmall,
                             ),
+                          ],
                         ],
                       ),
                     ),

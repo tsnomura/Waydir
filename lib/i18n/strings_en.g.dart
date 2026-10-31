@@ -602,6 +602,12 @@ class Translations$compare$en {
 	/// en: 'Comparing…'
 	String get running => 'Comparing…';
 
+	/// en: 'Comparing… $count left'
+	String runningRemaining({required Object count}) => 'Comparing… ${count} left';
+
+	/// en: 'Pending'
+	String get pending => 'Pending';
+
 	/// en: '$identical identical · $leftNewer newer on left · $rightNewer newer on right · $sameTime same time · $uniqueLeft left only · $uniqueRight right only'
 	String counts({required Object identical, required Object leftNewer, required Object rightNewer, required Object sameTime, required Object uniqueLeft, required Object uniqueRight}) => '${identical} identical · ${leftNewer} newer on left · ${rightNewer} newer on right · ${sameTime} same time · ${uniqueLeft} left only · ${uniqueRight} right only';
 
@@ -4737,6 +4743,8 @@ extension on Translations {
 			'compare.done' => 'Done',
 			'compare.cancel' => 'Cancel',
 			'compare.running' => 'Comparing…',
+			'compare.runningRemaining' => ({required Object count}) => 'Comparing… ${count} left',
+			'compare.pending' => 'Pending',
 			'compare.counts' => ({required Object identical, required Object leftNewer, required Object rightNewer, required Object sameTime, required Object uniqueLeft, required Object uniqueRight}) => '${identical} identical · ${leftNewer} newer on left · ${rightNewer} newer on right · ${sameTime} same time · ${uniqueLeft} left only · ${uniqueRight} right only',
 			'compare.needsDualPane' => 'Compare needs two panes — press F9 for dual-pane mode first',
 			'compare.needsLocalFolders' => 'Compare doesn\'t work with smb paths, trash, or tags',
@@ -5097,10 +5105,10 @@ extension on Translations {
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
-			'help.groups.gettingStarted.interface.title' => 'The Interface',
-			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.gettingStarted.interface.title' => 'The Interface',
+			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
 			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
 			'help.groups.navigating.title' => 'Navigating',
@@ -5611,10 +5619,10 @@ extension on Translations {
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',
-			'operations.justNow' => 'just now',
-			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
 			_ => null,
 		} ?? switch (path) {
+			'operations.justNow' => 'just now',
+			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
 			'operations.minutesAgo' => ({required Object count}) => '${count}m ago',
 			'operations.hoursAgo' => ({required Object count}) => '${count}h ago',
 			'operations.eta' => ({required Object time}) => 'ETA ${time}',

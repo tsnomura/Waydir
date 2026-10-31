@@ -52,6 +52,33 @@ void main() {
     expect(diff.counts.uniqueRight, 1);
   });
 
+  test('pending files and their shared parent folders stay pending', () {
+    final diff = buildCompareDiff(
+      leftRoot: '/left',
+      rightRoot: '/right',
+      leftEntries: [
+        entry('/left/dir', type: FileItemType.folder),
+        entry('/left/dir/a.txt', size: 4, ms: 10000),
+        entry('/left/b.txt', size: 4, ms: 10000),
+      ],
+      rightEntries: [
+        entry('/right/dir', type: FileItemType.folder),
+        entry('/right/dir/a.txt', size: 4, ms: 50000),
+        entry('/right/b.txt', size: 4, ms: 50000),
+      ],
+      contentEqual: {'b.txt'},
+      pending: {'dir/a.txt'},
+    );
+
+    expect(diff.left['/left/dir/a.txt']!.status, CompareStatus.pending);
+    expect(diff.right['/right/dir/a.txt']!.status, CompareStatus.pending);
+    expect(diff.left['/left/dir']!.status, CompareStatus.pending);
+    expect(diff.left['/left/b.txt']!.status, CompareStatus.identical);
+    expect(diff.counts.pending, 2);
+    expect(diff.counts.identical, 1);
+    expect(diff.counts.differ, 0);
+  });
+
   test('mtime tolerance treats close mtimes as identical', () {
     final diff = buildCompareDiff(
       leftRoot: '/left',

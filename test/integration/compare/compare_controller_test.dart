@@ -129,6 +129,24 @@ void main() {
       },
     );
 
+    test('rows show pending until their comparison is decided', () async {
+      final NavigationStore leftStore = paneLeft.tabs.activeTab.value.store;
+      final leftRoot = leftStore.currentPath.value;
+      leftStore.files.value = await FileSystemService.listDirectory(leftRoot);
+      final leftTop = p.join(leftRoot, 'top.txt');
+
+      final run = controller.start();
+      expect(leftStore.decorations.byPath.value[leftTop]?.badge, '?');
+
+      await run;
+      expect(leftStore.decorations.byPath.value[leftTop]?.badge, '↓');
+      expect(
+        leftStore.decorations.byPath.value.values.any((d) => d.badge == '?'),
+        isFalse,
+      );
+      expect(controller.counts.value.pending, 0);
+    });
+
     test(
       'toggle starts in the requested mode and a second press exits',
       () async {

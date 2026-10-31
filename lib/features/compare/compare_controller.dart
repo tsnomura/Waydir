@@ -18,6 +18,8 @@ import 'compare_excludes.dart';
 import 'compare_excludes_file.dart';
 import 'compare_sync_plan.dart';
 
+const _publishInterval = 150;
+
 class CompareController {
   final Signal<List<PaneStore>> panes;
   final Signal<bool> isDual;
@@ -330,6 +332,10 @@ class CompareController {
     running.value = true;
     active.value = true;
     _showStatusColumn(leftStore, rightStore);
+    if (!identical(_leftDecorated, leftStore) ||
+        !identical(_rightDecorated, rightStore)) {
+      _showPending(leftStore, rightStore);
+    }
     final recursive = this.recursive.value;
     try {
       final marker =
@@ -350,41 +356,108 @@ class CompareController {
           _withoutExcluded(rightRoot, listed[1], excludes),
         ];
       }
-      final contentEqual = await _contentEqual(
-        leftRoot,
-        rightRoot,
-        listed[0],
-        listed[1],
-        run,
-      );
-      if (run != _runId) return;
-      final diff = buildCompareDiff(
-        leftRoot: leftRoot,
-        rightRoot: rightRoot,
-        leftEntries: listed[0],
-        rightEntries: listed[1],
-        contentEqual: contentEqual,
-      );
-      batch(() {
-        _clearDecorations();
-        _leftDecorated = leftStore;
-        _rightDecorated = rightStore;
-        leftResults.value = diff.left;
-        rightResults.value = diff.right;
-        counts.value = diff.counts;
-        rightStore.sortLeader.value = leftStore;
-        final linked = _linked.value;
-        if (linked == null ||
-            !identical(linked.$1, leftStore) ||
-            !identical(linked.$2, rightStore)) {
-          _linked.value = (leftStore, rightStore);
+      final candidates =
+          PlatformPaths.isNetworkPath(leftRoot) ||
+              PlatformPaths.isNetworkPath(rightRoot)
+          ? const <MapEntry<String, (String, String)>>[]
+          : contentCheckCandidates(
+              leftRoot: leftRoot,
+              rightRoot: rightRoot,
+              leftEntries: listed[0],
+              rightEntries: listed[1],
+            ).entries.toList();
+      final contentEqual = <String>{};
+      final pending = {for (final c in candidates) c.key};
+      void publish() {
+        final diff = buildCompareDiff(
+          leftRoot: leftRoot,
+          rightRoot: rightRoot,
+          leftEntries: listed[0],
+          rightEntries: listed[1],
+          contentEqual: contentEqual,
+          pending: pending,
+        );
+        _publish(leftStore, rightStore, diff);
+      }
+
+      publish();
+      final sinceLastPublish = Stopwatch()..start();
+      const chunk = 32;
+      for (var i = 0; i < candidates.length; i += chunk) {
+        final slice = candidates.sublist(
+          i,
+          i + chunk > candidates.length ? candidates.length : i + chunk,
+        );
+        final List<bool?> results;
+        try {
+          results = await FileSystemService.filesEqual([
+            for (final c in slice) c.value,
+          ]);
+        } catch (_) {
+          if (run != _runId) return;
+          pending.clear();
+          break;
         }
-        leftStore.decorations.setLayer('compare', _decorationsFor(diff.left));
-        rightStore.decorations.setLayer('compare', _decorationsFor(diff.right));
-      });
+        if (run != _runId) return;
+        for (var j = 0; j < slice.length; j++) {
+          pending.remove(slice[j].key);
+          if (j < results.length && results[j] == true) {
+            contentEqual.add(slice[j].key);
+          }
+        }
+        if (pending.isNotEmpty &&
+            sinceLastPublish.elapsedMilliseconds >= _publishInterval) {
+          publish();
+          sinceLastPublish.reset();
+        }
+      }
+      if (candidates.isNotEmpty) publish();
     } finally {
       if (run == _runId) running.value = false;
     }
+  }
+
+  void _showPending(NavigationStore leftStore, NavigationStore rightStore) {
+    batch(() {
+      _clearDecorations();
+      _leftDecorated = leftStore;
+      _rightDecorated = rightStore;
+      leftStore.decorations.setLayer('compare', _pendingFor(leftStore));
+      rightStore.decorations.setLayer('compare', _pendingFor(rightStore));
+    });
+  }
+
+  Map<String, RowDecoration> _pendingFor(NavigationStore store) => {
+    for (final entry in store.files.value) entry.path: _pendingDecoration,
+    for (final children in store.treeChildren.value.values)
+      for (final entry in children) entry.path: _pendingDecoration,
+  };
+
+  void _publish(
+    NavigationStore leftStore,
+    NavigationStore rightStore,
+    CompareDiffResult diff,
+  ) {
+    batch(() {
+      if (!identical(_leftDecorated, leftStore) ||
+          !identical(_rightDecorated, rightStore)) {
+        _clearDecorations();
+      }
+      _leftDecorated = leftStore;
+      _rightDecorated = rightStore;
+      leftResults.value = diff.left;
+      rightResults.value = diff.right;
+      counts.value = diff.counts;
+      rightStore.sortLeader.value = leftStore;
+      final linked = _linked.value;
+      if (linked == null ||
+          !identical(linked.$1, leftStore) ||
+          !identical(linked.$2, rightStore)) {
+        _linked.value = (leftStore, rightStore);
+      }
+      leftStore.decorations.setLayer('compare', _decorationsFor(diff.left));
+      rightStore.decorations.setLayer('compare', _decorationsFor(diff.right));
+    });
   }
 
   (FileEntry, FileEntry)? diffPairFor(String path) {
@@ -569,47 +642,6 @@ class CompareController {
     return out;
   }
 
-  Future<Set<String>> _contentEqual(
-    String leftRoot,
-    String rightRoot,
-    List<FileEntry> leftEntries,
-    List<FileEntry> rightEntries,
-    int run,
-  ) async {
-    if (PlatformPaths.isNetworkPath(leftRoot) ||
-        PlatformPaths.isNetworkPath(rightRoot)) {
-      return const {};
-    }
-    final candidates = contentCheckCandidates(
-      leftRoot: leftRoot,
-      rightRoot: rightRoot,
-      leftEntries: leftEntries,
-      rightEntries: rightEntries,
-    ).entries.toList();
-    final out = <String>{};
-    const chunk = 32;
-    for (var i = 0; i < candidates.length; i += chunk) {
-      if (run != _runId) return const {};
-      final slice = candidates.sublist(
-        i,
-        i + chunk > candidates.length ? candidates.length : i + chunk,
-      );
-      final List<bool?> results;
-      try {
-        results = await FileSystemService.filesEqual([
-          for (final c in slice) c.value,
-        ]);
-      } catch (_) {
-        return out;
-      }
-      for (var j = 0; j < slice.length && j < results.length; j++) {
-        if (results[j] == true) out.add(slice[j].key);
-      }
-    }
-
-    return out;
-  }
-
   Future<List<FileEntry>> _walkPerDirectory(String root, int run) async {
     final out = <FileEntry>[];
     final pending = <String>[root];
@@ -643,7 +675,7 @@ class CompareController {
   }
 
   Future<void> _sync({required bool leftToRight}) async {
-    if (!active.value) return;
+    if (!active.value || running.value) return;
     final pair = _activeStores();
     if (pair == null) return;
     final sourceStore = leftToRight ? pair.$1 : pair.$2;
@@ -701,7 +733,13 @@ class CompareController {
         tint: AppColors.compareSameTime,
         badge: '≠',
       ),
+      CompareStatus.pending => _pendingDecoration,
       CompareStatus.identical => null,
     };
   }
+
+  static final _pendingDecoration = RowDecoration(
+    tint: AppColors.fgMuted,
+    badge: '?',
+  );
 }
