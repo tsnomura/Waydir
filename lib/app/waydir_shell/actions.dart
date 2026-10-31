@@ -167,16 +167,50 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     return confirmed;
   }
 
+  Widget _confirmBody(String message, NavigationStore? markedStore) {
+    final text = Text(message, style: context.txt.body.copyWith(height: 1.4));
+    final cursor = markedStore?.cursorEntry.value;
+    if (markedStore == null || cursor == null) return text;
+    final marks = markedStore.selectedEntries;
+    const shown = 5;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        text,
+        const SizedBox(height: 12),
+        Text(
+          t.dialog.marksExcludeCursor(count: marks.length, name: cursor.name),
+          style: context.txt.body.copyWith(color: AppColors.warning),
+        ),
+        const SizedBox(height: 4),
+        for (final e in marks.take(shown))
+          Text(
+            e.name,
+            style: context.txt.caption,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (marks.length > shown)
+          Text(
+            t.dialog.andMore(count: marks.length - shown),
+            style: context.txt.caption,
+          ),
+      ],
+    );
+  }
+
   Future<bool> _confirmTransfer(
     TaskType type,
     List<String> sources,
-    String destination,
-  ) async {
+    String destination, {
+    NavigationStore? markedStore,
+  }) async {
     final isCopy = type == TaskType.copy;
     final enabled = isCopy
         ? SettingsStore.instance.confirmCopy.value
         : SettingsStore.instance.confirmMove.value;
-    if (!enabled) return true;
+    if (!enabled && markedStore == null) return true;
     if (sources.isEmpty) return true;
     if (!mounted) return true;
 
@@ -207,7 +241,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
           ? WaydirIconsRegular.copy
           : WaydirIconsRegular.arrowsLeftRight,
       iconColor: AppColors.accent,
-      body: Text(message, style: context.txt.body.copyWith(height: 1.4)),
+      body: _confirmBody(message, markedStore),
       actions: [
         DialogAction(label: t.dialog.cancel, color: AppColors.fgMuted),
         DialogAction(label: actionLabel, color: AppColors.accent),
@@ -221,7 +255,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     bool forcePermanent = false,
     bool forceTrash = false,
   }) async {
-    final entries = _active.selectedEntries;
+    final entries = _active.targetEntries;
     if (entries.isEmpty) return;
     if (_active.isTrashView) {
       _active.deletePermanentlySelectedFromTrash();
@@ -232,8 +266,9 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
       (entry) => PlatformPaths.isNetworkPath(entry.realPath),
     );
     final useTrash = forceTrash && !forcePermanent && !hasNetworkPath;
-    if (!SettingsStore.instance.confirmDelete.value) {
-      _active.deleteSelected(toTrash: useTrash);
+    final markedStore = _active.marksExcludeCursor ? _active : null;
+    if (!SettingsStore.instance.confirmDelete.value && markedStore == null) {
+      _active.deleteSelected(toTrash: useTrash, targets: entries);
 
       return;
     }
@@ -259,19 +294,19 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
           ? WaydirIconsRegular.trashSimple
           : WaydirIconsRegular.trash,
       iconColor: AppColors.danger,
-      body: Text(message, style: context.txt.body.copyWith(height: 1.4)),
+      body: _confirmBody(message, markedStore),
       actions: [
         DialogAction(label: t.dialog.cancel, color: AppColors.fgMuted),
         DialogAction(label: actionLabel, color: AppColors.danger),
       ],
     );
     if (result == actionLabel) {
-      _active.deleteSelected(toTrash: useTrash);
+      _active.deleteSelected(toTrash: useTrash, targets: entries);
     }
   }
 
   void _openPropertiesFromMenu(NavigationStore store) {
-    final entries = store.selectedEntries;
+    final entries = store.targetEntries;
     if (entries.isEmpty) {
       _openFolderProperties(store.currentPath.value);
 
@@ -316,7 +351,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   List<String> _compressSources() {
-    return _active.selectedEntries
+    return _active.targetEntries
         .where((e) => !FileSystemService.isInsideArchive(e.realPath))
         .map((e) => e.realPath)
         .toList();
@@ -324,7 +359,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
 
   String _compressBaseName() {
     final store = _active;
-    final entries = store.selectedEntries;
+    final entries = store.targetEntries;
     if (entries.length == 1) {
       final e = entries.first;
 
@@ -352,10 +387,11 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     final store = _active;
     final sources = _compressSources();
     if (sources.isEmpty) return;
+    final baseName = _compressBaseName();
     final dir = await store.resolveForOperation(store.currentPath.value);
     if (dir == null) return;
     final dest = await FileSystemService.uniquePathAsync(
-      p.join(dir, '${_compressBaseName()}.${format.extension}'),
+      p.join(dir, '$baseName.${format.extension}'),
     );
     store.operationStore.enqueueCompress(
       sources,
@@ -391,7 +427,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   void _multiRename(NavigationStore store) async {
-    final entries = store.selectedEntries;
+    final entries = store.targetEntries;
     if (entries.isEmpty) return;
     if (store.isTrashView) {
       showToast(context: context, message: t.toast.multiRenameTrashBlocked);
@@ -515,9 +551,10 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     } else {
       target = store;
     }
+    final targets = store.targetEntries;
     final base = await target.resolveForOperation(target.currentPath.value);
     if (base == null) return;
-    final archives = store.selectedEntries
+    final archives = targets
         .where(
           (e) =>
               e.type == FileItemType.file &&
@@ -614,8 +651,8 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     if (!_shell.compare.active.value || !_shell.isDual.value) return null;
     final panes = _shell.panes.value;
     if (panes.length < 2) return null;
-    final leftEntries = panes[0].tabs.activeTab.value.store.selectedEntries;
-    final rightEntries = panes[1].tabs.activeTab.value.store.selectedEntries;
+    final leftEntries = panes[0].tabs.activeTab.value.store.targetEntries;
+    final rightEntries = panes[1].tabs.activeTab.value.store.targetEntries;
     if (leftEntries.length != 1 || rightEntries.length != 1) return null;
     final left = leftEntries.first;
     final right = rightEntries.first;
@@ -713,69 +750,77 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
     final otherPath = otherStore.currentPath.value;
     if (isTagPath(otherPath)) {
       final id = tagIdFromPath(otherPath);
-      final paths = _dualPaneEntries(store).map((e) => e.path).toList();
+      final paths = store.targetEntries.map((e) => e.path).toList();
       if (id != null && paths.isNotEmpty) await otherStore.addTag(paths, id);
 
       return;
     }
     final sources = _dualPaneSources(store);
     if (sources.isEmpty) return;
+    final markedStore = store.marksExcludeCursor ? store : null;
     final dest = await otherStore.resolveForOperation(otherPath);
     if (dest == null) return;
+    if (markedStore != null &&
+        !await _confirmTransfer(
+          move ? TaskType.move : TaskType.copy,
+          sources,
+          dest,
+          markedStore: markedStore,
+        )) {
+      return;
+    }
+    final confirm = markedStore == null;
     if (move) {
-      _operationStore.enqueueMove(sources, dest);
+      _operationStore.enqueueMove(sources, dest, confirm: confirm);
     } else {
-      _operationStore.enqueueCopy(sources, dest);
+      _operationStore.enqueueCopy(sources, dest, confirm: confirm);
     }
   }
 
-  List<FileEntry> _dualPaneEntries(NavigationStore store) {
-    final entries = store.selectedEntries;
-    if (entries.isNotEmpty) return entries;
-    final entry = store.cursorEntry.value;
-    if (entry != null && !entry.isGhost) return [entry];
-
-    return const [];
-  }
-
   List<String> _dualPaneSources(NavigationStore store) =>
-      _dualPaneEntries(store).map((e) => e.realPath).toList();
+      store.targetEntries.map((e) => e.realPath).toList();
+
+  String _targetToast(NavigationStore store, String message) =>
+      store.marksExcludeCursor
+      ? t.toast.markedNotCursor(message: message)
+      : message;
 
   void _copySelectedWithToast(NavigationStore store) {
     store.copySelected();
-    final count = store.selectedPaths.value.length;
+    final count = store.targetEntries.length;
     if (count > 0) {
       showToast(
         context: context,
-        message: t.toast.copiedItems(count: count),
+        message: _targetToast(store, t.toast.copiedItems(count: count)),
       );
     }
   }
 
   void _cutSelectedWithToast(NavigationStore store) {
     store.cutSelected();
-    final count = store.selectedPaths.value.length;
+    final count = store.targetEntries.length;
     if (count > 0) {
       showToast(
         context: context,
-        message: t.toast.cutItems(count: count),
+        message: _targetToast(store, t.toast.cutItems(count: count)),
       );
     }
   }
 
   Future<void> _duplicateSelected(NavigationStore store) async {
     if (store.isTrashView) return;
-    final entries = _dualPaneEntries(store);
+    final entries = store.targetEntries;
     if (entries.isEmpty) return;
+    final message = _targetToast(
+      store,
+      t.toast.duplicatedItems(count: entries.length),
+    );
     final dest = await store.resolveForOperation(store.currentPath.value);
     if (dest == null) return;
     final sources = entries.map((e) => e.realPath).toList();
     _operationStore.enqueueDuplicate(sources, dest);
     if (!mounted) return;
-    showToast(
-      context: context,
-      message: t.toast.duplicatedItems(count: entries.length),
-    );
+    showToast(context: context, message: message);
   }
 
   void _toggleViewMode() {
@@ -829,7 +874,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   void _renameOrMultiRename(NavigationStore store) {
-    if (store.selectedCount.value >= 2) {
+    if (store.targetEntries.length >= 2) {
       _multiRename(store);
     } else {
       store.startRename();

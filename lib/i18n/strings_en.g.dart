@@ -1550,6 +1550,9 @@ class Translations$toast$en {
 	/// en: 'Cut $count items'
 	String cutItems({required Object count}) => 'Cut ${count} items';
 
+	/// en: '$message — marked items, not the cursor item'
+	String markedNotCursor({required Object message}) => '${message} — marked items, not the cursor item';
+
 	/// en: 'Saved $count names to $path'
 	String selectionSaved({required Object count, required Object path}) => 'Saved ${count} names to ${path}';
 
@@ -2090,6 +2093,12 @@ class Translations$dialog$en {
 
 	/// en: 'Move $count items to Trash?'
 	String confirmTrashMultiple({required Object count}) => 'Move ${count} items to Trash?';
+
+	/// en: 'This acts on $count marked items, not "$name" under the cursor:'
+	String marksExcludeCursor({required Object count, required Object name}) => 'This acts on ${count} marked items, not "${name}" under the cursor:';
+
+	/// en: '…and $count more'
+	String andMore({required Object count}) => '…and ${count} more';
 
 	/// en: 'Copy'
 	String get copy => 'Copy';
@@ -5383,6 +5392,7 @@ extension on Translations {
 			'toast.copiedItems' => ({required Object count}) => 'Copied ${count} items',
 			'toast.duplicatedItems' => ({required Object count}) => 'Duplicated ${count} items',
 			'toast.cutItems' => ({required Object count}) => 'Cut ${count} items',
+			'toast.markedNotCursor' => ({required Object message}) => '${message} — marked items, not the cursor item',
 			'toast.selectionSaved' => ({required Object count, required Object path}) => 'Saved ${count} names to ${path}',
 			'toast.selectionLoaded' => ({required Object count}) => 'Selected ${count} visible items',
 			'toast.selectionLoadEmpty' => 'No visible items matched',
@@ -5577,6 +5587,8 @@ extension on Translations {
 			'dialog.confirmTrashTitle' => 'Move to Trash?',
 			'dialog.confirmTrashSingle' => ({required Object name}) => 'Move "${name}" to Trash?',
 			'dialog.confirmTrashMultiple' => ({required Object count}) => 'Move ${count} items to Trash?',
+			'dialog.marksExcludeCursor' => ({required Object count, required Object name}) => 'This acts on ${count} marked items, not "${name}" under the cursor:',
+			'dialog.andMore' => ({required Object count}) => '…and ${count} more',
 			'dialog.copy' => 'Copy',
 			'dialog.move' => 'Move',
 			'dialog.confirmCopyTitle' => 'Copy items?',
@@ -5610,11 +5622,11 @@ extension on Translations {
 			'operations.compressing' => 'Compressing…',
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
+			_ => null,
+		} ?? switch (path) {
 			'operations.compressingXz' => 'Compressing (xz)…',
 			'operations.justNow' => 'just now',
 			'operations.secondsAgo' => ({required Object count}) => '${count}s ago',
-			_ => null,
-		} ?? switch (path) {
 			'operations.minutesAgo' => ({required Object count}) => '${count}m ago',
 			'operations.hoursAgo' => ({required Object count}) => '${count}h ago',
 			'operations.eta' => ({required Object time}) => 'ETA ${time}',
