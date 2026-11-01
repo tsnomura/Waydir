@@ -18,14 +18,13 @@ import '../../ui/theme/app_theme.dart';
 import '../../ui/window/window.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
-import 'generators/generator_registry.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
-import 'quick_look_common.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
 import 'quick_look_reload.dart';
 import 'quick_look_shortcut_bar.dart';
+import 'rendered_source.dart';
 
 class QuickLookWindow extends StatefulWidget {
   final FileEntry entry;
@@ -53,12 +52,12 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   List<FileEntry>? _siblings;
   bool _stepping = false;
   bool _showInfo = true;
-  bool _markdownRendered = true;
+  bool _rendered = true;
   bool _closing = false;
   bool _confirmingClose = false;
   bool _pendingSearch = false;
-  bool _renderedMarkdown = false;
-  bool _markdownRenderable = false;
+  bool _showingRendered = false;
+  bool _renderable = false;
   bool _pendingEdit = false;
   late final void Function() _findReadySub;
   late final _reload = QuickLookReloadController(
@@ -154,24 +153,24 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     unawaited(_reload.request(context));
   }
 
-  void _toggleMarkdownRendered() {
-    if (!_markdownRendered) {
+  void _toggleRendered() {
+    if (!_rendered) {
       final find = _editorController.find;
       if (find != null && find.value != null) find.close();
     }
-    setState(() => _markdownRendered = !_markdownRendered);
+    setState(() => _rendered = !_rendered);
   }
 
   void _toggleEditMode() {
     if (_editorActive.value) {
       _focus.requestFocus();
-      if (_markdownRenderable && !_markdownRendered) _toggleMarkdownRendered();
+      if (_renderable && !_rendered) _toggleRendered();
 
       return;
     }
-    if (_renderedMarkdown) {
+    if (_showingRendered) {
       _pendingEdit = true;
-      _toggleMarkdownRendered();
+      _toggleRendered();
 
       return;
     }
@@ -188,9 +187,9 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       }
       return;
     }
-    if (!_renderedMarkdown) return;
+    if (!_showingRendered) return;
     _pendingSearch = true;
-    setState(() => _markdownRendered = false);
+    setState(() => _rendered = false);
   }
 
   void _onSearchTap() {
@@ -198,7 +197,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       _openSearch();
       return;
     }
-    _toggleMarkdownRendered();
+    _toggleRendered();
     _openSearch();
   }
 
@@ -313,7 +312,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     setState(() {
       _entry = entry;
       _compact = defaultCompactFor(entry);
-      _markdownRendered = true;
+      _rendered = true;
       _pendingSearch = false;
       _pendingEdit = false;
     });
@@ -429,11 +428,8 @@ class _QuickLookWindowState extends State<QuickLookWindow>
           builder: (_) {
             _reload.revision.value;
             final entry = _reload.shown(_entry)!;
-            _markdownRenderable =
-                markdownExts.contains(entry.extension) &&
-                GeneratorRegistry.instance.forExtension(entry.extension) ==
-                    null;
-            _renderedMarkdown = _markdownRenderable && _markdownRendered;
+            _renderable = RenderedSource.available(entry);
+            _showingRendered = _renderable && _rendered;
             _playback.sync(
               entry,
               _generatorPage,
@@ -455,8 +451,10 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                             setState(() => _showInfo = !_showInfo),
                         onClose: _close,
                         editorController: _editorController,
-                        markdownRendered: _markdownRendered,
-                        onToggleMarkdownView: _toggleMarkdownRendered,
+                        rendered: _rendered,
+                        onToggleRenderedView: _renderable
+                            ? _toggleRendered
+                            : null,
                         onSearch: _onSearchTap,
                         onReload: QuickLookReloadController.canReload(entry)
                             ? _requestReload
@@ -476,7 +474,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                         editorController: _editorController,
                         showInfo: _showInfo,
                         onCompactChanged: _setCompact,
-                        markdownRendered: _markdownRendered,
+                        rendered: _rendered,
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
                       ),

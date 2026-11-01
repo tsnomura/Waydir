@@ -1,0 +1,10 @@
+{
+  "_help": "Windows version of dxf-preview: previews DXF (CAD) drawings with netpng's dxf2png (github.com/tsnomura/netpng), which rasterizes model space (lines, arcs, circles, ellipses, polylines, splines, blocks; no text) to PNG with the longer side at 1024 px. dxf2png writes the file itself with -o, so no wrapper script is needed. Waydir starts generators without a shell, so cmd must be the real executable: netpng's install.sh puts it at %USERPROFILE%\\.netpng\\bin\\dxf2png.exe (the ~/bin/dxf2png shim is a bash script and can't be started directly). DXF is text, so Quick Look also offers the rendered/source toggle for it. On Linux/macOS use dxf-preview.linux-macos.json instead. Waydir ignores every key starting with \"_\".",
+  "id": "dxf-preview",
+  "extensions": ["dxf"],
+  "cmd": "C:\\Users\\<USER>\\.netpng\\bin\\dxf2png.exe",
+  "_help_cmd": "Replace <USER> with your Windows user name (cmd is not expanded, so %USERPROFILE% can't be used here).",
+  "args": ["%INPUT%", "-o", "%OUTPUT%", "-q"],
+  "timeoutSeconds": 15,
+  "outputExt": "png"
+}

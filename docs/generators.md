@@ -39,6 +39,7 @@ Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach ge
 | `office-thumbnail` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
 | `comsol-mph` | PowerShell + .NET `ZipFile` | `sh` + `unzip -p` |
 | `ico-preview` | netpng's `ico2png` via a small PowerShell script that saves its stdout (`<GENERATORS_DIR>` placeholder) | netpng's `ico2png` (github.com/tsnomura/netpng, on PATH) via `sh -c` |
+| `dxf-preview` | netpng's `dxf2png` writing `-o %OUTPUT%` itself; `cmd` is the real `.exe` under `%USERPROFILE%\.netpng\bin` (`<USER>` placeholder) | netpng's `dxf2png` (on PATH) |
 | `font-preview` | GDI+/WPF (see [Multi-File Generators](#multi-file-generators) below) | none — Windows-only API |
 | `archive-list` | 7-Zip's `7z l` (text output, see [Text Output](#text-output)) for zip/7z/rar/zst/cab/iso/jar | libarchive's `bsdtar -tvf`, tarballs included |
 | `tar-list` | Git for Windows' GNU tar for tar/tgz/gz/bz2/xz (7z would only show a `.tar.gz`'s inner `.tar`) | none — `archive-list` covers tarballs |
