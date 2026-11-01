@@ -410,9 +410,15 @@ class SettingsStore {
 
   void decreaseFileListScale() => _stepFileListScale(-1);
 
-  void resetFileListScale() => fileListScale.value = defaultFileListScale;
+  bool get fileListZoomable => fileViewMode.value == 'grid';
+
+  void resetFileListScale() {
+    if (!fileListZoomable) return;
+    fileListScale.value = defaultFileListScale;
+  }
 
   void _stepFileListScale(int direction) {
+    if (!fileListZoomable) return;
     final steps = (fileListScale.value / fileListScaleStep).round();
     final next = (steps + direction) * fileListScaleStep;
     fileListScale.value = next.clamp(fileListScaleMin, fileListScaleMax);
