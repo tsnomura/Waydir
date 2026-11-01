@@ -57,24 +57,20 @@ double _gridDensityFactor(bool compact) => compact ? 0.9 : 1.0;
 double _gridTilePadding(double scale, bool compact) =>
     (compact ? 6.0 : _kTilePadding) * scale;
 
-double _gridThumbGap(double scale, bool compact) =>
-    (compact ? 6.0 : _kThumbGap) * scale;
+double _gridThumbGap(bool compact) => compact ? 6.0 : _kThumbGap;
 
-double _gridNameBlock(double scale, bool compact) =>
-    (compact ? 32.0 : _kNameBlock) * scale;
+double _gridNameBlock(bool compact) => compact ? 32.0 : _kNameBlock;
 
-double _gridCaptionGap(double scale, bool compact) =>
-    (compact ? 2.0 : _kCaptionGap) * scale;
+double _gridCaptionGap(bool compact) => compact ? 2.0 : _kCaptionGap;
 
-double _gridCaptionBlock(double scale, bool compact) =>
-    (compact ? 16.0 : _kCaptionBlock) * scale;
+double _gridCaptionBlock(bool compact) => compact ? 16.0 : _kCaptionBlock;
 
 double _gridTileHeight(double scale, bool compact) =>
     (_kGridBaseThumb * scale * _gridDensityFactor(compact) +
-            _gridThumbGap(scale, compact) +
-            _gridNameBlock(scale, compact) +
-            _gridCaptionGap(scale, compact) +
-            _gridCaptionBlock(scale, compact) +
+            _gridThumbGap(compact) +
+            _gridNameBlock(compact) +
+            _gridCaptionGap(compact) +
+            _gridCaptionBlock(compact) +
             _gridTilePadding(scale, compact) * 2 +
             _kTileBorder * 2)
         .ceilToDouble();
@@ -470,10 +466,10 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                             scale: scale,
                             thumbSize: thumbSize,
                             tilePadding: _gridTilePadding(scale, compact),
-                            thumbGap: _gridThumbGap(scale, compact),
-                            nameBlock: _gridNameBlock(scale, compact),
-                            captionGap: _gridCaptionGap(scale, compact),
-                            captionBlock: _gridCaptionBlock(scale, compact),
+                            thumbGap: _gridThumbGap(compact),
+                            nameBlock: _gridNameBlock(compact),
+                            captionGap: _gridCaptionGap(compact),
+                            captionBlock: _gridCaptionBlock(compact),
                             selected: widget.selectedPaths.contains(entry.path),
                             isCursor: index == widget.cursorIndex,
                             cursorTooltips: widget.cursorTooltips,
@@ -793,13 +789,11 @@ class _GridTileState extends State<_GridTile> {
     final scale = widget.scale;
     final thumbSize = widget.thumbSize;
     final nameStyle = context.txt.row.copyWith(
-      fontSize: (context.txt.row.fontSize ?? 13) * scale,
       color: selected ? AppColors.fg : AppColors.fgMuted,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
       height: 1.25,
     );
     final captionStyle = context.txt.caption.copyWith(
-      fontSize: (context.txt.caption.fontSize ?? 11) * scale,
       color: AppColors.fgSubtle,
       height: 1.15,
     );

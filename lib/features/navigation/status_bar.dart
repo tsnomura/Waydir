@@ -250,6 +250,7 @@ class _StatusZoomControl extends StatelessWidget {
 
     return SignalBuilder(
       builder: (context) {
+        if (!settings.fileListZoomable) return const SizedBox.shrink();
         final scale = settings.fileListScale.value;
         final percent = (scale * 100).round();
 

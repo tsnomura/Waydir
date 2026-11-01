@@ -458,7 +458,6 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   double _rowG = _kRowGapComfortable;
   double _itemExt = _kRowHeightComfortable + _kRowGapComfortable;
   double _listHorizontalSpacing = _kRowGapComfortable;
-  double _scale = 1.0;
   double _viewportWidth = 0;
   String _dateFmt = 'locale';
   bool _recentDatesRelative = true;
@@ -487,7 +486,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
       text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
       maxLines: 1,
-      textScaler: TextScaler.linear(_scale),
+      textScaler: TextScaler.noScaling,
     )..layout();
 
     return tp.width;
@@ -748,12 +747,9 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
             SettingsStore.instance.fileListVerticalSpacing.value;
         _dateFmt = SettingsStore.instance.dateFormat.value;
         _recentDatesRelative = SettingsStore.instance.recentDatesRelative.value;
-        _scale = SettingsStore.instance.fileListScale.value;
-        _rowH =
-            (density == 'compact'
-                ? _kRowHeightCompact
-                : _kRowHeightComfortable) *
-            _scale;
+        _rowH = density == 'compact'
+            ? _kRowHeightCompact
+            : _kRowHeightComfortable;
         _rowG = verticalSpacing.toDouble();
         _listHorizontalSpacing = horizontalSpacing.toDouble();
         _itemExt = _rowH + _rowG;
@@ -794,8 +790,8 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
             final showStatus =
                 widget.showStatusColumn ||
                 widget.rowDecorations.values.any((d) => d.badge != null);
-            final statusSlot = showStatus ? 16 * _scale + 6 : 0.0;
-            final iconSlot = statusSlot + 16 * _scale + 6 + treeLeading;
+            final statusSlot = showStatus ? 16.0 + 6 : 0.0;
+            final iconSlot = statusSlot + 16.0 + 6 + treeLeading;
             final rowChrome =
                 _listHorizontalPadding * 2 +
                 _kScrollbarGutterWidth +
@@ -989,8 +985,8 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                       },
                                       behavior: HitTestBehavior.translucent,
                                       child: MediaQuery.withClampedTextScaling(
-                                        minScaleFactor: _scale,
-                                        maxScaleFactor: _scale,
+                                        minScaleFactor: 1,
+                                        maxScaleFactor: 1,
                                         child: ListView.builder(
                                           controller: _scrollController,
                                           padding: EdgeInsets.only(
@@ -1012,7 +1008,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                               ),
                                               child: _ListRow(
                                                 rowHeight: _rowH,
-                                                iconSize: 16 * _scale,
+                                                iconSize: 16.0,
                                                 dateFmt: _dateFmt,
                                                 recentDatesRelative:
                                                     _recentDatesRelative,

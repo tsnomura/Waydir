@@ -79,13 +79,30 @@ void main() {
   });
 
   group('SettingsStore file list scale stepping', () {
+    late String previousViewMode;
+
     setUp(() {
+      previousViewMode = store.fileViewMode.value;
+      store.fileViewMode.value = 'grid';
       store.fileListScale.value = SettingsStore.defaultFileListScale;
     });
 
     tearDown(() {
+      store.fileViewMode.value = previousViewMode;
       store.fileListScale.value = SettingsStore.defaultFileListScale;
     });
+
+    for (final mode in ['list', 'tree']) {
+      test('zoom is a no-op in $mode view', () {
+        store.fileViewMode.value = mode;
+        store.fileListScale.value = 1.5;
+        store.increaseFileListScale();
+        store.decreaseFileListScale();
+        store.resetFileListScale();
+        expect(store.fileListScale.value, closeTo(1.5, 0.001));
+        expect(store.fileListZoomable, isFalse);
+      });
+    }
 
     test('increase adds one step', () {
       store.fileListScale.value = 1.0;
