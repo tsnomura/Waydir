@@ -266,13 +266,25 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
     );
   }
 
+  int _revealIndex() {
+    final renaming = widget.renamingPath;
+    if (renaming != null) {
+      final index = widget.files.indexWhere((f) => f.path == renaming);
+      if (index >= 0) return index;
+    }
+
+    return widget.cursorIndex;
+  }
+
   void _revealSelectedTile() {
-    final index = widget.cursorIndex;
+    final index = _revealIndex();
     if (index < 0 || index >= widget.files.length || _lastColumns <= 0) {
       return;
     }
     final key = '$index:${widget.files[index].path}:$_lastColumns';
-    final restoreRow = widget.scrollLink?.takeCursorRow(widget.currentPath);
+    final restoreRow = widget.renamingPath == null
+        ? widget.scrollLink?.takeCursorRow(widget.currentPath)
+        : null;
     if (restoreRow != null) {
       _lastRevealedKey = key;
       WidgetsBinding.instance.addPostFrameCallback((_) {

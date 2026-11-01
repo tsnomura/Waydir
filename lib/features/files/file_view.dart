@@ -641,12 +641,24 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     );
   }
 
+  int _revealIndex(List<FileEntry> files) {
+    final renaming = widget.renamingPath;
+    if (renaming != null) {
+      final index = files.indexWhere((f) => f.path == renaming);
+      if (index >= 0) return index;
+    }
+
+    return widget.cursorIndex;
+  }
+
   void _revealSelectedRow() {
-    final index = widget.cursorIndex;
     final files = _displayFiles;
+    final index = _revealIndex(files);
     if (index < 0 || index >= files.length) return;
     final key = '$index:${files[index].path}';
-    final restoreRow = widget.scrollLink?.takeCursorRow(widget.currentPath);
+    final restoreRow = widget.renamingPath == null
+        ? widget.scrollLink?.takeCursorRow(widget.currentPath)
+        : null;
     if (restoreRow != null) {
       _lastRevealedKey = key;
       WidgetsBinding.instance.addPostFrameCallback((_) {
