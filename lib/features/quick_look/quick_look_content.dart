@@ -48,6 +48,7 @@ class QuickLookHeader extends StatelessWidget {
   final GestureDragStartCallback? onHeaderPanStart;
   final GestureDragUpdateCallback? onHeaderPanUpdate;
   final VoidCallback? onToggleMaximize;
+  final VoidCallback? onBack;
 
   const QuickLookHeader({
     super.key,
@@ -67,6 +68,7 @@ class QuickLookHeader extends StatelessWidget {
     this.onHeaderPanStart,
     this.onHeaderPanUpdate,
     this.onToggleMaximize,
+    this.onBack,
   });
 
   @override
@@ -91,6 +93,15 @@ class QuickLookHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: [
+            if (onBack != null) ...[
+              QuickLookHeaderButton(
+                icon: WaydirIconsRegular.arrowLeft,
+                active: false,
+                tooltip: t.quickLook.back,
+                onTap: onBack!,
+              ),
+              const SizedBox(width: 6),
+            ],
             if (multi)
               Icon(WaydirIconsRegular.copy, size: 18, color: AppColors.accent)
             else if (e == null)
@@ -406,6 +417,7 @@ class QuickLookBody extends StatelessWidget {
   final bool rendered;
   final ScrollController scrollController;
   final GeneratorPageController generatorPage;
+  final ValueChanged<String>? onOpenLink;
 
   const QuickLookBody({
     super.key,
@@ -417,6 +429,7 @@ class QuickLookBody extends StatelessWidget {
     required this.rendered,
     required this.scrollController,
     required this.generatorPage,
+    this.onOpenLink,
   });
 
   @override
@@ -483,7 +496,7 @@ class QuickLookBody extends StatelessWidget {
       onCompactChanged(false);
 
       return splitPreview(
-        MarkdownPreview(entry: e),
+        MarkdownPreview(entry: e, onOpenLink: onOpenLink),
         e,
         showInfo: showInfo,
         scrollController: scrollController,
