@@ -952,7 +952,9 @@
     "searchNext": "Next match",
     "searchPrevious": "Previous match",
     "searchCase": "Match case",
-    "searchRegex": "Use regular expression"
+    "searchRegex": "Use regular expression",
+    "mermaidMissing": "Install merman-cli to render this Mermaid diagram.",
+    "mermaidFailed": "Mermaid render failed: ${error}"
   },
   "toast": {
     "launcherFailed": "Couldn't start $name: $error",
