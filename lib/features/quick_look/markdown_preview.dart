@@ -17,13 +17,15 @@ import '../../ui/theme/app_text_styles.dart';
 import '../../ui/widgets/markdown_body_view.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
+import 'quick_look_links.dart';
 
 /// Rendered Markdown preview. Read-only; switching to the source editor is
 /// handled by the QuickLook header toggle, which routes back to [CodeEditor].
 class MarkdownPreview extends StatelessWidget {
   final FileEntry entry;
+  final ValueChanged<String>? onOpenLink;
 
-  const MarkdownPreview({super.key, required this.entry});
+  const MarkdownPreview({super.key, required this.entry, this.onOpenLink});
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,7 @@ class MarkdownPreview extends StatelessWidget {
             key: ValueKey(entry.realPath),
             text: res.text,
             basePath: entry.realPath,
+            onOpenLink: onOpenLink,
           );
         },
       ),
@@ -75,11 +78,13 @@ Set<String> _remoteImageUrls(String md) {
 class _RenderedMarkdown extends StatefulWidget {
   final String text;
   final String basePath;
+  final ValueChanged<String>? onOpenLink;
 
   const _RenderedMarkdown({
     super.key,
     required this.text,
     required this.basePath,
+    this.onOpenLink,
   });
 
   @override
@@ -131,6 +136,7 @@ class _RenderedMarkdownState extends State<_RenderedMarkdown> {
       md: _md,
       basePath: widget.basePath,
       remote: _remote,
+      onOpenLink: widget.onOpenLink,
     );
   }
 }
@@ -141,16 +147,23 @@ class _MarkdownPreviewBody extends StatelessWidget {
   final String md;
   final String basePath;
   final Map<String, Uint8List> remote;
+  final ValueChanged<String>? onOpenLink;
 
   const _MarkdownPreviewBody({
     required this.md,
     required this.basePath,
     required this.remote,
+    this.onOpenLink,
   });
 
   void _openLink(String href) {
     final uri = Uri.tryParse(href);
-    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+    if (uri == null) return;
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      final open = onOpenLink;
+      final local = open == null ? null : resolveLocalLink(href, basePath);
+      if (local != null) open!(local);
+
       return;
     }
     final cmd = Platform.isWindows

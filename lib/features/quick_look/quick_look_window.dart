@@ -22,6 +22,7 @@ import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
+import 'quick_look_links.dart';
 import 'quick_look_reload.dart';
 import 'quick_look_shortcut_bar.dart';
 import 'rendered_source.dart';
@@ -50,6 +51,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
   late FileEntry _entry = widget.entry;
   late bool _compact = defaultCompactFor(widget.entry);
   List<FileEntry>? _siblings;
+  final _back = <FileEntry>[];
   bool _stepping = false;
   bool _showInfo = true;
   bool _rendered = true;
@@ -299,13 +301,39 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       final target = index + delta;
       if (index < 0 || target < 0 || target >= siblings.length) return;
       if (!await _confirmClose() || !mounted) return;
+      _back.clear();
       _showEntry(siblings[target]);
     } finally {
       _stepping = false;
     }
   }
 
+  Future<void> _openLink(String path) async {
+    final target = await loadLinkTarget(path);
+    if (!mounted) return;
+    if (target == null) {
+      showToast(
+        context: context,
+        message: t.quickLook.linkNotFound(path: path),
+      );
+
+      return;
+    }
+    _back.add(_entry);
+    _showEntry(target);
+  }
+
+  Future<void> _goBack() async {
+    if (_back.isEmpty) return;
+    if (!await _confirmClose() || !mounted || _back.isEmpty) return;
+    _showEntry(_back.removeLast());
+    _focus.requestFocus();
+  }
+
   void _showEntry(FileEntry entry) {
+    if (!p.equals(p.dirname(entry.path), p.dirname(_entry.path))) {
+      _siblings = null;
+    }
     final find = _editorController.find;
     if (find?.value != null) find!.close();
     _generatorPage.reset();
@@ -374,6 +402,11 @@ class _QuickLookWindowState extends State<QuickLookWindow>
       }
     }
     if (_editorActive.value) return KeyEventResult.ignored;
+    if (!isRepeat && isQuickLookBackKey(key) && _back.isNotEmpty) {
+      unawaited(_goBack());
+
+      return KeyEventResult.handled;
+    }
     if (key == LogicalKeyboardKey.pageDown) {
       return _generatorPage.pageCount > 1
           ? _stepGeneratorPage(1, isRepeat)
@@ -402,6 +435,11 @@ class _QuickLookWindowState extends State<QuickLookWindow>
     if (editing) return QuickLookShortcutHint.editing();
 
     return [
+      if (_back.isNotEmpty)
+        QuickLookShortcutHint(
+          caps: const ['Alt', '←'],
+          label: t.quickLook.hintBack,
+        ),
       QuickLookShortcutHint(
         caps: const ['←', '→'],
         label: t.quickLook.hintSwitchFile,
@@ -461,6 +499,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                             : null,
                         onHeaderPanStart: (_) => appWindow.startDragging(),
                         onToggleMaximize: appWindow.maximizeOrRestore,
+                        onBack: _back.isNotEmpty ? _goBack : null,
                       ),
                     ),
                     Container(height: 1, color: AppColors.bgDivider),
@@ -477,6 +516,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                         rendered: _rendered,
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
+                        onOpenLink: _openLink,
                       ),
                     ),
                     Container(height: 1, color: AppColors.bgDivider),

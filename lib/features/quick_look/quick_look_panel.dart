@@ -14,6 +14,7 @@ import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
+import 'quick_look_links.dart';
 import 'quick_look_reload.dart';
 import 'rendered_source.dart';
 
@@ -49,6 +50,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   bool _showingRendered = false;
   late final void Function() _findReadySub;
   String? _presentationKey;
+  final _links = QuickLookLinkHistory();
   late final _reload = QuickLookReloadController(
     editorController: _editorController,
     onReloadSkipped: _showReloadSkipped,
@@ -121,6 +123,28 @@ class _QuickLookPanelState extends State<QuickLookPanel>
 
   void _requestReload() => unawaited(_reload.request(context));
 
+  Future<void> _openLink(String path) async {
+    final target = await loadLinkTarget(path);
+    if (!mounted) return;
+    if (target == null) {
+      showToast(
+        context: context,
+        message: t.quickLook.linkNotFound(path: path),
+      );
+
+      return;
+    }
+    setState(() => _links.push(target));
+  }
+
+  Future<void> _goBack() async {
+    if (!_links.canGoBack) return;
+    if (!await confirmLeaveEditor(context, _editorController) || !mounted) {
+      return;
+    }
+    setState(_links.back);
+  }
+
   void _toggleRendered() {
     if (!_rendered) {
       final find = _editorController.find;
@@ -175,7 +199,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   Widget build(BuildContext context) {
     return SignalBuilder(
       builder: (_) {
-        final entry = _resolveEntry();
+        final entry = _links.resolve(_resolveEntry());
         _syncPresentation(entry);
         _reload.watch(entry);
         _reload.revision.value;
@@ -206,6 +230,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                   onReload: QuickLookReloadController.canReload(entry)
                       ? _requestReload
                       : null,
+                  onBack: _links.canGoBack ? _goBack : null,
                 ),
                 Container(height: 1, color: AppColors.bgDivider),
                 Expanded(
@@ -219,6 +244,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                     rendered: _rendered,
                     scrollController: _contentScroll,
                     generatorPage: _generatorPage,
+                    onOpenLink: _openLink,
                   ),
                 ),
               ],

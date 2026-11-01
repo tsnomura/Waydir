@@ -1505,6 +1505,15 @@ class Translations$quickLook$en {
 	/// en: 'Scroll'
 	String get hintScroll => 'Scroll';
 
+	/// en: 'Back (Alt+←)'
+	String get back => 'Back (Alt+←)';
+
+	/// en: 'Back'
+	String get hintBack => 'Back';
+
+	/// en: 'Link target not found: ${path}'
+	String linkNotFound({required Object path}) => 'Link target not found: ${path}';
+
 	/// en: 'You have unsaved changes. Save them before reloading?'
 	String get reloadMessage => 'You have unsaved changes. Save them before reloading?';
 
@@ -5386,6 +5395,9 @@ extension on Translations {
 			'quickLook.hintEdit' => 'Edit',
 			'quickLook.hintView' => 'Back to view',
 			'quickLook.hintScroll' => 'Scroll',
+			'quickLook.back' => 'Back (Alt+←)',
+			'quickLook.hintBack' => 'Back',
+			'quickLook.linkNotFound' => ({required Object path}) => 'Link target not found: ${path}',
 			'quickLook.reloadMessage' => 'You have unsaved changes. Save them before reloading?',
 			'quickLook.reloadSkipped' => 'File changed - press F5 to reload',
 			'quickLook.maximizeRestore' => 'Maximize / Restore',
@@ -5625,11 +5637,11 @@ extension on Translations {
 			'operations.title' => 'Operations',
 			'operations.clear' => 'Clear',
 			'operations.noActive' => 'No active operations',
+			_ => null,
+		} ?? switch (path) {
 			'operations.resolveConflicts' => 'Resolve Conflicts',
 			'operations.errorsCount' => ({required Object count}) => '${count} errors',
 			'operations.compressing' => 'Compressing…',
-			_ => null,
-		} ?? switch (path) {
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',
 			'operations.compressingXz' => 'Compressing (xz)…',

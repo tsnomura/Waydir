@@ -21,6 +21,7 @@ import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
+import 'quick_look_links.dart';
 import 'quick_look_pop_out.dart';
 import 'quick_look_reload.dart';
 import 'quick_look_shortcut_bar.dart';
@@ -112,6 +113,7 @@ class _QuickLookState extends State<_QuickLook>
   bool _pendingEdit = false;
   late final void Function() _findReadySub;
   String? _presentationKey;
+  final _links = QuickLookLinkHistory();
   late final _reload = QuickLookReloadController(
     editorController: _editorController,
     onReloadSkipped: _showReloadSkipped,
@@ -227,6 +229,30 @@ class _QuickLookState extends State<_QuickLook>
   }
 
   void _requestReload() => unawaited(_reload.request(context));
+
+  Future<void> _openLink(String path) async {
+    final target = await loadLinkTarget(path);
+    if (!mounted) return;
+    if (target == null) {
+      showToast(
+        context: context,
+        message: t.quickLook.linkNotFound(path: path),
+      );
+
+      return;
+    }
+    setState(() => _links.push(target));
+  }
+
+  Future<void> _goBack() async {
+    if (!_links.canGoBack) return;
+    if (!await confirmLeaveEditor(context, _editorController) || !mounted) {
+      return;
+    }
+    setState(_links.back);
+    _focus.requestFocus();
+  }
+
   void _selectFromStats(FileEntry entry) {
     final files = widget.store.navigableFiles;
     final idx = files.indexWhere((f) => f.path == entry.path);
@@ -390,6 +416,11 @@ class _QuickLookState extends State<_QuickLook>
     }
     if (_editorActive.value) return KeyEventResult.ignored;
 
+    if (!isRepeat && isQuickLookBackKey(key) && _links.canGoBack) {
+      unawaited(_goBack());
+
+      return KeyEventResult.handled;
+    }
     if (!isRepeat &&
         (AppShortcuts.matches('quick_look_close', key) ||
             AppShortcuts.matches('quick_look_marked', key))) {
@@ -515,6 +546,11 @@ class _QuickLookState extends State<_QuickLook>
     if (editing) return QuickLookShortcutHint.editing();
 
     return [
+      if (_links.canGoBack)
+        QuickLookShortcutHint(
+          caps: const ['Alt', '←'],
+          label: t.quickLook.hintBack,
+        ),
       QuickLookShortcutHint(
         caps: const ['↑', '↓'],
         label: t.quickLook.hintSwitchFile,
@@ -674,15 +710,16 @@ class _QuickLookState extends State<_QuickLook>
                   ],
                 );
               }
-              _syncPresentation(entry);
+              final shown = _links.resolve(entry);
+              _syncPresentation(shown);
 
-              return _singleFilePreview(entry);
+              return _singleFilePreview(shown);
             }
           }
         }
 
         final cursor = widget.store.cursorEntry.value;
-        final entry = cursor?.ghostOf ?? cursor;
+        final entry = _links.resolve(cursor?.ghostOf ?? cursor);
         _syncPresentation(entry);
 
         return _singleFilePreview(entry);
@@ -740,6 +777,7 @@ class _QuickLookState extends State<_QuickLook>
                   : null,
               onHeaderPanStart: handleDragStart,
               onHeaderPanUpdate: handleDragUpdate,
+              onBack: _links.canGoBack ? _goBack : null,
             ),
             Container(height: 1, color: AppColors.bgDivider),
             Expanded(
@@ -759,6 +797,7 @@ class _QuickLookState extends State<_QuickLook>
                         rendered: _rendered,
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
+                        onOpenLink: _openLink,
                       ),
                     )
                   : QuickLookBody(
@@ -771,6 +810,7 @@ class _QuickLookState extends State<_QuickLook>
                       rendered: _rendered,
                       scrollController: _contentScroll,
                       generatorPage: _generatorPage,
+                      onOpenLink: _openLink,
                     ),
             ),
           ],
