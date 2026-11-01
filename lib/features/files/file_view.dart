@@ -21,7 +21,9 @@ import '../../utils/drag_drop.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
+import 'cursor_tooltip.dart';
 import 'file_icons.dart';
+import 'path_ellipsis.dart';
 import 'pointer_hover_store.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart';
@@ -53,6 +55,7 @@ const _kRowPaddingRight = 10.0;
 const _kNameMinWidth = 160.0;
 const _kNameManualDefaultWidth = 260.0;
 const _kLocationMinWidth = 120.0;
+const _kLocationMaxFraction = 0.4;
 const _kColumnGap = 6.0;
 const _kHeaderHeight = 24.0;
 const _kResizeHandleWidth = 16.0;
@@ -266,6 +269,7 @@ class FileList extends StatefulWidget {
   final Map<String, int> folderSizes;
   final Map<String, RowDecoration> rowDecorations;
   final bool showStatusColumn;
+  final bool cursorTooltips;
   final List<FileTreeRow>? treeRows;
   final ValueChanged<FileEntry>? onToggleTreeFolder;
   final ScrollLink? scrollLink;
@@ -278,6 +282,7 @@ class FileList extends StatefulWidget {
     this.folderSizes = const {},
     this.rowDecorations = const {},
     this.showStatusColumn = false,
+    this.cursorTooltips = false,
     this.treeRows,
     this.onToggleTreeFolder,
     required this.onSelect,
@@ -337,6 +342,7 @@ class FileTree extends StatelessWidget {
   final Map<String, int> folderSizes;
   final Map<String, RowDecoration> rowDecorations;
   final bool showStatusColumn;
+  final bool cursorTooltips;
   final ValueChanged<FileEntry> onToggleFolder;
   final ScrollLink? scrollLink;
   final bool recursiveResults;
@@ -352,6 +358,7 @@ class FileTree extends StatelessWidget {
     this.folderSizes = const {},
     this.rowDecorations = const {},
     this.showStatusColumn = false,
+    this.cursorTooltips = false,
     this.sortColumn = SortKey.name,
     this.sortAscending = true,
     this.onSortColumn,
@@ -408,6 +415,7 @@ class FileTree extends StatelessWidget {
       folderSizes: folderSizes,
       rowDecorations: rowDecorations,
       showStatusColumn: showStatusColumn,
+      cursorTooltips: cursorTooltips,
       scrollLink: scrollLink,
     );
   }
@@ -565,13 +573,23 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     return rel;
   }
 
-  String? _compactLocation(String entryPath, String currentPath) {
-    final rel = _relativeParent(entryPath, currentPath);
-    if (rel == null) return null;
-    final parts = p.split(rel).where((part) => part.isNotEmpty).toList();
-    if (parts.length <= 2) return rel;
+  double _automaticLocationWidth(
+    BuildContext context,
+    List<FileEntry> files,
+    double room,
+  ) {
+    var longest = '';
+    for (final e in files) {
+      final rel = _relativeParent(e.path, widget.currentPath);
+      if (rel != null && rel.length > longest.length) longest = rel;
+    }
+    final wanted = _measureWidth(longest, context.txt.muted) + 8 + 8;
+    final cap = math.max(
+      _kLocationMinWidth,
+      math.min(_viewportWidth * _kLocationMaxFraction, room),
+    );
 
-    return p.join('...', parts[parts.length - 2], parts.last);
+    return wanted.clamp(_kLocationMinWidth, cap).ceilToDouble();
   }
 
   int _rowAt(Offset localPosition) {
@@ -787,10 +805,22 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
               0,
               (sum, col) => sum + automaticColumnWidths[col]! + _kColumnGap,
             );
+            final automaticLocationWidth = recursive
+                ? _automaticLocationWidth(
+                    context,
+                    displayFiles,
+                    _viewportWidth -
+                        rowChrome -
+                        iconSlot -
+                        automaticOptionalCols -
+                        _kNameMinWidth -
+                        _kColumnGap,
+                  )
+                : _kLocationWidth;
             final automaticFixedCols =
                 iconSlot +
                 automaticOptionalCols +
-                (recursive ? _kLocationWidth + _kColumnGap : 0);
+                (recursive ? automaticLocationWidth + _kColumnGap : 0);
             final automaticAvailable =
                 _viewportWidth - rowChrome - automaticFixedCols;
             final automaticNameWidth = math.max(
@@ -812,7 +842,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                     _kColumnWidthsLocationKey,
                     _kLocationWidth,
                   )
-                : _kLocationWidth;
+                : automaticLocationWidth;
             final columnWidths = resizableColumns
                 ? {
                     for (final col in columns)
@@ -1007,6 +1037,8 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                                     ),
                                                 isCursor:
                                                     i == widget.cursorIndex,
+                                                cursorTooltips:
+                                                    widget.cursorTooltips,
                                                 selectedPaths:
                                                     widget.selectedPaths,
                                                 isCut: widget.cutPaths.contains(
@@ -1062,7 +1094,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                                 columns: columns,
                                                 columnWidths: columnWidths,
                                                 location: recursive
-                                                    ? _compactLocation(
+                                                    ? _relativeParent(
                                                         displayFiles[i].path,
                                                         widget.currentPath,
                                                       )
@@ -1373,6 +1405,48 @@ class _ConfigureColumnsButtonState extends State<_ConfigureColumnsButton> {
   }
 }
 
+class _LocationText extends StatelessWidget {
+  final String location;
+  final bool showForCursor;
+
+  const _LocationText(this.location, {this.showForCursor = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.txt.muted;
+    final scaler = MediaQuery.textScalerOf(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shown = ellipsizePathStart(
+          location,
+          textFits(
+            style: style,
+            scaler: scaler,
+            maxWidth: constraints.maxWidth,
+          ),
+          separator: p.separator,
+        );
+        final text = Text(
+          shown,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.clip,
+          textAlign: TextAlign.right,
+          style: style,
+        );
+        if (shown == location) return text;
+
+        return CursorTooltip(
+          message: location,
+          showForCursor: showForCursor,
+          child: text,
+        );
+      },
+    );
+  }
+}
+
 class _ColumnResizeHandle extends StatefulWidget {
   final ValueChanged<double> onDelta;
 
@@ -1567,6 +1641,7 @@ class _ListRow extends StatefulWidget {
   final int index;
   final bool selected;
   final bool isCursor;
+  final bool cursorTooltips;
   final Set<String> selectedPaths;
   final bool isCut;
   final bool isDraggingSelected;
@@ -1607,6 +1682,7 @@ class _ListRow extends StatefulWidget {
     this.rowDecoration,
     required this.selected,
     this.isCursor = false,
+    this.cursorTooltips = false,
     required this.selectedPaths,
     this.isCut = false,
     this.isDraggingSelected = false,
@@ -2174,13 +2250,9 @@ class _ListRowState extends State<_ListRow> {
                     width: widget.locationWidth,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Text(
+                      child: _LocationText(
                         widget.location ?? '',
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: context.txt.muted,
+                        showForCursor: widget.isCursor && widget.cursorTooltips,
                       ),
                     ),
                   ),
@@ -2257,13 +2329,9 @@ class _ListRowState extends State<_ListRow> {
                     width: widget.locationWidth,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Text(
+                      child: _LocationText(
                         widget.location ?? '',
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: context.txt.muted,
+                        showForCursor: widget.isCursor && widget.cursorTooltips,
                       ),
                     ),
                   ),

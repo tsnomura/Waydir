@@ -16,6 +16,7 @@ import '../../features/files/file_view.dart'
         BackgroundContextMenuCallback,
         FileContextMenuCallback,
         FileMenuActionCallback;
+import '../../features/files/ctrl_wheel_zoom.dart';
 import '../../features/files/file_grid.dart' show FileGrid;
 import '../../features/files/rubber_band_layer.dart'
     show RubberBandSelectCallback;
@@ -148,6 +149,7 @@ class PaneView extends StatelessWidget {
                         for (final tab in tabs)
                           _TabContent(
                             store: tab.store,
+                            isActive: isActive,
                             onBackgroundContextMenu: onBackgroundContextMenu,
                             onContextMenu: onContextMenu,
                             onMenuAction: onMenuAction,
@@ -241,6 +243,7 @@ class PaneView extends StatelessWidget {
 
 class _TabContent extends StatelessWidget {
   final NavigationStore store;
+  final bool isActive;
   final BackgroundContextMenuCallback? onBackgroundContextMenu;
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
@@ -250,6 +253,7 @@ class _TabContent extends StatelessWidget {
 
   const _TabContent({
     required this.store,
+    this.isActive = false,
     this.onBackgroundContextMenu,
     this.onContextMenu,
     this.onMenuAction,
@@ -260,6 +264,15 @@ class _TabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return CtrlWheelZoom(
+      onZoom: (direction) => direction > 0
+          ? SettingsStore.instance.increaseFileListScale()
+          : SettingsStore.instance.decreaseFileListScale(),
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     return SignalBuilder(
       builder: (context) {
         if (store.isLoading.value) {
@@ -328,6 +341,7 @@ class _TabContent extends StatelessWidget {
                 onRectSelect: onRectSelect,
                 rowDecorations: rowDecorations,
                 remoteThumbnails: store.remoteThumbnails.value,
+                cursorTooltips: isActive,
               );
             }
 
@@ -363,6 +377,7 @@ class _TabContent extends StatelessWidget {
                 folderSizes: store.folderSizes.displaySizes.value,
                 rowDecorations: rowDecorations,
                 showStatusColumn: store.decorations.statusColumn.value,
+                cursorTooltips: isActive,
               );
             }
 
@@ -396,6 +411,7 @@ class _TabContent extends StatelessWidget {
               folderSizes: store.folderSizes.displaySizes.value,
               rowDecorations: rowDecorations,
               showStatusColumn: store.decorations.statusColumn.value,
+              cursorTooltips: isActive,
             );
           },
         );
