@@ -19,7 +19,9 @@ import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
 import '../quick_look/generators/generator_registry.dart';
 import '../quick_look/generators/generator_runner.dart';
+import 'cursor_tooltip.dart';
 import 'file_icons.dart';
+import 'path_ellipsis.dart';
 import 'pointer_hover_store.dart';
 import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
@@ -93,6 +95,7 @@ class FileGrid extends StatefulWidget {
   final RenameSubmitCallback? onRenameSubmit;
   final RenameCancelCallback? onRenameCancel;
   final bool recursiveResults;
+  final bool cursorTooltips;
   final VoidCallback? onCloseSearch;
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
@@ -122,6 +125,7 @@ class FileGrid extends StatefulWidget {
     this.onRenameSubmit,
     this.onRenameCancel,
     this.recursiveResults = false,
+    this.cursorTooltips = false,
     this.onCloseSearch,
     this.onOpenInNewTab,
     this.onOpenInOtherPaneNewTab,
@@ -472,6 +476,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                             captionBlock: _gridCaptionBlock(scale, compact),
                             selected: widget.selectedPaths.contains(entry.path),
                             isCursor: index == widget.cursorIndex,
+                            cursorTooltips: widget.cursorTooltips,
                             selectedPaths: widget.selectedPaths,
                             rowDecoration:
                                 widget.rowDecorations[entry.path] ??
@@ -541,6 +546,7 @@ class _GridTile extends StatefulWidget {
   final double captionBlock;
   final bool selected;
   final bool isCursor;
+  final bool cursorTooltips;
   final Set<String> selectedPaths;
   final RowDecoration? rowDecoration;
   final bool isCut;
@@ -568,6 +574,7 @@ class _GridTile extends StatefulWidget {
     required this.captionBlock,
     required this.selected,
     this.isCursor = false,
+    this.cursorTooltips = false,
     required this.selectedPaths,
     this.rowDecoration,
     required this.isCut,
@@ -933,11 +940,10 @@ class _GridTileState extends State<_GridTile> {
                       SizedBox(
                         height: widget.nameBlock,
                         child: Center(
-                          child: Text(
-                            entry.name,
-                            maxLines: 2,
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
+                          child: _GridTileName(
+                            name: entry.name,
+                            showForCursor:
+                                widget.isCursor && widget.cursorTooltips,
                             style: entry.isGhost
                                 ? nameStyle.copyWith(
                                     color: AppColors.fgSubtle,
@@ -1236,3 +1242,51 @@ bool _isImageExtension(String extension) => switch (extension) {
   'jpg' || 'jpeg' || 'png' || 'gif' || 'webp' || 'bmp' => true,
   _ => false,
 };
+
+class _GridTileName extends StatelessWidget {
+  static const _maxLines = 2;
+
+  final String name;
+  final TextStyle style;
+  final bool showForCursor;
+
+  const _GridTileName({
+    required this.name,
+    required this.style,
+    this.showForCursor = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shown = ellipsizeMiddle(
+          name,
+          textFits(
+            style: style,
+            scaler: scaler,
+            maxWidth: constraints.maxWidth,
+            maxLines: _maxLines,
+          ),
+          keepTail: fileNameTailLength(name),
+        );
+        final text = Text(
+          shown,
+          maxLines: _maxLines,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        );
+        if (shown == name) return text;
+
+        return CursorTooltip(
+          message: name,
+          showForCursor: showForCursor,
+          child: text,
+        );
+      },
+    );
+  }
+}
