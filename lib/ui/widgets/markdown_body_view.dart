@@ -3,6 +3,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 
 import '../../features/quick_look/markdown_math.dart';
+import '../../features/quick_look/markdown_mermaid.dart';
 
 final _imgTag = RegExp(r'<img\b[^>]*>', caseSensitive: false);
 final _htmlAttr = RegExp(
@@ -244,10 +245,19 @@ class MarkdownBodyView extends StatelessWidget {
         styleSheet: styleSheet,
         inlineSyntaxes: [MathInlineSyntax(), MathParenInlineSyntax()],
         blockSyntaxes: const [
+          MermaidBlockSyntax(),
           MathBlockSyntax.dollars(),
           MathBlockSyntax.brackets(),
         ],
         builders: {
+          mermaidTag: MermaidElementBuilder(
+            codeStyle: (styleSheet.code ?? const TextStyle()).copyWith(
+              backgroundColor: Colors.transparent,
+            ),
+            codeDecoration: styleSheet.codeblockDecoration,
+            codePadding:
+                styleSheet.codeblockPadding ?? const EdgeInsets.all(10),
+          ),
           'math_inline': MathElementBuilder(
             textStyle: mathTextStyle,
             mathStyle: MathStyle.text,
