@@ -10,13 +10,12 @@ import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
-import 'generators/generator_registry.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
-import 'quick_look_common.dart';
 import 'quick_look_content.dart';
 import 'quick_look_find.dart';
 import 'quick_look_reload.dart';
+import 'rendered_source.dart';
 
 typedef QuickLookCloseGuard = Future<bool> Function();
 
@@ -45,9 +44,9 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   final _playback = QuickLookPlaybackController();
   bool _compact = true;
   bool _showInfo = true;
-  bool _markdownRendered = true;
+  bool _rendered = true;
   bool _pendingSearch = false;
-  bool _renderedMarkdown = false;
+  bool _showingRendered = false;
   late final void Function() _findReadySub;
   String? _presentationKey;
   late final _reload = QuickLookReloadController(
@@ -122,12 +121,12 @@ class _QuickLookPanelState extends State<QuickLookPanel>
 
   void _requestReload() => unawaited(_reload.request(context));
 
-  void _toggleMarkdownRendered() {
-    if (!_markdownRendered) {
+  void _toggleRendered() {
+    if (!_rendered) {
       final find = _editorController.find;
       if (find != null && find.value != null) find.close();
     }
-    setState(() => _markdownRendered = !_markdownRendered);
+    setState(() => _rendered = !_rendered);
   }
 
   void _openSearch() {
@@ -140,9 +139,9 @@ class _QuickLookPanelState extends State<QuickLookPanel>
       }
       return;
     }
-    if (!_renderedMarkdown) return;
+    if (!_showingRendered) return;
     _pendingSearch = true;
-    setState(() => _markdownRendered = false);
+    setState(() => _rendered = false);
   }
 
   void _onSearchTap() {
@@ -150,7 +149,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
       _openSearch();
       return;
     }
-    _toggleMarkdownRendered();
+    _toggleRendered();
     _openSearch();
   }
 
@@ -167,7 +166,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     if (_presentationKey == key) return;
     _presentationKey = key;
     _pendingSearch = false;
-    _markdownRendered = true;
+    _rendered = true;
     _generatorPage.reset();
     _setCompact(defaultCompactFor(entry));
   }
@@ -181,11 +180,8 @@ class _QuickLookPanelState extends State<QuickLookPanel>
         _reload.watch(entry);
         _reload.revision.value;
         final shown = _reload.shown(entry);
-        _renderedMarkdown =
-            shown != null &&
-            markdownExts.contains(shown.extension) &&
-            _markdownRendered &&
-            GeneratorRegistry.instance.forExtension(shown.extension) == null;
+        final renderable = shown != null && RenderedSource.available(shown);
+        _showingRendered = renderable && _rendered;
         _playback.sync(
           entry,
           _generatorPage,
@@ -204,8 +200,8 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                   onToggleInfo: () => setState(() => _showInfo = !_showInfo),
                   onClose: widget.onClose,
                   editorController: _editorController,
-                  markdownRendered: _markdownRendered,
-                  onToggleMarkdownView: _toggleMarkdownRendered,
+                  rendered: _rendered,
+                  onToggleRenderedView: renderable ? _toggleRendered : null,
                   onSearch: _onSearchTap,
                   onReload: QuickLookReloadController.canReload(entry)
                       ? _requestReload
@@ -220,7 +216,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                     editorController: _editorController,
                     showInfo: _showInfo,
                     onCompactChanged: _setCompact,
-                    markdownRendered: _markdownRendered,
+                    rendered: _rendered,
                     scrollController: _contentScroll,
                     generatorPage: _generatorPage,
                   ),

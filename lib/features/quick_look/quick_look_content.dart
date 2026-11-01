@@ -20,6 +20,7 @@ import 'pdf_preview.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 import 'quick_look_zoom.dart';
+import 'rendered_source.dart';
 
 bool defaultCompactFor(FileEntry? entry) {
   if (entry == null || entry.type == FileItemType.folder) return true;
@@ -40,8 +41,8 @@ class QuickLookHeader extends StatelessWidget {
   final VoidCallback onClose;
   final int? multiCount;
   final CodeEditorController editorController;
-  final bool markdownRendered;
-  final VoidCallback? onToggleMarkdownView;
+  final bool rendered;
+  final VoidCallback? onToggleRenderedView;
   final VoidCallback? onSearch;
   final VoidCallback? onReload;
   final GestureDragStartCallback? onHeaderPanStart;
@@ -59,8 +60,8 @@ class QuickLookHeader extends StatelessWidget {
     this.nameSuffix,
     this.onOpen,
     this.multiCount,
-    this.markdownRendered = true,
-    this.onToggleMarkdownView,
+    this.rendered = true,
+    this.onToggleRenderedView,
     this.onSearch,
     this.onReload,
     this.onHeaderPanStart,
@@ -78,11 +79,7 @@ class QuickLookHeader extends StatelessWidget {
     final suffix = nameSuffix;
     final name = suffix == null ? baseName : '$baseName $suffix';
     final hasPreview = !multi && e != null && !compact;
-    final isMarkdown =
-        !multi &&
-        e != null &&
-        markdownExts.contains(e.extension) &&
-        onToggleMarkdownView != null;
+    final toggleable = !multi && e != null && onToggleRenderedView != null;
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -114,24 +111,23 @@ class QuickLookHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            if (isMarkdown) ...[
+            if (toggleable) ...[
               SignalBuilder(
                 builder: (context) {
-                  final blocked =
-                      !markdownRendered && editorController.dirty.value;
+                  final blocked = !rendered && editorController.dirty.value;
 
                   return QuickLookHeaderButton(
-                    icon: markdownRendered
+                    icon: rendered
                         ? WaydirIconsRegular.code
                         : WaydirIconsRegular.eye,
                     active: false,
                     enabled: !blocked,
                     tooltip: blocked
                         ? t.quickLook.saveBeforePreview
-                        : markdownRendered
+                        : rendered
                         ? t.quickLook.viewSource
                         : t.quickLook.viewRendered,
-                    onTap: onToggleMarkdownView!,
+                    onTap: onToggleRenderedView!,
                   );
                 },
               ),
@@ -152,7 +148,7 @@ class QuickLookHeader extends StatelessWidget {
                       ),
                     );
                   }
-                  if (!isMarkdown || !markdownRendered) {
+                  if (!toggleable || !rendered) {
                     return const SizedBox.shrink();
                   }
 
@@ -407,7 +403,7 @@ class QuickLookBody extends StatelessWidget {
   final CodeEditorController editorController;
   final bool showInfo;
   final ValueChanged<bool> onCompactChanged;
-  final bool markdownRendered;
+  final bool rendered;
   final ScrollController scrollController;
   final GeneratorPageController generatorPage;
 
@@ -418,7 +414,7 @@ class QuickLookBody extends StatelessWidget {
     required this.editorController,
     required this.showInfo,
     required this.onCompactChanged,
-    required this.markdownRendered,
+    required this.rendered,
     required this.scrollController,
     required this.generatorPage,
   });
@@ -444,6 +440,8 @@ class QuickLookBody extends StatelessWidget {
     // way, so it wins even over a built-in that would otherwise apply (e.g.
     // pdf).
     final generator = GeneratorRegistry.instance.forExtension(e.extension);
+    final showSource = !rendered && RenderedSource.available(e);
+    if (showSource) return _probeLoader(e);
     if (generator != null) {
       release();
       onCompactChanged(false);
@@ -480,7 +478,7 @@ class QuickLookBody extends StatelessWidget {
         scrollController: scrollController,
       );
     }
-    if (markdownExts.contains(e.extension) && markdownRendered) {
+    if (markdownExts.contains(e.extension)) {
       release();
       onCompactChanged(false);
 
@@ -498,15 +496,17 @@ class QuickLookBody extends StatelessWidget {
       return PropertiesOnly(entry: e);
     }
 
-    return QuickLookProbeLoader(
-      entry: e,
-      editorActive: editorActive,
-      editorController: editorController,
-      showInfo: showInfo,
-      onCompactChanged: onCompactChanged,
-      scrollController: scrollController,
-    );
+    return _probeLoader(e);
   }
+
+  Widget _probeLoader(FileEntry e) => QuickLookProbeLoader(
+    entry: e,
+    editorActive: editorActive,
+    editorController: editorController,
+    showInfo: showInfo,
+    onCompactChanged: onCompactChanged,
+    scrollController: scrollController,
+  );
 }
 
 /// Attempts a side-by-side diff of [left] and [right] (the two files
