@@ -1549,6 +1549,9 @@ class Translations$quickLook$en {
 
 	/// en: 'Mermaid render failed: ${error}'
 	String mermaidFailed({required Object error}) => 'Mermaid render failed: ${error}';
+
+	/// en: 'Generator "${id}" produced no output. See Help → View Logs.'
+	String generatorFenceFailed({required Object id}) => 'Generator "${id}" produced no output. See Help → View Logs.';
 }
 
 // Path: toast
@@ -5416,6 +5419,7 @@ extension on Translations {
 			'quickLook.searchRegex' => 'Use regular expression',
 			'quickLook.mermaidMissing' => 'Install merman-cli to render this Mermaid diagram.',
 			'quickLook.mermaidFailed' => ({required Object error}) => 'Mermaid render failed: ${error}',
+			'quickLook.generatorFenceFailed' => ({required Object id}) => 'Generator "${id}" produced no output. See Help → View Logs.',
 			'toast.launcherFailed' => ({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}',
 			'toast.copiedItems' => ({required Object count}) => 'Copied ${count} items',
 			'toast.duplicatedItems' => ({required Object count}) => 'Duplicated ${count} items',
@@ -5642,9 +5646,9 @@ extension on Translations {
 			'selectPattern.hint' => '*.jpg, *.png',
 			'selectPattern.help' => 'Wildcards: * (any), ? (one char). Separate patterns with commas.',
 			'selectPattern.select' => 'Select',
-			'operations.title' => 'Operations',
 			_ => null,
 		} ?? switch (path) {
+			'operations.title' => 'Operations',
 			'operations.clear' => 'Clear',
 			'operations.noActive' => 'No active operations',
 			'operations.resolveConflicts' => 'Resolve Conflicts',

@@ -31,20 +31,49 @@ class MermaidBlockSyntax extends md.BlockSyntax {
   @override
   md.Node parse(md.BlockParser parser) {
     final fence = _opening.firstMatch(parser.current.content)![1]!;
-    final closing = RegExp(
-      '^ {0,3}${RegExp.escape(fence[0])}{${fence.length},}\\s*\$',
-    );
-    parser.advance();
-    final lines = <String>[];
-    while (!parser.isDone) {
-      final line = parser.current.content;
-      parser.advance();
-      if (closing.hasMatch(line)) break;
-      lines.add(line);
-    }
 
-    return md.Element.text(mermaidTag, lines.join('\n'));
+    return md.Element.text(mermaidTag, readFenceBody(parser, fence));
   }
+}
+
+String readFenceBody(md.BlockParser parser, String fence) {
+  final closing = RegExp(
+    '^ {0,3}${RegExp.escape(fence[0])}{${fence.length},}\\s*\$',
+  );
+  parser.advance();
+  final lines = <String>[];
+  while (!parser.isDone) {
+    final line = parser.current.content;
+    parser.advance();
+    if (closing.hasMatch(line)) break;
+    lines.add(line);
+  }
+
+  return lines.join('\n');
+}
+
+Widget fencedSource({
+  required String source,
+  required TextStyle style,
+  Decoration? decoration,
+  EdgeInsets padding = const EdgeInsets.all(10),
+  String? note,
+}) {
+  return Container(
+    width: double.infinity,
+    decoration: decoration,
+    padding: padding,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(source, style: style),
+        if (note != null) ...[
+          const SizedBox(height: 8),
+          Text(note, style: style.copyWith(color: AppColors.fgSubtle)),
+        ],
+      ],
+    ),
+  );
 }
 
 sealed class MermaidResult {
@@ -250,26 +279,13 @@ class _MermaidDiagramState extends State<MermaidDiagram> {
     );
   }
 
-  Widget _source({String? note}) {
-    return Container(
-      width: double.infinity,
-      decoration: widget.codeDecoration,
-      padding: widget.codePadding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(widget.source, style: widget.codeStyle),
-          if (note != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              note,
-              style: widget.codeStyle.copyWith(color: AppColors.fgSubtle),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+  Widget _source({String? note}) => fencedSource(
+    source: widget.source,
+    style: widget.codeStyle,
+    decoration: widget.codeDecoration,
+    padding: widget.codePadding,
+    note: note,
+  );
 
   @override
   Widget build(BuildContext context) {

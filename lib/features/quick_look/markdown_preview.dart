@@ -15,6 +15,7 @@ import '../../i18n/strings.g.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/widgets/markdown_body_view.dart';
+import 'markdown_generated.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 import 'quick_look_links.dart';
@@ -71,6 +72,24 @@ Set<String> _remoteImageUrls(String md) {
   return urls;
 }
 
+Set<String> _generatedImagePaths(String md, String basePath) {
+  if (PlatformPaths.isSftpUri(basePath)) return const {};
+  final baseDir = Uri.directory(p.dirname(basePath));
+  final paths = <String>{};
+  for (final m in _mdImage.allMatches(md)) {
+    final raw = m.group(1)?.split('#').first;
+    if (raw == null || raw.isEmpty) continue;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) continue;
+    final resolved = uri.hasScheme ? uri : baseDir.resolveUri(uri);
+    if (resolved.scheme != 'file') continue;
+    final path = File.fromUri(resolved).path;
+    if (wantsGeneratedImage(path)) paths.add(path);
+  }
+
+  return paths;
+}
+
 /// Resolves the markdown text and prefetches any remote images before showing
 /// anything. Building [MarkdownBody] only once every image's bytes are in hand
 /// keeps inline images (rendered as `WidgetSpan`s) from being measured at a
@@ -94,11 +113,15 @@ class _RenderedMarkdown extends StatefulWidget {
 class _RenderedMarkdownState extends State<_RenderedMarkdown> {
   late final String _md = sanitizeHtml(widget.text);
   final Map<String, Uint8List> _remote = {};
+  Map<String, GeneratedOutput> _generated = const {};
+  int _generation = 0;
   bool _ready = false;
 
   @override
   void initState() {
     super.initState();
+    final generated = _generatedImagePaths(_md, widget.basePath);
+    if (generated.isNotEmpty) _generate(generated);
     final urls = _remoteImageUrls(_md);
     if (urls.isEmpty) {
       _ready = true;
@@ -128,6 +151,21 @@ class _RenderedMarkdownState extends State<_RenderedMarkdown> {
     if (mounted) setState(() => _ready = true);
   }
 
+  Future<void> _generate(Set<String> paths) async {
+    final results = <String, GeneratedOutput>{};
+    await Future.wait(
+      paths.map((path) async {
+        final out = await generateImageFor(File(path));
+        if (out != null) results[path] = out;
+      }),
+    );
+    if (!mounted || results.isEmpty) return;
+    setState(() {
+      _generated = results;
+      _generation++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_ready) return const QlCentered.spinner();
@@ -135,7 +173,9 @@ class _RenderedMarkdownState extends State<_RenderedMarkdown> {
     return _MarkdownPreviewBody(
       md: _md,
       basePath: widget.basePath,
+      key: ValueKey(_generation),
       remote: _remote,
+      generated: _generated,
       onOpenLink: widget.onOpenLink,
     );
   }
@@ -147,12 +187,15 @@ class _MarkdownPreviewBody extends StatelessWidget {
   final String md;
   final String basePath;
   final Map<String, Uint8List> remote;
+  final Map<String, GeneratedOutput> generated;
   final ValueChanged<String>? onOpenLink;
 
   const _MarkdownPreviewBody({
+    super.key,
     required this.md,
     required this.basePath,
     required this.remote,
+    this.generated = const {},
     this.onOpenLink,
   });
 
@@ -199,7 +242,13 @@ class _MarkdownPreviewBody extends StatelessWidget {
     final resolved = uri.hasScheme ? uri : baseDir.resolveUri(uri);
     if (resolved.scheme != 'file') return _empty;
     final file = File.fromUri(resolved);
-    if (p.extension(file.path).toLowerCase() == '.svg') {
+    final ext = p.extension(file.path).toLowerCase().replaceFirst('.', '');
+    if (wantsGeneratedImage(file.path)) {
+      final out = generated[file.path];
+
+      return out == null ? _empty : generatedImage(out);
+    }
+    if (ext == 'svg') {
       Uint8List bytes;
       try {
         bytes = file.readAsBytesSync();

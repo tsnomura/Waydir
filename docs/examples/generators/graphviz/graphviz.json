@@ -1,0 +1,24 @@
+{
+  "id": "graphviz",
+  "extensions": ["dot", "gv"],
+  "fences": ["dot", "graphviz"],
+  "cmd": "dot",
+  "args": [
+    "-Tpng",
+    "-Gdpi=192",
+    "-Gbgcolor=transparent",
+    "-Nfontname=sans",
+    "-Efontname=sans",
+    "-Ncolor=%THEME%",
+    "-Nfontcolor=%THEME%",
+    "-Ecolor=%THEME%",
+    "-Efontcolor=%THEME%",
+    "%INPUT%",
+    "-o",
+    "%OUTPUT%"
+  ],
+  "themeNames": { "dark": "#d0d0d0", "light": "#202020" },
+  "imageScale": 2,
+  "timeoutSeconds": 8,
+  "outputExt": "png"
+}
