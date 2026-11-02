@@ -146,27 +146,17 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 - Intentionally stops at paging through still frames — a scrubber or video
   playback controls are a job for an embedded video player, not Quick Look.
   Audio playback is the one exception; see "Quick Look audio playback" below.
-- Installed locally on this Linux machine (15): `video-thumbnail`
-  (`ffmpeg`/`ffprobe`, `"time"` paging), `pdf-page` (`mutool`,
-  `"discrete"` paging), `svg-preview` (`rendersvg` — this distro's resvg
-  package names the binary that — no paging), `3d-model` plus
-  `3d-model-step`/`3d-model-iges` (`f3d` offscreen render of stl/obj/ply/
-  gltf/glb/3mf/fbx/dae/STEP/IGES/VTK etc., angled camera, transparent
-  background; STEP/IGES get their own file because f3d needs
-  `--force-reader` for them), `comsol-mph`, `office-thumbnail`,
-  `ico-preview`, `dxf-preview` (`dxf2png`), `audio-waveform` (`ffmpeg`
-  `showwavespic`, `"time"` paging), `graphviz` (`dot`, also renders fenced
-  `dot`/`graphviz` blocks in Markdown, theme colors via `%THEME%`),
-  `mermaid` (`merman-cli`, fenced `mermaid`/`mmd` blocks), and
-  `archive-list`/`tar-list` (text output; see "Generator text output"
-  below). The Windows-only `font-preview` (PowerShell) isn't installed
-  here, so `.ttf`/`.otf` keep the plain file icon. The live configs
-  themselves still aren't committed — generator config is local/personal
-  by design, same trust model as Lua plugins (see `docs/generators.md`) —
-  but every one of them is now also a copy-and-adjust example under
-  `docs/examples/generators/` (Windows and, where the approach actually
-  differs, Linux/macOS too); see "Worked Examples" in `docs/generators.md`
-  for the full index and which pairs split by OS.
+- Generator configs themselves aren't committed — generator config is
+  local/personal by design, same trust model as Lua plugins (see
+  `docs/generators.md`). Every generator this fork uses is a
+  copy-and-adjust example under `docs/examples/generators/` (Windows and,
+  where the approach actually differs, Linux/macOS too): `video-thumbnail`,
+  `audio-waveform`, `pdf-page`, `svg-preview`, `3d-model` /
+  `3d-model-step` / `3d-model-iges` (STEP/IGES get their own file because
+  f3d needs `--force-reader` for them), `comsol-mph`, `office-thumbnail`,
+  `ico-preview`, `font-preview` (Windows only), `dxf-preview`, `graphviz`,
+  `mermaid`, `archive-list` and `tar-list`. See "Worked Examples" in
+  `docs/generators.md` for the full index and which pairs split by OS.
 - The last two need no extra tools on Windows: COMSOL `.mph`, Office
   (pptx/docx/xlsx) and OpenDocument files are zips that can carry a preview
   image, and a PowerShell one-liner using .NET's `ZipFile` pulls out just
@@ -316,23 +306,19 @@ Windows), in the same spirit as preview generators:
   command, one argument per line, default), edit JSON, delete, open the
   folder, and Reload — saves and Reload apply without restarting Waydir.
 
-Installed locally (same not-committed-by-default trust model as preview
-generators): `f3d-step`/`f3d-iges` (open STEP/IGES in f3d),
+Launcher configs aren't committed either (same trust model as preview
+generators). Copy-and-adjust examples live under
+`docs/examples/launchers/`: `f3d-step`/`f3d-iges` (open STEP/IGES in f3d),
 `quick-look-window` (`%WAYDIR%`, below), `winxmerge-compare`/
-`winxmerge-files` (a personal cargo-built WinXMerge — cross-platform, so it
-runs on this Linux box too; `cmd` is looked up on PATH as `winxmerge`),
-and `ico-view` (pipes the .ico's largest size through netpng's `ico2png`
-into `pngview`; Linux/macOS only, needs netpng on PATH). All are also
-copy-and-adjust examples under `docs/examples/launchers/` — `f3d-*`,
+`winxmerge-files` (a personal cargo-built, cross-platform WinXMerge) and
+`ico-view` (pipes the .ico's largest size through netpng's `ico2png` into
+`pngview`; Linux/macOS only, needs netpng on PATH). `f3d-*`,
 `quick-look-window` and the `.linux-macos.json` `winxmerge` pair work
 as-is on the OSes they target (no path anywhere: `f3d`/`winxmerge` are on
 PATH, `%WAYDIR%` resolves the running executable), the `.windows.json`
 `winxmerge` pair needs its real path swapped in for the `<WINXMERGE_PATH>`
 placeholder, and `ico-view` needs `<LAUNCHERS_DIR>` pointed at its own
-folder — the local copy points `cmd` at its own absolute path for that
-reason. The local `quick-look-window` is narrowed to `md`/`markdown` (the
-example stays `"*"`), so popping out every file type is not the de-facto
-open action.
+folder.
 
 Relevant commits: `9c2313d`, `5e07164` (Linux/macOS WinXMerge examples).
 
@@ -427,7 +413,7 @@ Waydir also loads user plugins: small Lua folders that add workflow
 actions — context menu items, toolbar buttons, menubar entries, shortcuts
 and status bars — with no build step. Copy a folder (`manifest.json` plus
 `init.lua`, optionally an icon) into the plugins support directory
-(`~/.config/waydir/plugins/` here), then **Reload plugins** in
+(`~/.config/waydir/plugins/` on Linux), then **Reload plugins** in
 Preferences → Plugins, which also has **Open plugins folder**,
 enable/disable and per-plugin Configure. On reload, each `init.lua` runs
 once in a sandbox and contributes actions via `waydir.register` (with
@@ -440,8 +426,7 @@ calls `run(ctx)`, where `ctx` carries `paths`/`dir`/`count`/`settings`/
 form; the submitted values come back as `ctx.form` on the same action's
 second invocation). Full guide in `docs/plugins.md`.
 
-Installed locally (all five start from the bundled examples under
-`docs/examples/plugins/`): `backup-copy` — context item **Create .bak
+Bundled examples under `docs/examples/plugins/`: `backup-copy` — context item **Create .bak
 copy**, `cp -n` per selected file, no overwrite; `selection-count` —
 context item that toasts the selected count; `sevenzip` — a **Compress
 with 7-Zip** context submenu (quick `.zip`/`.tar.gz`, plus **Add to
@@ -450,11 +435,9 @@ so they queue in Operations, and **Extract here with 7-Zip** for a
 selected archive; `templates` — the v2 API tour, one "new file from
 boilerplate" action surfaced four ways (toolbar button, background
 right-click, Plugins menubar, `Ctrl+Alt+N`) with a template-choice dialog
-and an author setting; and `open-vscode`, adapted for this host — no VS
-Code here, so the toolbar **Open in Editor** button and its right-click
-twin for a folder default the editor command to `nvim`, the one editor
-installed; the command is an ordinary plugin setting, so installing `code`
-later only takes entering it under the plugin's Configure.
+and an author setting; and `open-vscode` — a toolbar **Open in VS Code**
+button plus a right-click twin for a folder, whose editor command
+(default `code`) is an ordinary plugin setting under Configure.
 
 ## Personal build version in About
 
@@ -1148,8 +1131,7 @@ folder again. Two problems on Waydir's side:
 
 Because the vendored crate no longer matches the upstream hash, cargokit
 can't use its precompiled binaries and builds it from source, which
-requires **rustup** (a bare `cargo` isn't enough). On Windows here the
-scoop `rust` package was replaced with `rustup` (stable toolchain).
+requires **rustup** (a bare `cargo` isn't enough).
 
 Relevant commits: `e850120`, `fd80553`.
 
@@ -1579,9 +1561,8 @@ auto-plays through an external command while browsing, muted videos excepted.
   already an `sftp://...` URI (see the grid-thumbnails entry above) and
   ffplay is the same libssh-enabled ffmpeg build already reading those for
   video thumbnails, so it should read them the same way.
-- Installed locally: `player.json` running `ffplay` — not committed, same
-  reasoning as generator config (local/personal, full-privileges trust
-  model).
+- `player.json` itself isn't committed, same reasoning as generator config
+  (local/personal, full-privileges trust model).
 - Playback stops and the file is released as soon as a file operation that
   touches it is queued, so a move/overwrite/delete doesn't race the player's
   open handle. A `PlaybackRegistry` singleton tracks live playback
@@ -1849,7 +1830,7 @@ Look short of rendering text into a PNG. Two generator keys fix that:
 - New example `docs/examples/generators/archive-list/`: `7z l -sccUTF-8 -p`
   on Windows, `bsdtar -tvf` on Linux/macOS, for zip/7z/rar/tar/gz/...; the
   empty `-p` makes a name-encrypted archive fail fast instead of 7z waiting
-  for a password on stdin. Installed locally.
+  for a password on stdin.
 - `"textFrom"`: a regex for the first line of text output to show, so the
   archive list starts at 7z's `Date Time Attr ...` column header instead of
   its copyright banner and archive properties. Applied at display time, so
@@ -1861,13 +1842,6 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   Windows' own `System32\tar.exe` (bsdtar) was ruled out: it prints names
   in the console code page, garbling Japanese. `.zst` stays with 7z, since
   Git ships no `zstd` for tar to call.
-- This Linux host has no `bsdtar` (and no sudo to install libarchive-tools),
-  so the local pair is the 7z variant — `zip`/`7z`/`rar`/`zst`/`cab`/`iso`/
-  `jar`, because p7zip 16.02 lists a tar.gz as its single inner `.tar` —
-  plus plain GNU `tar -tvf` for the tar family; `--force-local` and
-  `--quoting-style` are Git Bash concerns, not needed on bare Linux. A
-  plain `.gz` that isn't a tarball lists nothing and silently falls back
-  to the file icon.
 
 Relevant commits: `0ed8283`, `63cbc1b`.
 
