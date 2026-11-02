@@ -80,6 +80,9 @@ before it does anything useful.
 | `pageCount` | required for `paging: "time"` and `"fixed"` | Fixed number of pages (> 1): evenly-spaced samples across the file for `"time"`, a plain page count for `"fixed"`. Ignored for `"discrete"` (the page count there comes from `probeCmd` instead, since it's file-specific). |
 | `probeCmd` / `probeArgs` | required for `paging: "time"` and `"discrete"` | A command that prints a plain number to stdout — a duration in seconds for `"time"`, a page/unit count for `"discrete"`. |
 | `probePattern` | no | Regex to pull that number out of `probeCmd`'s output when it isn't already a bare number (first capture group, or the whole match if the pattern has none). |
+| `fences` | no | Lowercase Markdown fenced-code languages this generator renders in the Markdown preview, e.g. `["dot", "graphviz"]`. See [Markdown Embeds](#markdown-embeds). |
+| `imageScale` | no | Pixel density the image is rendered at, used by the Markdown preview: `2` shows a 1200px-wide PNG 600 logical pixels wide, crisp on HiDPI screens. Default `1`, clamped to 0.25–8. |
+| `themeNames` | no | What `%THEME%` expands to, keyed by `dark` / `light`, for tools that name their themes differently, e.g. `{"light": "default"}`. Missing keys expand to `dark` / `light` themselves. |
 | `thumbnailArgs` | no | Overrides `args` for the file grid's thumbnail only — Quick Look always uses `args`. A separate cache entry from page 0 of `args`, so it doesn't have to be the same kind of image at all; see [Separate Thumbnail](#separate-thumbnail). |
 
 ## Placeholders
@@ -92,6 +95,7 @@ Substituted in every element of `args`:
 - `%SEEK%` — only meaningful for `paging: "time"`: the timestamp for the current page, as `HH:MM:SS.mmm`.
 - `%POSITION%` — the current page as a 0-based integer (`0` when not paging).
 - `%PAGE%` — the current page as a 1-based integer, for tools that count pages starting at 1 (e.g. `mutool draw`, `pdftoppm -f`/`-l`).
+- `%THEME%` — `dark` or `light`, following Waydir's current theme (or the matching `themeNames` value). Results are cached per theme, so switching themes re-renders instead of showing the other theme's image.
 - `%ANGLE%` — a full turn split across the pages: `360 × position ÷ pageCount` degrees (`0`, `36`, `72` … `324` for 10 pages; up to 3 decimals when it doesn't divide evenly, `0` when not paging). Meant for `paging: "fixed"` turntable previews.
 
 `%INPUT%` is also substituted in `probeArgs` (nothing else is — a probe only needs to read the file).
@@ -193,6 +197,17 @@ Most such tools print to stdout rather than writing a file, so pair it with `"st
 (`textFrom` starts the shown text at 7z's column header, dropping the copyright banner and archive properties printed above it; the cached output itself is untouched. `-sccUTF-8` makes 7-Zip print UTF-8 rather than the console code page. The empty `-p` keeps it from waiting for a password: an archive with encrypted file names fails at once, so Quick Look shows no preview, while one with only encrypted contents still lists. The Linux/macOS example uses `bsdtar -tvf %INPUT%` instead.)
 
 `"stdout": true` works for images too: a converter that streams PNG to stdout can be used directly, no wrapper script needed.
+
+## Markdown Embeds
+
+Generators also render content embedded in Markdown files shown in Quick Look:
+
+- **Images** — `![](drawing.dxf)` or `<img src="model.step">` pointing at a local file whose extension has a generator shows that generator's preview image (page 0), using the same cache as Quick Look and the grid. PNG, JPEG, GIF, WebP, BMP and SVG are still drawn natively. The rest of the document appears at once; generated images are filled in when they are ready.
+- **Fenced code blocks** — a block whose language is listed in some generator's `fences` is written to a file (named by a hash of its content, with the generator's first extension) and run like any other file. An image result replaces the block; a `txt` result is shown as a code block; a failure leaves the original block with a note pointing to the log.
+
+[`docs/examples/generators/graphviz/`](examples/generators/graphviz/) renders ` ```dot ` blocks and `.dot` / `.gv` files with Graphviz, theme-aware via `%THEME%` and at 2× via `imageScale`.
+
+` ```mermaid ` blocks are rendered without any config via [merman-cli](https://github.com/Latias94/merman/tree/main/crates/merman-cli) (`cargo install merman-cli --locked`) when it is on `PATH` or in `~/bin`, `~/.local/bin` or `~/.cargo/bin`. A generator that lists `mermaid` in `fences` takes precedence over the built-in renderer.
 
 ## Multi-File Generators
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 
+import '../../features/quick_look/markdown_generated.dart';
 import '../../features/quick_look/markdown_math.dart';
 import '../../features/quick_look/markdown_mermaid.dart';
 
@@ -228,6 +229,10 @@ class MarkdownBodyView extends StatelessWidget {
     required bool centered,
   }) {
     final mathTextStyle = styleSheet.p ?? const TextStyle();
+    final codeStyle = (styleSheet.code ?? const TextStyle()).copyWith(
+      backgroundColor: Colors.transparent,
+    );
+    final codePadding = styleSheet.codeblockPadding ?? const EdgeInsets.all(10);
     final onTap = onTapLink;
 
     return SizedBox(
@@ -245,18 +250,21 @@ class MarkdownBodyView extends StatelessWidget {
         styleSheet: styleSheet,
         inlineSyntaxes: [MathInlineSyntax(), MathParenInlineSyntax()],
         blockSyntaxes: const [
+          GeneratorFenceBlockSyntax(),
           MermaidBlockSyntax(),
           MathBlockSyntax.dollars(),
           MathBlockSyntax.brackets(),
         ],
         builders: {
-          mermaidTag: MermaidElementBuilder(
-            codeStyle: (styleSheet.code ?? const TextStyle()).copyWith(
-              backgroundColor: Colors.transparent,
-            ),
+          generatedFenceTag: GeneratedFenceBuilder(
+            codeStyle: codeStyle,
             codeDecoration: styleSheet.codeblockDecoration,
-            codePadding:
-                styleSheet.codeblockPadding ?? const EdgeInsets.all(10),
+            codePadding: codePadding,
+          ),
+          mermaidTag: MermaidElementBuilder(
+            codeStyle: codeStyle,
+            codeDecoration: styleSheet.codeblockDecoration,
+            codePadding: codePadding,
           ),
           'math_inline': MathElementBuilder(
             textStyle: mathTextStyle,

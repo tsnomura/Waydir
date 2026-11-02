@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/widgets.dart' show Brightness;
 import 'package:path/path.dart' as p;
 
 import '../../../core/logging/app_logger.dart';
 import '../../../core/models/file_entry.dart';
 import '../../../core/platform/app_dirs.dart';
+import '../../../ui/theme/app_theme.dart';
 import '../../../utils/concurrency_gate.dart';
 import 'generator_def.dart';
 import 'generator_registry.dart';
@@ -20,6 +23,41 @@ class GeneratorRunner {
   GeneratorRunner._();
 
   static const _stderrTailLimit = 4096;
+
+  @visibleForTesting
+  static Future<String> Function() cacheDirectory = AppDirs.generatorCache;
+
+  @visibleForTesting
+  static bool Function() darkTheme = () =>
+      AppColors.brightness == Brightness.dark;
+
+  /// Renders the body of a Markdown fenced block whose language a generator
+  /// claims via `fences`. The body is stored under the cache's `fences/`
+  /// folder, named by a hash of its content, and run like any other file.
+  static Future<String?> previewFence(String language, String source) async {
+    final def = GeneratorRegistry.instance.forFence(language);
+    if (def == null) return null;
+    final dir = Directory(p.join(await cacheDirectory(), 'fences'));
+    await dir.create(recursive: true);
+    final hash = sha256
+        .convert(utf8.encode('${def.id}|$source'))
+        .toString()
+        .substring(0, 32);
+    final file = File(p.join(dir.path, 'fence-$hash.${def.extensions.first}'));
+    if (!await file.exists()) {
+      final tmp = File('${file.path}.tmp');
+      await tmp.writeAsString(source, flush: true);
+      await tmp.rename(file.path);
+    }
+
+    return _generate(
+      FileEntry.fromFileSystemEntity(file),
+      def,
+      0,
+      def.args,
+      'preview',
+    );
+  }
 
   // Probes are cheap but not free; memoize a deterministic outcome (success,
   // or a genuine failure) per file+generator for the lifetime of the app so
@@ -65,7 +103,7 @@ class GeneratorRunner {
   static Future<void> clearCache() async {
     _failedKeys.clear();
     _probeCache.clear();
-    final dir = Directory(await AppDirs.generatorCache());
+    final dir = Directory(await cacheDirectory());
     if (!await dir.exists()) return;
     await for (final entity in dir.list()) {
       if (entity is File) {
@@ -126,6 +164,7 @@ class GeneratorRunner {
       def.id,
       variant,
       position,
+      if (def.usesTheme) def.themeArg(dark: darkTheme()),
     ].join('|');
     if (_failedKeys.contains(key)) return Future.value(null);
 
@@ -161,7 +200,7 @@ class GeneratorRunner {
       seek = formatSeek(duration * page / def.pageCount);
     }
 
-    final cacheDir = await AppDirs.generatorCache();
+    final cacheDir = await cacheDirectory();
     final key = _cacheKey(entry, def, args, variant, page);
     final cachePath = p.join(cacheDir, '$key.${def.outputExt}');
     if (await File(cachePath).exists()) return cachePath;
@@ -184,6 +223,7 @@ class GeneratorRunner {
       seek: seek,
       position: page,
       angle: formatAngle(page, def.pageCount),
+      theme: def.themeArg(dark: darkTheme()),
     );
 
     try {
@@ -331,6 +371,7 @@ class GeneratorRunner {
     required String seek,
     required int position,
     required String angle,
+    required String theme,
   }) {
     return args
         .map(
@@ -341,7 +382,8 @@ class GeneratorRunner {
               .replaceAll('%SEEK%', seek)
               .replaceAll('%POSITION%', position.toString())
               .replaceAll('%PAGE%', (position + 1).toString())
-              .replaceAll('%ANGLE%', angle),
+              .replaceAll('%ANGLE%', angle)
+              .replaceAll('%THEME%', theme),
         )
         .toList();
   }
@@ -389,6 +431,7 @@ class GeneratorRunner {
       args.join(' '),
       page,
       if (variant == 'thumbnail') variant,
+      if (def.usesTheme) def.themeArg(dark: darkTheme()),
     ].join('|');
 
     return sha256.convert(utf8.encode(raw)).toString();

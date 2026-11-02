@@ -64,6 +64,19 @@ class GeneratorDef {
   /// parsed as a number directly.
   final String? probePattern;
 
+  /// Markdown fenced-code languages (lowercase) this generator renders in the
+  /// Markdown preview, e.g. `["dot", "graphviz"]` for ` ```dot ` blocks. The
+  /// block's body is written to a temp file with the first of [extensions].
+  final Set<String> fences;
+
+  /// Device-pixel ratio the generated image was rendered at, so a `2` image
+  /// is shown at half its pixel size in the Markdown preview (crisp on HiDPI).
+  final double imageScale;
+
+  /// What `%THEME%` expands to for the app's `dark` and `light` themes when
+  /// a tool uses other names (e.g. `{"light": "default"}`).
+  final Map<String, String> themeNames;
+
   const GeneratorDef({
     required this.id,
     required this.extensions,
@@ -79,7 +92,20 @@ class GeneratorDef {
     this.probeArgs = const [],
     this.probePattern,
     this.thumbnailArgs,
+    this.fences = const {},
+    this.imageScale = 1.0,
+    this.themeNames = const {},
   });
+
+  bool get usesTheme =>
+      args.any((a) => a.contains('%THEME%')) ||
+      (thumbnailArgs?.any((a) => a.contains('%THEME%')) ?? false);
+
+  String themeArg({required bool dark}) {
+    final name = dark ? 'dark' : 'light';
+
+    return themeNames[name] ?? name;
+  }
 
   /// `outputExt: "txt"` makes the generator's output text, shown in Quick
   /// Look's read-only text view rather than as an image.
@@ -152,6 +178,21 @@ class GeneratorDef {
     final thumbnailArgs = (json['thumbnailArgs'] as List?)
         ?.whereType<String>()
         .toList();
+    final fences =
+        (json['fences'] as List?)
+            ?.whereType<String>()
+            .map((e) => e.toLowerCase())
+            .toSet() ??
+        const <String>{};
+    final imageScale = ((json['imageScale'] as num?)?.toDouble() ?? 1.0).clamp(
+      0.25,
+      8.0,
+    );
+    final themeNames = <String, String>{
+      for (final e in ((json['themeNames'] as Map?) ?? const {}).entries)
+        if (e.key is String && e.value is String)
+          e.key as String: e.value as String,
+    };
     final fixedCount =
         pagingMode == PagingMode.time || pagingMode == PagingMode.fixed;
     if (fixedCount && pageCount <= 1) {
@@ -184,6 +225,9 @@ class GeneratorDef {
       probeArgs: probeArgs,
       probePattern: probePattern,
       thumbnailArgs: thumbnailArgs,
+      fences: fences,
+      imageScale: imageScale,
+      themeNames: themeNames,
     );
   }
 }

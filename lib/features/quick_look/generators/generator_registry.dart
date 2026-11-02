@@ -21,12 +21,16 @@ class GeneratorRegistry {
   static final GeneratorRegistry instance = GeneratorRegistry._();
 
   final _byExtension = <String, GeneratorDef>{};
+  final _byFence = <String, GeneratorDef>{};
 
   GeneratorDef? forExtension(String extension) =>
       _byExtension[extension.toLowerCase()];
 
+  GeneratorDef? forFence(String language) => _byFence[language.toLowerCase()];
+
   Future<void> load() async {
     _byExtension.clear();
+    _byFence.clear();
     final dirPath = await AppDirs.generators();
     final dir = Directory(dirPath);
     try {
@@ -53,11 +57,15 @@ class GeneratorRegistry {
     for (final ext in def.extensions) {
       _byExtension[ext] = def;
     }
+    for (final fence in def.fences) {
+      _byFence[fence] = def;
+    }
   }
 
   @visibleForTesting
   void clearForTesting() {
     _byExtension.clear();
+    _byFence.clear();
   }
 
   Future<void> _loadFile(File file) async {
@@ -80,6 +88,18 @@ class GeneratorRegistry {
           continue;
         }
         _byExtension[ext] = def;
+      }
+      for (final fence in def.fences) {
+        final existing = _byFence[fence];
+        if (existing != null) {
+          log.warn(
+            'quick-look',
+            'generator "${def.id}" skipped for ```$fence: already handled by '
+                '"${existing.id}"',
+          );
+          continue;
+        }
+        _byFence[fence] = def;
       }
     } catch (error, stack) {
       log.warn(
