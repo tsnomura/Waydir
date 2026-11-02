@@ -203,11 +203,11 @@ Most such tools print to stdout rather than writing a file, so pair it with `"st
 Generators also render content embedded in Markdown files shown in Quick Look:
 
 - **Images** — `![](drawing.dxf)` or `<img src="model.step">` pointing at a local file whose extension has a generator shows that generator's preview image (page 0), using the same cache as Quick Look and the grid. PNG, JPEG, GIF, WebP, BMP and SVG are still drawn natively. The rest of the document appears at once; generated images are filled in when they are ready.
-- **Fenced code blocks** — a block whose language is listed in some generator's `fences` is written to a file (named by a hash of its content, with the generator's first extension) and run like any other file. An image result replaces the block; a `txt` result is shown as a code block; a failure leaves the original block with a note pointing to the log.
+- **Fenced code blocks** — a block whose language is listed in some generator's `fences` is written to a file (named by a hash of its content, with the generator's first extension) and run like any other file. An image result replaces the block; a `txt` result is shown as a code block; a failure leaves the original block with a note showing the last lines of the command's stderr (or why it could not run), so a syntax error in the diagram is visible in place.
 
 [`docs/examples/generators/graphviz/`](examples/generators/graphviz/) renders ` ```dot ` blocks and `.dot` / `.gv` files with Graphviz, theme-aware via `%THEME%` and at 2× via `imageScale`.
 
-` ```mermaid ` blocks are rendered without any config via [merman-cli](https://github.com/Latias94/merman/tree/main/crates/merman-cli) (`cargo install merman-cli --locked`) when it is on `PATH` or in `~/bin`, `~/.local/bin` or `~/.cargo/bin`. A generator that lists `mermaid` in `fences` takes precedence over the built-in renderer.
+[`docs/examples/generators/mermaid/`](examples/generators/mermaid/) renders ` ```mermaid ` blocks and `.mmd` files with [merman-cli](https://github.com/Latias94/merman/tree/main/crates/merman-cli), a native Mermaid renderer (`cargo install merman-cli --locked`; `cmd` must be on `PATH` or an absolute path).
 
 ## Multi-File Generators
 
