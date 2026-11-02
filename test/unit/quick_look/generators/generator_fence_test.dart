@@ -126,7 +126,10 @@ void main() {
           }),
         );
 
-        final darkOut = await GeneratorRunner.previewFence('DOT', 'a -> b');
+        final darkOut = (await GeneratorRunner.previewFence(
+          'DOT',
+          'a -> b',
+        )).path;
         expect(File(darkOut!).readAsStringSync(), 'dark:a -> b');
         expect(
           Directory(p.join(tmp.path, 'fences')).listSync().single.path,
@@ -134,14 +137,60 @@ void main() {
         );
 
         dark = false;
-        final lightOut = await GeneratorRunner.previewFence('dot', 'a -> b');
+        final lightOut = (await GeneratorRunner.previewFence(
+          'dot',
+          'a -> b',
+        )).path;
         expect(File(lightOut!).readAsStringSync(), 'default:a -> b');
         expect(lightOut, isNot(darkOut));
       },
     );
 
-    test('returns null for unclaimed languages', () async {
-      expect(await GeneratorRunner.previewFence('dot', 'x'), isNull);
+    test('returns nothing for unclaimed languages', () async {
+      final result = await GeneratorRunner.previewFence('dot', 'x');
+      expect(result.path, isNull);
+      expect(result.error, isNull);
+    });
+
+    test('reports the last lines of stderr when the generator fails', () async {
+      final script = File(p.join(tmp.path, 'bad.sh'))
+        ..writeAsStringSync(
+          '#!/bin/sh\necho noise >&2\necho a >&2\necho b >&2\n'
+          'echo "parse error at line 2" >&2\nexit 1\n',
+        );
+      Process.runSync('chmod', ['+x', script.path]);
+      GeneratorRegistry.instance.registerForTesting(
+        GeneratorDef.fromJson({
+          'id': 'bad',
+          'extensions': ['mmd'],
+          'fences': ['mermaid'],
+          'cmd': script.path,
+          'args': ['%INPUT%', '%OUTPUT%'],
+        }),
+      );
+
+      final first = await GeneratorRunner.previewFence('mermaid', 'graph');
+      expect(first.path, isNull);
+      expect(first.error, 'a\nb\nparse error at line 2');
+
+      final cached = await GeneratorRunner.previewFence('mermaid', 'graph');
+      expect(cached.error, first.error);
+    });
+
+    test('reports a missing executable', () async {
+      GeneratorRegistry.instance.registerForTesting(
+        GeneratorDef.fromJson({
+          'id': 'missing',
+          'extensions': ['mmd'],
+          'fences': ['mermaid'],
+          'cmd': p.join(tmp.path, 'no-such-tool'),
+          'args': ['%INPUT%', '%OUTPUT%'],
+        }),
+      );
+
+      final result = await GeneratorRunner.previewFence('mermaid', 'other');
+      expect(result.path, isNull);
+      expect(result.error, contains('no-such-tool'));
     });
   }, skip: Platform.isWindows);
 }

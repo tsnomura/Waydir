@@ -10,7 +10,7 @@ import '../../i18n/strings.g.dart';
 import 'generators/generator_def.dart';
 import 'generators/generator_registry.dart';
 import 'generators/generator_runner.dart';
-import 'markdown_mermaid.dart';
+import '../../ui/theme/app_theme.dart';
 
 const generatedFenceTag = 'generated_fence';
 const _languageAttr = 'language';
@@ -24,6 +24,46 @@ const nativeMarkdownImageExtensions = {
   'bmp',
   'svg',
 };
+
+String readFenceBody(md.BlockParser parser, String fence) {
+  final closing = RegExp(
+    '^ {0,3}${RegExp.escape(fence[0])}{${fence.length},}\\s*\$',
+  );
+  parser.advance();
+  final lines = <String>[];
+  while (!parser.isDone) {
+    final line = parser.current.content;
+    parser.advance();
+    if (closing.hasMatch(line)) break;
+    lines.add(line);
+  }
+
+  return lines.join('\n');
+}
+
+Widget fencedSource({
+  required String source,
+  required TextStyle style,
+  Decoration? decoration,
+  EdgeInsets padding = const EdgeInsets.all(10),
+  String? note,
+}) {
+  return Container(
+    width: double.infinity,
+    decoration: decoration,
+    padding: padding,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(source, style: style),
+        if (note != null) ...[
+          const SizedBox(height: 8),
+          Text(note, style: style.copyWith(color: AppColors.fgSubtle)),
+        ],
+      ],
+    ),
+  );
+}
 
 class GeneratorFenceBlockSyntax extends md.BlockSyntax {
   const GeneratorFenceBlockSyntax();
@@ -122,6 +162,7 @@ class GeneratedFence extends StatefulWidget {
 
 class _GeneratedFenceState extends State<GeneratedFence> {
   late Future<GeneratedOutput?> _result;
+  String? _error;
 
   @override
   void initState() {
@@ -142,10 +183,14 @@ class _GeneratedFenceState extends State<GeneratedFence> {
     final def = GeneratorRegistry.instance.forFence(widget.language);
     _result = def == null
         ? Future.value(null)
-        : GeneratorRunner.previewFence(
-            widget.language,
-            widget.source,
-          ).then((path) => path == null ? null : (def: def, path: path));
+        : GeneratorRunner.previewFence(widget.language, widget.source).then((
+            result,
+          ) {
+            _error = result.error;
+            final path = result.path;
+
+            return path == null ? null : (def: def, path: path);
+          });
   }
 
   Widget _code(String text, {String? note}) => fencedSource(
@@ -170,7 +215,12 @@ class _GeneratedFenceState extends State<GeneratedFence> {
 
           return _code(
             widget.source,
-            note: t.quickLook.generatorFenceFailed(id: id ?? widget.language),
+            note: _error == null
+                ? t.quickLook.generatorFenceFailed(id: id ?? widget.language)
+                : t.quickLook.generatorFenceError(
+                    id: id ?? widget.language,
+                    error: _error!,
+                  ),
           );
         }
         if (result.def.textOutput) {

@@ -1,0 +1,24 @@
+{
+  "id": "mermaid",
+  "extensions": ["mmd", "mermaid"],
+  "fences": ["mermaid", "mmd"],
+  "cmd": "merman-cli",
+  "args": [
+    "render",
+    "%INPUT%",
+    "--format",
+    "png",
+    "--theme",
+    "%THEME%",
+    "--background",
+    "transparent",
+    "--scale",
+    "2",
+    "--output",
+    "%OUTPUT%"
+  ],
+  "themeNames": { "light": "default" },
+  "imageScale": 2,
+  "timeoutSeconds": 15,
+  "outputExt": "png"
+}

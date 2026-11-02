@@ -34,9 +34,12 @@ class GeneratorRunner {
   /// Renders the body of a Markdown fenced block whose language a generator
   /// claims via `fences`. The body is stored under the cache's `fences/`
   /// folder, named by a hash of its content, and run like any other file.
-  static Future<String?> previewFence(String language, String source) async {
+  static Future<FenceResult> previewFence(
+    String language,
+    String source,
+  ) async {
     final def = GeneratorRegistry.instance.forFence(language);
-    if (def == null) return null;
+    if (def == null) return (path: null, error: null);
     final dir = Directory(p.join(await cacheDirectory(), 'fences'));
     await dir.create(recursive: true);
     final hash = sha256
@@ -50,13 +53,48 @@ class GeneratorRunner {
       await tmp.rename(file.path);
     }
 
-    return _generate(
-      FileEntry.fromFileSystemEntity(file),
-      def,
-      0,
-      def.args,
-      'preview',
+    final entry = FileEntry.fromFileSystemEntity(file);
+    final path = await _generate(entry, def, 0, def.args, 'preview');
+
+    return (
+      path: path,
+      error: path == null
+          ? _failureMessages[_requestKey(entry, def, 'preview', 0)]
+          : null,
     );
+  }
+
+  static final _failureMessages = <String, String>{};
+
+  static String _requestKey(
+    FileEntry entry,
+    GeneratorDef def,
+    String variant,
+    int position,
+  ) => [
+    entry.realPath,
+    entry.modifiedMs,
+    entry.size,
+    def.id,
+    variant,
+    position,
+    if (def.usesTheme) def.themeArg(dark: darkTheme()),
+  ].join('|');
+
+  static String _failureSummary(String text) {
+    final lines = text
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final tail = lines.skip(lines.length > 3 ? lines.length - 3 : 0).join('\n');
+
+    return tail.length > 400 ? tail.substring(tail.length - 400) : tail;
+  }
+
+  static void _recordFailure(String key, String message) {
+    final summary = _failureSummary(message);
+    if (summary.isNotEmpty) _failureMessages[key] = summary;
   }
 
   // Probes are cheap but not free; memoize a deterministic outcome (success,
@@ -102,6 +140,7 @@ class GeneratorRunner {
   /// would otherwise leave its cache entries as permanent orphans.
   static Future<void> clearCache() async {
     _failedKeys.clear();
+    _failureMessages.clear();
     _probeCache.clear();
     final dir = Directory(await cacheDirectory());
     if (!await dir.exists()) return;
@@ -157,15 +196,7 @@ class GeneratorRunner {
     List<String> args,
     String variant,
   ) {
-    final key = [
-      entry.realPath,
-      entry.modifiedMs,
-      entry.size,
-      def.id,
-      variant,
-      position,
-      if (def.usesTheme) def.themeArg(dark: darkTheme()),
-    ].join('|');
+    final key = _requestKey(entry, def, variant, position);
     if (_failedKeys.contains(key)) return Future.value(null);
 
     return _previewInFlight.putIfAbsent(key, () async {
@@ -240,6 +271,10 @@ class GeneratorRunner {
               '${result.stderrTail}',
         );
         await _tryDelete(tmpPath);
+        _recordFailure(
+          failureKey,
+          'timed out after ${def.timeout.inSeconds}s\n${result.stderrTail}',
+        );
 
         return null;
       }
@@ -251,6 +286,12 @@ class GeneratorRunner {
         );
         await _tryDelete(tmpPath);
         _failedKeys.add(failureKey);
+        _recordFailure(
+          failureKey,
+          result.stderrTail.trim().isEmpty
+              ? 'exit code ${result.exitCode}'
+              : result.stderrTail,
+        );
 
         return null;
       }
@@ -258,10 +299,12 @@ class GeneratorRunner {
       if (!await tmpFile.exists() || await tmpFile.length() == 0) {
         await _tryDelete(tmpPath);
         _failedKeys.add(failureKey);
+        _recordFailure(failureKey, 'no output');
 
         return null;
       }
       await tmpFile.rename(cachePath);
+      _failureMessages.remove(failureKey);
 
       return cachePath;
     } catch (error, stack) {
@@ -273,6 +316,12 @@ class GeneratorRunner {
       );
       await _tryDelete(tmpPath);
       _failedKeys.add(failureKey);
+      _recordFailure(
+        failureKey,
+        error is ProcessException
+            ? '${error.executable}: ${error.message}'
+            : '$error',
+      );
 
       return null;
     }
@@ -437,6 +486,8 @@ class GeneratorRunner {
     return sha256.convert(utf8.encode(raw)).toString();
   }
 }
+
+typedef FenceResult = ({String? path, String? error});
 
 class _ProcessResult {
   final int exitCode;

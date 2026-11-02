@@ -953,9 +953,8 @@
     "searchPrevious": "Previous match",
     "searchCase": "Match case",
     "searchRegex": "Use regular expression",
-    "mermaidMissing": "Install merman-cli to render this Mermaid diagram.",
-    "mermaidFailed": "Mermaid render failed: ${error}",
-    "generatorFenceFailed": "Generator \"${id}\" produced no output. See Help → View Logs."
+    "generatorFenceFailed": "Generator \"${id}\" produced no output. See Help → View Logs.",
+    "generatorFenceError": "Generator \"${id}\" failed: ${error}"
   },
   "toast": {
     "launcherFailed": "Couldn't start $name: $error",
