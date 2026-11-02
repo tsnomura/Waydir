@@ -1,5 +1,5 @@
 {
-  "_help": "Windows version (10-page turntable) — see 3d-model.linux-macos.json for a simpler single-angle Linux/macOS version. Renders 3D models with F3D to a 640x480 PNG with a transparent background. --no-config ignores any personal f3d config so thumbnails stay consistent. STEP/IGES are handled by 3d-model-step.json / 3d-model-iges.json instead: f3d 3.5.0 can't auto-detect the occt reader from those extensions alone (fails with \"unknown format... use --force-reader\"), so they need their own --force-reader value, which can't be shared with the other extensions here. Waydir ignores every key starting with \"_\".",
+  "_help": "Windows version (10-page turntable, same as 3d-model.linux-macos.json). Renders 3D models with F3D to a 640x480 PNG with a transparent background. --no-config ignores any personal f3d config so thumbnails stay consistent. STEP/IGES are handled by 3d-model-step.json / 3d-model-iges.json instead: f3d 3.5.0 can't auto-detect the occt reader from those extensions alone (fails with \"unknown format... use --force-reader\"), so they need their own --force-reader value, which can't be shared with the other extensions here. Waydir ignores every key starting with \"_\".",
   "id": "3d-model",
   "extensions": ["stl", "obj", "ply", "gltf", "glb", "3mf", "fbx", "dae", "3ds", "off", "vtk", "vtp", "vtu"],
   "cmd": "f3d",

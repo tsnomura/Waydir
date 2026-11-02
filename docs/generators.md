@@ -29,7 +29,7 @@ leaving the app.
 
 [`docs/examples/generators/`](examples/generators/) has a ready-to-copy config for every generator this fork actually uses, one subfolder per id. Copy a subfolder's file(s) into your own generators folder (shown live in Preferences, above) and it works as-is — except a `<PLACEHOLDER>`-style token in `cmd`/`args`, called out in that file's own `_help`, which means the referenced tool or path is personal/private and needs pointing at your own copy first.
 
-Cross-platform as one file (same tool, same CLI, on every OS it's installed on): `video-thumbnail` (ffmpeg), `pdf-page` (mutool), `audio-waveform` (ffmpeg), `3d-model`/`3d-model-iges`/`3d-model-step` (F3D — Windows additionally pages through a 10-step turntable via `%ANGLE%`, Linux/macOS renders one fixed angle; swap either way freely, both are valid).
+Cross-platform as one file (same tool, same CLI, on every OS it's installed on): `video-thumbnail` (ffmpeg), `pdf-page` (mutool), `audio-waveform` (ffmpeg), `3d-model`/`3d-model-iges`/`3d-model-step` (F3D, a 10-step turntable via `%ANGLE%`; still shipped as a `.windows.json` / `.linux-macos.json` pair with identical settings).
 
 Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach genuinely differs per OS:
 

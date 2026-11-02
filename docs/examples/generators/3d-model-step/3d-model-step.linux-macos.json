@@ -1,5 +1,5 @@
 {
-  "_help": "Linux/macOS version (single fixed angle, no paging) — see 3d-model-step.windows.json for a 10-page turntable version. STEP files, split out from 3d-model.json: f3d can't auto-detect the occt STEP reader from the .step/.stp extension alone. Waydir ignores every key starting with \"_\".",
+  "_help": "Linux/macOS version (10-page turntable, same as 3d-model-step.windows.json). STEP files, split out from 3d-model.json: f3d can't auto-detect the occt STEP reader from the .step/.stp extension alone. Waydir ignores every key starting with \"_\".",
   "id": "3d-model-step",
   "extensions": ["step", "stp"],
   "cmd": "f3d",
@@ -10,10 +10,14 @@
     "--no-config",
     "--no-background",
     "--anti-aliasing",
-    "--camera-azimuth-angle=35",
+    "--up=+Z",
+    "--camera-azimuth-angle=%ANGLE%",
     "--camera-elevation-angle=25",
     "--force-reader=STEP"
   ],
   "timeoutSeconds": 30,
-  "outputExt": "png"
+  "outputExt": "png",
+  "_help_paging": "10 pages turning the model around its Z axis: --up=+Z makes Z the up axis, and %ANGLE% is 0, 36, 72 ... 324 degrees for pages 1-10 (PageUp/PageDown in Quick Look).",
+  "paging": "fixed",
+  "pageCount": 10
 }
