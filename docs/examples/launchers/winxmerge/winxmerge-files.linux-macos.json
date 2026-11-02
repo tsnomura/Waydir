@@ -1,0 +1,14 @@
+{
+  "_help": "Linux/macOS version of winxmerge-files.windows.json. Mark 2 files for a 2-way compare or 3 files for a 3-way merge (base, left, right in list order), then pick this from the context menu. \"cmd\" is looked up on PATH; use an absolute path if Waydir is started without it. Waydir ignores every key starting with \"_\".",
+  "id": "winxmerge-files",
+  "name": "Compare in WinXMerge",
+  "extensions": [
+    "*"
+  ],
+  "cmd": "winxmerge",
+  "args": [
+    "%FILES%"
+  ],
+  "minFiles": 2,
+  "maxFiles": 3
+}
