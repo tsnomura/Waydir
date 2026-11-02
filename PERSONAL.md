@@ -146,20 +146,27 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 - Intentionally stops at paging through still frames — a scrubber or video
   playback controls are a job for an embedded video player, not Quick Look.
   Audio playback is the one exception; see "Quick Look audio playback" below.
-- Installed locally: `video-thumbnail` (`ffmpeg`/`ffprobe`, `"time"` paging),
-  `audio-waveform` (`ffmpeg`), `pdf-page` (`mutool`, `"discrete"` paging),
-  `svg-preview` (`resvg`, no paging), `3d-model` / `3d-model-step` /
-  `3d-model-iges` (`f3d` offscreen render, 10-page turntable, transparent
-  background), `comsol-mph`, `office-thumbnail`, `ico-preview`,
-  `font-preview`, `archive-list` / `tar-list` (text output), `dxf-preview`
-  (netpng `dxf2png`), `graphviz` (`dot`) and `mermaid` (`merman-cli`) in the
-  `generators` support directory. The live configs themselves still aren't
-  committed — generator config is local/personal by design, same trust model
-  as Lua plugins (see `docs/generators.md`) — but every one of them is
-  general enough to also be worth a copy-and-adjust example, so all of them
-  (Windows and, where the approach actually differs, Linux/macOS too) are now
-  under `docs/examples/generators/`; see "Worked Examples" in
-  `docs/generators.md` for the full index and which pairs split by OS.
+- Installed locally on this Linux machine (15): `video-thumbnail`
+  (`ffmpeg`/`ffprobe`, `"time"` paging), `pdf-page` (`mutool`,
+  `"discrete"` paging), `svg-preview` (`rendersvg` — this distro's resvg
+  package names the binary that — no paging), `3d-model` plus
+  `3d-model-step`/`3d-model-iges` (`f3d` offscreen render of stl/obj/ply/
+  gltf/glb/3mf/fbx/dae/STEP/IGES/VTK etc., angled camera, transparent
+  background; STEP/IGES get their own file because f3d needs
+  `--force-reader` for them), `comsol-mph`, `office-thumbnail`,
+  `ico-preview`, `dxf-preview` (`dxf2png`), `audio-waveform` (`ffmpeg`
+  `showwavespic`, `"time"` paging), `graphviz` (`dot`, also renders fenced
+  `dot`/`graphviz` blocks in Markdown, theme colors via `%THEME%`),
+  `mermaid` (`merman-cli`, fenced `mermaid`/`mmd` blocks), and
+  `archive-list`/`tar-list` (text output; see "Generator text output"
+  below). The Windows-only `font-preview` (PowerShell) isn't installed
+  here, so `.ttf`/`.otf` keep the plain file icon. The live configs
+  themselves still aren't committed — generator config is local/personal
+  by design, same trust model as Lua plugins (see `docs/generators.md`) —
+  but every one of them is now also a copy-and-adjust example under
+  `docs/examples/generators/` (Windows and, where the approach actually
+  differs, Linux/macOS too); see "Worked Examples" in `docs/generators.md`
+  for the full index and which pairs split by OS.
 - The last two need no extra tools on Windows: COMSOL `.mph`, Office
   (pptx/docx/xlsx) and OpenDocument files are zips that can carry a preview
   image, and a PowerShell one-liner using .NET's `ZipFile` pulls out just
@@ -310,16 +317,22 @@ Windows), in the same spirit as preview generators:
   folder, and Reload — saves and Reload apply without restarting Waydir.
 
 Installed locally (same not-committed-by-default trust model as preview
-generators): `f3d-step`/`f3d-iges` (open STEP/IGES in f3d), `quick-look-window`
-(`%WAYDIR%`, below), `winxmerge-compare`/`winxmerge-files` (a personal
-cargo-built, cross-platform WinXMerge), and on Linux/macOS `ico-view` (pipes
-the .ico's largest size through netpng's `ico2png` into `pngview`, needs
-netpng on PATH). All of them are also copy-and-adjust examples under
-`docs/examples/launchers/` — `f3d-*`, `quick-look-window` and `ico-view`
-work as-is on the OSes they target, `ico-view` needs `<LAUNCHERS_DIR>`
-pointed at its own folder, and `winxmerge` comes as a `.windows.json` pair
-(real path swapped in for the `<WINXMERGE_PATH>` placeholder) plus a
-`.linux-macos.json` pair that runs `winxmerge` from `PATH`.
+generators): `f3d-step`/`f3d-iges` (open STEP/IGES in f3d),
+`quick-look-window` (`%WAYDIR%`, below), `winxmerge-compare`/
+`winxmerge-files` (a personal cargo-built WinXMerge — cross-platform, so it
+runs on this Linux box too; `cmd` is looked up on PATH as `winxmerge`),
+and `ico-view` (pipes the .ico's largest size through netpng's `ico2png`
+into `pngview`; Linux/macOS only, needs netpng on PATH). All are also
+copy-and-adjust examples under `docs/examples/launchers/` — `f3d-*`,
+`quick-look-window` and the `.linux-macos.json` `winxmerge` pair work
+as-is on the OSes they target (no path anywhere: `f3d`/`winxmerge` are on
+PATH, `%WAYDIR%` resolves the running executable), the `.windows.json`
+`winxmerge` pair needs its real path swapped in for the `<WINXMERGE_PATH>`
+placeholder, and `ico-view` needs `<LAUNCHERS_DIR>` pointed at its own
+folder — the local copy points `cmd` at its own absolute path for that
+reason. The local `quick-look-window` is narrowed to `md`/`markdown` (the
+example stays `"*"`), so popping out every file type is not the de-facto
+open action.
 
 Relevant commits: `9c2313d`, `5e07164` (Linux/macOS WinXMerge examples).
 
@@ -407,6 +420,41 @@ Relevant commits: `2dde497`.
   focus back reliably.
 
 Relevant commits: `0b725c5`.
+
+## Plugins
+
+Waydir also loads user plugins: small Lua folders that add workflow
+actions — context menu items, toolbar buttons, menubar entries, shortcuts
+and status bars — with no build step. Copy a folder (`manifest.json` plus
+`init.lua`, optionally an icon) into the plugins support directory
+(`~/.config/waydir/plugins/` here), then **Reload plugins** in
+Preferences → Plugins, which also has **Open plugins folder**,
+enable/disable and per-plugin Configure. On reload, each `init.lua` runs
+once in a sandbox and contributes actions via `waydir.register` (with
+`when` filters on the selection, `icon`, `group`, `settings`) and status
+bars via `waydir.register_bar`; invoking an action starts a fresh VM that
+calls `run(ctx)`, where `ctx` carries `paths`/`dir`/`count`/`settings`/
+`form`, and the action works with `waydir.exec` (fire-and-forget command),
+`waydir.run_task` (long job in the Operations queue with progress),
+`waydir.copy`/`move`/`trash` (queued file ops) and `waydir.dialog` (modal
+form; the submitted values come back as `ctx.form` on the same action's
+second invocation). Full guide in `docs/plugins.md`.
+
+Installed locally (all five start from the bundled examples under
+`docs/examples/plugins/`): `backup-copy` — context item **Create .bak
+copy**, `cp -n` per selected file, no overwrite; `selection-count` —
+context item that toasts the selected count; `sevenzip` — a **Compress
+with 7-Zip** context submenu (quick `.zip`/`.tar.gz`, plus **Add to
+archive…** with a name/format/level modal) run through `waydir.run_task`
+so they queue in Operations, and **Extract here with 7-Zip** for a
+selected archive; `templates` — the v2 API tour, one "new file from
+boilerplate" action surfaced four ways (toolbar button, background
+right-click, Plugins menubar, `Ctrl+Alt+N`) with a template-choice dialog
+and an author setting; and `open-vscode`, adapted for this host — no VS
+Code here, so the toolbar **Open in Editor** button and its right-click
+twin for a folder default the editor command to `nvim`, the one editor
+installed; the command is an ordinary plugin setting, so installing `code`
+later only takes entering it under the plugin's Configure.
 
 ## Personal build version in About
 
@@ -1813,6 +1861,13 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   Windows' own `System32\tar.exe` (bsdtar) was ruled out: it prints names
   in the console code page, garbling Japanese. `.zst` stays with 7z, since
   Git ships no `zstd` for tar to call.
+- This Linux host has no `bsdtar` (and no sudo to install libarchive-tools),
+  so the local pair is the 7z variant — `zip`/`7z`/`rar`/`zst`/`cab`/`iso`/
+  `jar`, because p7zip 16.02 lists a tar.gz as its single inner `.tar` —
+  plus plain GNU `tar -tvf` for the tar family; `--force-local` and
+  `--quoting-style` are Git Bash concerns, not needed on bare Linux. A
+  plain `.gz` that isn't a tarball lists nothing and silently falls back
+  to the file icon.
 
 Relevant commits: `0ed8283`, `63cbc1b`.
 
