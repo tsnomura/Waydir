@@ -1,0 +1,11 @@
+{
+  "_help": "Linux/macOS version of winxmerge-compare.windows.json. winxmerge is a personal cargo-built, cross-platform diff/merge tool (`cargo install` puts it in ~/.cargo/bin); \"cmd\" is looked up on PATH, so use an absolute path if Waydir is started without it. Swap \"cmd\" for meld, kdiff3 or another tool taking <left> <right> if you don't have it. Compare-mode launcher: Enter on a file that exists on both sides opens it in the tool. %LEFT%/%RIGHT% are the left/right pane files. Waydir ignores every key starting with \"_\".",
+  "id": "winxmerge",
+  "name": "Merge in WinXMerge",
+  "context": "compare",
+  "cmd": "winxmerge",
+  "args": [
+    "%LEFT%",
+    "%RIGHT%"
+  ]
+}
