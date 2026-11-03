@@ -1,0 +1,8 @@
+{
+  "id": "new-folder-from-marks",
+  "name": "New Folder from Marks",
+  "version": "1.0.0",
+  "author": "waydir",
+  "description": "Create a folder in the active pane and move the marked items (or the item under the cursor) into it. Local folders only.",
+  "api_version": 2
+}
