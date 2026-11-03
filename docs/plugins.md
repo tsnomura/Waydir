@@ -202,14 +202,17 @@ The `ctx` table tells your action where it is running:
 
 | Field | Meaning |
 |-------|---------|
-| `ctx.paths` | Selected paths as a Lua array. Empty for background actions with no selection. |
-| `ctx.count` | Number of selected paths. |
+| `ctx.paths` | Target paths as a Lua array: the marked items, or the item under the cursor when nothing is marked. Empty for background actions with no selection. |
+| `ctx.count` | Number of target paths. |
+| `ctx.marked` | Marked paths only, in display order. Empty when nothing is marked, even if the cursor is on an item. |
+| `ctx.cursor` | Path of the item under the cursor, or absent when there is none. |
 | `ctx.dir` | Current folder. |
+| `ctx.location` | What `ctx.dir` is: `{ scheme, is_local, archive, inner }`. `scheme` is `file`, `archive`, `sftp`, `smb`, `trash` or `tag`. `is_local` is `true` only for `file`, where `list`, `mkdir`, `read_text` and friends work. `archive` (archive file) and `inner` (path inside it, empty at its root) are set for `archive`. |
 | `ctx.plugin_dir` | Absolute path to your plugin folder. |
 | `ctx.settings` | Settings values, with defaults merged with saved user values. |
 | `ctx.form` | Dialog result after a `waydir.dialog` submit. |
-| `ctx.other_pane` | The inactive pane in a dual-pane layout as `{ dir, paths }`, or absent when only one pane is open. |
-| `ctx.panes` | Every open pane as `{ dir, paths, active }`, in layout order. |
+| `ctx.other_pane` | The inactive pane in a dual-pane layout as `{ dir, paths, marked, cursor, location }`, or absent when only one pane is open. |
+| `ctx.panes` | Every open pane as `{ dir, paths, marked, cursor, location, active }`, in layout order. |
 
 `ctx.other_pane` and `ctx.panes` are only populated for action runs (context menu, menubar, toolbar, shortcuts), not for status bars. Use them for copy-to-other-pane, compare and sync workflows:
 
@@ -350,6 +353,7 @@ Field schema:
 | `hint` | Placeholder for text inputs. |
 | `default` | Default value. |
 | `options` | Dropdown options for `select` and `dropdown`. |
+| `select` | Text inputs only: `all` selects the whole default, `stem` selects it up to the last dot (for file names), `start` puts the caret at the beginning. The first field with `select` gets the focus when the dialog opens. Without it the caret is at the end. |
 
 Dropdown options can be strings or objects:
 

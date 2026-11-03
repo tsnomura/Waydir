@@ -63,6 +63,7 @@ import '../features/panes/terminal_tab.dart';
 import '../features/plugins/plugin_bar.dart';
 import '../features/plugins/plugin_form_dialog.dart';
 import '../features/plugins/plugin_icons.dart';
+import '../features/plugins/plugin_location.dart';
 import '../features/plugins/plugin_models.dart';
 import '../features/plugins/plugin_settings_store.dart';
 import '../features/plugins/plugin_store.dart';

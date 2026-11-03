@@ -85,6 +85,7 @@ local function ask(name, error_text, merge_prompt)
     type = "input",
     label = "Folder name",
     default = name,
+    select = "all",
   }
   if merge_prompt then
     fields[#fields + 1] = {
@@ -113,7 +114,11 @@ local function targets_of(ctx, listing)
 end
 
 local function run(ctx)
-  if not waydir.exists(ctx.dir) then
+  local is_local = ctx.location and ctx.location.is_local
+  if is_local == nil then
+    is_local = waydir.exists(ctx.dir)
+  end
+  if not is_local then
     waydir.notify({
       title = TITLE,
       message = "Only local folders are supported (not archives, SFTP or SMB URIs).",

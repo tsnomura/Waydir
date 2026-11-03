@@ -390,8 +390,10 @@ class PluginStore {
     Map<String, dynamic>? form,
     Map<String, dynamic>? otherPane,
     List<Map<String, dynamic>>? panes,
+    Map<String, dynamic> selection = const {},
   }) async {
     final ctx = <String, dynamic>{
+      ...selection,
       'paths': paths,
       'dir': dir,
       'plugin_dir': contribution.pluginDir,

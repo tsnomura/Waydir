@@ -556,6 +556,7 @@ mixin _WaydirMenuMixin
         form: form,
         otherPane: _otherPaneContext(store),
         panes: _allPaneContexts(store),
+        selection: _pluginSelectionContext(store),
       );
       if (!mounted) return;
       await _applyPluginEffects(
@@ -577,6 +578,17 @@ mixin _WaydirMenuMixin
     return {
       'dir': store.currentPath.value,
       'paths': store.targetEntries.map((e) => e.realPath).toList(),
+      ..._pluginSelectionContext(store),
+    };
+  }
+
+  Map<String, dynamic> _pluginSelectionContext(NavigationStore store) {
+    final cursor = store.cursorEntry.value;
+
+    return {
+      'marked': store.selectedEntries.map((e) => e.realPath).toList(),
+      if (cursor != null && !cursor.isGhost) 'cursor': cursor.realPath,
+      'location': pluginLocation(store.currentPath.value),
     };
   }
 
@@ -639,6 +651,7 @@ mixin _WaydirMenuMixin
     final dir = store.currentPath.value;
     final otherPane = _otherPaneContext(store);
     final panes = _allPaneContexts(store);
+    final selection = _pluginSelectionContext(store);
     for (final c in contributions) {
       try {
         final effects = await PluginStore.instance.invoke(
@@ -647,6 +660,7 @@ mixin _WaydirMenuMixin
           dir: dir,
           otherPane: otherPane,
           panes: panes,
+          selection: selection,
         );
         if (!mounted) return;
         await _applyPluginEffects(effects, c, background: true);
