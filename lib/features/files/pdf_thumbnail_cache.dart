@@ -15,7 +15,7 @@ import '../../core/platform/platform_paths.dart';
 import '../../utils/concurrency_gate.dart';
 import 'remote_thumbnail_cache.dart';
 
-const _renderWidth = 360;
+const _thumbnailWidth = 360;
 
 class PdfThumbnailCache {
   PdfThumbnailCache._();
@@ -24,11 +24,14 @@ class PdfThumbnailCache {
   static final _inFlight = <String, Future<String?>>{};
   static final _failedKeys = <String>{};
 
-  static Future<String?> thumbnail(FileEntry entry) {
+  static Future<String?> thumbnail(FileEntry entry) =>
+      firstPage(entry, width: _thumbnailWidth);
+
+  static Future<String?> firstPage(FileEntry entry, {required int width}) {
     final key = sha256
         .convert(
           utf8.encode(
-            'pdf|${entry.realPath}|${entry.modifiedMs}|${entry.size}|$_renderWidth',
+            'pdf|${entry.realPath}|${entry.modifiedMs}|${entry.size}|$width',
           ),
         )
         .toString();
@@ -36,7 +39,7 @@ class PdfThumbnailCache {
 
     return _inFlight.putIfAbsent(key, () async {
       try {
-        final path = await _build(entry, key);
+        final path = await _build(entry, key, width);
         if (path == null) _failedKeys.add(key);
 
         return path;
@@ -46,7 +49,7 @@ class PdfThumbnailCache {
     });
   }
 
-  static Future<String?> _build(FileEntry entry, String key) async {
+  static Future<String?> _build(FileEntry entry, String key, int width) async {
     final dir = await AppDirs.generatorCache();
     final target = p.join(dir, 'pdf-$key.png');
     if (await File(target).exists()) return target;
@@ -59,7 +62,7 @@ class PdfThumbnailCache {
     final tmp = p.join(dir, 'tmp-pdf-$key.png');
     await _gate.acquire();
     try {
-      final page = await _renderInIsolate(source);
+      final page = await _renderInIsolate(source, width);
       if (page == null) return null;
       final png = await _encodePng(page);
       if (png == null) return null;
@@ -107,5 +110,5 @@ class PdfThumbnailCache {
   }
 }
 
-Future<PdfRenderedPage?> _renderInIsolate(String path) =>
-    Isolate.run(() => WaydirCoreLoader.pdfRenderPage(path, 0, _renderWidth));
+Future<PdfRenderedPage?> _renderInIsolate(String path, int width) =>
+    Isolate.run(() => WaydirCoreLoader.pdfRenderPage(path, 0, width));
