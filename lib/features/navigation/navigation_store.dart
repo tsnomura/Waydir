@@ -2320,6 +2320,22 @@ class NavigationStore {
     fileListFocusRequest.value++;
   }
 
+  Future<bool> focusPath(String path) async {
+    await refresh();
+    final key = _norm(path);
+    final idx = _vf.indexWhere(
+      (f) => _norm(f.path) == key || _norm(f.realPath) == key,
+    );
+    if (idx < 0) return false;
+    batch(() {
+      cursorIndex.value = idx;
+      anchorIndex.value = idx;
+    });
+    fileListFocusRequest.value++;
+
+    return true;
+  }
+
   void dispose() {
     unawaited(saveFolderState());
     _showHiddenDisposer?.call();

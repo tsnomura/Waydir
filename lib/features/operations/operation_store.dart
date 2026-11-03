@@ -129,7 +129,7 @@ class OperationStore {
     TagStore.instance.notifyFileTagsChanged();
   }
 
-  void enqueueCopy(
+  Future<void> enqueueCopy(
     List<String> sources,
     String destination, {
     Set<String> overwrite = const {},
@@ -142,7 +142,7 @@ class OperationStore {
     confirm: confirm,
   );
 
-  void enqueueMove(
+  Future<void> enqueueMove(
     List<String> sources,
     String destination, {
     bool confirm = true,

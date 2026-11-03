@@ -161,7 +161,11 @@ local function run(ctx)
   for _, t in ipairs(targets) do
     waydir.move(t.path, folder)
   end
-  waydir.refresh()
+  if waydir.focus then
+    waydir.focus(folder)
+  else
+    waydir.refresh()
+  end
 end
 
 waydir.register({

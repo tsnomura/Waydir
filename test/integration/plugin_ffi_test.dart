@@ -711,6 +711,41 @@ void main() {
     });
   });
 
+  test('remote mkdir, focus and navigate become effects', () async {
+    final local = p.join(tmp.path, 'made', 'here');
+    final path = writePlugin('''
+      waydir.register({
+        id = "fx",
+        title = "Fx",
+        run = function(ctx)
+          waydir.mkdir([[$local]])
+          waydir.mkdir("sftp://host/home/u/new")
+          waydir.mkdir("smb://host/share/new")
+          waydir.focus("sftp://host/home/u/new")
+          waydir.navigate("/somewhere")
+        end,
+      })
+    ''');
+    final raw = await PluginFfi.invoke(
+      initLuaPath: path,
+      actionId: 'fx',
+      ctxJson: jsonEncode({
+        'paths': <String>[],
+        'dir': tmp.path,
+        'plugin_dir': tmp.path,
+      }),
+    );
+    final json = jsonDecode(raw!) as Map<String, dynamic>;
+    expect(json['ok'], isTrue, reason: '${json['error']}');
+    expect(Directory(local).existsSync(), isTrue);
+    expect(json['effects'], [
+      {'type': 'mkdir', 'path': 'sftp://host/home/u/new'},
+      {'type': 'mkdir', 'path': 'smb://host/share/new'},
+      {'type': 'focus', 'path': 'sftp://host/home/u/new'},
+      {'type': 'navigate', 'path': '/somewhere'},
+    ]);
+  });
+
   test('sandbox blocks os and io access', () async {
     final path = writePlugin('''
       waydir.register({
