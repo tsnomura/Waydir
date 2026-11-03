@@ -57,6 +57,19 @@ wcd() { cd "$(cat "$WAYDIR_PANE_DIR_ROOT/${WAYDIR_ORIGIN_PANE:-active}.txt")"; }
 Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`,
 `28804b8` (path argument).
 
+### `waydir-show` agent skill
+
+The same signal lets a coding agent show the user a file:
+`docs/examples/agent-skills/waydir-show/SKILL.md` is a Claude Code skill
+that writes the absolute path to `$WAYDIR_CWD_DIR\0.txt`, so the active pane
+opens the folder with the cursor on the file, when asked to show something
+"in Waydir". It needs no shell function. Install it by copying the folder
+into `~/.claude/skills/` (see that folder's README). It checks that Waydir
+is running first: the watcher only reacts to create/modify events, so a
+request written while Waydir is closed is never picked up.
+
+Relevant commit: `0112b69`.
+
 ## Quick Look
 
 - Draggable and resizable — always centered on screen (previously anchored
