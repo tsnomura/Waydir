@@ -110,7 +110,10 @@ class GeneratorRunner {
   /// count for [PagingMode.discrete], or 1 for anything else (including no
   /// matching generator at all).
   static Future<int> resolvePageCount(FileEntry entry) async {
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    final def = GeneratorRegistry.instance.forExtension(
+      entry.extension,
+      GeneratorUse.quickLook,
+    );
     if (def == null) return 1;
     if (def.pagingMode != PagingMode.discrete) return def.pageCount;
     final count = await _probeNumber(entry, def);
@@ -125,7 +128,10 @@ class GeneratorRunner {
   /// matching generator at all. Used by Quick Look's audio playback to turn
   /// a page number into an absolute seek position.
   static Future<double?> probeDurationSeconds(FileEntry entry) {
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    final def = GeneratorRegistry.instance.forExtension(
+      entry.extension,
+      GeneratorUse.quickLook,
+    );
     if (def == null || def.pagingMode != PagingMode.time) {
       return Future.value(null);
     }
@@ -168,8 +174,12 @@ class GeneratorRunner {
   // immediate retry.
   static final _failedKeys = <String>{};
 
-  static Future<String?> preview(FileEntry entry, {int position = 0}) {
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+  static Future<String?> preview(
+    FileEntry entry, {
+    int position = 0,
+    GeneratorUse use = GeneratorUse.quickLook,
+  }) {
+    final def = GeneratorRegistry.instance.forExtension(entry.extension, use);
     if (def == null) return Future.value(null);
 
     return _generate(entry, def, position, def.args, 'preview');
@@ -181,7 +191,10 @@ class GeneratorRunner {
   /// single static image: the grid never pages, regardless of
   /// [GeneratorDef.pagingMode].
   static Future<String?> thumbnail(FileEntry entry) {
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    final def = GeneratorRegistry.instance.forExtension(
+      entry.extension,
+      GeneratorUse.thumbnail,
+    );
     if (def == null || def.textOutput) return Future.value(null);
     final custom = def.thumbnailArgs;
     if (custom == null) return _generate(entry, def, 0, def.args, 'preview');

@@ -15,6 +15,7 @@ import '../../i18n/strings.g.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/widgets/markdown_body_view.dart';
+import '../files/pdf_thumbnail_cache.dart';
 import 'markdown_generated.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
@@ -72,7 +73,7 @@ Set<String> _remoteImageUrls(String md) {
   return urls;
 }
 
-Set<String> _generatedImagePaths(String md, String basePath) {
+Set<String> _localImagePaths(String md, String basePath) {
   if (PlatformPaths.isSftpUri(basePath)) return const {};
   final baseDir = Uri.directory(p.dirname(basePath));
   final paths = <String>{};
@@ -83,12 +84,17 @@ Set<String> _generatedImagePaths(String md, String basePath) {
     if (uri == null) continue;
     final resolved = uri.hasScheme ? uri : baseDir.resolveUri(uri);
     if (resolved.scheme != 'file') continue;
-    final path = File.fromUri(resolved).path;
-    if (wantsGeneratedImage(path)) paths.add(path);
+    paths.add(File.fromUri(resolved).path);
   }
 
   return paths;
 }
+
+const _pdfEmbedWidth = 1600;
+const _pdfEmbedScale = 2.0;
+
+bool _isNativePdf(String path) =>
+    p.extension(path).toLowerCase() == '.pdf' && !wantsGeneratedImage(path);
 
 /// Resolves the markdown text and prefetches any remote images before showing
 /// anything. Building [MarkdownBody] only once every image's bytes are in hand
@@ -114,14 +120,18 @@ class _RenderedMarkdownState extends State<_RenderedMarkdown> {
   late final String _md = sanitizeHtml(widget.text);
   final Map<String, Uint8List> _remote = {};
   Map<String, GeneratedOutput> _generated = const {};
+  Map<String, String> _pdfPages = const {};
   int _generation = 0;
   bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    final generated = _generatedImagePaths(_md, widget.basePath);
+    final local = _localImagePaths(_md, widget.basePath);
+    final generated = local.where(wantsGeneratedImage).toSet();
     if (generated.isNotEmpty) _generate(generated);
+    final pdfs = local.where(_isNativePdf).toSet();
+    if (pdfs.isNotEmpty) _renderPdfs(pdfs);
     final urls = _remoteImageUrls(_md);
     if (urls.isEmpty) {
       _ready = true;
@@ -166,6 +176,26 @@ class _RenderedMarkdownState extends State<_RenderedMarkdown> {
     });
   }
 
+  Future<void> _renderPdfs(Set<String> paths) async {
+    final results = <String, String>{};
+    await Future.wait(
+      paths.map((path) async {
+        final file = File(path);
+        if (!await file.exists()) return;
+        final out = await PdfThumbnailCache.firstPage(
+          FileEntry.fromFileSystemEntity(file),
+          width: _pdfEmbedWidth,
+        );
+        if (out != null) results[path] = out;
+      }),
+    );
+    if (!mounted || results.isEmpty) return;
+    setState(() {
+      _pdfPages = results;
+      _generation++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_ready) return const QlCentered.spinner();
@@ -176,6 +206,7 @@ class _RenderedMarkdownState extends State<_RenderedMarkdown> {
       key: ValueKey(_generation),
       remote: _remote,
       generated: _generated,
+      pdfPages: _pdfPages,
       onOpenLink: widget.onOpenLink,
     );
   }
@@ -188,6 +219,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
   final String basePath;
   final Map<String, Uint8List> remote;
   final Map<String, GeneratedOutput> generated;
+  final Map<String, String> pdfPages;
   final ValueChanged<String>? onOpenLink;
 
   const _MarkdownPreviewBody({
@@ -196,6 +228,7 @@ class _MarkdownPreviewBody extends StatelessWidget {
     required this.basePath,
     required this.remote,
     this.generated = const {},
+    this.pdfPages = const {},
     this.onOpenLink,
   });
 
@@ -247,6 +280,19 @@ class _MarkdownPreviewBody extends StatelessWidget {
       final out = generated[file.path];
 
       return out == null ? _empty : generatedImage(out);
+    }
+    if (ext == 'pdf') {
+      final page = pdfPages[file.path];
+      if (page == null) return _empty;
+
+      return _fit(
+        Image.file(
+          File(page),
+          scale: _pdfEmbedScale,
+          fit: BoxFit.scaleDown,
+          errorBuilder: (_, _, _) => _empty,
+        ),
+      );
     }
     if (ext == 'svg') {
       Uint8List bytes;

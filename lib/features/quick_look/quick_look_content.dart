@@ -12,6 +12,7 @@ import 'diff/diff_preview.dart';
 import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
 import 'generators/generator_preview.dart';
+import 'generators/generator_def.dart';
 import 'generators/generator_registry.dart';
 import 'image_preview.dart';
 import 'info_panel.dart';
@@ -452,7 +453,10 @@ class QuickLookBody extends StatelessWidget {
     // is an explicit, deliberate choice to handle this extension a specific
     // way, so it wins even over a built-in that would otherwise apply (e.g.
     // pdf).
-    final generator = GeneratorRegistry.instance.forExtension(e.extension);
+    final generator = GeneratorRegistry.instance.forExtension(
+      e.extension,
+      GeneratorUse.quickLook,
+    );
     final showSource = !rendered && RenderedSource.available(e);
     if (showSource) return _probeLoader(e);
     if (generator != null) {

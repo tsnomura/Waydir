@@ -13,6 +13,7 @@ import '../../ui/widgets/app_modal.dart';
 import '../../ui/widgets/app_text_field.dart';
 import 'panes/appearance_pane.dart';
 import 'panes/general_pane.dart';
+import 'panes/generators_pane.dart';
 import 'panes/launchers_pane.dart';
 import 'panes/quick_look_pane.dart';
 import 'panes/terminal_pane.dart';
@@ -26,7 +27,14 @@ Future<void> showPreferencesDialog(BuildContext context) {
   );
 }
 
-enum Category { general, appearance, terminal, quickLook, launchers }
+enum Category {
+  general,
+  appearance,
+  terminal,
+  quickLook,
+  generators,
+  launchers,
+}
 
 class CategoryMeta {
   final Category id;
@@ -56,6 +64,11 @@ final categories = <CategoryMeta>[
     Category.quickLook,
     WaydirIconsRegular.eye,
     () => t.preferences.categories.quickLook,
+  ),
+  CategoryMeta(
+    Category.generators,
+    WaydirIconsRegular.fileCode,
+    () => t.preferences.categories.generators,
   ),
   CategoryMeta(
     Category.launchers,
@@ -148,8 +161,8 @@ final preferenceNavSections = <PreferenceNavSection>[
     label: () => t.preferences.quickLook.editorSection,
   ),
   PreferenceNavSection(
-    id: 'quickLook.generators',
-    category: Category.quickLook,
+    id: 'generators.list',
+    category: Category.generators,
     label: () => t.preferences.quickLook.generatorsSection,
   ),
   PreferenceNavSection(
@@ -955,6 +968,7 @@ class _ContentPane extends StatelessWidget {
       Category.appearance => AppearancePane(anchors: anchors),
       Category.terminal => TerminalPane(anchors: anchors),
       Category.quickLook => QuickLookPane(anchors: anchors),
+      Category.generators => GeneratorsPane(anchors: anchors),
       Category.launchers => LaunchersPane(anchors: anchors),
     };
   }

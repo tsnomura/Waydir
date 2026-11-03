@@ -1,6 +1,7 @@
 import 'package:signals/signals.dart';
 
 import '../../core/models/file_entry.dart';
+import 'generators/generator_def.dart';
 import 'generators/generator_registry.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
@@ -17,7 +18,8 @@ class RenderedSource {
   static bool available(FileEntry entry) {
     if (entry.type == FileItemType.folder) return false;
     final ext = entry.extension;
-    if (GeneratorRegistry.instance.forExtension(ext) == null) {
+    if (GeneratorRegistry.instance.forExtension(ext, GeneratorUse.quickLook) ==
+        null) {
       return markdownExts.contains(ext);
     }
     final key = '${entry.realPath}|${entry.modifiedMs}|${entry.size}';

@@ -236,7 +236,10 @@ class _GeneratedFenceState extends State<GeneratedFence> {
 bool wantsGeneratedImage(String path) {
   final ext = p.extension(path).toLowerCase().replaceFirst('.', '');
   if (nativeMarkdownImageExtensions.contains(ext)) return false;
-  final def = GeneratorRegistry.instance.forExtension(ext);
+  final def = GeneratorRegistry.instance.forExtension(
+    ext,
+    GeneratorUse.markdown,
+  );
 
   return def != null && !def.textOutput;
 }
@@ -244,9 +247,12 @@ bool wantsGeneratedImage(String path) {
 Future<GeneratedOutput?> generateImageFor(File file) async {
   if (!await file.exists()) return null;
   final entry = FileEntry.fromFileSystemEntity(file);
-  final def = GeneratorRegistry.instance.forExtension(entry.extension);
+  final def = GeneratorRegistry.instance.forExtension(
+    entry.extension,
+    GeneratorUse.markdown,
+  );
   if (def == null || def.textOutput) return null;
-  final path = await GeneratorRunner.preview(entry);
+  final path = await GeneratorRunner.preview(entry, use: GeneratorUse.markdown);
 
   return path == null ? null : (def: def, path: path);
 }

@@ -126,7 +126,10 @@ class QuickLookPlaybackController {
 
   Future<void> _evaluateAndPlay(FileEntry entry) async {
     if (PlayerRegistry.instance.config == null) return;
-    final def = GeneratorRegistry.instance.forExtension(entry.extension);
+    final def = GeneratorRegistry.instance.forExtension(
+      entry.extension,
+      GeneratorUse.quickLook,
+    );
     if (def == null || def.pagingMode != PagingMode.time) return;
     final generation = _generation;
     final hasAudio = await AudioStreamProbe.hasAudio(entry);
