@@ -487,6 +487,8 @@ Button behavior:
 | `waydir.dialog({ title, fields })` | Opens a form and re-runs the same action with `ctx.form`. |
 | `waydir.set_setting(key, value)` | Persists one setting for this plugin. |
 | `waydir.refresh()` | Refreshes the active file list. |
+| `waydir.focus(path)` | Refreshes the active file list and puts the cursor on `path` (marks are left alone). Ignored when `path` is not in the current folder. |
+| `waydir.navigate(dir)` | Opens `dir` in the active pane. |
 | `waydir.log(message)` | Writes to Waydir's plugin log channel. |
 
 ### External Commands
@@ -556,7 +558,7 @@ waydir.run_task({
 |----------|--------|
 | `waydir.read_text(path)` | Reads UTF-8 text. Capped at 4 MiB. |
 | `waydir.write_text(path, text)` | Writes UTF-8 text. |
-| `waydir.mkdir(path)` | Creates a directory and parents. |
+| `waydir.mkdir(path)` | Creates a directory and parents. Local paths are created immediately. `sftp://` and `smb://` paths are created by Waydir after the action returns, before any later `copy` or `move` runs; if that fails the remaining effects are skipped. |
 | `waydir.exists(path)` | Returns `true` if the path exists. |
 | `waydir.list(path)` | Returns `{ { name, path, is_dir }, ... }`. |
 | `waydir.file_size(path)` | Returns file size in bytes. |
@@ -565,7 +567,7 @@ waydir.run_task({
 | `waydir.delete(path)` | Queues a permanent delete after confirmation. |
 | `waydir.trash(path)` | Queues move to trash, respecting delete confirmation settings. |
 
-Queued file operations appear in Waydir's Operations panel and use the same copy, move, delete and trash machinery as the UI. Consecutive `copy` or `move` calls with the same destination in one action run become a single operation, so the user sees one confirmation (when enabled) and one notification, as with a multi-item drag and drop.
+Queued file operations appear in Waydir's Operations panel and use the same copy, move, delete and trash machinery as the UI. Consecutive `copy` or `move` calls with the same destination in one action run become a single operation, so the user sees one confirmation (when enabled) and one notification, as with a multi-item drag and drop. Destinations may be `sftp://` or `smb://` URIs. `exists`, `list`, `read_text` and `write_text` stay local-only; check `ctx.location.is_local` before using them.
 
 ### Custom Operations
 

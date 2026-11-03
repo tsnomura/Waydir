@@ -83,6 +83,10 @@ fn table_to_json(lua: &Lua, t: Table) -> mlua::Result<Json> {
     lua.from_value(Value::Table(t))
 }
 
+fn is_remote_uri(path: &str) -> bool {
+    path.starts_with("sftp://") || path.starts_with("smb://")
+}
+
 fn err(msg: impl Into<String>) -> mlua::Error {
     mlua::Error::RuntimeError(msg.into())
 }
@@ -334,12 +338,29 @@ fn install_api(lua: &Lua, effects: &Effects) -> mlua::Result<Table> {
         })?,
     )?;
 
+    let e = effects.clone();
     waydir.set(
         "mkdir",
         lua.create_function(move |_, path: String| {
+            if is_remote_uri(&path) {
+                e.borrow_mut()
+                    .push(json!({ "type": "mkdir", "path": path }));
+                return Ok(());
+            }
             std::fs::create_dir_all(&path).map_err(|er| err(format!("mkdir {path}: {er}")))
         })?,
     )?;
+
+    for name in ["focus", "navigate"] {
+        let e = effects.clone();
+        waydir.set(
+            name,
+            lua.create_function(move |_, path: String| {
+                e.borrow_mut().push(json!({ "type": name, "path": path }));
+                Ok(())
+            })?,
+        )?;
+    }
 
     waydir.set(
         "exists",

@@ -724,6 +724,14 @@ mixin _WaydirMenuMixin
           }
         case 'operation':
           await _runPluginOperation(effect);
+        case 'mkdir':
+          if (!await _runPluginMkdir(contribution, effect)) return;
+        case 'focus':
+          final path = effect.data['path'] as String?;
+          if (path != null) await _active.focusPath(path);
+        case 'navigate':
+          final path = effect.data['path'] as String?;
+          if (path != null) _active.navigateTo(path);
         case 'custom_operation_start':
           _startPluginCustomOperation(contribution, effect);
         case 'custom_operation_update':
@@ -772,9 +780,34 @@ mixin _WaydirMenuMixin
     );
   }
 
+  Future<String?> _pluginPhysicalPath(String path) async =>
+      PlatformPaths.isSmbUri(path)
+      ? await _active.resolveForOperation(path)
+      : path;
+
+  Future<bool> _runPluginMkdir(
+    PluginRuntimeTarget contribution,
+    PluginEffect effect,
+  ) async {
+    final path = effect.data['path'] as String?;
+    if (path == null) return true;
+    try {
+      final physical = await _pluginPhysicalPath(path);
+      if (physical == null) throw StateError('cannot resolve $path');
+      await FileSystemService.createDirectory(physical);
+
+      return true;
+    } catch (e) {
+      if (mounted) _notifyPluginError(contribution, 'mkdir $path: $e');
+
+      return false;
+    }
+  }
+
   Future<void> _runPluginOperation(PluginEffect effect) async {
     final op = effect.data['op'] as String?;
-    final dst = effect.data['dst'] as String?;
+    final rawDst = effect.data['dst'] as String?;
+    final dst = rawDst == null ? null : await _pluginPhysicalPath(rawDst);
     final srcs = effect.data['srcs'];
     if ((op == 'copy' || op == 'move') && srcs is List<String>) {
       if (dst == null || srcs.isEmpty) return;

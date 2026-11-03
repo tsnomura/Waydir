@@ -167,7 +167,7 @@ void main() {
     expect(ops.map((e) => e['op']), ['move', 'move']);
     expect(ops.map((e) => e['src']), paths);
     expect(ops.map((e) => e['dst']).toSet(), {folder});
-    expect(fx.last, {'type': 'refresh'});
+    expect(fx.last, {'type': 'focus', 'path': folder});
   });
 
   test('refuses a non-local location reported by the host', () async {
