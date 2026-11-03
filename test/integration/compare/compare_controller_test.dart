@@ -269,6 +269,33 @@ void main() {
       expect(rightStore.sortLeader.value, isNull);
     });
 
+    test('panes follow each other before the first result arrives', () async {
+      final leftStore = paneLeft.tabs.activeTab.value.store;
+      final rightStore = paneRight.tabs.activeTab.value.store;
+      final leftRoot = leftStore.currentPath.value;
+      final rightRoot = rightStore.currentPath.value;
+      leftStore.files.value = await FileSystemService.listDirectory(leftRoot);
+      rightStore.files.value = await FileSystemService.listDirectory(rightRoot);
+
+      final run = controller.start();
+      expect(controller.leftResults.value, isEmpty);
+      expect(controller.running.value, isTrue);
+
+      leftStore.cursorIndex.value = leftStore.visibleFiles.value.indexWhere(
+        (f) => f.name == 'copy.txt',
+      );
+      expect(rightStore.cursorEntry.value?.name, 'copy.txt');
+
+      leftStore.updateTreeExpansion(expand: [p.join(leftRoot, 'nested')]);
+      expect(
+        rightStore.treeExpandedPaths.value,
+        contains(p.join(rightRoot, 'nested')),
+      );
+      expect(rightStore.sortLeader.value, same(leftStore));
+
+      await run;
+    });
+
     test('tree expansion follows to the other pane', () async {
       Directory(p.join(tmpDir.path, 'left', 'left_only_dir')).createSync();
       await controller.start();
