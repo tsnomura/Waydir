@@ -730,6 +730,7 @@ Ready-to-copy examples live in [examples/plugins/](examples/plugins/):
 | `open-vscode` | Toolbar and folder action with a configurable command. |
 | `templates` | Toolbar, background menu, top menu, shortcut, settings, dialog and `fs`. |
 | `sevenzip` | Context submenu, filters, dialogs, `run_task`, compression and extraction. |
+| `new-folder-from-marks` | Menubar and selection context action, dialog re-asking with validation errors, `list`, `mkdir` and `move`. |
 
 ## Troubleshooting
 
