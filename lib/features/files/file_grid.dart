@@ -22,6 +22,7 @@ import '../quick_look/generators/generator_runner.dart';
 import 'cursor_tooltip.dart';
 import 'file_icons.dart';
 import 'path_ellipsis.dart';
+import 'pdf_thumbnail_cache.dart';
 import 'pointer_hover_store.dart';
 import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
@@ -1056,6 +1057,14 @@ class _GridPreview extends StatelessWidget {
         thumbSize: thumbSize,
         fallback: fallbackIcon,
         resolve: _generatorThumbnail,
+      );
+    }
+    if (entry.extension == 'pdf') {
+      return _ResolvedThumbnail(
+        entry: entry,
+        thumbSize: thumbSize,
+        fallback: fallbackIcon,
+        resolve: PdfThumbnailCache.thumbnail,
       );
     }
 
