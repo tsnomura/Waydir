@@ -640,6 +640,45 @@ void main() {
     expect(menus, containsAll(<String>['toolbar', 'menubar']));
   });
 
+  test('pcall catches errors raised by native api calls', () async {
+    final blocker = File(p.join(tmp.path, 'blocker'))..writeAsStringSync('x');
+    final missing = p.join(tmp.path, 'missing');
+    final path = writePlugin('''
+      waydir.register({
+        id = "safe",
+        title = "Safe",
+        run = function(ctx)
+          local ok1, e1 = pcall(waydir.list, [[$missing]])
+          local ok2, e2 = pcall(function()
+            waydir.mkdir([[${blocker.path}]] .. "/sub")
+          end)
+          local ok3, e3 = pcall(waydir.read_text, [[$missing]])
+          waydir.toast(tostring(ok1) .. tostring(ok2) .. tostring(ok3))
+          waydir.log(tostring(e1))
+          waydir.log(tostring(e2))
+          waydir.log(tostring(e3))
+        end,
+      })
+    ''');
+    final raw = await PluginFfi.invoke(
+      initLuaPath: path,
+      actionId: 'safe',
+      ctxJson: jsonEncode({
+        'paths': <String>[],
+        'dir': tmp.path,
+        'plugin_dir': tmp.path,
+      }),
+    );
+    final json = jsonDecode(raw!) as Map<String, dynamic>;
+    expect(json['ok'], isTrue, reason: '${json['error']}');
+    final effects = (json['effects'] as List).cast<Map<String, dynamic>>();
+    expect(effects.first, {'type': 'toast', 'message': 'falsefalsefalse'});
+    final logs = effects.where((e) => e['type'] == 'log').toList();
+    expect(logs[0]['message'], contains('list'));
+    expect(logs[1]['message'], contains('mkdir'));
+    expect(logs[2]['message'], isNot('nil'));
+  });
+
   test('sandbox blocks os and io access', () async {
     final path = writePlugin('''
       waydir.register({
