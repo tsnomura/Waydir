@@ -126,14 +126,14 @@ class ShellStore {
   /// Opens [path] as a new tab in whichever pane owns terminal [terminalId],
   /// per a `TerminalCwdSignal` write. Falls back to the active pane if the
   /// terminal is no longer around (e.g. its tab was already closed).
-  void _openFromTerminalSignal(int terminalId, String path) {
+  void _openFromTerminalSignal(int terminalId, String path, String? cursor) {
     final terminal = terminals.value.where((t) => t.id == terminalId);
     final slot = terminal.isEmpty
         ? activePaneIndex.value
         : (isDual.value ? terminal.first.originPane : 0);
     final list = panes.value;
     if (slot < 0 || slot >= list.length) return;
-    list[slot].tabs.addTab(path);
+    list[slot].tabs.addTab(path, cursor: cursor);
   }
 
   void openInNewTab(String path) => activePane.value?.tabs.addTab(path);

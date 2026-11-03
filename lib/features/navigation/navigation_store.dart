@@ -82,6 +82,7 @@ class NavigationStore {
   final _trashEntries = <String, TrashEntry>{};
   int _loadToken = 0;
   String? _pendingInitialSelect;
+  bool _pendingSelectMarks = true;
 
   /// Effective sort for the current folder (per-folder, falls back to the
   /// global defaults in [SettingsStore]).
@@ -378,6 +379,7 @@ class NavigationStore {
     required this.operationStore,
     String? initialPath,
     String? initialSelect,
+    String? initialCursor,
     String? tagOrigin,
   }) {
     final startPath = initialPath ?? PlatformPaths.homePath;
@@ -389,7 +391,8 @@ class NavigationStore {
       history.value = [startPath];
     }
     showHidden.value = SettingsStore.instance.showHiddenDefault.value;
-    _pendingInitialSelect = initialSelect;
+    _pendingInitialSelect = initialSelect ?? initialCursor;
+    _pendingSelectMarks = initialSelect != null;
     _prepareSortFor(startPath);
     loadDirectory(startPath);
     _setupShowHiddenEffect();
@@ -880,10 +883,12 @@ class NavigationStore {
     final target = _pendingInitialSelect;
     if (target == null) return;
     _pendingInitialSelect = null;
+    final marks = _pendingSelectMarks;
+    _pendingSelectMarks = true;
     final list = _vf;
     final idx = list.indexWhere((f) => f.path == target);
     batch(() {
-      selectedPaths.value = {target};
+      if (marks) selectedPaths.value = {target};
       if (idx >= 0) {
         cursorIndex.value = idx;
         anchorIndex.value = idx;
