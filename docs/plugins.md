@@ -561,7 +561,7 @@ waydir.run_task({
 | `waydir.delete(path)` | Queues a permanent delete after confirmation. |
 | `waydir.trash(path)` | Queues move to trash, respecting delete confirmation settings. |
 
-Queued file operations appear in Waydir's Operations panel and use the same copy, move, delete and trash machinery as the UI.
+Queued file operations appear in Waydir's Operations panel and use the same copy, move, delete and trash machinery as the UI. Consecutive `copy` or `move` calls with the same destination in one action run become a single operation, so the user sees one confirmation (when enabled) and one notification, as with a multi-item drag and drop.
 
 ### Custom Operations
 

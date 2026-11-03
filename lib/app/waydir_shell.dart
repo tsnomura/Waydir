@@ -66,6 +66,7 @@ import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_models.dart';
 import '../features/plugins/plugin_settings_store.dart';
 import '../features/plugins/plugin_store.dart';
+import '../features/plugins/plugin_transfer_batch.dart';
 import '../features/settings/keybinding_labels.dart';
 import '../features/settings/preferences_view.dart';
 import '../features/tags/tag_edit_dialog.dart';
