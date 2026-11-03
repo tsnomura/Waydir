@@ -32,12 +32,12 @@ class FileChangeWatcher {
 
   String? get path => _path;
 
-  void start(String path) {
+  void start(String path, {int? modifiedMs, int? size}) {
     if (_path == path) return;
     _timer?.cancel();
     _path = path;
-    _modifiedMs = null;
-    _size = null;
+    _modifiedMs = modifiedMs;
+    _size = modifiedMs == null ? null : size;
     _ticking = false;
     _epoch++;
     _timer = Timer.periodic(interval, (_) => _tick());
@@ -138,7 +138,11 @@ class QuickLookReloadController {
     }
     if (_entry?.realPath != entry.realPath) _stats = null;
     _entry = entry;
-    _watcher.start(entry.realPath);
+    _watcher.start(
+      entry.realPath,
+      modifiedMs: entry.modifiedMs > 0 ? entry.modifiedMs : null,
+      size: entry.size,
+    );
   }
 
   FileEntry? shown(FileEntry? entry) {
