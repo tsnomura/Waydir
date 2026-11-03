@@ -256,12 +256,22 @@ class CompareController {
     if (to.currentPath.value == target) return;
     if (rel.isNotEmpty) {
       final results = leftLeads ? rightResults.value : leftResults.value;
-      final exists = results.values.any(
-        (r) => r.relativePath == rel && r.type == FileItemType.folder,
-      );
+      final exists = results.isEmpty
+          ? _listsFolder(to, target)
+          : results.values.any(
+              (r) => r.relativePath == rel && r.type == FileItemType.folder,
+            );
       if (!exists) return;
     }
     to.navigateTo(target);
+  }
+
+  bool _listsFolder(NavigationStore store, String path) {
+    bool match(FileEntry e) =>
+        e.type == FileItemType.folder && !e.isGhost && e.path == path;
+
+    return store.files.value.any(match) ||
+        store.treeChildren.value.values.any((c) => c.any(match));
   }
 
   List<FileEntry> _ghostsFor(
@@ -336,6 +346,7 @@ class CompareController {
         !identical(_rightDecorated, rightStore)) {
       _showPending(leftStore, rightStore);
     }
+    batch(() => _link(leftStore, rightStore));
     final recursive = this.recursive.value;
     try {
       final marker =
@@ -448,16 +459,20 @@ class CompareController {
       leftResults.value = diff.left;
       rightResults.value = diff.right;
       counts.value = diff.counts;
-      rightStore.sortLeader.value = leftStore;
-      final linked = _linked.value;
-      if (linked == null ||
-          !identical(linked.$1, leftStore) ||
-          !identical(linked.$2, rightStore)) {
-        _linked.value = (leftStore, rightStore);
-      }
+      _link(leftStore, rightStore);
       leftStore.decorations.setLayer('compare', _decorationsFor(diff.left));
       rightStore.decorations.setLayer('compare', _decorationsFor(diff.right));
     });
+  }
+
+  void _link(NavigationStore leftStore, NavigationStore rightStore) {
+    rightStore.sortLeader.value = leftStore;
+    final linked = _linked.value;
+    if (linked == null ||
+        !identical(linked.$1, leftStore) ||
+        !identical(linked.$2, rightStore)) {
+      _linked.value = (leftStore, rightStore);
+    }
   }
 
   (FileEntry, FileEntry)? diffPairFor(String path) {
