@@ -685,7 +685,7 @@ mixin _WaydirMenuMixin
     required bool background,
     int depth = 0,
   }) async {
-    for (final effect in effects) {
+    for (final effect in batchPluginTransfers(effects)) {
       switch (effect.type) {
         case 'toast':
           if (effect.message != null) {
@@ -760,14 +760,21 @@ mixin _WaydirMenuMixin
 
   Future<void> _runPluginOperation(PluginEffect effect) async {
     final op = effect.data['op'] as String?;
-    final src = effect.data['src'] as String?;
     final dst = effect.data['dst'] as String?;
+    final srcs = effect.data['srcs'];
+    if ((op == 'copy' || op == 'move') && srcs is List<String>) {
+      if (dst == null || srcs.isEmpty) return;
+      if (op == 'copy') {
+        _operationStore.enqueueCopy(srcs, dst);
+      } else {
+        _operationStore.enqueueMove(srcs, dst);
+      }
+
+      return;
+    }
+    final src = effect.data['src'] as String?;
     if (src == null) return;
     switch (op) {
-      case 'copy':
-        if (dst != null) _operationStore.enqueueCopy([src], dst);
-      case 'move':
-        if (dst != null) _operationStore.enqueueMove([src], dst);
       case 'delete':
         if (await _confirmPluginDelete(src, permanent: true)) {
           _operationStore.enqueueDelete([src]);
