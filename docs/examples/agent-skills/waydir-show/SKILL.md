@@ -1,0 +1,74 @@
+---
+name: waydir-show
+description: Show a file or folder to the user in their running Waydir file manager — opens the file's folder in a new tab of the active pane with the cursor on the file (a folder path just opens that folder). Use whenever the user asks to show, reveal, open or locate a file/folder "in Waydir" (Waydirで表示/開いて/見せて、ファイルの場所を開いて), or when pointing them at an output file you just produced would help and they use Waydir. Not for opening a file in its application.
+---
+
+# waydir-show
+
+Waydir watches a signal directory; writing an absolute path into
+`$WAYDIR_CWD_DIR/0.txt` makes the active pane open a new tab on it. For a
+file, the tab opens the parent folder with the cursor on that file (no mark
+is added).
+
+## Where the signal directory is
+
+`WAYDIR_CWD_DIR` is persisted by Waydir after its first run, but an agent's
+non-interactive shell may not have it:
+
+- Windows: a user environment variable, always readable from PowerShell
+  with `[Environment]::GetEnvironmentVariable('WAYDIR_CWD_DIR', 'User')`.
+  Default `%APPDATA%\dev.waydir\Waydir\cwd_signals`.
+- Linux: exported by `<support dir>/env.sh`, which Waydir sources from
+  `~/.bashrc`, `~/.profile` and similar. A non-interactive shell may not read
+  those files. Fall back to the default
+  `${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals`.
+- macOS: also exported by `env.sh` in the app's support directory under
+  `~/Library/Application Support/`. If the variable is unset, ask the user.
+
+If the directory doesn't exist, Waydir has never run for this user. Say so
+rather than creating it.
+
+## How
+
+PowerShell (Windows):
+
+```powershell
+if (-not (Get-Process waydir -ErrorAction SilentlyContinue)) { 'Waydir is not running'; return }
+$dir = [Environment]::GetEnvironmentVariable('WAYDIR_CWD_DIR', 'User')
+$path = (Resolve-Path -LiteralPath '<path>').ProviderPath
+[IO.File]::WriteAllText("$dir\0.txt", $path)
+```
+
+Bash (Linux / macOS):
+
+```bash
+if pgrep -x waydir >/dev/null; then
+  dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
+  realpath -- '<path>' > "$dir/0.txt"
+else
+  echo 'Waydir is not running'
+fi
+```
+
+Git Bash on Windows uses the Windows path form: `cygpath -wa '<path>'`
+instead of `realpath`, and the directory from the PowerShell line above.
+
+## Rules
+
+- The path must exist and be absolute in native form (`C:\...` on Windows,
+  `/...` on Linux/macOS; never `/c/...` MSYS form).
+  Anything else is silently dropped — resolve relative paths first, as above.
+- Id `0` targets the active pane. Showing several files means several tabs;
+  prefer one call for the most relevant file, or the common folder.
+- Nothing is reported back. Tell the user what you opened (full path), and
+  mention that a hidden file only gets the cursor if hidden files are shown.
+- A file argument needs a Waydir build with the `wd` path-argument feature
+  (tsnomura/Waydir personal, PR #119, 2026-11). An older build ignores file
+  paths; pass the parent folder instead if the user reports nothing happened.
+- Waydir must be running. It reacts to file create/modify events only, so a
+  request written while it is closed is not picked up at startup (the file
+  just sits there until the next write overwrites it). The snippets above
+  check first.
+- If Waydir isn't running, never launch it yourself and don't write the
+  signal file. Ask the user to start Waydir, and once they confirm, run the
+  snippet again.
