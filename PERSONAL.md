@@ -128,9 +128,10 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   a set of extensions to a command template (`%INPUT%`/`%OUTPUT%`/`%CACHE%`
   placeholders), e.g. extracting a video thumbnail via `ffmpeg`.
 - A configured generator always takes priority over Waydir's built-in image/
-  PDF/Markdown previews for the extensions it claims — this is what lets a
-  `pdf` generator replace the native pdfium-backed preview, which doesn't
-  actually work in this build.
+  PDF/Markdown previews for the extensions it claims, so a `pdf` generator
+  replaces the native pdfium-backed preview and thumbnail. (The native one
+  used to show nothing on Windows; see "PDF preview and thumbnails through
+  pdfium" below.)
 - Results are cached by a hash of the file's path/size/mtime plus the
   generator's own command, so edits and command changes both invalidate the
   cache automatically. Failures (bad exit code, timeout, missing binary)
@@ -298,9 +299,13 @@ Windows), in the same spirit as preview generators:
   `"args": ["%LEFT%", "%RIGHT%"]`. With no compare launcher, Enter opens
   normally.
 - Matching launchers are listed at the top of the file context menu (compare
-  launchers only when the file has a pair). Files inside archives, on
-  sftp, and ghost rows are never handed to a launcher. A command that
-  can't start shows a toast.
+  launchers only when the file has a pair). Files inside archives and
+  ghost rows are never handed to a launcher. `sftp://`/`smb://` files are:
+  the launcher gets the URI as-is and decides whether it can take it
+  (`3aad745`). With no launcher the URI goes to the OS opener as before,
+  so on Windows an unregistered `sftp:` protocol still ends in the Store
+  prompt — the shell picks the handler by scheme, never by extension. A
+  command that can't start shows a toast.
 - Preferences → **Launchers** lists them (invalid files with the parse
   error), with add/edit (a form for id, menu name, open/compare, extensions,
   command, one argument per line, default), edit JSON, delete, open the
@@ -435,9 +440,59 @@ so they queue in Operations, and **Extract here with 7-Zip** for a
 selected archive; `templates` — the v2 API tour, one "new file from
 boilerplate" action surfaced four ways (toolbar button, background
 right-click, Plugins menubar, `Ctrl+Alt+N`) with a template-choice dialog
-and an author setting; and `open-vscode` — a toolbar **Open in VS Code**
+and an author setting; `open-vscode` — a toolbar **Open in VS Code**
 button plus a right-click twin for a folder, whose editor command
-(default `code`) is an ordinary plugin setting under Configure.
+(default `code`) is an ordinary plugin setting under Configure; and
+`new-folder-from-marks` (below).
+
+### New folder from marks, and the plugin API gaps it exposed
+
+`new-folder-from-marks` creates a folder in the active pane and moves the
+targets (marks, else the cursor item) into it in one step: Plugins
+menubar (so Ctrl+P) and the selection context menu, hidden inside
+archives. The dialog's default is the first target's name without its
+extension, pre-selected. Bad names (empty, separators, `.`/`..`,
+Windows-invalid characters, trailing space or dot, reserved names, a
+name equal to a moved item, an existing file) re-open the dialog with an
+error line. An existing folder of that name asks whether to add the
+items to it (checkbox, on by default; case-insensitive on Windows).
+Afterwards the cursor lands on the folder. Local folders only.
+
+Writing it showed what the API was missing; these are now in the host:
+
+- One operation per destination: consecutive `waydir.copy`/`move` calls
+  with the same destination in one run are merged into one task, like a
+  multi-item drag and drop, so the global move/copy confirmation appears
+  once (with Always) and one notification follows. Order is kept;
+  delete and trash stay per path. Plugins cannot bypass the confirmation.
+  The plugin's later effects wait for that confirmation to close, so a
+  following `focus` no longer steals keyboard focus from it.
+- `ctx.marked` (marks only), `ctx.cursor` (the cursor item) and
+  `ctx.location` (`{ scheme, is_local, archive, inner }`, `scheme` one of
+  `file`/`archive`/`sftp`/`smb`/`trash`/`tag`; `is_local` because `local`
+  is a Lua keyword), also on `ctx.other_pane`/`ctx.panes`. `ctx.paths`
+  keeps the one target rule.
+- Dialog text fields take `select = "all" | "stem" | "start"`; the first
+  such field gets the focus.
+- `waydir.focus(path)` (refresh, cursor on `path`, marks untouched) and
+  `waydir.navigate(dir)`.
+- `waydir.mkdir` on `sftp://`/`smb://` paths is run by the host after the
+  action returns and before later copies/moves (local paths are still
+  created on the spot); `smb://` copy/move destinations are resolved to
+  the physical path. `exists`/`list`/`read_text`/`write_text` stay local.
+- `pcall` around a failing native call (`waydir.list`, `mkdir`, ...)
+  aborted the whole process on Windows: the release profile used
+  `panic = "abort"`, and MSVC's `longjmp`, which Lua's error raise uses,
+  unwinds through the Rust callback frames, which that setting forbids. It
+  is now `panic = "unwind"` (the DLL grows from 5.2 to 6.8 MB). A Rust
+  panic crossing `extern "C"` still aborts, so FFI safety is unchanged.
+  Rebuild the native core to pick this up; the DLL is not vendored.
+- Not added: reporting move/copy results back to the plugin (each run is
+  a fresh VM, so it would need a callback mechanism). Failures show in
+  Operations.
+
+Relevant commits: `d507f9f`, `d198d47`, `c87e7e2`, `47e6aa1`, `c066d23`,
+`5e61596`.
 
 ## Personal build version in About
 
@@ -1847,7 +1902,7 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   since GNU tar escapes non-ASCII names as octal under a C locale. Pair it
   with a 7z-based `archive-list` that leaves the tar extensions out.
 
-Relevant commits: `0ed8283`, `63cbc1b`.
+Relevant commits: `0ed8283`, `63cbc1b`, `a201f4f`.
 
 ## Path insert speaks the terminal shell's path dialect
 
@@ -2028,10 +2083,20 @@ manual reload as a fallback.
   auto-reload and the button but no F5). The Cancel / Discard / Save
   prompt is the shared `confirmUnsavedChanges`, also used by the close
   guards.
+- The watcher's baseline is the (modified time, size) of the listed entry
+  the preview was built from, not its own first stat. A file opened while
+  another program was still writing it (a GIF being rendered, say) failed
+  to decode, and if the writer finished before the first poll that poll
+  became the baseline, so no change was ever seen and the panel stayed on
+  "No preview available" until a manual reload. Now the first poll
+  compares against the listed stats and reloads. Entries without a known
+  mtime keep the old first-poll baseline. A listing that already shows the
+  finished stats while the decode read a partial file still needs the
+  reload button.
 - Not covered: SMB/SFTP files (no stat polling over the network), diff
   previews, multi-selection and `explicitEntry` lookups.
 
-Relevant commits: `d99771c`, `6af1ebd`, `0cb8717`.
+Relevant commits: `d99771c`, `6af1ebd`, `0cb8717`, `9a6d1f8`.
 
 ## Compare & sync exclude patterns
 
@@ -2475,3 +2540,23 @@ a table that already had the column. The "add only if missing" helper for
 v47 step uses it.
 
 Relevant commits: `228d0a1`.
+
+## PDF preview and thumbnails through pdfium
+
+The built-in PDF Quick Look preview (pdfium-render) showed nothing on
+Windows: `build_waydir_core_windows.ps1` never fetched `pdfium.dll`, which
+pdfium-render binds to at runtime from next to `waydir_core.dll`. Only the
+bash script (Linux/macOS) vendored it. The PowerShell script now downloads
+`pdfium-win-x64.tgz` from bblanchon/pdfium-binaries and puts `pdfium.dll`
+in `third_party/waydir_core/windows/` (CMake's `*.dll` glob bundles it) and
+in `target/release/` for dev runs.
+
+With pdfium working, PDFs also get grid thumbnails without a generator:
+`PdfThumbnailCache` renders page 1 at 360 px in a background isolate,
+encodes it to PNG, and caches it in the generator cache, keyed by path,
+mtime and size; at most 2 at a time. SFTP PDFs (with remote thumbnails on)
+are downloaded through `RemoteThumbnailCache` first. A configured `pdf`
+generator still wins, so drop it to use pdfium; it is noticeably quicker
+than spawning `mutool` per file.
+
+Relevant commits: `ab09595`, `de8443b`.
