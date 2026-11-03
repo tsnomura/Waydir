@@ -363,14 +363,21 @@ class _StatusVersionState extends State<_StatusVersion> {
     return SignalBuilder(
       builder: (context) {
         final available = UpdateStore.instance.updateAvailable.value;
-        final label = '${t.app.title} ${AppInfo.versionLabel.value}';
+        final personal = AppInfo.personalShortLabel;
+        final label = personal.isEmpty
+            ? '${t.app.title} ${AppInfo.versionLabel.value}'
+            : '${t.app.title} ${AppInfo.versionLabel.value} · $personal';
         final latest = UpdateStore.instance.latestRelease.value?.version;
         final color = available
             ? AppColors.warning
             : (_hover ? AppColors.fg : AppColors.fgMuted);
-        final tooltip = available && latest != null
+        final status = available && latest != null
             ? t.update.tooltipAvailable(version: latest)
             : t.update.tooltipUpToDate;
+        final details = AppInfo.personalDetails;
+        final tooltip = details.isEmpty
+            ? status
+            : '${t.preferences.about.personalBuild}: $details\n$status';
 
         final inner = Row(
           mainAxisSize: MainAxisSize.min,

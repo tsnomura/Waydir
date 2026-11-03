@@ -26,6 +26,21 @@ class AppInfo {
       ? null
       : '$personalHomepage/commit/$personalCommit';
 
+  static String get personalShortLabel {
+    if (personalCommit.isEmpty) return '';
+    final short = personalCommit.length > 7
+        ? personalCommit.substring(0, 7)
+        : personalCommit;
+
+    return personalVersion.endsWith('-dirty') ? '$short+' : short;
+  }
+
+  static String get personalDetails => [
+    personalVersion,
+    if (personalBranch.isNotEmpty) personalBranch,
+    if (personalBuildDate.isNotEmpty) personalBuildDate,
+  ].where((s) => s.isNotEmpty).join(' · ');
+
   static final version = signal<String>('…');
   static final Computed<String> versionLabel = computed(
     () => 'v${version.value}',
