@@ -80,6 +80,7 @@ class TabsStore {
     String path, {
     bool activate = true,
     String? select,
+    String? cursor,
     String? tagOrigin,
   }) {
     final tab = TabState(
@@ -88,6 +89,7 @@ class TabsStore {
         operationStore: operationStore,
         initialPath: path,
         initialSelect: select,
+        initialCursor: cursor,
         tagOrigin: tagOrigin,
       ),
     );

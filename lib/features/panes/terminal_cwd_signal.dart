@@ -28,11 +28,15 @@ import '../../core/platform/app_dirs.dart';
 /// path (e.g. `/c/Users/...`) that doesn't resolve; use `pwd -W` there
 /// instead, which prints the Windows form.
 ///
+/// A file path opens its folder with the cursor on the file. `wd` takes an
+/// optional path argument (default: the current directory) and writes it in
+/// absolute, native form.
+///
 /// One-time shell setup — `${WAYDIR_TERMINAL_ID:-0}` (bash) / the PowerShell
 /// equivalent falls back to the reserved id `0` when run outside Waydir:
-///   PowerShell:      `function wd { $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Get-Location).Path | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }`
-///   Git Bash (MSYS): `wd() { pwd -W > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
-///   bash/zsh (Unix): `wd() { printf '%s' "$PWD" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
+///   PowerShell:      `function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }`
+///   Git Bash (MSYS): `wd() { cygpath -wa "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
+///   bash/zsh (Unix): `wd() { realpath -- "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
 class TerminalCwdSignal {
   TerminalCwdSignal._();
 
@@ -48,9 +52,10 @@ class TerminalCwdSignal {
   }
 
   /// Starts watching [directory]'s signal directory. `onSignal` is called
-  /// with the terminal id and the directory path it reported.
+  /// with the terminal id and the directory to open; when the reported path
+  /// is a file, the directory is its parent and `cursor` is the file.
   static Future<void> start(
-    void Function(int terminalId, String path) onSignal,
+    void Function(int terminalId, String dir, String? cursor) onSignal,
   ) async {
     await stop();
     final dirPath = await directory();
@@ -83,7 +88,7 @@ class TerminalCwdSignal {
   static void _handleFile(
     File file,
     String name,
-    void Function(int terminalId, String path) onSignal,
+    void Function(int terminalId, String dir, String? cursor) onSignal,
   ) {
     final id = int.tryParse(_fileNamePattern.firstMatch(name)!.group(1)!);
     if (id == null) return;
@@ -105,8 +110,12 @@ class TerminalCwdSignal {
     } catch (_) {
       // Best-effort cleanup; a leftover file just gets overwritten next time.
     }
-    if (content.isEmpty || !Directory(content).existsSync()) return;
-    onSignal(id, content);
+    if (content.isEmpty) return;
+    if (Directory(content).existsSync()) {
+      onSignal(id, content, null);
+    } else if (File(content).existsSync()) {
+      onSignal(id, p.dirname(content), content);
+    }
   }
 
   static Future<void> stop() async {
