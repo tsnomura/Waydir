@@ -1842,6 +1842,10 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   Windows' own `System32\tar.exe` (bsdtar) was ruled out: it prints names
   in the console code page, garbling Japanese. `.zst` stays with 7z, since
   Git ships no `zstd` for tar to call.
+- `tar-list.linux.json`: the same GNU tar route for Linux hosts without
+  bsdtar (no libarchive-tools, e.g. no sudo), with `--quoting-style=literal`
+  since GNU tar escapes non-ASCII names as octal under a C locale. Pair it
+  with a 7z-based `archive-list` that leaves the tar extensions out.
 
 Relevant commits: `0ed8283`, `63cbc1b`.
 

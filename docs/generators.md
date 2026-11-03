@@ -42,7 +42,7 @@ Split into `<id>.windows.json` / `<id>.linux-macos.json` because the approach ge
 | `dxf-preview` | netpng's `dxf2png` writing `-o %OUTPUT%` itself; `cmd` is the real `.exe` under `%USERPROFILE%\.netpng\bin` (`<USER>` placeholder) | netpng's `dxf2png` (on PATH) |
 | `font-preview` | GDI+/WPF (see [Multi-File Generators](#multi-file-generators) below) | none — Windows-only API |
 | `archive-list` | 7-Zip's `7z l` (text output, see [Text Output](#text-output)) for zip/7z/rar/zst/cab/iso/jar | libarchive's `bsdtar -tvf`, tarballs included |
-| `tar-list` | Git for Windows' GNU tar for tar/tgz/gz/bz2/xz (7z would only show a `.tar.gz`'s inner `.tar`) | none — `archive-list` covers tarballs |
+| `tar-list` | Git for Windows' GNU tar for tar/tgz/gz/bz2/xz (7z would only show a `.tar.gz`'s inner `.tar`) | Linux only, for hosts without bsdtar: GNU `tar --quoting-style=literal -tvf` (`tar-list.linux.json`), paired with a 7z-based `archive-list` that leaves tarballs out. With bsdtar, `archive-list` already covers tarballs |
 
 The Linux/macOS `sh` scripts pass `%INPUT%`/`%OUTPUT%` as `$1`/`$2` (real argv entries after a `sh` placeholder for `$0`) instead of substituting them into the script text — the same fix `font-preview` applies on the PowerShell side: a path containing a single quote (or any other shell-special character) can't break the script's own quoting, because it's never textually inside it to begin with.
 
