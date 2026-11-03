@@ -94,6 +94,44 @@ void main() {
       watcher.stop();
     });
 
+    test('a matching baseline is not reported', () async {
+      final changes = <List<int>>[];
+      final watcher = FileChangeWatcher(
+        interval: interval,
+        onChanged: (path, modifiedMs, size) => changes.add([modifiedMs, size]),
+      );
+      final stat = file.statSync();
+      watcher.start(
+        file.path,
+        modifiedMs: stat.modified.millisecondsSinceEpoch,
+        size: stat.size,
+      );
+      await settle();
+      expect(changes, isEmpty);
+      watcher.stop();
+    });
+
+    test('a stale baseline is reported on the first tick', () async {
+      final changes = <List<int>>[];
+      final watcher = FileChangeWatcher(
+        interval: interval,
+        onChanged: (path, modifiedMs, size) => changes.add([modifiedMs, size]),
+      );
+      final stale = file.statSync();
+      file.writeAsStringSync('v2-finished-writing');
+      file.setLastModifiedSync(stale.modified.add(const Duration(seconds: 5)));
+      watcher.start(
+        file.path,
+        modifiedMs: stale.modified.millisecondsSinceEpoch,
+        size: stale.size,
+      );
+      await settle();
+      expect(changes, hasLength(1));
+      final stat = file.statSync();
+      expect(changes.single, [stat.modified.millisecondsSinceEpoch, stat.size]);
+      watcher.stop();
+    });
+
     test('stop disables reporting', () async {
       final changes = <List<int>>[];
       final watcher = FileChangeWatcher(
@@ -256,6 +294,25 @@ void main() {
       await settle();
       expect(reload.generation, 1);
       expect(reload.shown(entry)!.size, file.statSync().size);
+    });
+
+    test('an entry listed mid-write reloads once the file settles', () async {
+      file.writeAsStringSync('v2-finished-writing');
+      file.setLastModifiedSync(
+        DateTime.fromMillisecondsSinceEpoch(
+          entry.modifiedMs,
+        ).add(const Duration(seconds: 5)),
+      );
+      reload.watch(entry);
+      await settle();
+      expect(reload.generation, 1);
+      expect(reload.shown(entry)!.size, file.statSync().size);
+    });
+
+    test('an up-to-date entry does not reload', () async {
+      reload.watch(entry);
+      await settle();
+      expect(reload.generation, 0);
     });
 
     test('a guarded editor write neither reloads nor reports', () async {
