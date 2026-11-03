@@ -640,6 +640,38 @@ void main() {
     expect(menus, containsAll(<String>['toolbar', 'menubar']));
   });
 
+  test('marked, cursor and location reach the action', () async {
+    final path = writePlugin('''
+      waydir.register({
+        id = "sel",
+        title = "Sel",
+        run = function(ctx)
+          waydir.toast(#ctx.marked .. " " .. tostring(ctx.cursor) .. " "
+            .. ctx.location.scheme .. " " .. tostring(ctx.location.is_local)
+            .. " " .. ctx.count)
+        end,
+      })
+    ''');
+    final raw = await PluginFfi.invoke(
+      initLuaPath: path,
+      actionId: 'sel',
+      ctxJson: jsonEncode({
+        'paths': ['/d/c'],
+        'marked': <String>[],
+        'cursor': '/d/c',
+        'location': {'scheme': 'file', 'is_local': true},
+        'dir': '/d',
+        'plugin_dir': tmp.path,
+      }),
+    );
+    final json = jsonDecode(raw!) as Map<String, dynamic>;
+    expect(json['ok'], isTrue, reason: '${json['error']}');
+    expect((json['effects'] as List).single, {
+      'type': 'toast',
+      'message': '0 /d/c file true 1',
+    });
+  });
+
   test('sandbox blocks os and io access', () async {
     final path = writePlugin('''
       waydir.register({

@@ -32,6 +32,24 @@ Future<Map<String, dynamic>?> showPluginFormDialog({
   );
 }
 
+TextSelection pluginFieldSelection(String text, String? select) {
+  switch (select) {
+    case 'all':
+      return TextSelection(baseOffset: 0, extentOffset: text.length);
+    case 'stem':
+      final dot = text.lastIndexOf('.');
+
+      return TextSelection(
+        baseOffset: 0,
+        extentOffset: dot > 0 ? dot : text.length,
+      );
+    case 'start':
+      return const TextSelection.collapsed(offset: 0);
+    default:
+      return TextSelection.collapsed(offset: text.length);
+  }
+}
+
 class _PluginFormBody extends StatefulWidget {
   final String title;
   final List<PluginFormField> fields;
@@ -54,6 +72,7 @@ class _PluginFormBody extends StatefulWidget {
 class _PluginFormBodyState extends State<_PluginFormBody> {
   final _values = <String, dynamic>{};
   final _controllers = <String, TextEditingController>{};
+  String? _focusId;
 
   @override
   void initState() {
@@ -77,8 +96,10 @@ class _PluginFormBodyState extends State<_PluginFormBody> {
           break;
         default:
           final text = initial?.toString() ?? '';
-          _controllers[f.id] = TextEditingController(text: text);
+          _controllers[f.id] = TextEditingController(text: text)
+            ..selection = pluginFieldSelection(text, f.select);
           _values[f.id] = text;
+          if (f.select != null) _focusId ??= f.id;
       }
     }
   }
@@ -158,6 +179,7 @@ class _PluginFormBodyState extends State<_PluginFormBody> {
             const SizedBox(height: 4),
             AppTextField(
               controller: _controllers[f.id],
+              autofocus: f.id == _focusId,
               hintText: f.hint,
               obscureText: f.type == 'password',
               onSubmitted: (_) => _submit(),

@@ -97,6 +97,7 @@ class PluginFormField {
   final String? hint;
   final dynamic defaultValue;
   final List<PluginFormOption> options;
+  final String? select;
 
   const PluginFormField({
     required this.id,
@@ -105,6 +106,7 @@ class PluginFormField {
     this.hint,
     this.defaultValue,
     this.options = const [],
+    this.select,
   });
 
   factory PluginFormField.fromJson(Map<String, dynamic> json) {
@@ -122,6 +124,7 @@ class PluginFormField {
                 .map(PluginFormOption.fromAny)
                 .toList()
           : const [],
+      select: (json['select'] as String?)?.toLowerCase(),
     );
   }
 

@@ -35,6 +35,7 @@ void main() {
     List<String> paths, {
     String? dir,
     Map<String, dynamic>? form,
+    Map<String, dynamic>? location,
   }) async {
     final raw = await PluginFfi.invoke(
       initLuaPath: _init,
@@ -44,6 +45,7 @@ void main() {
         'dir': dir ?? tmp.path,
         'plugin_dir': p.dirname(_init),
         'form': ?form,
+        'location': ?location,
       }),
     );
     final json = jsonDecode(raw!) as Map<String, dynamic>;
@@ -166,6 +168,20 @@ void main() {
     expect(ops.map((e) => e['src']), paths);
     expect(ops.map((e) => e['dst']).toSet(), {folder});
     expect(fx.last, {'type': 'refresh'});
+  });
+
+  test('refuses a non-local location reported by the host', () async {
+    final fx = await invoke(
+      files(['a.txt']),
+      location: {'scheme': 'archive', 'is_local': false},
+    );
+    expect(fx.singleWhere((e) => e['type'] == 'notify')['level'], 'warn');
+    expect(fx.where((e) => e['type'] == 'dialog'), isEmpty);
+  });
+
+  test('pre-selects the suggested name', () async {
+    final fields = dialogFields(await invoke(files(['memo.txt'])));
+    expect(fields.singleWhere((f) => f['id'] == 'name')['select'], 'all');
   });
 
   test('refuses a folder that cannot be listed', () async {
