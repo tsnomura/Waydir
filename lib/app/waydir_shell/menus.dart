@@ -812,9 +812,9 @@ mixin _WaydirMenuMixin
     if ((op == 'copy' || op == 'move') && srcs is List<String>) {
       if (dst == null || srcs.isEmpty) return;
       if (op == 'copy') {
-        _operationStore.enqueueCopy(srcs, dst);
+        await _operationStore.enqueueCopy(srcs, dst);
       } else {
-        _operationStore.enqueueMove(srcs, dst);
+        await _operationStore.enqueueMove(srcs, dst);
       }
 
       return;
