@@ -146,27 +146,17 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
 - Intentionally stops at paging through still frames — a scrubber or video
   playback controls are a job for an embedded video player, not Quick Look.
   Audio playback is the one exception; see "Quick Look audio playback" below.
-- Installed locally on this Linux machine (15): `video-thumbnail`
-  (`ffmpeg`/`ffprobe`, `"time"` paging), `pdf-page` (`mutool`,
-  `"discrete"` paging), `svg-preview` (`rendersvg` — this distro's resvg
-  package names the binary that — no paging), `3d-model` plus
-  `3d-model-step`/`3d-model-iges` (`f3d` offscreen render of stl/obj/ply/
-  gltf/glb/3mf/fbx/dae/STEP/IGES/VTK etc., angled camera, transparent
-  background; STEP/IGES get their own file because f3d needs
-  `--force-reader` for them), `comsol-mph`, `office-thumbnail`,
-  `ico-preview`, `dxf-preview` (`dxf2png`), `audio-waveform` (`ffmpeg`
-  `showwavespic`, `"time"` paging), `graphviz` (`dot`, also renders fenced
-  `dot`/`graphviz` blocks in Markdown, theme colors via `%THEME%`),
-  `mermaid` (`merman-cli`, fenced `mermaid`/`mmd` blocks), and
-  `archive-list`/`tar-list` (text output; see "Generator text output"
-  below). The Windows-only `font-preview` (PowerShell) isn't installed
-  here, so `.ttf`/`.otf` keep the plain file icon. The live configs
-  themselves still aren't committed — generator config is local/personal
-  by design, same trust model as Lua plugins (see `docs/generators.md`) —
-  but every one of them is now also a copy-and-adjust example under
-  `docs/examples/generators/` (Windows and, where the approach actually
-  differs, Linux/macOS too); see "Worked Examples" in `docs/generators.md`
-  for the full index and which pairs split by OS.
+- Generator configs themselves aren't committed — generator config is
+  local/personal by design, same trust model as Lua plugins (see
+  `docs/generators.md`). Every generator this fork uses is a
+  copy-and-adjust example under `docs/examples/generators/` (Windows and,
+  where the approach actually differs, Linux/macOS too): `video-thumbnail`,
+  `audio-waveform`, `pdf-page`, `svg-preview`, `3d-model` /
+  `3d-model-step` / `3d-model-iges` (STEP/IGES get their own file because
+  f3d needs `--force-reader` for them), `comsol-mph`, `office-thumbnail`,
+  `ico-preview`, `font-preview` (Windows only), `dxf-preview`, `graphviz`,
+  `mermaid`, `archive-list` and `tar-list`. See "Worked Examples" in
+  `docs/generators.md` for the full index and which pairs split by OS.
 - The last two need no extra tools on Windows: COMSOL `.mph`, Office
   (pptx/docx/xlsx) and OpenDocument files are zips that can carry a preview
   image, and a PowerShell one-liner using .NET's `ZipFile` pulls out just
@@ -316,23 +306,34 @@ Windows), in the same spirit as preview generators:
   command, one argument per line, default), edit JSON, delete, open the
   folder, and Reload — saves and Reload apply without restarting Waydir.
 
-Installed locally (same not-committed-by-default trust model as preview
-generators): `f3d-step`/`f3d-iges` (open STEP/IGES in f3d),
+Launcher configs aren't committed either (same trust model as preview
+generators). Copy-and-adjust examples live under
+`docs/examples/launchers/`: `f3d-step`/`f3d-iges` (open STEP/IGES in f3d),
 `quick-look-window` (`%WAYDIR%`, below), `winxmerge-compare`/
-`winxmerge-files` (a personal cargo-built WinXMerge — cross-platform, so it
-runs on this Linux box too; `cmd` is looked up on PATH as `winxmerge`),
-and `ico-view` (pipes the .ico's largest size through netpng's `ico2png`
-into `pngview`; Linux/macOS only, needs netpng on PATH). All are also
-copy-and-adjust examples under `docs/examples/launchers/` — `f3d-*`,
-`quick-look-window` and the `winxmerge` pair work as-is on the OSes they
-target (no path anywhere: `f3d`/`winxmerge` are on PATH, `%WAYDIR%`
-resolves the running executable), while `ico-view` needs
-`<LAUNCHERS_DIR>` pointed at its own folder — the local copy points `cmd`
-at its own absolute path for that reason. The local `quick-look-window`
-is narrowed to `md`/`markdown` (the example stays `"*"`), so popping out
-every file type is not the de-facto open action.
+`winxmerge-files` (a personal cargo-built, cross-platform WinXMerge) and
+`ico-view` (pipes the .ico's largest size through netpng's `ico2png` into
+`pngview`; Linux/macOS only, needs netpng on PATH). `f3d-*`,
+`quick-look-window` and the `.linux-macos.json` `winxmerge` pair work
+as-is on the OSes they target (no path anywhere: `f3d`/`winxmerge` are on
+PATH, `%WAYDIR%` resolves the running executable), the `.windows.json`
+`winxmerge` pair needs its real path swapped in for the `<WINXMERGE_PATH>`
+placeholder, and `ico-view` needs `<LAUNCHERS_DIR>` pointed at its own
+folder.
 
-Relevant commits: `9c2313d`.
+Relevant commits: `9c2313d`, `5e07164` (Linux/macOS WinXMerge examples).
+
+### Compare-mode Enter falls back for pairs a diff tool can't take
+
+Enter in compare mode used to hand every two-sided file to the compare
+launcher. It now only does so when both sides can be launched locally (not
+sftp, not inside an archive, not a ghost) and both look like text
+(`isLikelyTextFile`: binary extensions are rejected, otherwise the first
+8000 bytes go through Quick Look's UTF-16-aware binary heuristic). Anything
+else opens the normal way — the default launcher or the OS association.
+The context menu's compare-launcher entries keep only the "launchable"
+check, so choosing WinXMerge explicitly still works for binaries.
+
+Relevant commits: `becc05b`.
 
 ### Every-file launchers, file-count limits, opening marked files together
 
@@ -412,7 +413,7 @@ Waydir also loads user plugins: small Lua folders that add workflow
 actions — context menu items, toolbar buttons, menubar entries, shortcuts
 and status bars — with no build step. Copy a folder (`manifest.json` plus
 `init.lua`, optionally an icon) into the plugins support directory
-(`~/.config/waydir/plugins/` here), then **Reload plugins** in
+(`~/.config/waydir/plugins/` on Linux), then **Reload plugins** in
 Preferences → Plugins, which also has **Open plugins folder**,
 enable/disable and per-plugin Configure. On reload, each `init.lua` runs
 once in a sandbox and contributes actions via `waydir.register` (with
@@ -425,8 +426,7 @@ calls `run(ctx)`, where `ctx` carries `paths`/`dir`/`count`/`settings`/
 form; the submitted values come back as `ctx.form` on the same action's
 second invocation). Full guide in `docs/plugins.md`.
 
-Installed locally (all five start from the bundled examples under
-`docs/examples/plugins/`): `backup-copy` — context item **Create .bak
+Bundled examples under `docs/examples/plugins/`: `backup-copy` — context item **Create .bak
 copy**, `cp -n` per selected file, no overwrite; `selection-count` —
 context item that toasts the selected count; `sevenzip` — a **Compress
 with 7-Zip** context submenu (quick `.zip`/`.tar.gz`, plus **Add to
@@ -435,11 +435,9 @@ so they queue in Operations, and **Extract here with 7-Zip** for a
 selected archive; `templates` — the v2 API tour, one "new file from
 boilerplate" action surfaced four ways (toolbar button, background
 right-click, Plugins menubar, `Ctrl+Alt+N`) with a template-choice dialog
-and an author setting; and `open-vscode`, adapted for this host — no VS
-Code here, so the toolbar **Open in Editor** button and its right-click
-twin for a folder default the editor command to `nvim`, the one editor
-installed; the command is an ordinary plugin setting, so installing `code`
-later only takes entering it under the plugin's Configure.
+and an author setting; and `open-vscode` — a toolbar **Open in VS Code**
+button plus a right-click twin for a folder, whose editor command
+(default `code`) is an ordinary plugin setting under Configure.
 
 ## Personal build version in About
 
@@ -453,7 +451,36 @@ and repository. The values are baked in at build time through
 extra arguments on to `flutter build`. A plain `flutter build` shows "not
 recorded".
 
-Relevant commits: `adda063`.
+Release builds from CI carry the same information: `release.yml` writes a
+`personal_defines.json` (tag, `release`, commit, date) and passes it to
+`flutter build --dart-define-from-file` (fastforge 0.6.12 has no such flag,
+so it gets each entry as `--build-dart-define=KEY=VALUE`). About then shows
+e.g. `v0.23.0-test7 (release, 2026-10-21)`, and the artifacts are named
+after the tag (`waydir-0.23.0-test7-windows-setup.exe` / `-windows.zip` /
+`-linux-x64.tar.gz`) instead of the pubspec version, which stays as is for
+update checks against upstream. fastforge now runs with `--skip-clean`; its
+`flutter clean` had been wiping the `docs/generators.md` copied into the
+build output, so the zip lacked it.
+
+Relevant commits: `adda063`, `0433234`, `a023f13`.
+
+### Linux builds
+
+- `scripts/build_and_install_linux.sh` uses the `flutter` on `PATH` (no
+  hardcoded `~/development/flutter`), builds through `build_personal.sh` so
+  About shows the personal version, and falls back to `cp` without `rsync`.
+  It also installs `~/.local/share/applications/waydir.desktop`
+  (`StartupWMClass=dev.waydir.app`).
+- The vendored cargokit scripts are committed executable, so a Linux build
+  no longer leaves `run_build_tool.sh` modified in the working tree.
+- `release.yml` has a `build-linux` job producing
+  `waydir-<tag>-linux-x64.tar.gz` (with `docs/generators.md`); deb/rpm/
+  AppImage are left out.
+- `my_application.cc` sets the window icon from the bundled
+  `assets/app_icon.png`, so a dev build without a `.desktop` file still gets
+  a proper taskbar/alt-tab icon.
+
+Relevant commits: `6e394a6`, `fb688fb`.
 
 ## LaTeX math in the Markdown preview
 
@@ -578,6 +605,26 @@ Found and fixed two real bugs building this:
 Relevant commits: `1f867f5`, `1690f4e`, `6b90f5d` (temporary diagnostic,
 removed), `c25fbca`, `7212432`.
 
+### Tab strip: wheel scrolling, overflow arrows, drag to the other pane
+
+- Once tabs overflowed the strip there was no way to reach them. The mouse
+  wheel (vertical or horizontal delta) now scrolls the strip, and left/right
+  arrow buttons appear only on the side that actually overflows.
+- A tab can be dragged onto the other pane's strip to move it there, with
+  the same last-tab guard as the shortcut. The first version used a long
+  press to stay out of `ReorderableListView`'s reorder gesture, which nobody
+  would discover; the strip is now a plain horizontal scroll view where each
+  tab is a `Draggable` inside its own `DragTarget`, so one ordinary drag
+  reorders when released on a tab of the same pane and moves when released
+  on the other pane's strip. Reordering commits on drop — the live "other
+  tabs slide aside" animation `ReorderableListView` gave is gone.
+- The drag is locked to the horizontal axis and the feedback tracks the
+  grabbed point; a tab's own slot accepts it (instead of falling through to
+  append-at-end), and the reorder index accounts for the dragged tab being
+  removed first.
+
+Relevant commits: `be7ad1d`, `6bbe0d3`, `d1e9e1e`, `1d3e343`, `56e62c4`.
+
 ## Compare directories on network drives and sftp
 
 `F8` compare now works against mapped/UNC network drives, not just local
@@ -649,18 +696,38 @@ colors, so a file whose content had changed but whose mtime differed showed
 as "newer"/"older" and never as "different". In practice `≠` almost never
 fired: it required a size difference with mtimes within the 2s tolerance.
 
-- Color now says *what* the state is, the glyph says *which way*:
-  green `+` only on this side; orange `↑` newer, `↓` older, `≠` same
-  timestamp but different content; identical rows stay plain.
+- Each state has its own glyph and its own color: green `+` only on this
+  side, yellow `↑` newer (`palette.warning`), blue `↓` older (the theme's
+  ANSI blue — the palette has no blue), red `≠` same timestamp but
+  different content (`palette.danger`); identical rows stay plain. (The
+  first version colored newer/older/≠ all orange under one "Different"
+  swatch; that umbrella was dropped, since `≠` already is the "different"
+  state.) The legend, row chips and the sync dialog use the same colors,
+  and the counts read "N newer on left · N newer on right · N same time".
 - List view gets a dedicated status column left of the icon: a solid,
   icon-sized chip with the glyph in bold. It stays visible on the cursor,
   hovered and marked rows (the old tint vanished on all three). The column
-  only exists while some row carries a compare badge, and the header's
-  leading slot widens with it so the columns stay aligned. Compare rows no
-  longer get the background tint; tag tints are unchanged.
+  appears in both panes as soon as compare starts (empty until results
+  arrive) and stays for the whole session, even when every row is
+  identical; the header's leading slot widens with it so the columns stay
+  aligned. Compare rows no longer get the background tint; tag tints are
+  unchanged.
 - Grid view shows the same chip at the thumbnail's top-left corner.
-- The legend in the compare bar shows the two state swatches, a divider, and
-  the `↑`/`↓`/`≠` chips.
+
+### Progressive results
+
+- On start, rows already on screen in both panes (expanded tree rows
+  included) get a muted `?` pending badge. After listing, everything
+  decidable from size/mtime gets its final badge at once; same-size,
+  different-mtime files stay `?` while their contents are compared and are
+  published in batches (throttled to ~150 ms). A folder stays `?` while any
+  descendant is pending.
+- Re-running on the same pane pair keeps the previous badges until the new
+  listing is ready. The mode bar shows a `? Pending` legend entry and
+  `Comparing… N left`, and Sync is ignored while a run is in progress so no
+  undecided entry is skipped silently.
+
+Relevant commits: `a4ac604`, `f8f545f`.
 
 ### Content check for same-size, different-mtime pairs
 
@@ -668,7 +735,7 @@ A size difference already proves the content differs, and same size plus
 mtimes within tolerance is treated as identical. The one case metadata can't
 decide — same size, different mtime (typically a copy that didn't preserve
 timestamps) — is now settled by reading the files, when both roots are local
-drives: identical content → `identical`, otherwise orange `↑`/`↓`.
+drives: identical content → `identical`, otherwise `↑`/`↓`.
 
 - Compared in the native core (`waydir_files_equal`, ABI 18) byte by byte in
   1 MiB chunks, stopping at the first difference, called in batches of 32
@@ -724,6 +791,13 @@ While compare is active the panes move together:
   while both panes show the same relative folder.
 - Folders (both ways): entering or leaving a subfolder takes the other pane
   to the same relative path, if it exists there.
+- Tree expansion (both ways): expanding or collapsing a folder in tree view
+  does the same for the matching relative path on the other side, at any
+  depth, in top-level and recursive compare alike. Only the paths added or
+  removed since the last change are propagated, so the sides can't
+  ping-pong; folders that exist on the leading side only (ghosts on the
+  other) aren't propagated. On start, the right pane's expansion inside the
+  compare root is aligned to the left's (`ab19424`).
 - Limits: scroll follows by pixel offset, so rows can drift if only one
   pane has a search filter or hidden files differ. Compare still re-runs
   after a completed operation using the panes' current folders as the new
@@ -733,6 +807,22 @@ While compare is active the panes move together:
 
 Covered under Quick Look above: the pair is found by relative path from the
 cursor, with one marked file per pane as an explicit override.
+
+### Sync summary instead of per-file conflict prompts
+
+Sync used to enqueue plain copies, so the copy worker asked about every file
+that already existed at the destination — even though the comparison had
+already decided what to overwrite. Sync now builds a `CompareSyncPlan` (new
+items, newer files and same-time-different files to overwrite, older files
+skipped, with counts, sizes and destination groups) and shows it in a
+dialog first: source → destination, per-category rows with status chips, a
+scrollable item list and a total; Enter syncs, Esc cancels. The copies then
+run with those overwrites pre-approved (`OperationStore.enqueueCopy`'s
+`overwrite` set, `confirm: false` since the summary replaces the generic
+confirmation). A conflict that wasn't in the plan — a file that appeared
+after comparing — still prompts as usual.
+
+Relevant commits: `aaa0ea5`.
 
 Relevant commits: `1882923`, `d63eb9d`.
 
@@ -756,6 +846,8 @@ button:
 
 New reassignable shortcut `compare_recursive` (default `Shift+F8`) in the
 Panes group.
+
+Relevant commits: `ab5204a`.
 
 ## Windows Terminal integration
 
@@ -902,8 +994,11 @@ Relevant commits: `ad8bdfc`, `281f8c1`.
   now always requires the shift-augmented combo (`Ctrl+Shift+A` /
   `Cmd+Shift+A`) regardless of that setting, matching how copy/paste
   already degrade gracefully instead of unconditionally claiming the key.
+- Fixed: `Ctrl+[`, `Ctrl+\` and `Ctrl+]` produced no input at all — the
+  terminal's `CtrlInputHandler` only translated `Ctrl+A`..`Z`. They now send
+  ESC, FS and GS.
 
-Relevant commits: `23459d7`.
+Relevant commits: `23459d7`, `b1928f2`.
 
 ## Fixed: archive browsing and copying on Windows
 
@@ -982,6 +1077,21 @@ bad data" because no password was ever passed to the decoder.
 - ZipCrypto and AES both work (`archive` 4.x decodes them). 7z/rar aren't
   supported by Waydir at all; Quick Look and editing inside an encrypted
   zip (rename/delete/add) don't take a password yet.
+- Encrypted zips are visible as such. A local zip whose central directory
+  has any encrypted entry gets a small lock badge on its icon in list, tree
+  and grid (`FileEntryIcon`, checked in the worker pool, cached by
+  `path:modifiedMs`). Inside an archive, each encrypted entry shows a lock
+  icon instead of its extension icon — `ArchiveReader` now reads the zip
+  central directory itself (`_listZipEntries`) because package:archive
+  doesn't expose the per-entry flag (general purpose bit 0), so mixed zips
+  show correctly. Listing still needs no password.
+- Compress can create password-protected zips: the Compress dialog shows an
+  optional password field for ZIP only, passed to `ZipEncoder(password:)`,
+  which encrypts every entry with AES-256. 7-Zip reads these; Info-ZIP
+  `unzip` doesn't. A password with a tar format is rejected before staging
+  (`archivePasswordUnsupported`).
+
+Relevant commits: `c5c9ae5`, `5f011f9`, `2209c4d`, `0d4eccb`.
 
 ### Extract to the other pane
 
@@ -1021,8 +1131,7 @@ folder again. Two problems on Waydir's side:
 
 Because the vendored crate no longer matches the upstream hash, cargokit
 can't use its precompiled binaries and builds it from source, which
-requires **rustup** (a bare `cargo` isn't enough). On Windows here the
-scoop `rust` package was replaced with `rustup` (stable toolchain).
+requires **rustup** (a bare `cargo` isn't enough).
 
 Relevant commits: `e850120`, `fd80553`.
 
@@ -1221,9 +1330,11 @@ the cursor and the marks can legitimately point at different rows.
   nothing marked.
 - Either key also closes Quick Look while it's already open (previously
   only plain Space did).
-- Right-click "Properties" is unaffected — still selection-based, now via
-  an explicit `useMarkedSelection` flag on `showQuickLook` instead of
-  relying on the same implicit priority Space/Shift+Space used to share.
+- Right-click "Properties" goes through an explicit `useMarkedSelection`
+  flag on `showQuickLook` instead of relying on the same implicit priority
+  Space/Shift+Space used to share. It now follows the general target rule
+  (the marks, else the cursor item — see "One target rule" below), so with
+  nothing marked it shows the cursor item rather than the current folder.
 
 Tree view (`fileViewMode: 'tree'`) also gained the standard VSCode/Explorer
 arrow convention, alongside the existing `Ctrl+Enter` toggle
@@ -1450,9 +1561,18 @@ auto-plays through an external command while browsing, muted videos excepted.
   already an `sftp://...` URI (see the grid-thumbnails entry above) and
   ffplay is the same libssh-enabled ffmpeg build already reading those for
   video thumbnails, so it should read them the same way.
-- Installed locally: `player.json` running `ffplay` — not committed, same
-  reasoning as generator config (local/personal, full-privileges trust
-  model).
+- `player.json` itself isn't committed, same reasoning as generator config
+  (local/personal, full-privileges trust model).
+- Playback stops and the file is released as soon as a file operation that
+  touches it is queued, so a move/overwrite/delete doesn't race the player's
+  open handle. A `PlaybackRegistry` singleton tracks live playback
+  controllers so `OperationStore._enqueue` (the funnel every file task goes
+  through) can find them without the two features importing each other;
+  `stopShown()` kills the player synchronously before the worker isolate
+  starts. Checked paths: move sources and overwrite targets, copy overwrite
+  targets only (a copy source keeps playing), delete/trash sources, and the
+  real data path (plus original path on restore) of trash-bin tasks.
+  Compared normalized and case-insensitively on Windows (`ea60613`).
 
 ## Quick Look in the terminal area (bottom pane)
 
@@ -1507,10 +1627,23 @@ Markdown with math, a rendered/source toggle and an editor.
 
 - Same exe, same display stack: the window hosts the shared
   `QuickLookHeader`/`QuickLookBody` from `quick_look_content.dart`, like the
-  bottom pane does, but for a fixed file (↑/↓ don't step to other files).
-  Everything Quick Look previews works: Markdown + math, source toggle and
-  editing, images, PDF, generator pages, audio.
-- The header drags the window (double-click maximizes/restores); Esc, the
+  bottom pane does, but without a file list behind it. Everything Quick
+  Look previews works: Markdown + math, source toggle and editing, images,
+  PDF, generator pages, audio.
+- ←/→ step to the previous/next file in the same folder (files only, sorted
+  by name with the natural-sort setting, hidden files per the show-hidden
+  default; the listing is cached per window). Stepping goes through the
+  unsaved-changes prompt, resets find/page/rendered state, re-watches the
+  new file for reloads, scrolls to the top and retitles the window.
+- PgUp/PgDn scroll a page (0.9× the viewport) or step a paged generator;
+  ↑/↓ scroll a smaller step (0.15×, about seven lines) — the main app can't
+  do that since its arrows move the file-list cursor. Ignored with Ctrl/Alt
+  held and while the editor has focus; repeats throttled to 70 ms, same
+  180 ms easeOut as the panel. The window also gets the shared shortcut bar.
+- The header drags the window (double-click maximizes/restores) and has a
+  maximize/restore button of its own (`onToggleMaximize`, standalone only).
+  The window uses a separate icon (a folder with a magnifying-glass badge)
+  so it can be told apart from the main window in the taskbar. Esc, the
   close button or closing the window ends it, going through the same
   Save/Discard/Cancel prompt when the editor has unsaved changes (also on a
   window close request, via `AppLifecycleListener.onExitRequested`). Opens
@@ -1538,6 +1671,9 @@ Markdown with math, a rendered/source toggle and an editor.
   assumes it), a separate lightweight `mdview` app sharing the Markdown
   renderer as a package, and a `wql` command that signals the running
   instance like `wd`/`wcd`.
+
+Relevant commits: `f621203`, `425f643` (Ctrl+Enter pop-out), `5485851`,
+`ff98136`, `b5050c8`, `53b79a8`.
 
 ## Ctrl+wheel zooms Quick Look text
 
@@ -1629,6 +1765,8 @@ passed as a plain CLI argument now, so that stopped mattering.
   `#0`/`#1` URI fragment — needed for a `.ttc` (TrueType collection, several
   faces in one file): without a face index some collections fail to load at
   all via the plain path.
+
+Relevant commits: `1654047` (`thumbnailArgs`).
 - The on-disk preview cache is keyed by `args`/`thumbnailArgs`'s own text,
   with no awareness of an externally dot-sourced file's content — editing
   `font-preview-lib.ps1` alone doesn't change that key, so cached output from
@@ -1669,6 +1807,8 @@ plus the IME open state) showed `` Ctrl+Alt+` ``, `` Alt+Shift+` `` and
   in Preferences → Keybindings only drive the labels in menus and help, so
   rebinding them there doesn't change these keys.
 
+Relevant commits: `a8f2a96`, `13292c6`.
+
 ## Generator text output (`outputExt: "txt"`, `stdout: true`)
 
 Generators could only produce images, so anything a CLI describes in text —
@@ -1690,7 +1830,7 @@ Look short of rendering text into a PNG. Two generator keys fix that:
 - New example `docs/examples/generators/archive-list/`: `7z l -sccUTF-8 -p`
   on Windows, `bsdtar -tvf` on Linux/macOS, for zip/7z/rar/tar/gz/...; the
   empty `-p` makes a name-encrypted archive fail fast instead of 7z waiting
-  for a password on stdin. Installed locally.
+  for a password on stdin.
 - `"textFrom"`: a regex for the first line of text output to show, so the
   archive list starts at 7z's `Date Time Attr ...` column header instead of
   its copyright banner and archive properties. Applied at display time, so
@@ -1702,13 +1842,9 @@ Look short of rendering text into a PNG. Two generator keys fix that:
   Windows' own `System32\tar.exe` (bsdtar) was ruled out: it prints names
   in the console code page, garbling Japanese. `.zst` stays with 7z, since
   Git ships no `zstd` for tar to call.
-- This Linux host has no `bsdtar` (and no sudo to install libarchive-tools),
-  so the local pair is the 7z variant — `zip`/`7z`/`rar`/`zst`/`cab`/`iso`/
-  `jar`, because p7zip 16.02 lists a tar.gz as its single inner `.tar` —
-  plus plain GNU `tar -tvf` for the tar family; `--force-local` and
-  `--quoting-style` are Git Bash concerns, not needed on bare Linux. A
-  plain `.gz` that isn't a tarball lists nothing and silently falls back
-  to the file icon.
+
+Relevant commits: `0ed8283`, `63cbc1b`.
+
 ## Path insert speaks the terminal shell's path dialect
 
 `Ctrl+Enter` / `Ctrl+Shift+Enter` (insert the cursor's or marked items'
@@ -1732,6 +1868,8 @@ quoting:
   it follows the configured terminal shell, a Windows Terminal profile, or a
   WSL tab alike. Off Windows nothing changes.
 
+Relevant commits: `7e98c34`.
+
 ## Folder scroll position survives going in and back out
 
 Going parent → into a folder or archive → back to the parent put the cursor
@@ -1750,6 +1888,8 @@ needed to bring the cursor into view.
   (`initialScrollOffset`); one that stays mounted across a path change
   swaps offsets via `switchScrollMemory`, jumping before the cursor reveal
   runs. A folder visited for the first time starts at the top as before.
+
+Relevant commits: `c4dad87`.
 
 ## Cursor and folder view state follow the item, and come back as left
 
@@ -1896,19 +2036,31 @@ so `*.bin` scratch files or a `.git` folder never show up in the diff, as
 ghosts, in the counts, or in a sync plan.
 
 - Patterns are resolved per compare: if either compared folder contains a
-  hidden `.waydir-sync` file (left folder wins), its content is used;
-  otherwise the global setting (`compareExcludePatterns`,
-  `app_settings.compare_exclude_patterns`, schema 49) applies — so the
-  Preferences value is the default. Both accept comma-, semicolon- or
-  newline-separated globs. The "Excludes" button on the compare mode bar
-  shows the effective patterns, highlights while any are set, and saving
-  re-runs the compare.
-- Saving from the "Excludes" button while a compare is active writes the
-  patterns to `.waydir-sync` in both compared folders (local folders only;
-  archive and remote roots fall back to the global setting). An empty
-  `.waydir-sync` file explicitly means "exclude nothing" for that folder.
-  The `.waydir-sync` file itself is always excluded from compare and sync,
-  at any depth, so it never appears in the diff or gets copied.
+  `.waydir-sync-ignore` file (left folder wins), its content is used;
+  otherwise the global setting (Preferences → General,
+  `compareExcludePatterns`, `app_settings.compare_exclude_patterns`, schema
+  49) applies — so the Preferences value is the default.
+- `.waydir-sync-ignore` is gitignore-style: one pattern per line, blank
+  lines and `#` comment lines ignored, so a `.gitignore` can be pasted in
+  as-is. (It was first called `.waydir-sync` with comma-separated content.)
+  Typed input may also separate patterns with commas or semicolons; they
+  are written back one per line.
+- Editing happens in an always-visible field in the compare mode bar
+  (`[⊘][patterns][×]`, between Recursive and the Sync buttons), not a
+  dialog: Enter saves, re-runs the compare and hands focus back to the file
+  list; Esc reverts the text to the last saved value; × saves an empty
+  value at once. No autofocus, so starting compare doesn't steal focus from
+  the file list. The legend and field share the bar with `flex: 2` / `1`,
+  so nothing overflows down to the 700px window minimum.
+- Saving writes `.waydir-sync-ignore` to both compared roots (local folders
+  only; archive and remote roots fall back to the global setting). An empty
+  file explicitly means "exclude nothing" for that folder. The file itself
+  is always excluded from compare and sync, at any depth, so it never
+  appears in the diff or gets copied.
+- Found along the way: `showCustomDialog` could leave a just-closed dialog's
+  autofocused field holding focus, so reopening the same dialog didn't
+  focus its field; focus is now parked in the root scope when the dialog
+  route goes away.
 - `CompareExcludes` (`compare_excludes.dart`) compiles each pattern to an
   anchored RegExp: `*` → `[^/]*`, `?` → `[^/]`, `[...]` character classes
   (with `!` negation) pass through, everything else is escaped literal.
@@ -1923,3 +2075,399 @@ ghosts, in the counts, or in a sync plan.
   excluded files syncs nothing.
 - Not covered: plain directory listings, drag & drop and search are
   unaffected — the filter only applies to compare and sync.
+
+Relevant commits: `a5366ed`, `165fab7`, `65941a9`, `55d4bac`, `3beec08`,
+`874af21`.
+
+## Keeping blocking file-system calls off the UI thread
+
+Waydir went "Not Responding" during a recursive search over SFTP. A full
+dump read with `cdb` showed the main thread inside
+`waydir_core!waydir_sftp_list`, waiting on a lock while the Rust SFTP runtime
+thread waited for the server: every SFTP operation was a synchronous FFI call
+on the UI thread with no timeout. A survey for other synchronous I/O on the
+UI thread followed, and everything it found was moved off.
+
+- **SFTP**: every `SftpFs` operation and the session manager's open,
+  liveness check, home lookup and close run through `Isolate.run` (sessions
+  live in the Rust core's process-wide table, so any isolate can use them).
+  Since opening is async now, a concurrent open of the same host keeps the
+  first registered session and closes the extra one.
+- **Windows drives**: the 3 s `getDrives()` probe (`GetDriveType`,
+  `WNetGetConnectionW`, `GetVolumeInformation`, `GetDiskFreeSpaceEx`) runs in
+  an isolate, and `DriveStore` never stacks refreshes — requests during a
+  probe collapse into one follow-up and the last list stays visible.
+- **Hidden attribute**: `FileEntry.isHidden` called `GetFileAttributesW` per
+  entry inside the `visibleFiles` computed, i.e. one network round trip per
+  file on every keystroke or sort on a share. `waydir_list` now reports
+  hidden/system from the enumeration's own data in bit 1 of the record's
+  kind byte, and `isHidden` is `hiddenAttr || name starts with '.'`. Native
+  ABI 18 → 19, so a stale DLL is rejected instead of silently showing hidden
+  files.
+- **Sidebar and toolbar bookmarks**: presence checks (`existsSync` per
+  bookmark per rebuild) run in a background isolate on change and every
+  10 s, exposed as a `mounted` signal; the toolbar star only normalises
+  paths now, and adding a bookmark checks existence through the worker pool.
+- **Failed loads**: the permission probe after a failed `loadDirectory`
+  re-listed the whole folder synchronously (waiting out a network timeout a
+  second time); it now only opens the folder and reads one entry, in an
+  isolate.
+- **Git and the folder watcher**: the `.git` search over up to 64 ancestors
+  and the repo-state probes run in an isolate (`isNetworkPath` doesn't catch
+  OneDrive, `subst` or Unix mounts). The watcher's first subscription drops
+  its `existsSync` pre-check; re-subscribing after an error checks
+  existence through the worker pool. (Making the first subscription async
+  too missed events right after `watch()`; the watcher tests caught it.)
+- **User actions**: opening files (`ShellExecuteExW` in an isolate with COM
+  initialised, `SEE_MASK_NOASYNC`), rename and multi-rename
+  (`renameAsync`, collisions checked in one isolate), Recycle Bin listing,
+  tag view stats, cancel cleanup, and the `typeSync` checks behind
+  compress/extract names, the address bar and new folder.
+- **Native walker threads** are capped at 8: the parallel walkers sized
+  themselves from `available_parallelism()` uncapped, so a recursive walk on
+  a many-core host started over a hundred I/O-bound threads.
+
+Fixed while testing these:
+
+- "Open With → Other Application…" failed for names with spaces:
+  `rundll32 shell32.dll,OpenAs_RunDLL` got the path quoted by
+  `Process.start`. It now calls `SHOpenWithDialog` directly (isolate + COM,
+  Explorer's flags).
+- Trash can be opened in a new tab (context menu, middle-click,
+  Ctrl/Shift+click) — upstream disabled it.
+- Duplicate names are numbered before the extension (`mergers (1).zip`,
+  `backup (1).tar.gz`), not after it (`mergers.zip (1)`); extracted folders
+  keep the number at the end so dotted folder names aren't split.
+- Tree view: tags were loaded only for the current folder's own entries, so
+  items inside expanded folders showed no tag color and the context-menu
+  checkboxes always read "not tagged". Tags now load for every loaded tree
+  child too.
+
+Relevant commits: `1dc4d1d`, `bd4ba7a`, `397d1d2`, `a40e755`, `c70e259`,
+`a85f441`, `ca8d891`, `0936f09`, `82b5694`, `071bf9a`, `0616b9e`, `c2e6a6f`.
+
+## One target rule: the marks, else the cursor
+
+Under the anchor-free model the marks and the cursor are independent, but
+most operations read only the marks, so Del, Ctrl+C/X, F2, properties,
+compress and the like did nothing with just a cursor, while F5/F6 and
+duplicate already fell back to it.
+
+- `NavigationStore.targetEntries` — the marks if any, otherwise the cursor
+  item (never a ghost) — now drives delete, copy/cut, rename and
+  multi-rename, copy paths, compress/extract, checksum, tags, open all,
+  terminal/new tab/location, properties, bulk copy, plugin actions, path
+  insert, dual-pane copy/move, duplicate, trash restore/delete and the
+  command palette's enabled state. Enter and Quick Look stay cursor-first;
+  plugin selection events still report only the marks.
+- Right-clicking an unmarked item no longer replaces the marks: the menu
+  acts on that item through a temporary target override cleared when the
+  menu closes. Right-clicking a marked item still acts on all marks.
+- Deleting removes only the deleted paths from the marks instead of
+  clearing them; terminal path insertion no longer ignores a single mark.
+- Marks out of view are visible: the list/tree scrollbar draws an accent
+  tick per marked item, with a semi-transparent thumb while marks exist
+  (grid view not covered).
+- When marks are the target but the cursor sits on an unmarked item
+  (`marksExcludeCursor`), delete and F5/F6 confirmations add a warning with
+  the first marked names and are shown even if confirmations are off; copy,
+  cut and duplicate toasts say "marked items, not the cursor item".
+
+Relevant commits: `7633481`.
+
+## Quick Look: find in file, F6 edit toggle, more keys
+
+- **Find in file**: a floating bar over the text/code preview with
+  case-sensitive (`Aa`) and regex (`.*`) toggles, an `n/total` counter (red
+  "No matches"), previous/next and close, backed by re_editor's
+  `CodeFindController`. Ctrl+F toggles it (also while editing — re_editor
+  had consumed the key without a `findBuilder`, so it's overridden through
+  `shortcutOverrideActions` like Ctrl+S), the header has a search button,
+  and Esc closes the bar before Quick Look itself. On rendered Markdown,
+  Ctrl+F and the button switch to the source view and open the bar; leaving
+  the source view closes it.
+- **F6** toggles view mode (frame focus) and edit mode (editor focus); on
+  rendered Markdown it switches to the source and focuses the editor, and
+  F6 from editing goes back to the rendered view. Leaving edit mode never
+  prompts — unsaved changes are still confirmed on switching files or
+  closing. **F7** toggles the properties panel; **Ctrl+G / Ctrl+Shift+G**
+  step through matches while the find bar is open. All of these work in the
+  in-app Quick Look and the standalone window, and the shortcut bar shows
+  them.
+- An earlier Ctrl+↑/↓ "step to the previous/next file while editing" was
+  dropped: re_editor binds those keys itself, so they never reached Quick
+  Look in the in-app panel, and stripping them from the editor only traded
+  one problem for another. Cursor keys belong to the editor and the file
+  view.
+- Fixed: disposing a focused editor wrote `editorActive` synchronously and
+  rebuilt the shortcut bar during tree finalization (`SignalEffectException`);
+  the reset now runs post-frame.
+
+Relevant commits: `4b8675f`, `9742537`, `6e2fab8`, `968a520`.
+
+## Quick Look: rendered/source toggle for generator-rendered text files
+
+The Markdown rendered/source toggle now applies to any file a preview
+generator renders whose contents probe as text — SVG, DXF and the like get
+the `</>` button. `RenderedSource.available(entry)` probes asynchronously
+(cached per path/mtime/size); binary outputs such as PDF never get it. The
+source view is the normal text/code editor, bypassing the image/PDF/binary
+branches, so find and F6 editing work on the source. Shared by the overlay,
+side panel and standalone window.
+
+Relevant commits: `6af9aa1`.
+
+## Quick Look follows Markdown links
+
+Links to local `.md` files in a rendered Markdown preview open inside Quick
+Look (relative paths, `../`, percent-escapes; fragments dropped), with a
+back stack per Quick Look host and a `←` button in the header; Alt+← and
+Backspace go back in the overlay and the standalone window, asking first
+when the source editor has unsaved changes. http(s) links still open in the
+browser, other local targets are ignored, and a missing target shows a
+toast. In the overlay and side panel the history resets when the file-list
+cursor moves; in the standalone window ←/→ sibling stepping clears it.
+
+Relevant commits: `3819cce`.
+
+## Quick Look: UTF-16 text files
+
+The text probe treated any NUL in the first 8000 bytes as binary, so UTF-16
+files (AutoHotkey `IniWrite` `.ini` files, `.reg` exports) only showed
+properties. `probeFile` now detects UTF-16 first — a BOM, or without one,
+NULs confined to one byte parity — decodes, and then runs the usual
+control-character check on the decoded text. The detected encoding and BOM
+travel with the probe to the editor, which saves back in the same encoding
+instead of converting to UTF-8 (`text_encoding.dart`).
+
+Relevant commits: `42e0a4e`.
+
+## Generator previews hold the previous frame
+
+Paging a generator preview (video, PDF, …) flashed background + spinner on
+every page until ffmpeg/mutool finished. `AsyncRetain` gained an opt-in
+`holdKey`: while it's unchanged, the old frame stays on screen during the
+next load and swaps once it resolves (a null result or error drops back to
+the empty view, so failures stay visible). Generated frames are also
+pre-decoded with `precacheImage` by both the prefetch loop and the
+on-demand load, so the swap itself costs no decode time. An undecodable
+frame now shows the no-preview view instead of a blank.
+
+Relevant commits: `97ad81b`.
+
+## Markdown embeds through preview generators (Graphviz, Mermaid, DXF)
+
+Preview generators also render content embedded in Markdown, in Quick Look
+and in the help viewer (`MarkdownBodyView`). Full details are in
+`docs/generators.md` ("Markdown Embeds").
+
+- **Images**: `![](drawing.dxf)` / `<img src="model.step">` pointing at a
+  local file with a generator shows its page-0 image from the shared cache;
+  PNG/JPEG/GIF/WebP/BMP/SVG are still drawn natively. Generated images are
+  prefetched and the body is rebuilt once they're ready, so inline images
+  are never laid out at a stale zero size.
+- **Fenced blocks**: a new generator field `fences` (e.g. `["dot",
+  "graphviz"]`) claims those languages; the body is written to
+  `<cache>/fences/fence-<hash>.<first extension>` and run like a file. An
+  image result replaces the block, a `txt` result becomes a code block, and
+  a failure keeps the block with `Generator "<id>" failed: <summary>` — the
+  last three stderr lines, a timeout, "no output", or why the command
+  couldn't start (kept for cached failures too).
+- **`%THEME%`** expands to `dark`/`light` (remappable with `themeNames`) and
+  makes the theme part of the cache key; **`imageScale`** (default 1,
+  0.25–8) is the image's pixel density in the Markdown view.
+- Examples: `graphviz` (`dot`, theme-aware colors, 2× DPI, transparent,
+  `fontname=sans` so CJK labels don't turn to tofu), `mermaid`
+  (`merman-cli`) and `dxf-preview` (netpng `dxf2png`; the Windows config
+  points at the real `.exe`, since the `~/bin` shim is a bash script).
+- Mermaid first landed as a built-in renderer that piped fences to
+  `merman-cli`. It was removed again in favour of the generic mechanism, so
+  Waydir has no Mermaid-specific code or dependency; a `mermaid.json`
+  generator covers fences, `.mmd` files and grid thumbnails alike.
+
+Relevant commits: `4c04e7d`, `91d04e9`, `f0741cb`, `6601fa0`.
+
+## File list: grid-only zoom, Ctrl+wheel, fitted names and locations
+
+- Zoom (`fileListScale`) now applies to grid view only and never changes
+  text size: thumbnails, tile width, padding and badges scale, names and
+  captions stay at the theme size. List and tree always render at 100%;
+  the zoom actions are no-ops outside grid, and the status-bar zoom control
+  is hidden there. An existing non-1.0 scale is kept and only affects grid.
+- Ctrl+wheel over the file area steps the zoom. `CtrlWheelZoom` is a render
+  proxy that hit-tests itself before its children, so it claims the
+  pointer signal ahead of the inner `Scrollable` — unlike Quick Look's
+  `IgnorePointer` approach, Ctrl+click marking keeps working.
+- Grid names that overflow two lines are middle-ellipsized, keeping the
+  extension and a few trailing characters (`quarterly_fin…_v3.pdf`).
+- Recursive search: in automatic column mode the Location column is sized
+  to the longest relative parent path (capped at 40% of the viewport,
+  never squeezing the name below 160px) and shows the full path, shortened
+  from the start by whole components (`…/beta/gamma`) when needed. Tree
+  view now shows the Location column too — `FileTree` never had the
+  `recursiveResults` flag list view used.
+- Truncated names and locations show a full-text tooltip on hover (500 ms)
+  and for the keyboard cursor after it rests 600 ms in the active pane
+  (`CursorTooltip`).
+- Fixed: New Folder inserts its name row at the top, but the view only
+  revealed the cursor, so a scrolled list hid the name field. While an
+  inline rename/create is active, the list and grid reveal the edited row.
+
+Relevant commits: `b75f6b4`, `9411bf1`, `7af7973`, `6c97a3b`.
+
+## Search box keys
+
+- Ctrl+Shift+F toggles recursive search while typing in the search box
+  (the global handler skips editable focus, and Enter doesn't move focus,
+  so there was no keyboard way to it).
+- Down in the search box moves focus to the file list, placing the cursor
+  on the first row if there is none; the search stays open. In filter mode
+  Down still walks the suggestion list while it's shown.
+- View shortcuts pass through while the search box has focus: toggle view,
+  list/tree/grid, sidebar, hidden files, zoom. It's an allowlist by
+  shortcut id (rebinding keeps working) rather than "everything the text box
+  doesn't use", because the shell sees keys before the text-editing
+  shortcuts — a denylist would steal editing chords (Ctrl+→ is also compare
+  sync) and let file operations act on an off-screen cursor while typing.
+
+Relevant commits: `45fcda2`, `513a63c`, `297d12d`.
+
+## Keyboard: F10 menu popup, sidebar navigation, view-mode shortcuts
+
+- **F10** opens one popup menu at the mouse cursor whose top-level items are
+  the menu-bar categories (Waydir, View, Selection, Terminal, Plugins,
+  Help), each with its items as a submenu, reusing the context menu's
+  keyboard handling. The menu bar itself stays mouse-only. This replaced a
+  first attempt that moved focus between menu-bar buttons and their
+  dropdowns, which went through several rounds of bugs (escaping to the
+  sidebar, focus ownership, focus stealing) with the same root cause: no
+  single owner of keyboard focus. Known trade-off: the popup's `onSelect`
+  calls all six category handlers, relying on their action ids staying
+  disjoint. On Linux, GTK's own F10 menubar accelerator is disabled.
+- **Sidebar**: Ctrl+B focuses the sidebar when expanding it; ↑/↓ move a
+  keyboard cursor through all sections, Enter opens, Ctrl+Enter opens in a
+  new tab, Shift+Enter in the other pane's new tab.
+- **View mode**: `view_mode_list` / `view_mode_tree` / `view_mode_grid`
+  (Ctrl+Alt+1/2/3) jump straight to a view, next to the `toggle_view`
+  cycle; also in the command palette.
+- The seven dired shortcuts are rebindable in Keybindings (they were marked
+  `editable: false` for no particular reason).
+- Command palette entries for actions that only had keys: dired
+  mark/unmark-and-advance, move tab to other pane, terminal open/focus/new/
+  close, path insert, terminal font size. dired variants identical to
+  existing commands were left out.
+- Esc closes Preferences (first closing the search-results panel if open).
+
+Relevant commits: `1252359`, `4181f2f`, `b919bdd`, `54d1901`, `ed8a776`,
+`3118cb5`, `dde72a7`.
+
+## Help viewer and standalone tutorial window
+
+- Quick Look's Markdown rendering (HTML preprocessing, centered blocks,
+  math, selectable text) is extracted into `MarkdownBodyView` and also used
+  by Help, so Help's text is selectable and gets math and generator embeds.
+- Quick Look's drag/resize logic became a `FloatingWindowGeometry` mixin;
+  the Help dialog is a movable, resizable panel.
+- `--app-tutorial` (same self-relaunch mechanism as `--quick-look`) and a
+  pop-out button in Help run the tutorial in its own window with minimal
+  window chrome, so it can be followed while using the main window.
+
+Relevant commits: `b919bdd`.
+
+## Reduce motion
+
+Preferences → Accessibility → "Reduce motion" (System default / On / Off,
+new DB column). `context.reduceMotion` lets an explicit On/Off win and
+otherwise follows `MediaQuery.disableAnimations`. It turns off
+`PopupOverlay`'s fade (every dropdown and context menu opens instantly and
+closes without waiting) and Quick Look's dialog transition.
+
+Relevant commits: `fe378bb`.
+
+## Error details from a failed operation's notification
+
+A copy/move/trash that finished with errors only said "Completed with N
+errors" / "Failed"; the per-file errors were reachable only through the
+operations panel. The notification now carries `task.errors`, and the toast
+and its history tile become clickable (accent border on hover), opening the
+same per-file error list dialog. Notifications without errors are unchanged.
+
+Relevant commits: `8fe6ee0`.
+
+## Fixed: orphaned context submenus
+
+Removing a menu's overlay entry only takes effect on the next frame, so a
+hover in between could open a submenu (e.g. Compress) into an already-closed
+session — a submenu with no barrier that nothing could close. A submenu now
+only opens while its owning menu layer is still the live parent. As a safety
+net, every open session is registered, and a global Esc handler and a global
+outside pointer-down clear them all, orphans included (a session ignores
+outside clicks until its first frame, so the opening click doesn't close
+it). `dismissAllContextMenus()` is exposed.
+
+Relevant commits: `85aaae7`.
+
+## Opening the linked machine's directory over SFTP
+
+The setting: Waydir runs on two machines, and only one of them can reach the
+other — e.g. Windows can SFTP into a Linux box, but nothing on the Linux side
+can connect back to Windows. The goal is to hand "the folder I'm looking at"
+across in either direction anyway. Both directions run over the SFTP session
+the Windows-side Waydir already has open; neither instance opens a new
+connection or listens on a socket. Both actions are in the **View** menu.
+
+The channel is two folders in the linked machine's Waydir support directory,
+which every Waydir already maintains:
+
+- `pane_dirs/active.txt` — the directory of the focused pane, rewritten by
+  `PaneDirPublisher` whenever it changes (the same files `wcd` reads, next
+  to `0.txt` / `1.txt` per pane).
+- `remote_open_requests/` — watched by `RemoteOpenRequestWatcher` from
+  startup (create/modify events, `.txt` files only, 150 ms debounce per
+  file). Each file holds one path; the watcher reads it, deletes the file,
+  and opens the path in a new tab of its active pane if it is an existing
+  directory. Anything else is dropped silently.
+
+The two actions, run on the machine that holds the SFTP session:
+
+- **Send This Directory to Linked Machine** (enabled when the active tab is
+  an `sftp://` folder): takes the remote path of that folder, creates
+  `~/.config/waydir/remote_open_requests/` on the server if needed (`~` is
+  the session's home directory), and writes `<microseconds>.txt` containing
+  the path. The Waydir on the server then opens that folder as a local
+  path. A toast reports whether the write succeeded — not whether the other
+  side opened it (it may not be running).
+- **Open Linked Machine's Directory**: reads
+  `~/.config/waydir/pane_dirs/active.txt` over the session and opens it here
+  in a new tab. A bare local path is turned into an `sftp://` URI with the
+  session's user/host/port; a value that is already a remote URI is opened
+  as is. It uses the active tab's session if that tab is on SFTP, otherwise
+  the first pooled session, so it's enabled whenever any SFTP session is
+  open. An empty or unreadable file shows "unavailable".
+
+Limits:
+
+- The server-side paths are hardcoded to `~/.config/waydir/...`, i.e. the
+  linked machine must be Linux with the default support directory. A macOS
+  server (`~/Library/Application Support/...`), a Windows server
+  (`%APPDATA%\dev.waydir\Waydir`) or a custom `$XDG_CONFIG_HOME` won't be
+  found.
+- With several SFTP sessions open, Open picks the active tab's or the first
+  one; there is no machine picker.
+- There is no authentication beyond file permissions: anyone who can write
+  to the receiving side's `remote_open_requests/` can make that Waydir open
+  a new tab on any existing directory (nothing is executed).
+
+Relevant commits: `f6ee0ca`, `79d2a15` (menu order and the relaxed enable
+check for Open).
+
+## Fixed: startup failure after an older build touched the database
+
+Waydir failed to open its window with "duplicate column name: tag_origin":
+a build from before schema 47 had opened the database and stamped
+`user_version` back to 46, so the next current build re-ran the v47 step on
+a table that already had the column. The "add only if missing" helper for
+`app_settings` columns became `addColumnIfMissing(table, column)` and the
+v47 step uses it.
+
+Relevant commits: `228d0a1`.

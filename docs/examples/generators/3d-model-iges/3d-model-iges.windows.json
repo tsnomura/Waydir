@@ -1,5 +1,5 @@
 {
-  "_help": "Windows version (10-page turntable) — see 3d-model-iges.linux-macos.json for a simpler single-angle Linux/macOS version. IGES files, split out from 3d-model.json for the same reason as 3d-model-step.json: f3d 3.5.0 can't auto-detect the occt IGES reader from the .iges/.igs extension alone. Waydir ignores every key starting with \"_\".",
+  "_help": "Windows version (10-page turntable, same as 3d-model-iges.linux-macos.json). IGES files, split out from 3d-model.json for the same reason as 3d-model-step.json: f3d 3.5.0 can't auto-detect the occt IGES reader from the .iges/.igs extension alone. Waydir ignores every key starting with \"_\".",
   "id": "3d-model-iges",
   "extensions": ["iges", "igs"],
   "cmd": "f3d",

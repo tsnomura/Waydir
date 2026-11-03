@@ -1,5 +1,5 @@
 {
-  "_help": "Windows version (10-page turntable) — see 3d-model-step.linux-macos.json for a simpler single-angle Linux/macOS version. STEP files, split out from 3d-model.json: f3d 3.5.0 can't auto-detect the occt STEP reader from the .step/.stp extension alone and fails with \"unknown format... use --force-reader\" unless told explicitly. Otherwise identical to 3d-model.json. Waydir ignores every key starting with \"_\".",
+  "_help": "Windows version (10-page turntable, same as 3d-model-step.linux-macos.json). STEP files, split out from 3d-model.json: f3d 3.5.0 can't auto-detect the occt STEP reader from the .step/.stp extension alone and fails with \"unknown format... use --force-reader\" unless told explicitly. Otherwise identical to 3d-model.json. Waydir ignores every key starting with \"_\".",
   "id": "3d-model-step",
   "extensions": ["step", "stp"],
   "cmd": "f3d",
