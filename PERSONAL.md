@@ -9,8 +9,13 @@ features and fixes so they don't get lost across rebases.
 A file-per-terminal signal bridge lets any shell and a Waydir pane hand each
 other their current directory, in either direction.
 
-- **`wd`** (shell → Waydir): run it in a terminal and the pane that owns that
-  terminal navigates to the shell's current directory.
+- **`wd [path]`** (shell → Waydir): run it in a terminal and the pane that
+  owns that terminal opens a tab on the shell's current directory, or on
+  `path` when given (relative paths resolve against the shell). A file path
+  opens its folder with the cursor on the file, without marking it
+  (`TerminalCwdSignal` reports `(dir, cursor)`; `NavigationStore`'s
+  `initialCursor` places the cursor like `initialSelect` but leaves the marks
+  alone).
 - **`wcd`** (Waydir → shell): run it in a terminal and the shell `cd`s into
   whatever directory the associated Waydir pane is currently showing.
 
@@ -30,26 +35,27 @@ functions):
 
 **PowerShell**
 ```powershell
-function wd { $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Get-Location).Path | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }
+function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }
 function wcd { $pane = if ($env:WAYDIR_ORIGIN_PANE) { $env:WAYDIR_ORIGIN_PANE } else { 'active' }; Set-Location (Get-Content "$env:WAYDIR_PANE_DIR_ROOT\$pane.txt") }
 ```
 
 **Git Bash (MSYS)**
 ```bash
-wd() { pwd -W > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
+wd() { cygpath -wa "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
 wcd() { cd "$(cat "$WAYDIR_PANE_DIR_ROOT/${WAYDIR_ORIGIN_PANE:-active}.txt")"; }
 ```
-Git Bash needs `pwd -W` (Windows-form path), not `$PWD` (POSIX-form) — Waydir
-resolves the signal file's contents as a native path and silently drops
-anything it can't resolve.
+Git Bash needs a Windows-form path (`cygpath -wa`, formerly `pwd -W`), not
+`$PWD` (POSIX-form) — Waydir resolves the signal file's contents as a native
+path and silently drops anything it can't resolve.
 
 **bash/zsh (Unix)**
 ```bash
-wd() { printf '%s' "$PWD" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
+wd() { realpath -- "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
 wcd() { cd "$(cat "$WAYDIR_PANE_DIR_ROOT/${WAYDIR_ORIGIN_PANE:-active}.txt")"; }
 ```
 
-Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`.
+Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`,
+`28804b8` (path argument).
 
 ## Quick Look
 
@@ -131,7 +137,8 @@ config schema and the trust model are in [`docs/generators.md`](docs/generators.
   PDF/Markdown previews for the extensions it claims, so a `pdf` generator
   replaces the native pdfium-backed preview and thumbnail. (The native one
   used to show nothing on Windows; see "PDF preview and thumbnails through
-  pdfium" below.)
+  pdfium" below.) Each use (Quick Look, thumbnail, Markdown) can be turned
+  off per generator; see "Per-use generator toggles" below.
 - Results are cached by a hash of the file's path/size/mtime plus the
   generator's own command, so edits and command changes both invalidate the
   cache automatically. Failures (bad exit code, timeout, missing binary)
@@ -853,6 +860,12 @@ While compare is active the panes move together:
   ping-pong; folders that exist on the leading side only (ghosts on the
   other) aren't propagated. On start, the right pane's expansion inside the
   compare root is aligned to the left's (`ab19424`).
+- The link is set up as soon as compare starts, not when the first result
+  is published, so cursor, scroll, folder and tree follow already work
+  while both sides are still being listed ("Comparing…", long for
+  recursive or network compares). Until results exist, folder follow checks
+  the follower pane's own listing and tree children for the target folder.
+  Sync stays disabled until the run finishes (`d863fb6`).
 - Limits: scroll follows by pixel offset, so rows can drift if only one
   pane has a search filter or hidden files differ. Compare still re-runs
   after a completed operation using the panes' current folders as the new
@@ -2556,7 +2569,32 @@ With pdfium working, PDFs also get grid thumbnails without a generator:
 encodes it to PNG, and caches it in the generator cache, keyed by path,
 mtime and size; at most 2 at a time. SFTP PDFs (with remote thumbnails on)
 are downloaded through `RemoteThumbnailCache` first. A configured `pdf`
-generator still wins, so drop it to use pdfium; it is noticeably quicker
-than spawning `mutool` per file.
+generator still wins unless its thumbnail use is turned off (next section);
+pdfium is noticeably quicker than spawning `mutool` per file.
 
 Relevant commits: `ab09595`, `de8443b`.
+
+## Per-use generator toggles, Generators preferences tab
+
+A generator used to apply everywhere it matched: Quick Look, grid
+thumbnails and Markdown embeds. Comparing it with a built-in renderer meant
+moving its JSON out of the folder. Now each use can be switched off:
+
+- JSON keys `quickLook`, `thumbnail`, `markdown` (default `true`).
+  `GeneratorRegistry.forExtension(ext, use)` takes the `GeneratorUse`, so
+  every caller names which use it is asking for; `forFence` follows
+  `markdown`. A use that's off falls back to the built-in renderer (images,
+  PDF via pdfium, text/Markdown), else the icon.
+- Generators moved out of the Quick Look preferences into their own
+  **Generators** tab next to Launchers (they had outgrown Quick Look). Each
+  row has Quick Look / Thumbnail / Markdown chips on their own wrapping line;
+  a chip writes or removes the key in the JSON and reloads the registry.
+- In Markdown, png/jpg/gif/webp/bmp/svg are always rendered natively; other
+  embeds go to a Markdown-enabled generator. `![](x.pdf)` without one now
+  renders page 1 through pdfium (`PdfThumbnailCache.firstPage`, 1600 px,
+  shown at 2x) instead of nothing.
+
+Typical PDF setup: `mutool` generator with only Thumbnail on, so Quick Look
+gets pdfium's scrolling multi-page view.
+
+Relevant commits: `59dc086`, `52be9af`.
