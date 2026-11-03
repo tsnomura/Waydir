@@ -1,0 +1,12 @@
+{
+  "_help": "Linux only, for hosts without bsdtar (libarchive-tools not installed, e.g. no sudo) — with bsdtar, archive-list.linux-macos.json already lists tarballs and this file isn't needed. Lists a tarball's members as text in Quick Look using GNU tar, which reads through the compression layer itself. Pair it with an archive-list that leaves the tar extensions out (e.g. one adapted from archive-list.windows.json to use p7zip's 7z for zip/7z/rar/zst/cab/iso/jar), since two generators shouldn't claim the same extension. Not for macOS: its tar is bsdtar, which has no --quoting-style. Preview generator config — see docs/generators.md for the full guide. Waydir ignores every key starting with \"_\" when loading.",
+  "id": "tar-list",
+  "extensions": ["tar", "tgz", "gz", "bz2", "tbz2", "xz", "txz"],
+  "_help_extensions": "Compression is detected from the file itself, so no -z/-j/-J. A plain .gz that isn't a tarball shows no preview. .zst works too if zstd is installed; add it here and drop it from archive-list if you prefer tar for it.",
+  "cmd": "tar",
+  "args": ["--quoting-style=literal", "-tvf", "%INPUT%"],
+  "_help_args": "--quoting-style=literal prints non-ASCII names as-is; under a C/POSIX locale GNU tar otherwise escapes them as octal like \\346\\227\\245.",
+  "stdout": true,
+  "timeoutSeconds": 15,
+  "outputExt": "txt"
+}
