@@ -8,8 +8,7 @@ mixin _WaydirActionsMixin on State<WaydirShell>, _WaydirStateBase {
   bool _canLaunch(FileEntry entry) =>
       entry.type == FileItemType.file &&
       !entry.isGhost &&
-      !FileSystemService.isInsideArchive(entry.realPath) &&
-      !PlatformPaths.isRemoteUri(entry.realPath);
+      !FileSystemService.isInsideArchive(entry.realPath);
 
   (FileEntry, FileEntry)? _comparePairFor(FileEntry entry) {
     if (!_shell.compare.active.value || !_shell.isDual.value) return null;
