@@ -53,6 +53,26 @@ fi
 Git Bash on Windows uses the Windows path form: `cygpath -wa '<path>'`
 instead of `realpath`, and the directory from the PowerShell line above.
 
+## When the write is refused (Codex sandbox)
+
+Codex CLI's `workspace-write` sandbox only lets commands write inside the
+workspace, so the signal directory looks read-only ("Read-only file
+system") even though the user owns it. The installer
+(`docs/examples/agent-skills/install-codex.sh` in the Waydir repo) adds the
+directory to the sandbox; if the write is still refused, it wasn't run or
+Codex hasn't been restarted since. Don't try to get around
+this. Tell the user to allow that one directory in `~/.codex/config.toml`,
+using the expanded absolute path of the signal directory:
+
+```toml
+[sandbox_workspace_write]
+writable_roots = ["/home/<user>/.config/waydir/cwd_signals"]
+```
+
+Codex picks it up after a restart. Until then, give the user the command to
+run in their own terminal: `wd /absolute/path/to/file`. Don't edit the
+Codex config yourself.
+
 ## Rules
 
 - The path must exist and be absolute in native form (`C:\...` on Windows,
