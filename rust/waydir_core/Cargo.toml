@@ -28,5 +28,5 @@ pdfium-render = "0.9.1"
 opt-level = 3
 lto = true
 codegen-units = 1
-panic = "abort"
+panic = "unwind"
 strip = true
