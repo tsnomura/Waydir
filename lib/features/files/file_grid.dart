@@ -17,6 +17,7 @@ import '../../ui/theme/app_text_styles.dart';
 import '../../utils/drag_drop.dart';
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
+import '../quick_look/generators/generator_def.dart';
 import '../quick_look/generators/generator_registry.dart';
 import '../quick_look/generators/generator_runner.dart';
 import 'cursor_tooltip.dart';
@@ -1051,7 +1052,11 @@ class _GridPreview extends StatelessWidget {
             )
           : _ImageThumbnail(entry: entry, thumbSize: thumbSize);
     }
-    if (GeneratorRegistry.instance.forExtension(entry.extension) != null) {
+    if (GeneratorRegistry.instance.forExtension(
+          entry.extension,
+          GeneratorUse.thumbnail,
+        ) !=
+        null) {
       return _ResolvedThumbnail(
         entry: entry,
         thumbSize: thumbSize,

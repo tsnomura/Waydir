@@ -110,7 +110,10 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
   // on top of the generation hold). A failed decode is swallowed: the frame
   // simply isn't cached, and Image.file's error view takes over.
   Future<void> _warm(String path) async {
-    final def = GeneratorRegistry.instance.forExtension(widget.entry.extension);
+    final def = GeneratorRegistry.instance.forExtension(
+      widget.entry.extension,
+      GeneratorUse.quickLook,
+    );
     if (def != null && def.textOutput) return;
     if (!mounted) return;
     try {
@@ -154,6 +157,7 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
 
                     final def = GeneratorRegistry.instance.forExtension(
                       widget.entry.extension,
+                      GeneratorUse.quickLook,
                     );
                     if (def != null && def.textOutput) {
                       return _GeneratorText(

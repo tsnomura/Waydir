@@ -4,7 +4,7 @@ Preview generators let Quick Look show a raster preview for file types Waydir ha
 
 A configured generator always takes priority over Waydir's built-in previews (images, PDF, Markdown) for the extensions it claims — adding one is a deliberate, explicit choice to handle that extension your own way, so it wins even where a built-in would otherwise apply.
 
-The file grid also shows a generator's output as a thumbnail (always on, no separate setting) for any matching file, using the first page/frame only — the same cached image Quick Look uses, unless `thumbnailArgs` says otherwise (see [Config Format](#config-format)). This is throttled app-wide so scrolling through a folder full of matching files doesn't spawn a burst of helper processes at once, and a file whose generator fails isn't retried on every scroll back into view.
+The file grid also shows a generator's output as a thumbnail (unless the generator sets `"thumbnail": false`) for any matching file, using the first page/frame only — the same cached image Quick Look uses, unless `thumbnailArgs` says otherwise (see [Config Format](#config-format)). This is throttled app-wide so scrolling through a folder full of matching files doesn't spawn a burst of helper processes at once, and a file whose generator fails isn't retried on every scroll back into view.
 
 ## Remote (SFTP) Files
 
@@ -84,6 +84,7 @@ before it does anything useful.
 | `imageScale` | no | Pixel density the image is rendered at, used by the Markdown preview: `2` shows a 1200px-wide PNG 600 logical pixels wide, crisp on HiDPI screens. Default `1`, clamped to 0.25–8. |
 | `themeNames` | no | What `%THEME%` expands to, keyed by `dark` / `light`, for tools that name their themes differently, e.g. `{"light": "default"}`. Missing keys expand to `dark` / `light` themselves. |
 | `thumbnailArgs` | no | Overrides `args` for the file grid's thumbnail only — Quick Look always uses `args`. A separate cache entry from page 0 of `args`, so it doesn't have to be the same kind of image at all; see [Separate Thumbnail](#separate-thumbnail). |
+| `quickLook` / `thumbnail` / `markdown` | no | Set to `false` to stop using this generator in Quick Look, for grid thumbnails, or in the Markdown preview (image embeds and fences). Default `true`. A turned-off use falls back to the built-in renderer where there is one (images, PDF via pdfium, Markdown/text), otherwise the icon. Toggled per generator in Preferences → Quick Look, which writes these keys. |
 
 ## Placeholders
 

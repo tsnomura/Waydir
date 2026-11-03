@@ -23,10 +23,17 @@ class GeneratorRegistry {
   final _byExtension = <String, GeneratorDef>{};
   final _byFence = <String, GeneratorDef>{};
 
-  GeneratorDef? forExtension(String extension) =>
-      _byExtension[extension.toLowerCase()];
+  GeneratorDef? forExtension(String extension, GeneratorUse use) {
+    final def = _byExtension[extension.toLowerCase()];
 
-  GeneratorDef? forFence(String language) => _byFence[language.toLowerCase()];
+    return def != null && def.usedFor(use) ? def : null;
+  }
+
+  GeneratorDef? forFence(String language) {
+    final def = _byFence[language.toLowerCase()];
+
+    return def != null && def.usedFor(GeneratorUse.markdown) ? def : null;
+  }
 
   Future<void> load() async {
     _byExtension.clear();

@@ -2705,6 +2705,9 @@ class Translations$preferences$categories$en {
 	/// en: 'Quick Look'
 	String get quickLook => 'Quick Look';
 
+	/// en: 'Generators'
+	String get generators => 'Generators';
+
 	/// en: 'Launchers'
 	String get launchers => 'Launchers';
 
@@ -3259,6 +3262,15 @@ class Translations$preferences$quickLook$en {
 
 	/// en: 'Edit JSON'
 	String get editGeneratorJson => 'Edit JSON';
+
+	/// en: 'Quick Look'
+	String get generatorUseQuickLook => 'Quick Look';
+
+	/// en: 'Thumbnail'
+	String get generatorUseThumbnail => 'Thumbnail';
+
+	/// en: 'Markdown'
+	String get generatorUseMarkdown => 'Markdown';
 
 	/// en: 'Delete'
 	String get deleteGenerator => 'Delete';
@@ -4798,6 +4810,7 @@ extension on Translations {
 			'preferences.categories.appearance' => 'Appearance',
 			'preferences.categories.terminal' => 'Terminal',
 			'preferences.categories.quickLook' => 'Quick Look',
+			'preferences.categories.generators' => 'Generators',
 			'preferences.categories.launchers' => 'Launchers',
 			'preferences.categories.bookmarks' => 'Bookmarks',
 			'preferences.categories.plugins' => 'Plugins',
@@ -4968,6 +4981,9 @@ extension on Translations {
 			'preferences.quickLook.generatorsReloaded' => 'Preview generators reloaded',
 			'preferences.quickLook.editGenerator' => 'Edit',
 			'preferences.quickLook.editGeneratorJson' => 'Edit JSON',
+			'preferences.quickLook.generatorUseQuickLook' => 'Quick Look',
+			'preferences.quickLook.generatorUseThumbnail' => 'Thumbnail',
+			'preferences.quickLook.generatorUseMarkdown' => 'Markdown',
 			'preferences.quickLook.deleteGenerator' => 'Delete',
 			'preferences.quickLook.deleteGeneratorTitle' => 'Delete generator?',
 			'preferences.quickLook.deleteGeneratorMessage' => ({required Object name}) => 'Delete the preview generator "${name}"? Its cached previews will be cleared too.',
@@ -5125,12 +5141,12 @@ extension on Translations {
 			'help.title' => 'In-app tutorial',
 			'help.menuLabel' => 'In-app tutorial',
 			'help.popOut' => 'Open in separate window',
+			_ => null,
+		} ?? switch (path) {
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
-			_ => null,
-		} ?? switch (path) {
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
@@ -5639,12 +5655,12 @@ extension on Translations {
 			'password.passphraseOptional' => 'Passphrase (optional)',
 			'password.unlock' => 'Unlock',
 			'selectPattern.title' => 'Select by pattern',
+			_ => null,
+		} ?? switch (path) {
 			'selectPattern.hint' => '*.jpg, *.png',
 			'selectPattern.help' => 'Wildcards: * (any), ? (one char). Separate patterns with commas.',
 			'selectPattern.select' => 'Select',
 			'operations.title' => 'Operations',
-			_ => null,
-		} ?? switch (path) {
 			'operations.clear' => 'Clear',
 			'operations.noActive' => 'No active operations',
 			'operations.resolveConflicts' => 'Resolve Conflicts',

@@ -20,6 +20,16 @@ enum PagingMode {
   fixed,
 }
 
+enum GeneratorUse {
+  quickLook('quickLook'),
+  thumbnail('thumbnail'),
+  markdown('markdown');
+
+  final String key;
+
+  const GeneratorUse(this.key);
+}
+
 class GeneratorDef {
   final String id;
   final Set<String> extensions;
@@ -77,6 +87,8 @@ class GeneratorDef {
   /// a tool uses other names (e.g. `{"light": "default"}`).
   final Map<String, String> themeNames;
 
+  final Set<GeneratorUse> uses;
+
   const GeneratorDef({
     required this.id,
     required this.extensions,
@@ -95,7 +107,14 @@ class GeneratorDef {
     this.fences = const {},
     this.imageScale = 1.0,
     this.themeNames = const {},
+    this.uses = const {
+      GeneratorUse.quickLook,
+      GeneratorUse.thumbnail,
+      GeneratorUse.markdown,
+    },
   });
+
+  bool usedFor(GeneratorUse use) => uses.contains(use);
 
   bool get usesTheme =>
       args.any((a) => a.contains('%THEME%')) ||
@@ -228,6 +247,10 @@ class GeneratorDef {
       fences: fences,
       imageScale: imageScale,
       themeNames: themeNames,
+      uses: {
+        for (final use in GeneratorUse.values)
+          if (json[use.key] != false) use,
+      },
     );
   }
 }
