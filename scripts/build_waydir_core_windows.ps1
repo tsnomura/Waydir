@@ -18,3 +18,18 @@ $dest = Join-Path $here "third_party\waydir_core\windows"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 Copy-Item -Force $out (Join-Path $dest "waydir_core.dll")
 Write-Host "vendored: $dest\waydir_core.dll"
+
+$pdfium = Join-Path $dest "pdfium.dll"
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ("pdfium-" + [Guid]::NewGuid())
+New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+try {
+    $tgz = Join-Path $tmp "pdfium.tgz"
+    Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz" -OutFile $tgz
+    tar -xzf $tgz -C $tmp bin/pdfium.dll
+    if ($LASTEXITCODE -ne 0) { throw "tar failed extracting pdfium.dll" }
+    Copy-Item -Force (Join-Path $tmp "bin\pdfium.dll") $pdfium
+} finally {
+    Remove-Item -Recurse -Force $tmp
+}
+Copy-Item -Force $pdfium (Join-Path $crate "target\release\pdfium.dll")
+Write-Host "vendored: $pdfium"
