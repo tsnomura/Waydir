@@ -62,6 +62,34 @@ non-ASCII paths. The BOM it writes is stripped by Waydir's `trim()`.
 Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`,
 `28804b8` (path argument), `b72c19d` (path resolution), `5b6a4ce` (UTF-8).
 
+### Signal directory under the temp dir
+
+The signal directory (`WAYDIR_CWD_DIR`) moved out of the app support
+directory, so that a sandboxed agent can write to it:
+
+- Linux: `/tmp/waydir-<uid>/signals`. Codex CLI's `workspace-write`
+  sandbox allows `/tmp` (checked on a real host: a file written inside
+  Codex is visible outside), so no `writable_roots` entry is needed. `/tmp`
+  is shared by all users, so `/tmp/waydir-<uid>` is only used when it is a
+  real directory (not a symlink) owned by this uid (`stat -c '%u %f'`); it
+  is then set to `0700`. Otherwise Waydir falls back to the old
+  `~/.config/waydir/cwd_signals`.
+- Windows: `%TEMP%\waydir\signals`, which Git Bash sees as
+  `/tmp/waydir/signals`.
+- macOS: unchanged.
+
+A temp directory can be cleaned up while Waydir runs (systemd-tmpfiles
+removes idle `/tmp` entries after 10 days by default), so the watcher
+recreates it: on Linux the watch stream ends when the directory is
+deleted; on Windows it doesn't, so the directory is also checked every
+30 s. `pane_dirs` (read by `wcd`) stays in the support directory.
+
+Shells opened before the new build first ran still have the old
+`WAYDIR_CWD_DIR`; `wd` there writes to a directory nobody watches until
+the shell is reopened.
+
+Relevant commit: `0e8c910`.
+
 ### `waydir-show` agent skill
 
 The same signal lets a coding agent show the user a file:
@@ -78,9 +106,12 @@ into `~/.claude/skills/` (see that folder's README).
   no stale request is left, and the agent asks the user to start Waydir;
   it never launches it.
 - For Codex CLI, `docs/examples/agent-skills/install-codex.sh` copies the
-  skill to `~/.codex/skills` and adds the signal directory to
+  skill to `~/.codex/skills`. When the signal directory isn't under `/tmp`
+  (macOS, or an older build), it also adds it to
   `[sandbox_workspace_write] writable_roots` in `~/.codex/config.toml`,
   since the `workspace-write` sandbox otherwise sees it as read-only.
+- The skill looks for `/tmp/waydir-<uid>/signals` before `WAYDIR_CWD_DIR`,
+  which may still name the old directory.
 
 Relevant commits: `0112b69`, `69fdd77` (Codex installer), `5536be1`
 (consumed check).
