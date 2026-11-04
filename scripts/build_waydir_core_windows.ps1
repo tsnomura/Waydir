@@ -11,6 +11,7 @@ $verLine = $pubspec | Where-Object { $_ -match '^version:' } | Select-Object -Fi
 if ($verLine -match '([0-9]+\.[0-9]+\.[0-9]+)') { $env:WAYDIR_VERSION = $Matches[1] }
 
 cargo build --release --manifest-path (Join-Path $crate "Cargo.toml")
+if ($LASTEXITCODE -ne 0) { throw "cargo build failed (is waydir_core.dll in use by a running Waydir?)" }
 
 $out = Join-Path $crate "target\release\waydir_core.dll"
 $dest = Join-Path $here "third_party\waydir_core\windows"
@@ -25,7 +26,9 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 try {
     $tgz = Join-Path $tmp "pdfium.tgz"
     Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz" -OutFile $tgz
-    tar -xzf $tgz -C $tmp bin/pdfium.dll
+    $tar = Join-Path $env:SystemRoot "System32\tar.exe"
+    if (-not (Test-Path $tar)) { $tar = "tar" }
+    & $tar -xzf $tgz -C $tmp bin/pdfium.dll
     if ($LASTEXITCODE -ne 0) { throw "tar failed extracting pdfium.dll" }
     Copy-Item -Force (Join-Path $tmp "bin\pdfium.dll") $pdfium
 } finally {
