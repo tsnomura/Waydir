@@ -9,7 +9,7 @@ use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, PublicKey};
 use russh_sftp::client::SftpSession;
 use tokio::sync::Mutex;
 
-use super::auth::{discover_default_keys, load_key, AuthKind};
+use super::auth::{discover_default_keys, load_key, resolve_user, AuthKind};
 use super::runtime::rt;
 
 /// Status zwracany do Darta po próbie otwarcia sesji.
@@ -70,6 +70,7 @@ pub(super) async fn open(
     user: String,
     auth: AuthKind,
 ) -> Result<(SftpOpenStatus, u64, String), String> {
+    let user = resolve_user(user);
     let key = SessionKey {
         host: host.clone(),
         port,
