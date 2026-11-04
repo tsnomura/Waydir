@@ -7,6 +7,7 @@ try {
   $branch = (git rev-parse --abbrev-ref HEAD).Trim()
   $commit = (git rev-parse HEAD).Trim()
   $date = Get-Date -Format 'yyyy-MM-dd'
+  $env:WAYDIR_PERSONAL_LABEL = "$version, $branch, $date"
   flutter build windows --release `
     "--dart-define=WAYDIR_PERSONAL_VERSION=$version" `
     "--dart-define=WAYDIR_PERSONAL_BRANCH=$branch" `

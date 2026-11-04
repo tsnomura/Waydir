@@ -1,11 +1,92 @@
 #include "utils.h"
 
+#include <fcntl.h>
 #include <flutter_windows.h>
 #include <io.h>
 #include <stdio.h>
 #include <windows.h>
 
+#include <fstream>
 #include <iostream>
+#include <sstream>
+
+#ifndef WAYDIR_PERSONAL_LABEL
+#define WAYDIR_PERSONAL_LABEL ""
+#endif
+
+namespace {
+
+bool IsRedirected(DWORD id) {
+  HANDLE handle = ::GetStdHandle(id);
+  if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  DWORD type = ::GetFileType(handle);
+  return type == FILE_TYPE_DISK || type == FILE_TYPE_PIPE;
+}
+
+void PointStdoutAtConsole() {
+  FILE *unused;
+  if (freopen_s(&unused, "CONOUT$", "w", stdout) == 0) {
+    ::SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast<HANDLE>(
+                                          _get_osfhandle(_fileno(stdout))));
+  }
+}
+
+std::wstring ExecutableDirectory() {
+  wchar_t buffer[MAX_PATH];
+  DWORD length = ::GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+  std::wstring path(buffer, length);
+  size_t slash = path.find_last_of(L"\\/");
+  return slash == std::wstring::npos ? std::wstring() : path.substr(0, slash);
+}
+
+std::string VersionText() {
+  std::ostringstream text;
+  text << "Waydir " << FLUTTER_VERSION_MAJOR << "." << FLUTTER_VERSION_MINOR
+       << "." << FLUTTER_VERSION_PATCH;
+  std::string personal = WAYDIR_PERSONAL_LABEL;
+  if (!personal.empty()) {
+    text << " (personal " << personal << ")";
+  }
+  text << "\n";
+  return text.str();
+}
+
+std::string HelpText() {
+  std::ifstream file(ExecutableDirectory() +
+                         L"\\data\\flutter_assets\\assets\\cli_help.txt",
+                     std::ios::binary);
+  std::ostringstream text;
+  text << file.rdbuf();
+  return text.str();
+}
+
+}  // namespace
+
+bool HandleCliQuery(const std::vector<std::string> &arguments,
+                    bool attached_console) {
+  bool help = false;
+  bool version = false;
+  for (const std::string &argument : arguments) {
+    if (argument == "-h" || argument == "--help") {
+      help = true;
+    } else if (argument == "-v" || argument == "--version") {
+      version = true;
+    }
+  }
+  if (!help && !version) {
+    return false;
+  }
+  if (attached_console && !IsRedirected(STD_OUTPUT_HANDLE)) {
+    PointStdoutAtConsole();
+  }
+  _setmode(_fileno(stdout), _O_BINARY);
+  std::string text = help ? HelpText() : VersionText();
+  fwrite(text.data(), 1, text.size(), stdout);
+  fflush(stdout);
+  return true;
+}
 
 void CreateAndAttachConsole() {
   if (::AllocConsole()) {

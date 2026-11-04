@@ -41,6 +41,18 @@ class AppInfo {
     if (personalBuildDate.isNotEmpty) personalBuildDate,
   ].where((s) => s.isNotEmpty).join(' · ');
 
+  static String get cliVersion {
+    final personal = [
+      personalVersion,
+      personalBranch,
+      personalBuildDate,
+    ].where((s) => s.isNotEmpty).join(', ');
+
+    return personal.isEmpty
+        ? 'Waydir ${version.value}'
+        : 'Waydir ${version.value} (personal $personal)';
+  }
+
   static final version = signal<String>('…');
   static final Computed<String> versionLabel = computed(
     () => 'v${version.value}',

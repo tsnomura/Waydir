@@ -1,0 +1,16 @@
+Waydir - desktop file manager
+
+Usage: waydir [options] [path...]
+
+Arguments:
+  path...               One or more folders to open, each in its own tab.
+
+Options:
+  -s, --split           Open the first two paths side by side in split view.
+  -r, --reveal <file>   Open the containing folder and select <file>.
+      --select <file>   Alias for --reveal.
+      --quick-look <file>
+                        Open only <file> in a standalone Quick Look window.
+      --app-tutorial    Open the in-app tutorial in a standalone window.
+  -v, --version         Print the version and exit.
+  -h, --help            Show this help and exit.
