@@ -1,13 +1,16 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:signals/signals_flutter.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/theme/motion.dart';
 import 'tab_chip.dart';
 import 'tab_state.dart';
 import 'tabs_store.dart';
 
 const _kScrollStep = 120.0;
+const _kRevealDuration = Duration(milliseconds: 220);
 
 class TabStrip extends StatefulWidget {
   final TabsStore tabsStore;
@@ -27,6 +30,45 @@ class TabStrip extends StatefulWidget {
 
 class _TabStripState extends State<TabStrip> {
   final _scrollController = ScrollController();
+  final _slotKeys = <String, GlobalKey>{};
+  Set<String>? _knownIds;
+
+  void _revealTab(String id) {
+    final render = _slotKeys[id]?.currentContext?.findRenderObject();
+    if (render == null || !_hasMetrics) return;
+    final viewport = RenderAbstractViewport.maybeOf(render);
+    if (viewport == null) return;
+    final position = _scrollController.position;
+    final toEnd = viewport.getOffsetToReveal(render, 1.0).offset;
+    final toStart = viewport.getOffsetToReveal(render, 0.0).offset;
+    final double target;
+    if (position.pixels < toEnd) {
+      target = toEnd;
+    } else if (position.pixels > toStart) {
+      target = toStart;
+    } else {
+      return;
+    }
+    final clamped = target.clamp(0.0, position.maxScrollExtent);
+    if (context.reduceMotion) {
+      _scrollController.jumpTo(clamped);
+    } else {
+      _scrollController.animateTo(
+        clamped,
+        duration: _kRevealDuration,
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _revealIfOpened(Set<String> ids, String activeId) {
+    final known = _knownIds;
+    _knownIds = ids;
+    if (known == null || known.contains(activeId)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _revealTab(activeId);
+    });
+  }
 
   @override
   void initState() {
@@ -72,6 +114,10 @@ class _TabStripState extends State<TabStrip> {
     return SignalBuilder(
       builder: (context) {
         final tabs = widget.tabsStore.tabs.value;
+        final activeId = widget.tabsStore.activeTab.value.id;
+        final ids = {for (final t in tabs) t.id};
+        _slotKeys.removeWhere((id, _) => !ids.contains(id));
+        _revealIfOpened(ids, activeId);
 
         // Falls back to here whenever a drop lands outside every _TabSlot's
         // own target — empty trailing space past the last tab, or the
@@ -123,12 +169,15 @@ class _TabStripState extends State<TabStrip> {
                       child: Row(
                         children: [
                           for (final (index, tab) in tabs.indexed)
-                            _TabSlot(
-                              key: ValueKey('tab:${tab.id}'),
-                              tab: tab,
-                              index: index,
-                              tabsStore: widget.tabsStore,
-                              onMoveToOtherPane: widget.onMoveToOtherPane,
+                            KeyedSubtree(
+                              key: _slotKeys.putIfAbsent(tab.id, GlobalKey.new),
+                              child: _TabSlot(
+                                key: ValueKey('tab:${tab.id}'),
+                                tab: tab,
+                                index: index,
+                                tabsStore: widget.tabsStore,
+                                onMoveToOtherPane: widget.onMoveToOtherPane,
+                              ),
                             ),
                         ],
                       ),
