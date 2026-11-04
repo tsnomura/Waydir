@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/app_dirs.dart';
+import '../../core/platform/user_tmp_dir.dart';
 import '../../core/terminal/terminal_paths.dart';
 
 /// A file-per-terminal bridge from any shell into the pane that owns it —
@@ -45,8 +46,23 @@ class TerminalCwdSignal {
 
   static StreamSubscription<FileSystemEvent>? _subscription;
   static final Map<String, Timer> _debounce = {};
+  static Timer? _presence;
+  static Timer? _restartTimer;
 
-  static Future<String> directory() async {
+  static Future<String>? _directory;
+  static String? _tmpRoot;
+
+  static Future<String> directory() {
+    return _directory ??= _resolveDirectory();
+  }
+
+  static Future<String> _resolveDirectory() async {
+    final tmp = await UserTmpDir.path();
+    if (tmp != null && await UserTmpDir.ensure(tmp)) {
+      _tmpRoot = tmp;
+
+      return p.join(tmp, 'signals');
+    }
     final dir = await AppDirs.support();
 
     return p.join(dir, 'cwd_signals');
@@ -61,6 +77,12 @@ class TerminalCwdSignal {
     await stop();
     final dirPath = await directory();
     final dir = Directory(dirPath);
+    final tmpRoot = _tmpRoot;
+    if (tmpRoot != null && !await UserTmpDir.ensure(tmpRoot)) {
+      log.warn('terminal', 'cwd signal directory $tmpRoot is not usable');
+
+      return;
+    }
     try {
       dir.createSync(recursive: true);
     } catch (e, st) {
@@ -75,15 +97,36 @@ class TerminalCwdSignal {
     }
     _subscription = dir
         .watch(events: FileSystemEvent.create | FileSystemEvent.modify)
-        .listen((event) {
-          final name = p.basename(event.path);
-          if (!_fileNamePattern.hasMatch(name)) return;
-          _debounce[name]?.cancel();
-          _debounce[name] = Timer(const Duration(milliseconds: 150), () {
-            _debounce.remove(name);
-            _handleFile(File(event.path), name, onSignal);
-          });
-        });
+        .listen(
+          (event) {
+            final name = p.basename(event.path);
+            if (!_fileNamePattern.hasMatch(name)) return;
+            _debounce[name]?.cancel();
+            _debounce[name] = Timer(const Duration(milliseconds: 150), () {
+              _debounce.remove(name);
+              _handleFile(File(event.path), name, onSignal);
+            });
+          },
+          onDone: () => _restart(onSignal),
+          onError: (Object e) {
+            log.warn('terminal', 'cwd signal watch failed', error: e);
+            _restart(onSignal);
+          },
+          cancelOnError: true,
+        );
+    _presence = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (!await dir.exists()) _restart(onSignal);
+    });
+  }
+
+  static void _restart(
+    void Function(int terminalId, String dir, String? cursor) onSignal,
+  ) {
+    if (_restartTimer != null) return;
+    _restartTimer = Timer(const Duration(seconds: 1), () {
+      _restartTimer = null;
+      start(onSignal);
+    });
   }
 
   static void _handleFile(
@@ -137,6 +180,10 @@ class TerminalCwdSignal {
   }
 
   static Future<void> stop() async {
+    _presence?.cancel();
+    _presence = null;
+    _restartTimer?.cancel();
+    _restartTimer = null;
     for (final timer in _debounce.values) {
       timer.cancel();
     }

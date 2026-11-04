@@ -5,7 +5,8 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 codex_home="${CODEX_HOME:-$HOME/.codex}"
 skills_dir="$codex_home/skills"
 config="$codex_home/config.toml"
-signal_dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
+signal_dir="/tmp/waydir-$(id -u)/signals"
+[ -d "$signal_dir" ] || signal_dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
 
 if [ ! -d "$signal_dir" ]; then
   echo "error: $signal_dir does not exist; start Waydir once first" >&2
@@ -21,6 +22,13 @@ for skill in "$here"/*/; do
   cp -r "$skill" "$skills_dir/$name"
   echo "installed skill: $skills_dir/$name"
 done
+
+case "$signal_dir/" in
+  /tmp/*)
+    echo "signal directory is under /tmp, Codex can already write it: $signal_dir"
+    exit 0
+    ;;
+esac
 
 mkdir -p "$codex_home"
 touch "$config"
