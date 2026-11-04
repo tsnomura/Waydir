@@ -35,8 +35,8 @@ functions):
 
 **PowerShell**
 ```powershell
-function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }
-function wcd { $pane = if ($env:WAYDIR_ORIGIN_PANE) { $env:WAYDIR_ORIGIN_PANE } else { 'active' }; Set-Location (Get-Content "$env:WAYDIR_PANE_DIR_ROOT\$pane.txt") }
+function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline -Encoding UTF8 "$env:WAYDIR_CWD_DIR\$id.txt" }
+function wcd { $pane = if ($env:WAYDIR_ORIGIN_PANE) { $env:WAYDIR_ORIGIN_PANE } else { 'active' }; Set-Location -LiteralPath (Get-Content -Encoding UTF8 "$env:WAYDIR_PANE_DIR_ROOT\$pane.txt") }
 ```
 
 **bash/zsh (Git Bash, Cygwin, WSL and Unix)**

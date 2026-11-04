@@ -36,7 +36,7 @@ import '../../core/terminal/terminal_paths.dart';
 ///
 /// One-time shell setup — `${WAYDIR_TERMINAL_ID:-0}` (bash) / the PowerShell
 /// equivalent falls back to the reserved id `0` when run outside Waydir:
-///   PowerShell:      `function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }`
+///   PowerShell:      `function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline -Encoding UTF8 "$env:WAYDIR_CWD_DIR\$id.txt" }`
 ///   bash/zsh (Git Bash and Unix): `wd() { printf '%s\n%s' "$PWD" "$1" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
 class TerminalCwdSignal {
   TerminalCwdSignal._();

@@ -7,7 +7,7 @@ local GROUP = "Compress with 7-Zip"
 local SELECTION = { min = 1, in_archive = false }
 
 local function basename(path)
-  return (path:gsub("(.*/)(.*)", "%2"))
+  return (path:gsub("(.*[/\\])(.*)", "%2"))
 end
 
 local function strip_ext(name)
