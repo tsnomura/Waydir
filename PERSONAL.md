@@ -2612,3 +2612,32 @@ Typical PDF setup: `mutool` generator with only Thumbnail on, so Quick Look
 gets pdfium's scrolling multi-page view.
 
 Relevant commits: `59dc086`, `52be9af`.
+
+## `--version` / `--help` from any shell, even without a display
+
+`waydir --version` printed a blank line from Git Bash, and on Linux without
+`DISPLAY` neither flag worked. Both were handled in Dart, which only runs
+after the runner has created the window and the engine (GTK needs a
+display); on Windows the GUI-subsystem exe also had nowhere to write unless
+stdout was redirected.
+
+- The runners now answer `-v`/`--version` and `-h`/`--help` before any GUI
+  setup: `HandleCliQuery` in `windows/runner/utils.cpp` (after
+  `AttachConsole`, stdout is pointed at the console unless it is already a
+  pipe or file) and in `linux/runner/main.cc`. macOS still goes through the
+  Dart path in `main.dart`.
+- The help text lives in `assets/cli_help.txt`, read by the runners from
+  `data/flutter_assets/assets/` next to the exe and by Dart via
+  `rootBundle`.
+- The version line includes the personal build:
+  `Waydir 0.23.0 (personal <git describe>, <branch>, <date>)`. The
+  `build_personal` scripts export `WAYDIR_PERSONAL_LABEL`, which the runner
+  CMake files bake in as a define; Dart's `AppInfo.cliVersion` prints the
+  same from the dart-defines.
+- From Git Bash (mintty), which is not a Windows console, pipe it:
+  `waydir --version | cat`. From PowerShell/cmd the text appears, but the
+  shell doesn't wait for a GUI exe, so it may land after the next prompt.
+- `irondash_engine_context` (a `super_native_extensions` dependency) printed
+  `P ATTACH` to stderr from its Windows `DllMain`. It's now vendored in
+  `third_party/irondash_engine_context` (via `dependency_overrides`) with
+  that `fprintf` removed. Re-apply when upgrading the package.

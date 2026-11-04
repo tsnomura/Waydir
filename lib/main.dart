@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:path/path.dart' as p;
 import 'ui/window/window.dart';
@@ -36,7 +37,12 @@ void main(List<String> args) async {
 
       LaunchArgs.parse(args);
       if (LaunchArgs.options.showHelp) {
-        stdout.writeln(LaunchArgs.helpText);
+        stdout.write(await rootBundle.loadString(LaunchArgs.helpAsset));
+        exit(0);
+      }
+      if (LaunchArgs.options.showVersion) {
+        await AppInfo.init();
+        stdout.writeln(AppInfo.cliVersion);
         exit(0);
       }
 
@@ -85,10 +91,6 @@ void main(List<String> args) async {
       await PluginSettingsStore.instance.load(SettingsStore.instance.db);
       await TagStore.instance.load(SettingsStore.instance.db);
       await AppInfo.init();
-      if (LaunchArgs.options.showVersion) {
-        stdout.writeln('Waydir ${AppInfo.version.value}');
-        exit(0);
-      }
       const fakeVersion = String.fromEnvironment('WAYDIR_FAKE_VERSION');
       UpdateStore.init(
         currentVersion: fakeVersion.isNotEmpty
