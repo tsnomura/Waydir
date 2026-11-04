@@ -39,20 +39,21 @@ function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $e
 function wcd { $pane = if ($env:WAYDIR_ORIGIN_PANE) { $env:WAYDIR_ORIGIN_PANE } else { 'active' }; Set-Location (Get-Content "$env:WAYDIR_PANE_DIR_ROOT\$pane.txt") }
 ```
 
-**Git Bash (MSYS)**
+**bash/zsh (Git Bash, Cygwin, WSL and Unix)**
 ```bash
-wd() { cygpath -wa "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
+wd() { printf '%s\n%s' "$PWD" "$1" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
 wcd() { cd "$(cat "$WAYDIR_PANE_DIR_ROOT/${WAYDIR_ORIGIN_PANE:-active}.txt")"; }
 ```
-Git Bash needs a Windows-form path (`cygpath -wa`, formerly `pwd -W`), not
-`$PWD` (POSIX-form) — Waydir resolves the signal file's contents as a native
-path and silently drops anything it can't resolve.
-
-**bash/zsh (Unix)**
-```bash
-wd() { realpath -- "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }
-wcd() { cd "$(cat "$WAYDIR_PANE_DIR_ROOT/${WAYDIR_ORIGIN_PANE:-active}.txt")"; }
-```
+The signal file holds the shell's `$PWD` on the first line and the
+argument (default `.`) on the second. Waydir resolves the argument against
+`$PWD`, normalizes `.`/`..` (so `wd .` no longer opens a tab named `.`),
+and converts `/c/...`, `/cygdrive/c/...` and `/mnt/c/...` to `C:\...`
+itself (`TerminalPaths.toNative` / `resolve`). Git Bash therefore needs no
+`cygpath`, which matters because spawning any process from Git Bash takes
+0.4–3 s on some machines. A POSIX path with no Windows equivalent (MSYS's
+own `/tmp`, `/usr`) can't be resolved and is dropped. The older one-line
+form (a single absolute path, e.g. from `cygpath -wa` or `realpath`) still
+works.
 
 Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`,
 `28804b8` (path argument).

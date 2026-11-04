@@ -56,4 +56,43 @@ class TerminalPaths {
 
     return path.replaceAll(r'\', '/');
   }
+
+  static final _posixDrive = RegExp(
+    r'^/(?:cygdrive/|mnt/)?([A-Za-z])(?:/(.*))?$',
+  );
+
+  static String? toNative(String path, {bool? windows}) {
+    if (!(windows ?? Platform.isWindows)) {
+      return p.posix.isAbsolute(path) ? p.posix.normalize(path) : null;
+    }
+    final drive = _posixDrive.firstMatch(path);
+    final String native;
+    if (drive != null) {
+      final letter = drive.group(1)!.toUpperCase();
+      native = '$letter:\\${drive.group(2) ?? ''}';
+    } else if (path.startsWith('//') || path.startsWith(r'\\')) {
+      native = path.replaceAll('/', r'\');
+    } else if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) {
+      native = path;
+    } else {
+      return null;
+    }
+
+    return p.windows.normalize(native);
+  }
+
+  static String? resolve(String cwd, String path, {bool? windows}) {
+    final isWindows = windows ?? Platform.isWindows;
+    final rooted =
+        path.startsWith('/') ||
+        (isWindows &&
+            (path.startsWith(r'\') ||
+                RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)));
+    if (rooted) return toNative(path, windows: isWindows);
+    final base = toNative(cwd, windows: isWindows);
+    if (base == null) return null;
+    final context = isWindows ? p.windows : p.posix;
+
+    return context.normalize(context.join(base, path));
+  }
 }

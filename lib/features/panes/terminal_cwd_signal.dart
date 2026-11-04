@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/app_dirs.dart';
+import '../../core/terminal/terminal_paths.dart';
 
 /// A file-per-terminal bridge from any shell into the pane that owns it —
 /// like typing a command instead of `ls` that shows the result in a tab, but
@@ -22,21 +23,21 @@ import '../../core/platform/app_dirs.dart';
 /// env var (see `WindowsEnvVars` on Windows, `UnixEnvVars` on Linux/macOS)
 /// makes it available there too, in newly-opened shells.
 ///
-/// The written path must be a native path Windows can resolve directly —
-/// [Directory.existsSync] rejects anything else and the signal is dropped
-/// silently. This matters for Git Bash / MSYS, where `$PWD` is a POSIX-style
-/// path (e.g. `/c/Users/...`) that doesn't resolve; use `pwd -W` there
-/// instead, which prints the Windows form.
+/// The file holds the shell's current directory on the first line and,
+/// optionally, a path on the second (default `.`), which is resolved
+/// against the first and normalized. Git Bash / Cygwin / WSL spellings
+/// (`/c/Users/...`, `/cygdrive/c/...`, `/mnt/c/...`) are converted to
+/// Windows paths, so a shell needs no `cygpath`; a POSIX path with no
+/// Windows equivalent (MSYS's own `/tmp`) is dropped silently, as is a path
+/// that doesn't exist. A single absolute path (the older one-line form)
+/// still works.
 ///
-/// A file path opens its folder with the cursor on the file. `wd` takes an
-/// optional path argument (default: the current directory) and writes it in
-/// absolute, native form.
+/// A file path opens its folder with the cursor on the file.
 ///
 /// One-time shell setup — `${WAYDIR_TERMINAL_ID:-0}` (bash) / the PowerShell
 /// equivalent falls back to the reserved id `0` when run outside Waydir:
 ///   PowerShell:      `function wd { param([string]$Path = '.') $id = if ($env:WAYDIR_TERMINAL_ID) { $env:WAYDIR_TERMINAL_ID } else { 0 }; (Resolve-Path -LiteralPath $Path).ProviderPath | Set-Content -NoNewline "$env:WAYDIR_CWD_DIR\$id.txt" }`
-///   Git Bash (MSYS): `wd() { cygpath -wa "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
-///   bash/zsh (Unix): `wd() { realpath -- "${1:-.}" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
+///   bash/zsh (Git Bash and Unix): `wd() { printf '%s\n%s' "$PWD" "$1" > "$WAYDIR_CWD_DIR/${WAYDIR_TERMINAL_ID:-0}.txt"; }`
 class TerminalCwdSignal {
   TerminalCwdSignal._();
 
@@ -94,7 +95,7 @@ class TerminalCwdSignal {
     if (id == null) return;
     final String content;
     try {
-      content = file.readAsStringSync().trim();
+      content = file.readAsStringSync();
     } catch (e, st) {
       log.warn(
         'terminal',
@@ -110,12 +111,29 @@ class TerminalCwdSignal {
     } catch (_) {
       // Best-effort cleanup; a leftover file just gets overwritten next time.
     }
-    if (content.isEmpty) return;
-    if (Directory(content).existsSync()) {
-      onSignal(id, content, null);
-    } else if (File(content).existsSync()) {
-      onSignal(id, p.dirname(content), content);
+    final path = parse(content);
+    if (path == null) return;
+    if (Directory(path).existsSync()) {
+      onSignal(id, path, null);
+    } else if (File(path).existsSync()) {
+      onSignal(id, p.dirname(path), path);
     }
+  }
+
+  static String? parse(String content, {bool? windows}) {
+    final lines = content
+        .split('\n')
+        .map((line) => line.trim())
+        .toList(growable: false);
+    final cwd = lines.first;
+    if (cwd.isEmpty) return null;
+    final arg = lines.length > 1 ? lines[1] : '';
+
+    return TerminalPaths.resolve(
+      cwd,
+      arg.isEmpty ? '.' : arg,
+      windows: windows,
+    );
   }
 
   static Future<void> stop() async {
