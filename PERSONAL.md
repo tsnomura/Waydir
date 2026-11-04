@@ -55,8 +55,12 @@ own `/tmp`, `/usr`) can't be resolved and is dropped. The older one-line
 form (a single absolute path, e.g. from `cygpath -wa` or `realpath`) still
 works.
 
+The PowerShell snippets read and write the signal and pane files as
+UTF-8: Windows PowerShell 5.1 defaults to the ANSI code page, which garbles
+non-ASCII paths. The BOM it writes is stripped by Waydir's `trim()`.
+
 Relevant commits: `431feaa`, `8b04b4f`, `220d2a9`, `6d01eda`, `588be16`,
-`28804b8` (path argument).
+`28804b8` (path argument), `b72c19d` (path resolution), `5b6a4ce` (UTF-8).
 
 ### `waydir-show` agent skill
 
@@ -65,11 +69,21 @@ The same signal lets a coding agent show the user a file:
 that writes the absolute path to `$WAYDIR_CWD_DIR\0.txt`, so the active pane
 opens the folder with the cursor on the file, when asked to show something
 "in Waydir". It needs no shell function. Install it by copying the folder
-into `~/.claude/skills/` (see that folder's README). It checks that Waydir
-is running first: the watcher only reacts to create/modify events, so a
-request written while Waydir is closed is never picked up.
+into `~/.claude/skills/` (see that folder's README).
 
-Relevant commit: `0112b69`.
+- It tells whether Waydir is running by whether the signal file is gone a
+  second later (Waydir deletes it on read), not by looking for the
+  process: inside a sandbox such as Codex CLI's (own PID namespace)
+  `pgrep`/`/proc` can't see Waydir. A file that wasn't taken is removed so
+  no stale request is left, and the agent asks the user to start Waydir;
+  it never launches it.
+- For Codex CLI, `docs/examples/agent-skills/install-codex.sh` copies the
+  skill to `~/.codex/skills` and adds the signal directory to
+  `[sandbox_workspace_write] writable_roots` in `~/.codex/config.toml`,
+  since the `workspace-write` sandbox otherwise sees it as read-only.
+
+Relevant commits: `0112b69`, `69fdd77` (Codex installer), `5536be1`
+(consumed check).
 
 ## Quick Look
 
@@ -539,6 +553,11 @@ update checks against upstream. fastforge now runs with `--skip-clean`; its
 build output, so the zip lacked it.
 
 Relevant commits: `adda063`, `0433234`, `a023f13`.
+
+The status bar shows it too: `Waydir v0.23.0 · 14d881c`, the short commit
+with a `+` when the build was dirty (`AppInfo.personalShortLabel`), and a
+tooltip with describe · branch · date (`personalDetails`). A plain build
+without the defines shows only the upstream version. Commit: `7d48104`.
 
 ### Linux builds
 
@@ -2641,3 +2660,21 @@ stdout was redirected.
   `P ATTACH` to stderr from its Windows `DllMain`. It's now vendored in
   `third_party/irondash_engine_context` (via `dependency_overrides`) with
   that `fprintf` removed. Re-apply when upgrading the package.
+
+Relevant commit: `cce699f`. Release builds from CI don't set
+`WAYDIR_PERSONAL_LABEL` yet, so their `--version` shows only the upstream
+version (About still has the release tag).
+
+## Tab strip follows a newly opened tab
+
+With many tabs the strip scrolls, and a tab opened from `wd` (or `+`) could
+land outside the visible part. When the active tab is one the strip hasn't
+seen before, it now scrolls just far enough to show it (220 ms
+`easeOutCubic`, or an instant jump under Reduce motion). Switching to an
+existing tab, resizing and scrolling by hand leave the position alone; an
+earlier attempt that kept the active tab in view on every layout fought
+manual scrolling. `_TabStripState._revealIfOpened` / `_revealTab` in
+`lib/features/tabs/tab_strip.dart`; test in
+`test/integration/tabs/tab_strip_reveal_test.dart`.
+
+Relevant commit: `12e6988`.
