@@ -30,28 +30,37 @@ rather than creating it.
 
 ## How
 
+Waydir deletes the signal file as soon as it reads it (after a 150 ms
+debounce), so a file that is gone a second later means Waydir is running
+and took the request. A file still there means Waydir is not running:
+remove it and ask the user. Don't check for the process instead — inside a
+sandbox (e.g. Codex CLI, which runs commands in its own PID namespace)
+`pgrep`/`/proc` can't see Waydir even when it is running.
+
 PowerShell (Windows):
 
 ```powershell
-if (-not (Get-Process waydir -ErrorAction SilentlyContinue)) { 'Waydir is not running'; return }
 $dir = [Environment]::GetEnvironmentVariable('WAYDIR_CWD_DIR', 'User')
 $path = (Resolve-Path -LiteralPath '<path>').ProviderPath
 [IO.File]::WriteAllText("$dir\0.txt", $path)
+Start-Sleep -Seconds 1
+if (Test-Path "$dir\0.txt") { Remove-Item "$dir\0.txt"; 'Waydir is not running' } else { 'shown' }
 ```
 
 Bash (Linux / macOS):
 
 ```bash
-if pgrep -x waydir >/dev/null; then
-  dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
-  realpath -- '<path>' > "$dir/0.txt"
-else
-  echo 'Waydir is not running'
-fi
+dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
+realpath -- '<path>' > "$dir/0.txt"
+sleep 1
+if [ -e "$dir/0.txt" ]; then rm -f "$dir/0.txt"; echo 'Waydir is not running'; else echo shown; fi
 ```
 
 Git Bash on Windows uses the Windows path form: `cygpath -wa '<path>'`
 instead of `realpath`, and the directory from the PowerShell line above.
+
+"shown" only means Waydir received the request; it silently ignores a path
+that doesn't exist (see Rules).
 
 ## When the write is refused (Codex sandbox)
 
@@ -86,9 +95,8 @@ Codex config yourself.
   (tsnomura/Waydir personal, PR #119, 2026-11). An older build ignores file
   paths; pass the parent folder instead if the user reports nothing happened.
 - Waydir must be running. It reacts to file create/modify events only, so a
-  request written while it is closed is not picked up at startup (the file
-  just sits there until the next write overwrites it). The snippets above
-  check first.
-- If Waydir isn't running, never launch it yourself and don't write the
-  signal file. Ask the user to start Waydir, and once they confirm, run the
-  snippet again.
+  request written while it is closed is not picked up at startup. That is
+  why the snippets remove a file that wasn't taken, instead of leaving a
+  stale request behind.
+- If Waydir isn't running, never launch it yourself. Ask the user to start
+  Waydir, and once they confirm, run the snippet again.
