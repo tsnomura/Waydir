@@ -2661,9 +2661,10 @@ stdout was redirected.
   `third_party/irondash_engine_context` (via `dependency_overrides`) with
   that `fprintf` removed. Re-apply when upgrading the package.
 
-Relevant commit: `cce699f`. Release builds from CI don't set
-`WAYDIR_PERSONAL_LABEL` yet, so their `--version` shows only the upstream
-version (About still has the release tag).
+Release builds from CI export `WAYDIR_PERSONAL_LABEL` (`<tag>, release,
+<date>`) from `release.yml`, so their `--version` shows the tag as well.
+
+Relevant commits: `cce699f`, `95348f1` (release builds).
 
 ## Tab strip follows a newly opened tab
 
