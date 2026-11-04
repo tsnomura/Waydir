@@ -32,7 +32,9 @@ bash docs/examples/agent-skills/install-codex.sh
 
 It copies the skills to `~/.codex/skills/` (or `$CODEX_HOME/skills/`).
 Codex's default `workspace-write` sandbox only allows writes inside the
-workspace, so the installer also adds the Waydir signal directory to
+workspace and `/tmp`. On Linux, Waydir keeps its signal directory at
+`/tmp/waydir-<uid>/signals`, so nothing more is needed. Elsewhere (or with
+an older Waydir build), the installer also adds the Waydir signal directory to
 `writable_roots` in `~/.codex/config.toml`. It keeps a `.bak` of the old
 config, and running it again changes nothing. To do it by hand instead,
 use your real absolute path (`~` and variables are not expanded):

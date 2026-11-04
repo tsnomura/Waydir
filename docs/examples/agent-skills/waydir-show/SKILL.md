@@ -17,10 +17,14 @@ non-interactive shell may not have it:
 
 - Windows: a user environment variable, always readable from PowerShell
   with `[Environment]::GetEnvironmentVariable('WAYDIR_CWD_DIR', 'User')`.
-  Default `%APPDATA%\dev.waydir\Waydir\cwd_signals`.
-- Linux: exported by `<support dir>/env.sh`, which Waydir sources from
+  Default `%TEMP%\waydir\signals` (`/tmp/waydir/signals` in Git Bash);
+  older builds used `%APPDATA%\dev.waydir\Waydir\cwd_signals`.
+- Linux: `/tmp/waydir-<uid>/signals`, which a sandboxed agent can write
+  to. Use it whenever it exists, even if `WAYDIR_CWD_DIR` names another
+  directory: the variable may be left over from an older build. Otherwise
+  use `WAYDIR_CWD_DIR`, exported by `<support dir>/env.sh`, which Waydir sources from
   `~/.bashrc`, `~/.profile` and similar. A non-interactive shell may not read
-  those files. Fall back to the default
+  those files. Fall back to the old default
   `${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals`.
 - macOS: also exported by `env.sh` in the app's support directory under
   `~/Library/Application Support/`. If the variable is unset, ask the user.
@@ -50,7 +54,8 @@ if (Test-Path "$dir\0.txt") { Remove-Item "$dir\0.txt"; 'Waydir is not running' 
 Bash (Linux / macOS):
 
 ```bash
-dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
+dir="/tmp/waydir-$(id -u)/signals"
+[ -d "$dir" ] || dir="${WAYDIR_CWD_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/waydir/cwd_signals}"
 realpath -- '<path>' > "$dir/0.txt"
 sleep 1
 if [ -e "$dir/0.txt" ]; then rm -f "$dir/0.txt"; echo 'Waydir is not running'; else echo shown; fi
@@ -65,7 +70,9 @@ that doesn't exist (see Rules).
 ## When the write is refused (Codex sandbox)
 
 Codex CLI's `workspace-write` sandbox only lets commands write inside the
-workspace, so the signal directory looks read-only ("Read-only file
+workspace and `/tmp`. On Linux the signal directory is under `/tmp`, so
+this only happens with an older Waydir build or on macOS, where
+the signal directory looks read-only ("Read-only file
 system") even though the user owns it. The installer
 (`docs/examples/agent-skills/install-codex.sh` in the Waydir repo) adds the
 directory to the sandbox; if the write is still refused, it wasn't run or
