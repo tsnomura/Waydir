@@ -1016,8 +1016,15 @@ Relevant commits: `550baa7`, `b273adc`, `e92c5b5`, `c5ec4d4`.
 - Right-clicking the "Date modified"/"Date created"/"Date added" column
   header now offers a "Recent dates relative" toggle directly, instead of
   only being reachable through Preferences → Appearance.
+- Reload (Ctrl+R, toolbar button, context menu, command palette) during a
+  recursive or content search reruns the search, so files added or removed
+  since show up; previously only the folder listing was reloaded and the
+  results stayed as they were. Ctrl+R also works while the search box has
+  focus. Refreshes Waydir does by itself after a copy/move still only
+  update the results in place, without restarting the search.
 
-Relevant commits: `3b121a8`, `77554de`, `c9d8882`.
+Relevant commits: `3b121a8`, `77554de`, `c9d8882`, `ebded6d` (reload during
+search).
 
 ## Directory copy: native scan, deep-copy through reparse points
 
