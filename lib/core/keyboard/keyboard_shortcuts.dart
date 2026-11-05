@@ -693,6 +693,8 @@ class AppShortcuts {
       label: () => '',
       group: ShortcutGroup.fileOps,
       key: LogicalKeyboardKey.f7,
+      altKey: LogicalKeyboardKey.keyN,
+      altCtrl: true,
     ),
     ShortcutDef(
       id: 'dual_copy',

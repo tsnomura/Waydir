@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/keyboard/keyboard_shortcuts.dart';
@@ -350,6 +352,22 @@ void main() {
       expect(AppShortcuts.isChordUsedByBuiltin(recursive), isTrue);
     });
   });
+
+  group('new_folder', () {
+    const ctrlN = KeyChord(key: LogicalKeyboardKey.keyN, ctrl: true);
+
+    test('keeps F7 and adds Ctrl+N', () {
+      final def = AppShortcuts.getById('new_folder');
+
+      expect(def.defaultBinding.key, LogicalKeyboardKey.f7);
+      expect(def.displayAltKeys, 'Ctrl+N');
+    });
+
+    test('Ctrl+N is not bound to anything else', () {
+      expect(AppShortcuts.conflictFor(ctrlN, 'new_folder'), isNull);
+      expect(AppShortcuts.isChordUsedByBuiltin(ctrlN), isTrue);
+    });
+  }, skip: Platform.isMacOS);
 
   group('AppShortcuts.terminalChordFor', () {
     final key = AppShortcuts.terminalTogglePhysicalKey;

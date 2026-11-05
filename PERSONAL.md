@@ -2510,9 +2510,12 @@ Relevant commits: `45fcda2`, `513a63c`, `297d12d`.
   close, path insert, terminal font size. dired variants identical to
   existing commands were left out.
 - Esc closes Preferences (first closing the search-results panel if open).
+- **Ctrl+N** creates a new folder, next to F7. It is the shortcut's fixed
+  extra key (`altKey`, like Ctrl+D for dual pane), so it stops working
+  once the main key is rebound in Keybindings.
 
 Relevant commits: `1252359`, `4181f2f`, `b919bdd`, `54d1901`, `ed8a776`,
-`3118cb5`, `dde72a7`.
+`3118cb5`, `dde72a7`, `e8d5b4c` (Ctrl+N).
 
 ## Help viewer and standalone tutorial window
 
