@@ -40,8 +40,9 @@ mixin _WaydirCommandPaletteMixin
     final hasTarget = _hasTarget(store);
     final tabCount = _shell.activePane.value!.tabs.tabs.value.length;
     final selected = store.selectedCount.value;
+    final comparing = _shell.compare.active.value;
 
-    return [
+    final base = [
       _cmd('go_back', store.goBack, enabled: store.canGoBack.value),
       _cmd('go_forward', store.goForward, enabled: store.canGoForward.value),
       _cmd('go_up', store.goUp),
@@ -197,10 +198,132 @@ mixin _WaydirCommandPaletteMixin
       _cmd('terminal_font_reset', SettingsStore.instance.resetTerminalFontSize),
       _cmd('preferences', _openPreferences),
       _cmd('help', _openHelp),
-      ..._goToCommands(recentPaths),
+      _cmd(
+        'switch_pane',
+        () => _shell.setActivePane(1 - _shell.activePaneIndex.value),
+        enabled: dual,
+      ),
+      _cmd(
+        'compare_recursive',
+        () => unawaited(_shell.compare.toggle(recursive: true)),
+        enabled: dual,
+      ),
+      _cmd(
+        'compare_sync_right',
+        () => unawaited(_shell.compare.syncLeftToRight()),
+        enabled: comparing,
+      ),
+      _cmd(
+        'compare_sync_left',
+        () => unawaited(_shell.compare.syncRightToLeft()),
+        enabled: comparing,
+      ),
+      _cmd('compare_exit', _shell.compare.stop, enabled: comparing),
+      _cmd(
+        'close_search',
+        store.closeSearch,
+        enabled: store.searchActive.value,
+      ),
+      _cmd('toggle_select', store.toggleSelectAndAdvance, enabled: hasTarget),
+      _cmd('focus_menu_bar', _showMenuBarPopup),
       ..._pluginCommands(),
+    ];
+
+    final seen = {
+      for (final c in base) c.id,
+      'open',
+      'trash',
+      'tutorial',
+      'view_list',
+      'view_tree',
+      'view_grid',
+      'terminal_toggle',
+      'terminal_new_tab',
+      'terminal_close_tab',
+      'compress_options',
+      'folder:paste',
+      'folder:new_folder',
+      'folder:refresh',
+      'folder:select_all',
+    };
+    final targets = store.targetEntries;
+    final folder = store.currentPath.value;
+    final (viewItems, viewOnSelect) = _viewMenuContent();
+    final (appItems, appOnSelect) = buildAppMenuItems();
+    final (pluginItems, pluginsOnSelect) = buildPluginsMenuItems(
+      PluginStore.instance.menubarContributions(),
+      _runPluginAction,
+    );
+    final (helpItems, helpOnSelect) = buildHelpMenuItems();
+
+    return [
+      ...base,
+      if (targets.isNotEmpty)
+        ..._menuCommands(
+          _entryMenuItems(store),
+          _handleMenuAction,
+          seen,
+          description: targets.length == 1
+              ? targets.first.name
+              : '${targets.first.name} +${targets.length - 1}',
+        ),
+      ..._menuCommands(
+        _backgroundMenuItems(store, canPaste: store.canPaste.value),
+        _handleBackgroundMenuAction,
+        seen,
+        idPrefix: 'folder:',
+        description: p.basename(folder).isEmpty ? folder : p.basename(folder),
+      ),
+      ..._menuCommands(viewItems, viewOnSelect, seen),
+      ..._menuCommands(appItems, appOnSelect, seen),
+      ..._menuCommands(pluginItems, pluginsOnSelect, seen),
+      ..._menuCommands(helpItems, helpOnSelect, seen),
+      ..._goToCommands(recentPaths),
       ..._fileCommands(store),
     ];
+  }
+
+  List<AppCommand> _menuCommands(
+    List<ContextMenuItem> items,
+    void Function(String action) onSelect,
+    Set<String> seen, {
+    String idPrefix = '',
+    String? description,
+    String? parent,
+  }) {
+    final commands = <AppCommand>[];
+    for (final item in items) {
+      if (item.isDivider) continue;
+      final children = item.children;
+      if (children != null && children.isNotEmpty) {
+        commands.addAll(
+          _menuCommands(
+            children,
+            onSelect,
+            seen,
+            idPrefix: idPrefix,
+            description: description,
+            parent: item.label,
+          ),
+        );
+        continue;
+      }
+      final id = '$idPrefix${item.action}';
+      if (!seen.add(id)) continue;
+      commands.add(
+        AppCommand(
+          id: id,
+          label: parent == null ? item.label : '$parent: ${item.label}',
+          description: description,
+          icon: item.icon,
+          enabled: item.enabled,
+          disabledReason: item.enabled ? null : t.commandPalette.unavailable,
+          run: () => onSelect(item.action),
+        ),
+      );
+    }
+
+    return commands;
   }
 
   List<AppCommand> _goToCommands(List<String> recentPaths) {
