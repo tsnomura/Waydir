@@ -10,29 +10,34 @@ mixin _WaydirMenuMixin
 
   Future<void> _handleBackgroundContextMenu(Offset position) async {
     final store = _active;
-    if (store.isTrashView) {
-      showContextMenu(
-        context: context,
-        position: position,
-        items: [
-          ContextMenuItem(
-            icon: WaydirIconsRegular.arrowClockwise,
-            label: t.toolbar.refresh,
-            action: 'refresh',
-          ),
-          ContextMenuItem(
-            icon: WaydirIconsRegular.selectionAll,
-            label: t.menu.selectAll,
-            action: 'select_all',
-          ),
-        ],
-        onSelect: _handleBackgroundMenuAction,
-      );
-
-      return;
-    }
-    final canPaste = await store.hasPasteableFiles();
+    final canPaste = !store.isTrashView && await store.hasPasteableFiles();
     if (!mounted) return;
+    showContextMenu(
+      context: context,
+      position: position,
+      items: _backgroundMenuItems(store, canPaste: canPaste),
+      onSelect: _handleBackgroundMenuAction,
+    );
+  }
+
+  List<ContextMenuItem> _backgroundMenuItems(
+    NavigationStore store, {
+    required bool canPaste,
+  }) {
+    if (store.isTrashView) {
+      return [
+        ContextMenuItem(
+          icon: WaydirIconsRegular.arrowClockwise,
+          label: t.toolbar.refresh,
+          action: 'refresh',
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.selectionAll,
+          label: t.menu.selectAll,
+          action: 'select_all',
+        ),
+      ];
+    }
     final items = <ContextMenuItem>[
       if (canPaste) ...[
         ContextMenuItem(
@@ -79,12 +84,7 @@ mixin _WaydirMenuMixin
       items.addAll(pluginItems);
     }
 
-    showContextMenu(
-      context: context,
-      position: position,
-      items: items,
-      onSelect: _handleBackgroundMenuAction,
-    );
+    return items;
   }
 
   void _handleBackgroundMenuAction(String action) {
@@ -138,6 +138,16 @@ mixin _WaydirMenuMixin
     );
     void clearTargets() => store.setTargetOverride(null);
 
+    showContextMenu(
+      context: context,
+      position: position,
+      items: _entryMenuItems(store),
+      onSelect: _handleMenuAction,
+      onClosed: clearTargets,
+    );
+  }
+
+  List<ContextMenuItem> _entryMenuItems(NavigationStore store) {
     final entries = store.targetEntries;
     final count = entries.length;
     final isSingleFolder =
@@ -279,7 +289,7 @@ mixin _WaydirMenuMixin
         : null;
 
     if (store.isTrashView) {
-      final binItems = <ContextMenuItem>[
+      return <ContextMenuItem>[
         if (store.canRestoreFromTrash)
           ContextMenuItem(
             icon: WaydirIconsRegular.arrowCounterClockwise,
@@ -303,15 +313,6 @@ mixin _WaydirMenuMixin
           action: 'properties',
         ),
       ];
-      showContextMenu(
-        context: context,
-        position: position,
-        items: binItems,
-        onSelect: _handleMenuAction,
-        onClosed: clearTargets,
-      );
-
-      return;
     }
 
     final launcherItems = _launcherItems(entries);
@@ -431,13 +432,7 @@ mixin _WaydirMenuMixin
       items.addAll(pluginItems);
     }
 
-    showContextMenu(
-      context: context,
-      position: position,
-      items: items,
-      onSelect: _handleMenuAction,
-      onClosed: clearTargets,
-    );
+    return items;
   }
 
   ContextMenuItem _tagsSubmenu(List<FileEntry> entries) {
