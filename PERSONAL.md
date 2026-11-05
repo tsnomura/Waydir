@@ -1751,8 +1751,11 @@ in the same area (header stays lit, terminal tabs remain clickable).
   paging, state not persisted across restarts, and the unsaved-changes guard
   is not yet hooked into *window* close (quitting the app with a dirty
   editor in the pane just exits, same as the floating panel).
+- The View menu has a **Quick Look Pane** check item (also in the macOS
+  menu bar): checked while the active pane's slot shows the Quick Look tab
+  and the strip is visible; selecting it toggles the pane like `Ctrl`+`Space`.
 
-Relevant commits: `d0c1157`.
+Relevant commits: `d0c1157`, `6b6f41b` (View menu item).
 
 ## Standalone Quick Look window (`--quick-look`)
 

@@ -1645,6 +1645,20 @@ mixin _WaydirMenuMixin
           enabled: onSftp,
           toggleSignal: store.remoteThumbnails,
         ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.eye,
+          label: t.menu.quickLookPane,
+          action: 'quick_look_bottom',
+          shortcut: AppShortcuts.getById('quick_look_bottom').displayKeys,
+          isToggle: true,
+          toggleSignal: computed(() {
+            if (!_shell.ready.value) return false;
+            final slot = _terminalSlotForActivePane();
+
+            return _shell.quickLookActive.value[slot] &&
+                _shell.terminalVisible.value[slot];
+          }),
+        ),
         ContextMenuItem.divider,
         ContextMenuItem(
           icon: WaydirIconsRegular.arrowUp,
@@ -1673,6 +1687,8 @@ mixin _WaydirMenuMixin
             _toggleShowHiddenGlobal();
           case 'toggle_remote_thumbnails':
             _active.toggleRemoteThumbnails();
+          case 'quick_look_bottom':
+            unawaited(_toggleQuickLookPane(_terminalSlotForActivePane()));
           case 'send_directory_to_linked':
             _sendDirectoryToLinked();
           case 'open_linked_directory':
@@ -1956,6 +1972,14 @@ mixin _WaydirMenuMixin
                     PlatformPaths.isSftpUri(store.currentPath.value)
                 ? store.toggleRemoteThumbnails
                 : null,
+          ),
+          PlatformMenuItem(
+            label: t.menu.quickLookPane,
+            onSelected: () {
+              if (_shell.ready.value) {
+                unawaited(_toggleQuickLookPane(_terminalSlotForActivePane()));
+              }
+            },
           ),
         ],
       ),
