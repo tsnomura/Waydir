@@ -32,6 +32,7 @@
     "restoreItems(other)": "Restore $count Items",
     "showHidden": "Show Hidden Files",
     "remoteThumbnails": "Remote Thumbnails (This Tab)",
+    "quickLookPane": "Quick Look Pane",
     "openLinkedDirectory": "Open Linked Machine's Directory",
     "sendDirectoryToLinked": "Send This Directory to Linked Machine",
     "selectAll": "Select All",

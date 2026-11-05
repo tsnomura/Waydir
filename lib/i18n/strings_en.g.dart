@@ -176,6 +176,9 @@ class Translations$menu$en {
 	/// en: 'Remote Thumbnails (This Tab)'
 	String get remoteThumbnails => 'Remote Thumbnails (This Tab)';
 
+	/// en: 'Quick Look Pane'
+	String get quickLookPane => 'Quick Look Pane';
+
 	/// en: 'Open Linked Machine's Directory'
 	String get openLinkedDirectory => 'Open Linked Machine\'s Directory';
 
@@ -4652,6 +4655,7 @@ extension on Translations {
 			'menu.restoreItems' => ({required Object count}) => 'Restore ${count} Items',
 			'menu.showHidden' => 'Show Hidden Files',
 			'menu.remoteThumbnails' => 'Remote Thumbnails (This Tab)',
+			'menu.quickLookPane' => 'Quick Look Pane',
 			'menu.openLinkedDirectory' => 'Open Linked Machine\'s Directory',
 			'menu.sendDirectoryToLinked' => 'Send This Directory to Linked Machine',
 			'menu.selectAll' => 'Select All',
@@ -5140,9 +5144,9 @@ extension on Translations {
 			'changelog.loadError' => 'Could not load the changelog.',
 			'help.title' => 'In-app tutorial',
 			'help.menuLabel' => 'In-app tutorial',
-			'help.popOut' => 'Open in separate window',
 			_ => null,
 		} ?? switch (path) {
+			'help.popOut' => 'Open in separate window',
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
@@ -5654,9 +5658,9 @@ extension on Translations {
 			'password.privateKeyPath' => 'Private key path',
 			'password.passphraseOptional' => 'Passphrase (optional)',
 			'password.unlock' => 'Unlock',
-			'selectPattern.title' => 'Select by pattern',
 			_ => null,
 		} ?? switch (path) {
+			'selectPattern.title' => 'Select by pattern',
 			'selectPattern.hint' => '*.jpg, *.png',
 			'selectPattern.help' => 'Wildcards: * (any), ? (one char). Separate patterns with commas.',
 			'selectPattern.select' => 'Select',
