@@ -2717,3 +2717,33 @@ manual scrolling. `_TabStripState._revealIfOpened` / `_revealTab` in
 `test/integration/tabs/tab_strip_reveal_test.dart`.
 
 Relevant commit: `12e6988`.
+
+## Command palette lists every menu command
+
+The palette now also builds entries from the menus themselves, so anything
+reachable from a right-click menu or the menu bar can be run from it:
+
+- **File right-click menu** (for the marks, else the cursor): launchers,
+  Open with, open all, extract/compress variants, bulk copy, open location,
+  open in new tab, open in terminal, copy path, verify checksum, tags (each
+  tag, new, clear), multi-rename, trash restore/permanent delete, plugin
+  context items. The target's name shows under the label (`name +N` for
+  several); these only appear when there is a target.
+- **Empty-area menu** (current folder): open in terminal, the sort options,
+  folder properties. The folder name shows under the label.
+- **Menu bar**: send/open linked directory, About, changelog, quit, manage
+  plugins, keybindings, diagnostics, repository, create issue.
+- **Shortcuts that had no entry**: switch pane, recursive compare, compare
+  sync both ways, exit compare, close search, toggle selection, open the
+  F10 menu popup.
+
+Submenu items are labelled `Parent: Item` (`Tags: Important`, `Sort:
+Name`). An entry already in the palette isn't added again, so items that
+duplicate an existing command are skipped. To share the items,
+`_entryMenuItems` / `_backgroundMenuItems` were split out of the context
+menu handlers in `menus.dart`; the palette side is `_menuCommands` in
+`command_palette.dart`. Left out: cursor movement, the duplicate `dired_*`
+keys, keys that only work inside the Quick Look window, numbered tab and
+bookmark jumps.
+
+Relevant commit: `e614189`.
