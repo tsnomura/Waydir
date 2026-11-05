@@ -80,7 +80,7 @@ class PaneLocationBar extends StatelessWidget {
             ),
             _ToolBtn(
               WaydirIconsRegular.arrowClockwise,
-              store.refresh,
+              store.reload,
               true,
               t.toolbar.refresh,
             ),

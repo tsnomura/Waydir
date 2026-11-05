@@ -1173,6 +1173,14 @@ class NavigationStore {
 
   Future<void> refresh() => loadDirectory(currentPath.value);
 
+  Future<void> reload() {
+    if (searchActive.value && (searchRecursive.value || searchContent.value)) {
+      _searchController.scheduleRestart();
+    }
+
+    return refresh();
+  }
+
   Future<void> loadDirectory(String path) async {
     final token = ++_loadToken;
     final pendingSort = _pendingSort;

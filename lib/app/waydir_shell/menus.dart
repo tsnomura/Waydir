@@ -101,7 +101,7 @@ mixin _WaydirMenuMixin
       case 'new_folder':
         store.startCreate();
       case 'refresh':
-        store.refresh();
+        store.reload();
       case 'select_all':
         store.selectAll();
       case 'open_in_terminal':
