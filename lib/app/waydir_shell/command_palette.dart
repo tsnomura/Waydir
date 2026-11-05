@@ -45,7 +45,7 @@ mixin _WaydirCommandPaletteMixin
       _cmd('go_back', store.goBack, enabled: store.canGoBack.value),
       _cmd('go_forward', store.goForward, enabled: store.canGoForward.value),
       _cmd('go_up', store.goUp),
-      _cmd('refresh', store.refresh),
+      _cmd('refresh', store.reload),
       _cmd('focus_path', _active.focusPathBar),
       _cmd('open_item', store.openSelected, enabled: hasTarget),
       _cmd('quick_look', _openQuickLook, enabled: hasTarget),

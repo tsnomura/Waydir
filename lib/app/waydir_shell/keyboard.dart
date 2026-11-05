@@ -152,10 +152,13 @@ mixin _WaydirKeyboardMixin
     }
 
     if (_isEditableFocused()) {
-      if (_isSearchBoxFocused() &&
-          !_isTextEditingKey(key) &&
-          _runViewShortcut(key)) {
-        return KeyEventResult.handled;
+      if (_isSearchBoxFocused() && !_isTextEditingKey(key)) {
+        if (_runViewShortcut(key)) return KeyEventResult.handled;
+        if (AppShortcuts.matches('refresh', key)) {
+          _shell.activeStore.value!.reload();
+
+          return KeyEventResult.handled;
+        }
       }
 
       return KeyEventResult.ignored;
@@ -509,7 +512,7 @@ mixin _WaydirKeyboardMixin
       if (_shell.isDual.value) {
         unawaited(_dualPaneTransfer(store, move: false));
       } else {
-        store.refresh();
+        store.reload();
       }
 
       return KeyEventResult.handled;
@@ -540,7 +543,7 @@ mixin _WaydirKeyboardMixin
     }
 
     if (AppShortcuts.matches('refresh', key)) {
-      store.refresh();
+      store.reload();
 
       return KeyEventResult.handled;
     }
@@ -688,7 +691,7 @@ mixin _WaydirKeyboardMixin
       if (_shell.isDual.value) {
         unawaited(_dualPaneTransfer(store, move: false));
       } else {
-        store.refresh();
+        store.reload();
       }
 
       return KeyEventResult.handled;
