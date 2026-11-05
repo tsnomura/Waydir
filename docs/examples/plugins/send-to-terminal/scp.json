@@ -1,0 +1,6 @@
+{
+  "title": "scp to the other pane",
+  "builder": "scp",
+  "flags": "-r -C",
+  "cwd": "~"
+}

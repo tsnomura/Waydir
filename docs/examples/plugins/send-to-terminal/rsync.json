@@ -1,0 +1,5 @@
+{
+  "title": "rsync to the other pane",
+  "command": "rsync -a -z --progress {paths} {dest}",
+  "os": "unix"
+}
