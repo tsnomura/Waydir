@@ -2438,6 +2438,9 @@ class Translations$errors$en {
 	/// en: 'Archive entry not found: $path'
 	String archiveEntryNotFound({required Object path}) => 'Archive entry not found: ${path}';
 
+	/// en: 'Extracted data does not match the archive: $path'
+	String archiveEntryCorrupt({required Object path}) => 'Extracted data does not match the archive: ${path}';
+
 	/// en: 'Unsupported archive format'
 	String get unsupportedArchiveFormat => 'Unsupported archive format';
 
@@ -5698,6 +5701,7 @@ extension on Translations {
 			'errors.archivePasswordUnsupported' => 'Password is only supported for ZIP archives',
 			'errors.archiveReadFailed' => ({required Object error}) => 'Archive error: ${error}',
 			'errors.archiveEntryNotFound' => ({required Object path}) => 'Archive entry not found: ${path}',
+			'errors.archiveEntryCorrupt' => ({required Object path}) => 'Extracted data does not match the archive: ${path}',
 			'errors.unsupportedArchiveFormat' => 'Unsupported archive format',
 			'errors.nativeCoreNotFound' => ({required Object paths}) => 'Native waydir_core not found; searched: ${paths}',
 			'errors.moveFileExFailed' => ({required Object error}) => 'MoveFileEx failed with Windows error ${error}',
