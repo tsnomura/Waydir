@@ -99,7 +99,7 @@ my-plugin/
 
 `manifest.json` describes the plugin. `init.lua` registers actions and bars. Extra files can be icons, scripts, templates or data files accessed through `ctx.plugin_dir`.
 
-Only registration should happen at the top level of `init.lua`. Actions run later through their `run(ctx)` function. Bars run later through `update(ctx)` and optional `click(ctx)` functions.
+Only registration should happen at the top level of `init.lua`, apart from reading bundled files (under `waydir.plugin_dir`) that decide what to register. Top-level code runs on every load and every action run, so keep it quick. Actions run later through their `run(ctx)` function. Bars run later through `update(ctx)` and optional `click(ctx)` functions.
 
 ## Runtime Model
 
@@ -490,6 +490,8 @@ Button behavior:
 | `waydir.focus(path)` | Refreshes the active file list and puts the cursor on `path` (marks are left alone). Ignored when `path` is not in the current folder. |
 | `waydir.navigate(dir)` | Opens `dir` in the active pane. |
 | `waydir.log(message)` | Writes to Waydir's plugin log channel. |
+| `waydir.plugin_dir` | Absolute path to your plugin folder. Unlike `ctx.plugin_dir` it is also set at load time, so top-level code can read bundled files to decide what to register. |
+| `waydir.json_decode(text)` | Parses JSON into Lua tables. Raises an error on invalid JSON; wrap it in `pcall` for user-edited files. |
 
 ### External Commands
 
@@ -497,6 +499,7 @@ Button behavior:
 |----------|--------|
 | `waydir.exec(cmd, args)` | Runs a short command and waits for it. Returns `stdout`, `stderr`, `exit_code`. |
 | `waydir.run_task(spec)` | Starts a long-running process outside the Lua action. |
+| `waydir.terminal(spec)` | Opens a tab in the built-in terminal of the active pane and types a command into it. |
 
 Use `waydir.exec` only for quick commands. A single `exec` call is capped at 5 seconds; a command that runs longer is killed and returns exit code `-1`. Lua actions also have an overall 5 second sandbox budget. For anything slower, use `waydir.run_task`.
 
@@ -535,6 +538,26 @@ waydir.run_task({
 | `progress` | Regex config for Operations progress parsing. |
 
 Progress parsing uses Dart regular expressions. The first capture group is used when present.
+
+Use `waydir.terminal` when the user should see, edit or interact with the command, such as a copy that can delete files or one that asks for a password:
+
+```lua
+waydir.terminal({
+  input = "rsync -a " .. ctx.paths[1] .. " " .. ctx.other_pane.dir,
+  cwd = ctx.dir,
+})
+```
+
+`terminal` fields:
+
+| Field | Meaning |
+|-------|---------|
+| `input` | Text typed into the new terminal tab. Quote paths yourself for the shell you open. |
+| `cwd` | Folder the terminal opens in. Defaults to the current folder. `~` is the home folder. An `sftp://` folder opens a shell on that host. |
+| `shell` | Shell to start instead of the configured default, e.g. `cmd.exe`. |
+| `run` | `true` also presses Enter. Defaults to `false`, which leaves the command for the user to check and run. |
+
+See `docs/examples/plugins/send-to-terminal` for command templates, one JSON file each, filled with the marked items.
 
 ```lua
 waydir.run_task({
@@ -643,7 +666,7 @@ Waydir runs plugins in a restricted Lua sandbox:
 - Not available: `os`, `io`, `require`.
 - Each load, action run and bar update gets a fresh Lua VM.
 - Do not rely on Lua globals persisting between clicks.
-- Top-level code should only register actions and bars.
+- Top-level code should only register actions and bars, reading bundled files if that decides what to register.
 - Action and bar Lua execution has a 5 second budget.
 - Use `waydir.run_task` for slow external work.
 - Use `ctx.plugin_dir` to call bundled helper scripts or read bundled files.
@@ -737,6 +760,7 @@ Ready-to-copy examples live in [examples/plugins/](examples/plugins/):
 | `templates` | Toolbar, background menu, top menu, shortcut, settings, dialog and `fs`. |
 | `sevenzip` | Context submenu, filters, dialogs, `run_task`, compression and extraction. |
 | `new-folder-from-marks` | Menubar and selection context action, dialog re-asking with validation errors, `list`, `mkdir` and `move`. |
+| `send-to-terminal` | Actions registered at load time from one JSON file per template (`plugin_dir`, `list`, `read_text`, `json_decode`), `ctx.other_pane`, quoting for cmd and POSIX shells, and `terminal` (robocopy, scp, rsync and cp to the other pane). |
 
 ## Troubleshooting
 

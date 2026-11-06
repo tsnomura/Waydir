@@ -45,7 +45,6 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$menu$en menu = Translations$menu$en.internal(_root);
 	late final Translations$multiRename$en multiRename = Translations$multiRename$en.internal(_root);
 	late final Translations$compress$en compress = Translations$compress$en.internal(_root);
-	late final Translations$bulkCopy$en bulkCopy = Translations$bulkCopy$en.internal(_root);
 	late final Translations$checksum$en checksum = Translations$checksum$en.internal(_root);
 	late final Translations$compare$en compare = Translations$compare$en.internal(_root);
 	late final Translations$properties$en properties = Translations$properties$en.internal(_root);
@@ -284,15 +283,6 @@ class Translations$menu$en {
 	/// en: 'Add to Archive…'
 	String get compressOptions => 'Add to Archive…';
 
-	/// en: 'Copy with robocopy…'
-	String get bulkCopyRobocopy => 'Copy with robocopy…';
-
-	/// en: 'Copy with rsync…'
-	String get bulkCopyRsync => 'Copy with rsync…';
-
-	/// en: 'Copy with scp…'
-	String get bulkCopyScp => 'Copy with scp…';
-
 	/// en: 'Multi Rename…'
 	String get multiRename => 'Multi Rename…';
 
@@ -442,33 +432,6 @@ class Translations$compress$en {
 
 	/// en: 'Cancel'
 	String get cancel => 'Cancel';
-}
-
-// Path: bulkCopy
-class Translations$bulkCopy$en {
-	Translations$bulkCopy$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Copy with $tool'
-	String title({required Object tool}) => 'Copy with ${tool}';
-
-	/// en: 'Source'
-	String get source => 'Source';
-
-	/// en: 'Destination'
-	String get destination => 'Destination';
-
-	/// en: 'Options'
-	String get options => 'Options';
-
-	/// en: 'Cancel'
-	String get cancel => 'Cancel';
-
-	/// en: 'Insert Command'
-	String get insertCommand => 'Insert Command';
 }
 
 // Path: checksum
@@ -4691,9 +4654,6 @@ extension on Translations {
 			'menu.compress' => 'Compress',
 			'menu.compressTo' => ({required Object name}) => 'Compress to ${name}',
 			'menu.compressOptions' => 'Add to Archive…',
-			'menu.bulkCopyRobocopy' => 'Copy with robocopy…',
-			'menu.bulkCopyRsync' => 'Copy with rsync…',
-			'menu.bulkCopyScp' => 'Copy with scp…',
 			'menu.multiRename' => 'Multi Rename…',
 			'menu.verifyChecksum' => 'Verify Checksum…',
 			'menu.sortBy' => 'Sort By',
@@ -4738,12 +4698,6 @@ extension on Translations {
 			'compress.passwordHint' => 'Leave empty for no password',
 			'compress.create' => 'Create',
 			'compress.cancel' => 'Cancel',
-			'bulkCopy.title' => ({required Object tool}) => 'Copy with ${tool}',
-			'bulkCopy.source' => 'Source',
-			'bulkCopy.destination' => 'Destination',
-			'bulkCopy.options' => 'Options',
-			'bulkCopy.cancel' => 'Cancel',
-			'bulkCopy.insertCommand' => 'Insert Command',
 			'checksum.title' => 'Verify Checksum',
 			'checksum.md5' => 'MD5',
 			'checksum.sha256' => 'SHA-256',
@@ -5144,8 +5098,6 @@ extension on Translations {
 			'changelog.loadError' => 'Could not load the changelog.',
 			'help.title' => 'In-app tutorial',
 			'help.menuLabel' => 'In-app tutorial',
-			_ => null,
-		} ?? switch (path) {
 			'help.popOut' => 'Open in separate window',
 			'help.popOutUnavailable' => 'Could not open the tutorial in a separate window',
 			'help.groups.gettingStarted.title' => 'Getting Started',
@@ -5155,6 +5107,8 @@ extension on Translations {
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
 			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
+			_ => null,
+		} ?? switch (path) {
 			'help.groups.navigating.title' => 'Navigating',
 			'help.groups.navigating.moving.title' => 'Moving Around',
 			'help.groups.navigating.moving.body' => 'Browse without reaching for the mouse. Waydir keeps the cursor, selection and history close to the main file list.\n\n- `↑` / `↓` move the cursor through visible files.\n- `Enter` opens the selected item; double-click does the same.\n- `Backspace` goes to the parent folder.\n- `Alt+←` / `Alt+→` step back and forward through folder history.\n- `Ctrl+R` refreshes the current folder.',
@@ -5658,8 +5612,6 @@ extension on Translations {
 			'password.privateKeyPath' => 'Private key path',
 			'password.passphraseOptional' => 'Passphrase (optional)',
 			'password.unlock' => 'Unlock',
-			_ => null,
-		} ?? switch (path) {
 			'selectPattern.title' => 'Select by pattern',
 			'selectPattern.hint' => '*.jpg, *.png',
 			'selectPattern.help' => 'Wildcards: * (any), ? (one char). Separate patterns with commas.',
@@ -5669,6 +5621,8 @@ extension on Translations {
 			'operations.noActive' => 'No active operations',
 			'operations.resolveConflicts' => 'Resolve Conflicts',
 			'operations.errorsCount' => ({required Object count}) => '${count} errors',
+			_ => null,
+		} ?? switch (path) {
 			'operations.compressing' => 'Compressing…',
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',

@@ -1,0 +1,8 @@
+{
+  "title": "robocopy to the other pane",
+  "builder": "robocopy",
+  "flags": "/MT:8 /Z",
+  "os": "windows",
+  "shell": "cmd.exe",
+  "quote": "cmd"
+}

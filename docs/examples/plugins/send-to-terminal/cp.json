@@ -1,0 +1,5 @@
+{
+  "title": "cp to the other pane",
+  "command": "cp -r {paths} {dest}",
+  "os": "unix"
+}
