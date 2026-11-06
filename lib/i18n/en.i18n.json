@@ -1341,6 +1341,7 @@
     "archivePasswordUnsupported": "Password is only supported for ZIP archives",
     "archiveReadFailed": "Archive error: $error",
     "archiveEntryNotFound": "Archive entry not found: $path",
+    "archiveEntryCorrupt": "Extracted data does not match the archive: $path",
     "unsupportedArchiveFormat": "Unsupported archive format",
     "nativeCoreNotFound": "Native waydir_core not found; searched: $paths",
     "moveFileExFailed": "MoveFileEx failed with Windows error $error",

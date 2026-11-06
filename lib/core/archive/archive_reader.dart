@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 
@@ -29,8 +31,99 @@ class ArchiveEntry {
   });
 }
 
+class _CheckedFileSink extends OutputStream {
+  static const _bufferSize = 1024 * 1024;
+
+  final RandomAccessFile _file;
+  final Uint8List _buffer = Uint8List(_bufferSize);
+  int _buffered = 0;
+  int written = 0;
+  int crc = 0;
+
+  _CheckedFileSink(this._file) : super(byteOrder: ByteOrder.littleEndian);
+
+  @override
+  int get length => written;
+
+  @override
+  void writeByte(int value) {
+    if (_buffered == _bufferSize) flush();
+    _buffer[_buffered++] = value;
+    written++;
+  }
+
+  @override
+  void writeBytes(List<int> bytes, {int? length}) {
+    final count = length ?? bytes.length;
+    if (_buffered + count > _bufferSize) flush();
+    if (count > _bufferSize) {
+      crc = getCrc32(
+        count == bytes.length ? bytes : bytes.sublist(0, count),
+        crc,
+      );
+      _file.writeFromSync(bytes, 0, count);
+    } else {
+      _buffer.setRange(_buffered, _buffered + count, bytes);
+      _buffered += count;
+    }
+    written += count;
+  }
+
+  @override
+  void writeStream(InputStream stream) {
+    var remaining = stream.length;
+    while (remaining > 0) {
+      final count = remaining < _bufferSize ? remaining : _bufferSize;
+      writeBytes(stream.readBytes(count).toUint8List());
+      remaining -= count;
+    }
+  }
+
+  @override
+  void flush() {
+    if (_buffered == 0) return;
+    final chunk = Uint8List.sublistView(_buffer, 0, _buffered);
+    crc = getCrc32(chunk, crc);
+    _file.writeFromSync(chunk);
+    _buffered = 0;
+  }
+
+  @override
+  void clear() {
+    _buffered = 0;
+  }
+
+  @override
+  void closeSync() {
+    flush();
+    _file.closeSync();
+  }
+
+  @override
+  Uint8List subset(int start, [int? end]) => throw UnsupportedError('subset');
+}
+
 class ArchiveReader {
   ArchiveReader._();
+
+  static void _writeEntry(ArchiveFile entry, String dest, String name) {
+    final file = File(dest);
+    file.parent.createSync(recursive: true);
+    final sink = _CheckedFileSink(file.openSync(mode: FileMode.write));
+    try {
+      entry.writeContent(sink);
+    } finally {
+      sink.closeSync();
+    }
+    final expectedCrc = entry.crc32;
+    if (sink.written != entry.size ||
+        (expectedCrc != null && expectedCrc != 0 && sink.crc != expectedCrc)) {
+      try {
+        file.deleteSync();
+      } on FileSystemException catch (_) {}
+      throw ArchiveReadException(t.errors.archiveEntryCorrupt(path: name));
+    }
+  }
 
   static String _normalize(String path) {
     var p = path.replaceAll('\\', '/');
@@ -290,11 +383,8 @@ class ArchiveReader {
       if (_normalize(raw) == target) {
         found = true;
         if (entry.isFile) {
-          final file = File(destPath);
-          file.parent.createSync(recursive: true);
-          final data = entry.content as List<int>;
-          file.writeAsBytesSync(data);
-          _applyModified(file, _entryModified(archivePath, entry));
+          _writeEntry(entry, destPath, target);
+          _applyModified(File(destPath), _entryModified(archivePath, entry));
         }
         break;
       }
@@ -354,11 +444,8 @@ class ArchiveReader {
         continue;
       }
 
-      final file = File(dest);
-      file.parent.createSync(recursive: true);
-      final data = entry.content as List<int>;
-      file.writeAsBytesSync(data);
-      _applyModified(file, modified);
+      _writeEntry(entry, dest, epath);
+      _applyModified(File(dest), modified);
     }
 
     if (!found) {
@@ -428,11 +515,8 @@ class ArchiveReader {
         continue;
       }
 
-      final file = File(dest);
-      file.parent.createSync(recursive: true);
-      final data = entry.content as List<int>;
-      file.writeAsBytesSync(data);
-      _applyModified(file, modified);
+      _writeEntry(entry, dest, epath);
+      _applyModified(File(dest), modified);
     }
   }
 }
