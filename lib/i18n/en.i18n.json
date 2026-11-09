@@ -317,7 +317,7 @@
       "deleteKeyPermanent": "Delete Permanently",
       "accessibilitySection": "Accessibility",
       "reduceMotion": "Reduce motion",
-      "reduceMotionHint": "Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.",
+      "reduceMotionHint": "Controls menu fade animations and similar UI transitions, and shows animated image thumbnails as still frames. Useful over xpra or other remote displays where animations can look janky or slow the app down.",
       "reduceMotionSystem": "System default",
       "reduceMotionOn": "On",
       "reduceMotionOff": "Off",
