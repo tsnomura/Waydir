@@ -2995,8 +2995,8 @@ class Translations$preferences$general$en {
 	/// en: 'Reduce motion'
 	String get reduceMotion => 'Reduce motion';
 
-	/// en: 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.'
-	String get reduceMotionHint => 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.';
+	/// en: 'Controls menu fade animations and similar UI transitions, and shows animated image thumbnails as still frames. Useful over xpra or other remote displays where animations can look janky or slow the app down.'
+	String get reduceMotionHint => 'Controls menu fade animations and similar UI transitions, and shows animated image thumbnails as still frames. Useful over xpra or other remote displays where animations can look janky or slow the app down.';
 
 	/// en: 'System default'
 	String get reduceMotionSystem => 'System default';
@@ -4869,7 +4869,7 @@ extension on Translations {
 			'preferences.general.deleteKeyPermanent' => 'Delete Permanently',
 			'preferences.general.accessibilitySection' => 'Accessibility',
 			'preferences.general.reduceMotion' => 'Reduce motion',
-			'preferences.general.reduceMotionHint' => 'Controls menu fade animations and similar UI transitions. Useful over xpra or other remote displays where animations can look janky.',
+			'preferences.general.reduceMotionHint' => 'Controls menu fade animations and similar UI transitions, and shows animated image thumbnails as still frames. Useful over xpra or other remote displays where animations can look janky or slow the app down.',
 			'preferences.general.reduceMotionSystem' => 'System default',
 			'preferences.general.reduceMotionOn' => 'On',
 			'preferences.general.reduceMotionOff' => 'Off',

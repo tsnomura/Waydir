@@ -14,6 +14,7 @@ import '../../i18n/strings.g.dart';
 import '../../ui/icons/waydir_icons.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/theme/motion.dart';
 import '../../utils/drag_drop.dart';
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
@@ -28,6 +29,7 @@ import 'pointer_hover_store.dart';
 import 'remote_thumbnail_cache.dart';
 import 'row_decorations.dart';
 import 'scroll_link.dart';
+import 'still_file_image.dart';
 import 'status_chip.dart';
 import 'rubber_band_layer.dart' show RubberBandLayer, RubberBandSelectCallback;
 import 'file_view.dart'
@@ -1093,18 +1095,23 @@ class _ImageThumbnail extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(border: Border.all(color: AppColors.bgDivider)),
-      child: Image.file(
-        file,
-        width: thumbSize,
-        height: thumbSize,
-        cacheWidth: cache,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (context, error, stackTrace) => buildFileIcon(
-          name: entry.name,
-          ext: entry.extension,
-          isFolder: false,
-          size: thumbSize * 0.7,
+      child: SignalBuilder(
+        builder: (context) => Image(
+          image: thumbnailImage(
+            file,
+            maxWidth: cache,
+            still: context.reduceMotion,
+          ),
+          width: thumbSize,
+          height: thumbSize,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (context, error, stackTrace) => buildFileIcon(
+            name: entry.name,
+            ext: entry.extension,
+            isFolder: false,
+            size: thumbSize * 0.7,
+          ),
         ),
       ),
     );
@@ -1185,14 +1192,19 @@ class _ResolvedThumbnailState extends State<_ResolvedThumbnail> {
 
     return DecoratedBox(
       decoration: BoxDecoration(border: Border.all(color: AppColors.bgDivider)),
-      child: Image.file(
-        File(path),
-        width: widget.thumbSize,
-        height: widget.thumbSize,
-        cacheWidth: cache,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (context, error, stackTrace) => widget.fallback,
+      child: SignalBuilder(
+        builder: (context) => Image(
+          image: thumbnailImage(
+            File(path),
+            maxWidth: cache,
+            still: context.reduceMotion,
+          ),
+          width: widget.thumbSize,
+          height: widget.thumbSize,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (context, error, stackTrace) => widget.fallback,
+        ),
       ),
     );
   }
