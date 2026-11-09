@@ -1399,6 +1399,60 @@ class Translations$quickLook$en {
 	/// en: 'Date taken'
 	String get dateTaken => 'Date taken';
 
+	/// en: 'Video'
+	String get sectionVideo => 'Video';
+
+	/// en: 'Audio'
+	String get sectionAudio => 'Audio';
+
+	/// en: 'Format'
+	String get mediaFormat => 'Format';
+
+	/// en: 'Color'
+	String get colorMode => 'Color';
+
+	/// en: 'Pixel format'
+	String get pixelFormat => 'Pixel format';
+
+	/// en: 'Resolution'
+	String get imageResolution => 'Resolution';
+
+	/// en: 'Duration'
+	String get duration => 'Duration';
+
+	/// en: 'Frame rate'
+	String get frameRate => 'Frame rate';
+
+	/// en: 'Video'
+	String get videoCodec => 'Video';
+
+	/// en: 'Audio'
+	String get audioTrack => 'Audio';
+
+	/// en: 'Codec'
+	String get codec => 'Codec';
+
+	/// en: 'Sample rate'
+	String get sampleRate => 'Sample rate';
+
+	/// en: 'Channels'
+	String get channels => 'Channels';
+
+	/// en: 'Bit depth'
+	String get bitDepth => 'Bit depth';
+
+	/// en: 'Bitrate'
+	String get bitrate => 'Bitrate';
+
+	/// en: 'Title'
+	String get mediaTitle => 'Title';
+
+	/// en: 'Artist'
+	String get mediaArtist => 'Artist';
+
+	/// en: 'Album'
+	String get mediaAlbum => 'Album';
+
 	/// en: 'Ln $line / $count'
 	String linePosition({required Object line, required Object count}) => 'Ln ${line} / ${count}';
 
@@ -5354,6 +5408,24 @@ extension on Translations {
 			'quickLook.iso' => 'ISO',
 			'quickLook.focalLength' => 'Focal length',
 			'quickLook.dateTaken' => 'Date taken',
+			'quickLook.sectionVideo' => 'Video',
+			'quickLook.sectionAudio' => 'Audio',
+			'quickLook.mediaFormat' => 'Format',
+			'quickLook.colorMode' => 'Color',
+			'quickLook.pixelFormat' => 'Pixel format',
+			'quickLook.imageResolution' => 'Resolution',
+			'quickLook.duration' => 'Duration',
+			'quickLook.frameRate' => 'Frame rate',
+			'quickLook.videoCodec' => 'Video',
+			'quickLook.audioTrack' => 'Audio',
+			'quickLook.codec' => 'Codec',
+			'quickLook.sampleRate' => 'Sample rate',
+			'quickLook.channels' => 'Channels',
+			'quickLook.bitDepth' => 'Bit depth',
+			'quickLook.bitrate' => 'Bitrate',
+			'quickLook.mediaTitle' => 'Title',
+			'quickLook.mediaArtist' => 'Artist',
+			'quickLook.mediaAlbum' => 'Album',
 			'quickLook.linePosition' => ({required Object line, required Object count}) => 'Ln ${line} / ${count}',
 			'quickLook.lines' => 'Lines',
 			'quickLook.characters' => 'Characters',
@@ -5606,6 +5678,8 @@ extension on Translations {
 			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',
 			'password.archivePrompt' => 'This archive is password-protected.',
+			_ => null,
+		} ?? switch (path) {
 			'password.archiveWrongPassword' => 'Wrong password. Try again.',
 			'password.smbPrompt' => 'Enter credentials for this network share.',
 			'password.sftpPrompt' => 'SSH/SFTP authentication',
@@ -5624,8 +5698,6 @@ extension on Translations {
 			'operations.noActive' => 'No active operations',
 			'operations.resolveConflicts' => 'Resolve Conflicts',
 			'operations.errorsCount' => ({required Object count}) => '${count} errors',
-			_ => null,
-		} ?? switch (path) {
 			'operations.compressing' => 'Compressing…',
 			'operations.compressingGzip' => 'Compressing (gzip)…',
 			'operations.compressingBzip2' => 'Compressing (bzip2)…',

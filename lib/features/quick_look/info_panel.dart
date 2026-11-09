@@ -15,6 +15,7 @@ import '../../utils/format.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../files/file_icons.dart';
+import 'media_info.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 
@@ -418,8 +419,8 @@ List<Widget> propertyRows(FileEntry e) {
     PropRow(label: t.quickLook.path, value: e.path),
     _StatRows(entry: e),
     AsyncRetain<QlSection?>(
-      cacheKey: 'img:${e.realPath}|${e.modifiedMs}',
-      loader: () => imageInfo(e),
+      cacheKey: 'media:${e.realPath}|${e.modifiedMs}|${e.size}',
+      loader: () => mediaInfo(e),
       builder: (section) {
         if (section == null) return const SizedBox.shrink();
 
