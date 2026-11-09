@@ -1089,6 +1089,51 @@ edit it first.
 
 Relevant commits: `bb770dc`.
 
+### Moved into a plugin: `send-to-terminal`
+
+The built-in version above was removed (`bulk_copy_command.dart`, its
+dialog and strings) and replaced by a plugin API plus an example plugin, so
+the command lines are user-defined instead of a fixed robocopy/rsync/scp
+choice.
+
+- API: `waydir.terminal({ input, cwd, shell, run })` (Rust `plugin.rs`
+  emits a `terminal` effect; `_runPluginTerminal` in `menus.dart` opens a
+  terminal tab in the active pane's slot and types `input`, pressing Enter
+  only with `run = true`). `cwd = "~"` is the home folder, which scp needs
+  when the pane itself is on sftp (Lua has no `os.getenv`).
+- Plugin: `docs/examples/plugins/send-to-terminal/`. One JSON file per
+  template next to `init.lua` (id = file name, sorted by it;
+  `manifest.json` is skipped); each becomes an
+  entry in a "Send to terminal" context submenu. A template is a `command`
+  string with `{paths}` / `{dest}` / `{dir}` placeholders (per item with
+  `each`: `{path}` / `{name}` / `{parent}`), or names a `builder` for what
+  a string can't express: `robocopy` (folders vs. loose files, `cmd.exe`)
+  and `scp` (`user@host:/path`, `-P` for a non-22 port), both in Lua with
+  `flags` from the JSON. `{dest}` is the other pane's folder. Fields are in
+  the plugin's `README.md`.
+- Where templates live went through three steps: a Lua table in
+  `init.lua` (editing code, and copying the example over drops your edits),
+  then one JSON list (still one shared file), then one file per template,
+  which is what stayed: adding or removing a template is adding or
+  deleting a file, and updating the plugin replaces only the shipped files.
+  Preferences was not used because a list editor would need new settings
+  UI.
+- Loading the files at registration needed two more API members:
+  `waydir.plugin_dir` (also at load time, when there is no `ctx`) and
+  `waydir.json_decode` (the sandbox has no JSON). A broken or incomplete
+  file is skipped with a log line instead of failing the whole plugin.
+- Quoting follows the machine: cmd style when any path involved is a
+  Windows path, POSIX otherwise. The OS is guessed from paths because a
+  plugin can't ask for it, so `os = "windows"` / `"unix"` templates refuse
+  to run (toast) on the other kind; the example still lists all four.
+- No options dialog any more: the flags are in the template, and the
+  command is typed without Enter, so the terminal is where it gets edited.
+- The old command-builder tests became
+  `test/integration/plugins/send_to_terminal_test.dart`, which runs the
+  plugin through the real Lua runtime.
+
+Relevant commit: `2491f3a`.
+
 ## Drive-type icons on pane tabs
 
 A pane tab's icon reflects what kind of location it's currently showing,

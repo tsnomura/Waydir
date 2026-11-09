@@ -91,8 +91,23 @@ fn err(msg: impl Into<String>) -> mlua::Error {
     mlua::Error::RuntimeError(msg.into())
 }
 
-fn install_api(lua: &Lua, effects: &Effects) -> mlua::Result<Table> {
+fn install_api(lua: &Lua, effects: &Effects, path: &str) -> mlua::Result<Table> {
     let waydir = lua.create_table()?;
+
+    let plugin_dir = std::path::Path::new(path)
+        .parent()
+        .map(|dir| dir.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    waydir.set("plugin_dir", plugin_dir)?;
+
+    waydir.set(
+        "json_decode",
+        lua.create_function(|lua, text: String| {
+            let value: Json =
+                serde_json::from_str(&text).map_err(|e| err(format!("json_decode: {e}")))?;
+            lua.to_value(&value)
+        })?,
+    )?;
 
     let e = effects.clone();
     waydir.set(
@@ -248,6 +263,25 @@ fn install_api(lua: &Lua, effects: &Effects) -> mlua::Result<Table> {
                 "operation": operation.unwrap_or(false),
                 "pty": pty.unwrap_or(false),
                 "progress": progress,
+            }));
+            Ok(())
+        })?,
+    )?;
+
+    let e = effects.clone();
+    waydir.set(
+        "terminal",
+        lua.create_function(move |_, spec: Table| {
+            let input: String = spec.get("input")?;
+            let cwd: Option<String> = spec.get("cwd")?;
+            let shell: Option<String> = spec.get("shell")?;
+            let run: Option<bool> = spec.get("run")?;
+            e.borrow_mut().push(json!({
+                "type": "terminal",
+                "input": input,
+                "cwd": cwd,
+                "shell": shell,
+                "run": run.unwrap_or(false),
             }));
             Ok(())
         })?,
@@ -464,7 +498,7 @@ fn load_impl(path: &str) -> mlua::Result<Json> {
     let code = std::fs::read_to_string(path).map_err(|e| err(format!("read {path}: {e}")))?;
     let lua = new_sandbox()?;
     let effects: Effects = Rc::new(RefCell::new(Vec::new()));
-    let waydir = install_api(&lua, &effects)?;
+    let waydir = install_api(&lua, &effects, path)?;
 
     let contribs: Rc<RefCell<Vec<Json>>> = Rc::new(RefCell::new(Vec::new()));
     let bars: Rc<RefCell<Vec<Json>>> = Rc::new(RefCell::new(Vec::new()));
@@ -568,7 +602,7 @@ fn invoke_impl(path: &str, action_id: &str, ctx_json: &str) -> mlua::Result<Json
 
     let lua = new_sandbox()?;
     let effects: Effects = Rc::new(RefCell::new(Vec::new()));
-    let waydir = install_api(&lua, &effects)?;
+    let waydir = install_api(&lua, &effects, path)?;
 
     let target = action_id.to_string();
     let found: Rc<RefCell<Option<mlua::Function>>> = Rc::new(RefCell::new(None));
@@ -610,7 +644,7 @@ fn bar_update_impl(path: &str, bar_id: &str, ctx_json: &str) -> mlua::Result<Jso
 
     let lua = new_sandbox()?;
     let effects: Effects = Rc::new(RefCell::new(Vec::new()));
-    let waydir = install_api(&lua, &effects)?;
+    let waydir = install_api(&lua, &effects, path)?;
     waydir.set("register", lua.create_function(move |_, _: Table| Ok(()))?)?;
 
     let target = bar_id.to_string();
@@ -658,7 +692,7 @@ fn bar_click_impl(
 
     let lua = new_sandbox()?;
     let effects: Effects = Rc::new(RefCell::new(Vec::new()));
-    let waydir = install_api(&lua, &effects)?;
+    let waydir = install_api(&lua, &effects, path)?;
     waydir.set("register", lua.create_function(move |_, _: Table| Ok(()))?)?;
 
     let target = bar_id.to_string();
@@ -700,7 +734,7 @@ fn column_compute_impl(path: &str, column_id: &str, ctx_json: &str) -> mlua::Res
 
     let lua = new_sandbox()?;
     let effects: Effects = Rc::new(RefCell::new(Vec::new()));
-    let waydir = install_api(&lua, &effects)?;
+    let waydir = install_api(&lua, &effects, path)?;
     waydir.set("register", lua.create_function(move |_, _: Table| Ok(()))?)?;
     waydir.set(
         "register_bar",

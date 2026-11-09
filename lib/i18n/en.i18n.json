@@ -68,9 +68,6 @@
     "compress": "Compress",
     "compressTo": "Compress to $name",
     "compressOptions": "Add to Archive…",
-    "bulkCopyRobocopy": "Copy with robocopy…",
-    "bulkCopyRsync": "Copy with rsync…",
-    "bulkCopyScp": "Copy with scp…",
     "multiRename": "Multi Rename…",
     "verifyChecksum": "Verify Checksum…",
     "sortBy": "Sort By",
@@ -122,14 +119,6 @@
     "passwordHint": "Leave empty for no password",
     "create": "Create",
     "cancel": "Cancel"
-  },
-  "bulkCopy": {
-    "title": "Copy with $tool",
-    "source": "Source",
-    "destination": "Destination",
-    "options": "Options",
-    "cancel": "Cancel",
-    "insertCommand": "Insert Command"
   },
   "checksum": {
     "title": "Verify Checksum",
@@ -1352,6 +1341,7 @@
     "archivePasswordUnsupported": "Password is only supported for ZIP archives",
     "archiveReadFailed": "Archive error: $error",
     "archiveEntryNotFound": "Archive entry not found: $path",
+    "archiveEntryCorrupt": "Extracted data does not match the archive: $path",
     "unsupportedArchiveFormat": "Unsupported archive format",
     "nativeCoreNotFound": "Native waydir_core not found; searched: $paths",
     "moveFileExFailed": "MoveFileEx failed with Windows error $error",

@@ -1,0 +1,8 @@
+{
+  "id": "send-to-terminal",
+  "name": "Send to terminal",
+  "version": "1.0.0",
+  "author": "Waydir",
+  "description": "Fills the marked items into a command template and types it into the built-in terminal for review.",
+  "api_version": 2
+}
