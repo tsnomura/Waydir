@@ -2182,6 +2182,36 @@ and after a restart even a tag view opened in the same tab lost the folder.
 
 Relevant commits: `bdb690e`, `994c5e3`.
 
+## Quick Look info pane: image, video and audio details
+
+The info pane's media section (`mediaInfo` in
+`lib/features/quick_look/media_info.dart`) now covers more than EXIF:
+
+- **Common images** (PNG, JPEG, GIF, BMP, WebP): Waydir parses the header
+  itself from the first 256 KiB: dimensions, format (progressive JPEG,
+  interlaced PNG), color mode with bit depth (`RGBA · 16-bit`,
+  `YCbCr · 8-bit`, `Palette · 256 colors`) and DPI from PNG `pHYs`, JFIF
+  density or BMP pixels-per-metre. This needs no external tool, works over
+  sftp (it only reads the head of the file) and avoids a process per
+  photo. The existing EXIF rows follow; EXIF's own dimensions are dropped
+  when the header already gave them, since a PNG usually has no EXIF at
+  all and that is why screenshots showed no size before.
+- **Other images** (TIFF, HEIC, AVIF, EXR, ...), **video** and **audio**
+  go through `ffprobe -show_format -show_streams -of json`: dimensions,
+  duration, frame rate (`30000/1001` → `29.97 fps`), codec and profile,
+  pixel format with bit depth (`bits_per_raw_sample`, else derived from
+  the `pix_fmt` name), bitrate, the audio track; for audio files also
+  sample rate, channels, bit depth and title/artist/album tags. Cover art
+  (`attached_pic`) is not taken for the video stream.
+- The probe runs off the UI thread with a 5 s timeout, once per
+  path/mtime/size, and fails closed: no ffprobe, an sftp path or an error
+  just means no media section for video/audio.
+
+Tests: `test/unit/quick_look/media_info_test.dart` builds headers byte by
+byte and feeds trimmed real ffprobe JSON, so it does not need ffprobe.
+
+Relevant commit: `b90f1f2`.
+
 ## Quick Look reloads when the file changes on disk
 
 A Quick Look preview left open went stale whenever an editor or another
