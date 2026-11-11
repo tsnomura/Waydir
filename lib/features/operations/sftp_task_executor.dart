@@ -306,9 +306,10 @@ void _runTransferWorker(List<dynamic> args, {required bool move}) {
       if (srcIsSftp && destIsSftp && _sameSftpSession(src, dst)) {
         await _ensureParentDir(dst, destIsSftp, fs);
         if (resolution == ConflictResolution.overwrite) {
-          await _removeAnySafe(dst, fs);
+          await _sftpRenameReplacing(src, dst, fs);
+        } else {
+          await fs.rename(src, dst);
         }
-        await fs.rename(src, dst);
         processedFiles += sourceFileCounts[src] ?? 1;
         maybeReport(name);
 
@@ -756,27 +757,28 @@ Future<void> _atomicSwap(
   bool overwriteAllowed,
 ) async {
   final existing = await _statAny(dst, fs);
-  if (existing != null) {
-    if (!overwriteAllowed) {
-      await _removeAnySafe(partial, fs);
-      throw FileSystemException(t.errors.targetExists, dst);
-    }
-    await _removeAny(dst, fs);
+  if (existing != null && !overwriteAllowed) {
+    await _removeAnySafe(partial, fs);
+    throw FileSystemException(t.errors.targetExists, dst);
   }
   if (dstIsSftp) {
-    final rec = SftpSessionManager.recordFor(dst);
-    if (rec == null) {
-      throw FileSystemException(t.errors.sftpNoActiveSession, dst);
-    }
-    final ok = WaydirCoreLoader.sftpRename(
-      rec.sessionId,
-      SftpSessionManager.remotePath(partial),
-      SftpSessionManager.remotePath(dst),
-    );
-    if (!ok) throw FileSystemException(t.errors.sftpRenameFailed, dst);
+    await _sftpRenameReplacing(partial, dst, fs);
   } else {
+    if (existing != null) await _removeAny(dst, fs);
     await File(partial).rename(dst);
   }
+}
+
+Future<void> _sftpRenameReplacing(String from, String to, SftpFs fs) async {
+  try {
+    await fs.rename(from, to);
+
+    return;
+  } on FileSystemException {
+    if (await fs.stat(to) == null) rethrow;
+  }
+  await _removeAny(to, fs);
+  await fs.rename(from, to);
 }
 
 Future<void> _copyLocalToLocal(
