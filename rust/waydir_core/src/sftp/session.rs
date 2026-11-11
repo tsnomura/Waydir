@@ -6,7 +6,8 @@ use std::time::Duration;
 use once_cell::sync::Lazy;
 use russh::client::{self, Handle};
 use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, PublicKey};
-use russh_sftp::client::SftpSession;
+use russh_sftp::client::{RawSftpSession, SftpSession};
+use russh_sftp::protocol::{Packet, StatusCode};
 use tokio::sync::Mutex;
 
 use super::auth::{discover_default_keys, load_key, resolve_user, AuthKind};
@@ -21,9 +22,46 @@ pub enum SftpOpenStatus {
     Error = 2,
 }
 
+const POSIX_RENAME: &str = "posix-rename@openssh.com";
+
 pub(super) struct Client {
     pub(super) _ssh: Handle<ClientHandler>,
     pub(super) sftp: SftpSession,
+    posix_rename: Option<Option<RawSftpSession>>,
+}
+
+impl Client {
+    pub(super) async fn rename(&mut self, from: &str, to: &str) -> Result<(), String> {
+        if self.posix_rename.is_none() {
+            self.posix_rename = Some(open_posix_rename(&self._ssh).await);
+        }
+        let Some(Some(raw)) = &self.posix_rename else {
+            return self
+                .sftp
+                .rename(from, to)
+                .await
+                .map_err(|e| format!("rename: {e}"));
+        };
+        let mut data = Vec::with_capacity(8 + from.len() + to.len());
+        for s in [from, to] {
+            data.extend_from_slice(&(s.len() as u32).to_be_bytes());
+            data.extend_from_slice(s.as_bytes());
+        }
+        match raw.extended(POSIX_RENAME, data).await {
+            Ok(Packet::Status(status)) if status.status_code == StatusCode::Ok => Ok(()),
+            Ok(Packet::Status(status)) => Err(format!("rename: {}", status.error_message)),
+            Ok(_) => Err("rename: unexpected reply".into()),
+            Err(e) => Err(format!("rename: {e}")),
+        }
+    }
+}
+
+async fn open_posix_rename(ssh: &Handle<ClientHandler>) -> Option<RawSftpSession> {
+    let channel = ssh.channel_open_session().await.ok()?;
+    channel.request_subsystem(true, "sftp").await.ok()?;
+    let raw = RawSftpSession::new(channel.into_stream());
+    let version = raw.init().await.ok()?;
+    (version.extensions.get(POSIX_RENAME).map(String::as_str) == Some("1")).then_some(raw)
 }
 
 pub(super) struct ClientHandler;
@@ -111,7 +149,11 @@ pub(super) async fn open(
         .map_err(|e| format!("sftp init: {e}"))?;
 
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-    let client = Arc::new(Mutex::new(Client { _ssh: handle, sftp }));
+    let client = Arc::new(Mutex::new(Client {
+        _ssh: handle,
+        sftp,
+        posix_rename: None,
+    }));
     let mut pool = POOL.lock().await;
     pool.sessions.insert(id, client);
     pool.by_key.insert(key, id);

@@ -828,12 +828,8 @@ pub unsafe extern "C" fn waydir_sftp_rename(
             Some(c) => c,
             None => return Err("no session".to_string()),
         };
-        let client = client.lock().await;
-        client
-            .sftp
-            .rename(&from, &to)
-            .await
-            .map_err(|e| format!("rename: {e}"))
+        let mut client = client.lock().await;
+        client.rename(&from, &to).await
     });
     if result.is_ok() {
         0
