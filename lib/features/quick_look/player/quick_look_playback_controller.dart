@@ -9,28 +9,39 @@ import '../generators/generator_registry.dart';
 import '../generators/generator_runner.dart';
 import 'audio_stream_probe.dart';
 import 'ffplay_player.dart';
+import 'in_app_video.dart';
 import 'player_registry.dart';
 import 'playback_math.dart';
 import 'quick_look_player.dart';
 
-/// Owns every rule in Quick Look's audio-playback design: auto-play while
-/// browsing, debounced cursor/page moves, re-seeking without restarting the
-/// player, auto-advancing the shown page from elapsed time, and stopping on
-/// every exit (close, file change, compare-diff view, lost focus, minimize).
+/// Owns every rule in Quick Look's playback design: auto-play while browsing,
+/// debounced cursor/page moves, re-seeking without restarting the player,
+/// auto-advancing the shown page from elapsed time, and stopping on every
+/// exit (close, file change, compare-diff view, lost focus, minimize).
+/// Audio goes through the user-configured external player; local videos go
+/// through the in-app [InAppVideoPlayer] so picture and sound share one
+/// engine.
 ///
 /// [sync] is the single entry point for "what's currently shown changed" —
 /// called on every relevant rebuild with the current entry and whether
 /// something else (compare-mode diff) is covering the preview right now.
 /// It's cheap to call repeatedly: a no-op whenever neither actually changed.
 class QuickLookPlaybackController {
-  QuickLookPlaybackController({QuickLookPlayer? player})
-    : _player = player ?? FfplayPlayer();
+  QuickLookPlaybackController({
+    QuickLookPlayer? player,
+    InAppVideoPlayer? video,
+  }) : _player = player ?? FfplayPlayer(),
+       _video = video ?? InAppVideoPlayer();
 
   static const _entryDebounce = Duration(milliseconds: 250);
   static const _pageDebounce = Duration(milliseconds: 100);
   static const _advanceInterval = Duration(milliseconds: 300);
 
   final QuickLookPlayer _player;
+  final InAppVideoPlayer _video;
+  bool _inAppVideo = false;
+
+  QuickLookPlayer get _activePlayer => _inAppVideo ? _video : _player;
 
   String? _activeKey;
   FileEntry? _pendingEntry;
@@ -121,10 +132,25 @@ class QuickLookPlaybackController {
     _entryTimer?.cancel();
     _pageTimer?.cancel();
     _advanceTimer?.cancel();
-    unawaited(_player.stop());
+    unawaited(_activePlayer.stop());
   }
 
   Future<void> _evaluateAndPlay(FileEntry entry) async {
+    if (InAppVideoPlayer.canPreview(entry)) {
+      final generation = _generation;
+      final duration = await _video.durationOf(entry.realPath);
+      if (duration == null || duration <= 0 || generation != _generation) {
+        return;
+      }
+      if (!_resumed) return;
+      _inAppVideo = true;
+      _duration = duration;
+      _pageCount = InAppVideoPlayer.pageCount;
+      _startPlaybackAt(_generatorPage?.position.value ?? 0);
+
+      return;
+    }
+    _inAppVideo = false;
     if (PlayerRegistry.instance.config == null) return;
     final def = GeneratorRegistry.instance.forExtension(
       entry.extension,
@@ -161,7 +187,7 @@ class QuickLookPlaybackController {
     _stopwatch
       ..reset()
       ..start();
-    unawaited(_player.play(entry.realPath, _playStartSeconds));
+    unawaited(_activePlayer.play(entry.realPath, _playStartSeconds));
     _advanceTimer?.cancel();
     if (pageCount > 1) {
       _advanceTimer = Timer.periodic(_advanceInterval, (_) => _advancePage());
@@ -192,8 +218,10 @@ class QuickLookPlaybackController {
     _advanceTimer?.cancel();
     _advanceTimer = null;
     _stopwatch.stop();
+    final target = _activePlayer;
     _duration = null;
     _pageCount = null;
-    unawaited(_player.stop());
+    _inAppVideo = false;
+    unawaited(target.stop());
   }
 }

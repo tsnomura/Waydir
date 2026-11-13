@@ -1273,6 +1273,9 @@ class Translations$quickLook$en {
 	/// en: 'No preview available'
 	String get noPreview => 'No preview available';
 
+	/// en: 'Could not play video'
+	String get videoLoadFailed => 'Could not play video';
+
 	/// en: 'Binary file - no preview'
 	String get binaryFile => 'Binary file - no preview';
 
@@ -5366,6 +5369,7 @@ extension on Translations {
 			'quickLook.openInApp' => 'Open (Enter) · Shift+Enter to choose an app',
 			'quickLook.folder' => 'Folder',
 			'quickLook.noPreview' => 'No preview available',
+			'quickLook.videoLoadFailed' => 'Could not play video',
 			'quickLook.binaryFile' => 'Binary file - no preview',
 			'quickLook.tooLarge' => 'File too large to preview',
 			'quickLook.readError' => 'Could not read file',
@@ -5677,9 +5681,9 @@ extension on Translations {
 			'password.authenticationRequired' => 'Authentication Required',
 			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',
-			'password.archivePrompt' => 'This archive is password-protected.',
 			_ => null,
 		} ?? switch (path) {
+			'password.archivePrompt' => 'This archive is password-protected.',
 			'password.archiveWrongPassword' => 'Wrong password. Try again.',
 			'password.smbPrompt' => 'Enter credentials for this network share.',
 			'password.sftpPrompt' => 'SSH/SFTP authentication',

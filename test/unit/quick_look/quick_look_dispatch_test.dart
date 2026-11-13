@@ -1,5 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waydir/core/models/file_entry.dart';
+import 'package:waydir/features/quick_look/media_info.dart';
+import 'package:waydir/features/quick_look/player/in_app_video.dart';
 import 'package:waydir/features/quick_look/quick_look_common.dart';
+
+FileEntry _videoEntry(String name, String path) => FileEntry.raw(
+  name: name,
+  path: path,
+  type: FileItemType.file,
+  size: 1,
+  modifiedMs: 0,
+);
 
 void main() {
   group('Quick Look extension sets do not overlap', () {
@@ -67,5 +78,21 @@ void main() {
         expect(binaryExts.contains(ext), isTrue);
       });
     }
+  });
+
+  group('Video routing', () {
+    test('video and image sets are disjoint', () {
+      expect(mediaVideoExts.intersection(imageExts), isEmpty);
+    });
+
+    test('local video routes to the in-app preview', () {
+      final entry = _videoEntry('clip.mp4', '/tmp/clip.mp4');
+      expect(InAppVideoPlayer.canPreview(entry), isTrue);
+    });
+
+    test('remote video does not route to the in-app preview', () {
+      final entry = _videoEntry('clip.mp4', 'sftp://example.com/clip.mp4');
+      expect(InAppVideoPlayer.canPreview(entry), isFalse);
+    });
   });
 }

@@ -17,11 +17,14 @@ import 'generators/generator_registry.dart';
 import 'image_preview.dart';
 import 'info_panel.dart';
 import 'markdown_preview.dart';
+import 'media_info.dart';
 import 'pdf_preview.dart';
+import 'player/in_app_video.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 import 'quick_look_zoom.dart';
 import 'rendered_source.dart';
+import 'video_preview.dart';
 
 bool defaultCompactFor(FileEntry? entry) {
   if (entry == null || entry.type == FileItemType.folder) return true;
@@ -29,7 +32,8 @@ bool defaultCompactFor(FileEntry? entry) {
 
   return !imageExts.contains(ext) &&
       !pdfExts.contains(ext) &&
-      !markdownExts.contains(ext);
+      !markdownExts.contains(ext) &&
+      !mediaVideoExts.contains(ext);
 }
 
 class QuickLookHeader extends StatelessWidget {
@@ -418,6 +422,7 @@ class QuickLookBody extends StatelessWidget {
   final bool rendered;
   final ScrollController scrollController;
   final GeneratorPageController generatorPage;
+  final InAppVideoPlayer video;
   final ValueChanged<String>? onOpenLink;
 
   const QuickLookBody({
@@ -430,6 +435,7 @@ class QuickLookBody extends StatelessWidget {
     required this.rendered,
     required this.scrollController,
     required this.generatorPage,
+    required this.video,
     this.onOpenLink,
   });
 
@@ -470,6 +476,18 @@ class QuickLookBody extends StatelessWidget {
           editorActive: editorActive,
           scrollController: scrollController,
         ),
+        e,
+        showInfo: showInfo,
+      );
+    }
+    // Local videos with no configured generator play in-app — remote files
+    // and generator-configured extensions fall through to their usual path.
+    if (InAppVideoPlayer.canPreview(e)) {
+      release();
+      onCompactChanged(false);
+
+      return splitPreview(
+        VideoPreview(video: video, path: e.realPath, page: generatorPage),
         e,
         showInfo: showInfo,
       );

@@ -184,27 +184,55 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
                   left: 0,
                   right: 0,
                   bottom: 10,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _PageButton(
-                        icon: WaydirIconsRegular.caretLeft,
-                        enabled: position > 0,
-                        onTap: widget.page.prev,
-                      ),
-                      const SizedBox(width: 8),
-                      QlHudChip(text: '${position + 1} / ${widget.pageCount}'),
-                      const SizedBox(width: 8),
-                      _PageButton(
-                        icon: WaydirIconsRegular.caretRight,
-                        enabled: position < widget.pageCount - 1,
-                        onTap: widget.page.next,
-                      ),
-                    ],
+                  child: GeneratorPageBar(
+                    page: widget.page,
+                    pageCount: widget.pageCount,
                   ),
                 ),
             ],
           ),
+        );
+      },
+    );
+  }
+}
+
+/// The centered prev / position / next row that multi-page previews (the
+/// generator thumbnails and the in-app video) overlay at the bottom of their
+/// frame.
+class GeneratorPageBar extends StatelessWidget {
+  final GeneratorPageController page;
+  final int pageCount;
+
+  const GeneratorPageBar({
+    super.key,
+    required this.page,
+    required this.pageCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SignalBuilder(
+      builder: (context) {
+        final position = page.position.value.clamp(0, pageCount - 1);
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _PageButton(
+              icon: WaydirIconsRegular.caretLeft,
+              enabled: position > 0,
+              onTap: page.prev,
+            ),
+            const SizedBox(width: 8),
+            QlHudChip(text: '${position + 1} / $pageCount'),
+            const SizedBox(width: 8),
+            _PageButton(
+              icon: WaydirIconsRegular.caretRight,
+              enabled: position < pageCount - 1,
+              onTap: page.next,
+            ),
+          ],
         );
       },
     );

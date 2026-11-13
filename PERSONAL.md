@@ -1758,6 +1758,53 @@ auto-plays through an external command while browsing, muted videos excepted.
   real data path (plus original path on restore) of trash-bin tasks.
   Compared normalized and case-insensitively on Windows (`ea60613`).
 
+## Quick Look in-app video playback
+
+Extended the audio design to picture: local video files now play *inside*
+Quick Look — picture and sound from one engine — instead of the
+`video-thumbnail` generator's still frames with ffplay as a side-car for the
+audio.
+
+- Engine: `fvp` 0.40.0 (FFmpeg/libmdk backend, texture rendering) registered
+  over the official `video_player` API (`fvp.registerWith()` right after
+  `WidgetsFlutterBinding.ensureInitialized()` in `main.dart`, before the
+  standalone-window early returns). The official plugin has no desktop
+  implementation; fvp supplies Linux/Windows/macOS and bundles its native
+  libs (~10 MB per arch, pulled by the plugin system like any other plugin).
+- Eligibility, mirroring the audio rules: the extension is in
+  `mediaVideoExts`, the path is local (remote `sftp://`/`smb://` files have
+  no local path the decoder could open, so they keep the thumbnail +
+  ffplay-audio fallback), and **no generator is configured for the
+  extension** — a configured generator still wins, same as an explicit
+  `compare_diff.json` beats the default diff. `InAppVideoPlayer.canPreview`
+  holds the whole rule; the content dispatch checks it after the generator
+  branch and before the binary fallback (mp4/mkv/etc. sit in
+  `binaryExts`).
+- No opt-in: unlike audio's `player.json` gate, in-app video plays by
+  default. The decoder is in-process and stops on every exit, so there's no
+  "leaves something running" concern the external player had.
+- The playback rules live in `QuickLookPlaybackController` as before; it
+  routes to the in-app player for eligible videos and to ffplay for
+  everything else. The in-app branch deliberately runs *before* the
+  `PlayerRegistry` `player.json` check, so video plays even when no external
+  player is configured. Same dwell (250 ms), same 100 ms page-change
+  debounce, same 300 ms elapsed-time auto-advance, same stop-on-close /
+  file-change / diff-view / focus-loss / file-operation behavior.
+- `InAppVideoPlayer` is a `QuickLookPlayer` per Quick Look surface
+  (dialog, bottom panel, standalone window — each owns its own instance and
+  decoder), not a singleton: one `VideoPlayerController` at a time, reused
+  across page seeks (`seekTo` + `play`, no restart), disposed on stop.
+  `VideoPreview` renders the texture plus the shared `GeneratorPageBar`
+  (extracted from `GeneratorPreview` so both preview styles overlay the same
+  prev / `n / 10` / next row). Ten time pages, matching the
+  video-thumbnail generator's `pageCount: 10`.
+- Fails closed: an unopenable file or unsupported codec logs a warning and
+  shows "Could not play video" instead of spinning forever.
+- Known edge, documented not fixed: two surfaces open on *different* local
+  videos at once decode both (one decoder per surface), and whichever
+  called `play` last owns the sound; per-surface decoding means the
+  textures themselves don't fight.
+
 ## Quick Look in the terminal area (bottom pane)
 
 OneCommander/Directory-Opus-style Quick Look: the preview shows in the
