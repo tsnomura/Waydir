@@ -40,8 +40,6 @@ class InAppVideoPlayer implements QuickLookPlayer {
   /// the preview shows its no-preview message instead of spinning.
   final failed = signal(false);
 
-  VideoPlayerController? get controller => _controller;
-
   static bool canPreview(FileEntry entry) {
     if (!mediaVideoExts.contains(entry.extension)) return false;
     if (PlatformPaths.isRemoteUri(entry.realPath)) return false;

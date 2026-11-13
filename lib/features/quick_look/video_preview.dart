@@ -38,7 +38,7 @@ class _VideoPreviewState extends State<VideoPreview> {
 
     return SignalBuilder(
       builder: (context) {
-        final controller = widget.video.controller;
+        final controller = widget.video.current.value;
 
         return Container(
           color: AppColors.bg,
