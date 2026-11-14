@@ -199,10 +199,6 @@ class _QuickLookState extends State<_QuickLook>
     super.dispose();
   }
 
-  /// Stops playback the moment Waydir loses focus or is minimized —
-  /// Quick Look is for browsing with sound and picture, not for leaving
-  /// something playing in the background. It never auto-resumes on its own;
-  /// moving the cursor or paging again picks playback back up as usual.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) _playback.stopForLifecycle();
@@ -800,7 +796,7 @@ class _QuickLookState extends State<_QuickLook>
                         rendered: _rendered,
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
-                        video: _video,
+                        playback: _playback,
                         onOpenLink: _openLink,
                       ),
                     )
@@ -814,7 +810,7 @@ class _QuickLookState extends State<_QuickLook>
                       rendered: _rendered,
                       scrollController: _contentScroll,
                       generatorPage: _generatorPage,
-                      video: _video,
+                      playback: _playback,
                       onOpenLink: _openLink,
                     ),
             ),

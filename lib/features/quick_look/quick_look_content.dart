@@ -20,6 +20,7 @@ import 'markdown_preview.dart';
 import 'media_info.dart';
 import 'pdf_preview.dart';
 import 'player/in_app_video.dart';
+import 'player/quick_look_playback_controller.dart';
 import 'quick_look_common.dart';
 import 'quick_look_io.dart';
 import 'quick_look_zoom.dart';
@@ -422,7 +423,7 @@ class QuickLookBody extends StatelessWidget {
   final bool rendered;
   final ScrollController scrollController;
   final GeneratorPageController generatorPage;
-  final InAppVideoPlayer video;
+  final QuickLookPlaybackController playback;
   final ValueChanged<String>? onOpenLink;
 
   const QuickLookBody({
@@ -435,7 +436,7 @@ class QuickLookBody extends StatelessWidget {
     required this.rendered,
     required this.scrollController,
     required this.generatorPage,
-    required this.video,
+    required this.playback,
     this.onOpenLink,
   });
 
@@ -470,24 +471,32 @@ class QuickLookBody extends StatelessWidget {
       onCompactChanged(false);
 
       return splitPreview(
-        GeneratorPreview(
-          entry: e,
-          page: generatorPage,
-          editorActive: editorActive,
-          scrollController: scrollController,
+        PlaybackSurface(
+          playback: playback,
+          child: GeneratorPreview(
+            entry: e,
+            page: generatorPage,
+            editorActive: editorActive,
+            scrollController: scrollController,
+          ),
         ),
         e,
         showInfo: showInfo,
       );
     }
-    // Local videos with no configured generator play in-app — remote files
-    // and generator-configured extensions fall through to their usual path.
     if (InAppVideoPlayer.canPreview(e)) {
       release();
       onCompactChanged(false);
 
       return splitPreview(
-        VideoPreview(video: video, path: e.realPath, page: generatorPage),
+        PlaybackSurface(
+          playback: playback,
+          child: VideoPreview(
+            playback: playback,
+            path: e.realPath,
+            page: generatorPage,
+          ),
+        ),
         e,
         showInfo: showInfo,
       );

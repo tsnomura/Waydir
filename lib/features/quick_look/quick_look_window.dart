@@ -519,7 +519,7 @@ class _QuickLookWindowState extends State<QuickLookWindow>
                         rendered: _rendered,
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
-                        video: _video,
+                        playback: _playback,
                         onOpenLink: _openLink,
                       ),
                     ),

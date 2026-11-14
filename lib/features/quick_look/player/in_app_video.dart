@@ -30,6 +30,7 @@ class InAppVideoPlayer implements QuickLookPlayer {
   String? _path;
   VideoPlayerController? _controller;
   bool _disposed = false;
+  int _epoch = 0;
   Future<void> _tail = Future.value();
 
   /// What, if anything, is currently loaded — the preview widget renders its
@@ -64,13 +65,24 @@ class InAppVideoPlayer implements QuickLookPlayer {
   Future<void> play(String path, double startSeconds) async {
     final controller = _path == path ? _controller : await _load(path);
     if (controller == null) return;
-    if (startSeconds > 0) {
-      await controller.seekTo(
-        Duration(milliseconds: (startSeconds * 1000).round()),
-      );
+    if (startSeconds > 0 || controller.value.position > Duration.zero) {
+      await controller.seekTo(_at(startSeconds));
     }
     await controller.play();
   }
+
+  /// Shows the frame at [startSeconds] without playing: a fresh load plus a
+  /// seek, never a pause of a playing engine. Dropped when [stop] runs
+  /// before the load lands.
+  Future<void> cue(String path, double startSeconds) async {
+    final epoch = _epoch;
+    final controller = _path == path ? _controller : await _load(path);
+    if (controller == null || epoch != _epoch) return;
+    await controller.seekTo(_at(startSeconds));
+  }
+
+  static Duration _at(double seconds) =>
+      Duration(milliseconds: (seconds * 1000).round());
 
   /// Drops the preview immediately, but lets the engine's [VideoPlayer]
   /// texture unmount first and disposes the controller a beat later.
@@ -80,6 +92,11 @@ class InAppVideoPlayer implements QuickLookPlayer {
   /// the rebuild lands.
   @override
   Future<void> stop() async {
+    _epoch++;
+    _release();
+  }
+
+  void _release() {
     final controller = _controller;
     _controller = null;
     _path = null;
@@ -109,24 +126,25 @@ class InAppVideoPlayer implements QuickLookPlayer {
   }
 
   Future<VideoPlayerController?> _load(String path) {
-    final future = _tail.then((_) => _loadNow(path));
+    final epoch = _epoch;
+    final future = _tail.then((_) => _loadNow(path, epoch));
     _tail = future.then((_) {}, onError: (Object _) {});
 
     return future;
   }
 
-  Future<VideoPlayerController?> _loadNow(String path) async {
-    if (_disposed) return null;
+  Future<VideoPlayerController?> _loadNow(String path, int epoch) async {
+    if (_disposed || epoch != _epoch) return null;
+    if (_path == path && _controller != null) return _controller;
     try {
       final controller = VideoPlayerController.file(File(path));
       await controller.initialize();
-      if (_disposed) {
+      if (_disposed || epoch != _epoch) {
         await controller.dispose();
 
         return null;
       }
-      if (_path == path && _controller == controller) return controller;
-      await stop();
+      _release();
       _path = path;
       _controller = controller;
       failed.value = false;
@@ -140,7 +158,7 @@ class InAppVideoPlayer implements QuickLookPlayer {
         error: error,
         stack: stack,
       );
-      failed.value = true;
+      if (epoch == _epoch) failed.value = true;
 
       return null;
     }

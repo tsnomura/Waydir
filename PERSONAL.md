@@ -1740,7 +1740,8 @@ auto-plays through an external command while browsing, muted videos excepted.
   auto-resumes on its own — regaining focus needs an actual cursor/page move,
   same as any other restart. Decided this way on the reasoning that anything
   meant to keep playing in the background belongs in a real media player, not
-  Quick Look's browse-with-sound preview.
+  Quick Look's browse-with-sound preview. Since changed to pause with a
+  click to resume (see "Pause on focus loss, click to toggle" below).
 - No extra work needed for SFTP: `entry.realPath` for a remote file is
   already an `sftp://...` URI (see the grid-thumbnails entry above) and
   ffplay is the same libssh-enabled ffmpeg build already reading those for
@@ -1796,7 +1797,8 @@ audio.
   `PlayerRegistry` `player.json` check, so video plays even when no external
   player is configured. Same dwell (250 ms), same 100 ms page-change
   debounce, same 300 ms elapsed-time auto-advance, same stop-on-close /
-  file-change / diff-view / focus-loss / file-operation behavior.
+  file-change / diff-view / file-operation behavior. Focus loss pauses
+  instead of stopping (next section).
 - `InAppVideoPlayer` is a `QuickLookPlayer` per Quick Look surface
   (dialog, bottom panel, standalone window — each owns its own instance and
   decoder), not a singleton: one `VideoPlayerController` at a time, reused
@@ -1816,6 +1818,49 @@ audio.
   videos at once decode both (one decoder per surface), and whichever
   called `play` last owns the sound; per-surface decoding means the
   textures themselves don't fight.
+
+### Pause on focus loss, click to toggle, and never pausing the engine
+
+Replaces the audio section's "stops on focus loss, a cursor move restarts
+it" for both audio and in-app video, on every surface (dialog, bottom pane,
+standalone window):
+
+- Opening auto-plays as before. Focus loss or minimize pauses and shows a
+  pause badge over the preview; focus coming back leaves it paused. Only a
+  click on the preview (frame, video, or waveform) resumes, from where it
+  stopped; a click while playing pauses. Focus lost during the 250 ms dwell
+  or while loading starts the file out paused. `PageUp`/`PageDown` while
+  paused only moves the resume point. Playing through to the end pauses with
+  the resume point back at 0. State is a `PlaybackState {idle, playing,
+  paused}` signal on `QuickLookPlaybackController`; `PlaybackSurface` wraps
+  the preview with the click target and the badge.
+- An in-app video is **never paused in its engine**. A pause releases the
+  `VideoPlayerController` (the same release every file change already does)
+  and cues a fresh one at the paused position — `initialize` plus `seekTo`,
+  never `play` — so the paused frame stays on screen under the badge.
+  Resuming plays that cued controller. The engine only ever sees load, seek,
+  play, and stop/dispose.
+- Why: on Windows, Quick Look froze for good on close after pausing and
+  resuming a video. A full dump (cdb `.dump /ma`) showed the UI thread —
+  merged with the platform thread on Windows, so the whole app — stuck in
+  fvp `Player.disposeAsync` → `state = stopped` (synchronous FFI) →
+  `mdk::abi::Player::set` → `AudioRenderer::flush`, waiting on a condition
+  that never fires. Same shape as the Linux PulseAudio deadlock
+  (wang-bin/fvp#244), here with the default XAudio2 backend. A standalone
+  repro app hit it once in about 70 runs (pause → resume → dispose), never
+  in 20 runs each of play → dispose or pause → resume alone, so pause →
+  resume is implicated but not proven.
+- Stale loads are dropped: `InAppVideoPlayer.stop` bumps an epoch, and a
+  load that lands after it disposes its controller instead of showing it,
+  so a cue still in flight when the file changes (or a file operation
+  releases it) never resurrects the old file's player or handle.
+- Residual risk: dispose still runs `state = stopped` synchronously on the
+  UI thread on every file change and close, so the deadlock can't be ruled
+  out, only made rarer. If it recurs, the fix is to stop the low-level mdk
+  player off the UI thread with a timeout. One unrelated-looking crash seen
+  while testing (access violation inside the Intel D3D11 driver,
+  `igd10umt64xe.DLL`, grid view with no video opened yet) didn't reproduce
+  under cdb.
 
 ## Quick Look in the terminal area (bottom pane)
 

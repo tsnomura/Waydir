@@ -8,6 +8,7 @@ import '../../ui/theme/app_theme.dart';
 import 'generators/generator_page_controller.dart';
 import 'generators/generator_preview.dart';
 import 'player/in_app_video.dart';
+import 'player/quick_look_playback_controller.dart';
 import 'quick_look_common.dart';
 
 /// The in-app picture for a local video: the [VideoPlayer] texture owned by
@@ -16,13 +17,13 @@ import 'quick_look_common.dart';
 /// the Quick Look playback controller; this widget only mirrors what it
 /// loaded.
 class VideoPreview extends StatefulWidget {
-  final InAppVideoPlayer video;
+  final QuickLookPlaybackController playback;
   final String path;
   final GeneratorPageController page;
 
   const VideoPreview({
     super.key,
-    required this.video,
+    required this.playback,
     required this.path,
     required this.page,
   });
@@ -38,7 +39,9 @@ class _VideoPreviewState extends State<VideoPreview> {
 
     return SignalBuilder(
       builder: (context) {
-        final controller = widget.video.current.value;
+        final video = widget.playback.video;
+        final controller = video.current.value;
+        final paused = widget.playback.state.value == PlaybackState.paused;
 
         return Container(
           color: AppColors.bg,
@@ -54,14 +57,14 @@ class _VideoPreviewState extends State<VideoPreview> {
                     ),
                   ),
                 )
-              else if (widget.video.failed.value)
+              else if (video.failed.value)
                 Positioned.fill(
                   child: QlCentered(
                     icon: WaydirIconsRegular.file,
                     message: t.quickLook.videoLoadFailed,
                   ),
                 )
-              else
+              else if (!paused)
                 const Positioned.fill(child: QlCentered.spinner()),
               if (InAppVideoPlayer.pageCount > 1)
                 Positioned(
@@ -78,5 +81,60 @@ class _VideoPreviewState extends State<VideoPreview> {
         );
       },
     );
+  }
+}
+
+/// Wraps a playable preview (the in-app video, or the generator frames an
+/// external audio player plays alongside) so a click toggles pause, and
+/// shows a pause badge while paused. Inert while nothing is playing.
+class PlaybackSurface extends StatelessWidget {
+  final QuickLookPlaybackController playback;
+  final Widget child;
+
+  const PlaybackSurface({
+    super.key,
+    required this.playback,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      final state = playback.state.value;
+      final active = playback.canToggle;
+
+      return MouseRegion(
+        cursor: active ? SystemMouseCursors.click : MouseCursor.defer,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: active ? playback.togglePause : null,
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              child,
+              if (state == PlaybackState.paused)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSurface.withValues(alpha: 0.8),
+                          border: Border.all(color: AppColors.borderColor),
+                        ),
+                        child: Icon(
+                          WaydirIconsRegular.pause,
+                          size: 32,
+                          color: AppColors.fgMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }
