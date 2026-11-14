@@ -17,6 +17,7 @@ import 'code_editor.dart';
 import 'diff/diff_runner.dart';
 import 'generators/generator_page_controller.dart';
 import 'info_panel.dart';
+import 'player/in_app_video.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
@@ -103,7 +104,8 @@ class _QuickLookState extends State<_QuickLook>
   final _editorController = CodeEditorController();
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
-  final _playback = QuickLookPlaybackController();
+  final _video = InAppVideoPlayer();
+  late final _playback = QuickLookPlaybackController(video: _video);
   bool _compact = true;
   bool _showInfo = true;
   bool _rendered = true;
@@ -187,6 +189,7 @@ class _QuickLookState extends State<_QuickLook>
     PlaybackRegistry.instance.unregister(_playback);
     _reload.dispose();
     _playback.dispose();
+    unawaited(_video.dispose());
     _findReadySub();
     _focus.dispose();
     _editorActive.dispose();
@@ -196,10 +199,6 @@ class _QuickLookState extends State<_QuickLook>
     super.dispose();
   }
 
-  /// Stops audio playback the moment Waydir loses focus or is minimized —
-  /// Quick Look is for browsing with sound, not for leaving something
-  /// playing in the background. It never auto-resumes on its own; moving
-  /// the cursor or paging again picks playback back up as usual.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) _playback.stopForLifecycle();
@@ -797,6 +796,7 @@ class _QuickLookState extends State<_QuickLook>
                         rendered: _rendered,
                         scrollController: _contentScroll,
                         generatorPage: _generatorPage,
+                        playback: _playback,
                         onOpenLink: _openLink,
                       ),
                     )
@@ -810,6 +810,7 @@ class _QuickLookState extends State<_QuickLook>
                       rendered: _rendered,
                       scrollController: _contentScroll,
                       generatorPage: _generatorPage,
+                      playback: _playback,
                       onOpenLink: _openLink,
                     ),
             ),

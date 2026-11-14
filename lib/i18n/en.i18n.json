@@ -868,6 +868,7 @@
     "openInApp": "Open (Enter) · Shift+Enter to choose an app",
     "folder": "Folder",
     "noPreview": "No preview available",
+    "videoLoadFailed": "Could not play video",
     "binaryFile": "Binary file - no preview",
     "tooLarge": "File too large to preview",
     "readError": "Could not read file",

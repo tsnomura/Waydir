@@ -10,6 +10,7 @@ import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
+import 'player/in_app_video.dart';
 import 'player/playback_registry.dart';
 import 'player/quick_look_playback_controller.dart';
 import 'quick_look_content.dart';
@@ -42,7 +43,8 @@ class _QuickLookPanelState extends State<QuickLookPanel>
   final _editorActive = signal(false);
   final _contentScroll = ScrollController();
   final _generatorPage = GeneratorPageController();
-  final _playback = QuickLookPlaybackController();
+  final _video = InAppVideoPlayer();
+  late final _playback = QuickLookPlaybackController(video: _video);
   bool _compact = true;
   bool _showInfo = true;
   bool _rendered = true;
@@ -84,6 +86,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
     widget.onRegisterCloseGuard(null);
     _reload.dispose();
     _playback.dispose();
+    unawaited(_video.dispose());
     _findReadySub();
     _editorActive.dispose();
     _editorController.dispose();
@@ -244,6 +247,7 @@ class _QuickLookPanelState extends State<QuickLookPanel>
                     rendered: _rendered,
                     scrollController: _contentScroll,
                     generatorPage: _generatorPage,
+                    playback: _playback,
                     onOpenLink: _openLink,
                   ),
                 ),

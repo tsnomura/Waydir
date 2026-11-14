@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:path/path.dart' as p;
 import 'ui/window/window.dart';
@@ -34,6 +35,14 @@ void main(List<String> args) async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      fvp.registerWith(
+        options: Platform.isLinux
+            ? {
+                'fastSeek': true,
+                'player': {'audio.renderer': 'ALSA'},
+              }
+            : <String, Object>{'fastSeek': true},
+      );
 
       LaunchArgs.parse(args);
       if (LaunchArgs.options.showHelp) {

@@ -51,6 +51,8 @@ dependencies:
   re_highlight: ^0.0.3
   waydir_term:
     path: packages/waydir_term
+  video_player: ^2.14.1
+  fvp: ^0.40.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
