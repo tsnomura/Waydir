@@ -72,6 +72,12 @@ class InAppVideoPlayer implements QuickLookPlayer {
     await controller.play();
   }
 
+  /// Drops the preview immediately, but lets the engine's [VideoPlayer]
+  /// texture unmount first and disposes the controller a beat later.
+  /// Disposing synchronously deregisters the engine texture while the
+  /// widget is still on screen, so the raster thread keeps drawing a
+  /// dead texture (engine warnings plus a software-GL render spin) until
+  /// the rebuild lands.
   @override
   Future<void> stop() async {
     final controller = _controller;
@@ -79,16 +85,20 @@ class InAppVideoPlayer implements QuickLookPlayer {
     _path = null;
     current.value = null;
     if (controller == null) return;
-    try {
-      await controller.dispose();
-    } catch (error, stack) {
-      log.warn(
-        'quick-look',
-        'in-app video dispose failed',
-        error: error,
-        stack: stack,
-      );
-    }
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 1), () async {
+        try {
+          await controller.dispose();
+        } catch (error, stack) {
+          log.warn(
+            'quick-look',
+            'in-app video dispose failed',
+            error: error,
+            stack: stack,
+          );
+        }
+      }),
+    );
   }
 
   Future<void> dispose() async {

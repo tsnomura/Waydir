@@ -1771,6 +1771,13 @@ audio.
   standalone-window early returns). The official plugin has no desktop
   implementation; fvp supplies Linux/Windows/macOS and bundles its native
   libs (~10 MB per arch, pulled by the plugin system like any other plugin).
+  Registered with `fastSeek: true` — page seeks jump to keyframes instead of
+  decoding to the exact position, which keeps `seekTo` cheap — and, on Linux
+  only, `audio.renderer: ALSA`: libmdk's default PulseAudio backend deadlocks
+  its own lock after an underflow, and the next `dispose`/volume call then
+  blocks the UI thread for tens of seconds (wang-bin/fvp#244). This VM's only
+  Pulse sink is a null sink and there's no ALSA card, so ALSA means "silent
+  but responsive" here, while a machine with a real card still gets sound.
 - Eligibility, mirroring the audio rules: the extension is in
   `mediaVideoExts`, the path is local (remote `sftp://`/`smb://` files have
   no local path the decoder could open, so they keep the thumbnail +
@@ -1793,7 +1800,12 @@ audio.
 - `InAppVideoPlayer` is a `QuickLookPlayer` per Quick Look surface
   (dialog, bottom panel, standalone window — each owns its own instance and
   decoder), not a singleton: one `VideoPlayerController` at a time, reused
-  across page seeks (`seekTo` + `play`, no restart), disposed on stop.
+  across page seeks (`seekTo` + `play`, no restart). Stop drops the preview
+  immediately but disposes the controller ~1 s later, once the `VideoPlayer`
+  texture widget has unmounted — disposing first deregisters the engine
+  texture while it's still on screen, which makes the raster thread keep
+  drawing a dead texture (engine warnings plus a software-GL render spin)
+  until the rebuild lands.
   `VideoPreview` renders the texture plus the shared `GeneratorPageBar`
   (extracted from `GeneratorPreview` so both preview styles overlay the same
   prev / `n / 10` / next row). Ten time pages, matching the

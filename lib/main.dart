@@ -35,7 +35,14 @@ void main(List<String> args) async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      fvp.registerWith();
+      fvp.registerWith(
+        options: Platform.isLinux
+            ? {
+                'fastSeek': true,
+                'player': {'audio.renderer': 'ALSA'},
+              }
+            : <String, Object>{'fastSeek': true},
+      );
 
       LaunchArgs.parse(args);
       if (LaunchArgs.options.showHelp) {
