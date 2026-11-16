@@ -581,7 +581,7 @@ impl PlatformDataReader {
                             Ok(marshaled) => {
                                 let copier = AsyncVirtualStreamCopier {
                                     sender: RunLoop::current().new_sender(),
-                                    marshaled_stream: unsafe { Movable::new(marshaled) },
+                                    marshaled_stream: Some(unsafe { Movable::new(marshaled) }),
                                     file_name: file_name.into(),
                                     target_folder,
                                     progress,
@@ -857,7 +857,7 @@ impl VirtualFileReader for AsyncStreamReader {
 // unmarshaled on the copying thread.
 struct AsyncVirtualStreamCopier {
     sender: RunLoopSender,
-    marshaled_stream: Movable<IStream>,
+    marshaled_stream: Option<Movable<IStream>>,
     file_name: String,
     target_folder: PathBuf,
     progress: Arc<ReadProgress>,
@@ -960,14 +960,24 @@ impl AsyncVirtualStreamCopier {
         Ok(())
     }
 
-    fn copy(self) {
+    fn copy(mut self) {
         let res = match unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) } {
             Ok(()) => {
-                let res = match unsafe {
-                    CoGetInterfaceAndReleaseStream::<_, IStream>(&*self.marshaled_stream)
-                } {
-                    Ok(stream) => self.read_inner(&stream),
-                    Err(err) => Err(err.into()),
+                let marshaled = self.marshaled_stream.take().map(Movable::take);
+                let res = match marshaled {
+                    Some(marshaled) => {
+                        let unmarshaled =
+                            unsafe { CoGetInterfaceAndReleaseStream::<_, IStream>(&marshaled) };
+                        // CoGetInterfaceAndReleaseStream releases the stream itself.
+                        std::mem::forget(marshaled);
+                        match unmarshaled {
+                            Ok(stream) => self.read_inner(&stream),
+                            Err(err) => Err(err.into()),
+                        }
+                    }
+                    None => Err(NativeExtensionsError::VirtualFileReceiveError(
+                        "stream missing".into(),
+                    )),
                 };
                 unsafe { CoUninitialize() };
                 res
