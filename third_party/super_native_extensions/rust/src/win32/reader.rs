@@ -22,7 +22,7 @@ use std::{
 };
 use threadpool::ThreadPool;
 use windows::{
-    core::{w, HSTRING},
+    core::{w, ComInterface, HSTRING},
     Win32::{
         Foundation::S_OK,
         Storage::FileSystem::{
@@ -31,8 +31,11 @@ use windows::{
         },
         System::{
             Com::{
-                IDataObject, IStream, STATFLAG_NONAME, STATSTG, STGMEDIUM, STREAM_SEEK_SET, TYMED,
-                TYMED_HGLOBAL, TYMED_ISTREAM,
+                CoInitializeEx, CoUninitialize, IDataObject, IStream,
+                Marshal::CoMarshalInterThreadInterfaceInStream,
+                StructuredStorage::CoGetInterfaceAndReleaseStream, COINIT_MULTITHREADED,
+                STATFLAG_NONAME, STATSTG, STGMEDIUM, STREAM_SEEK_SET, TYMED, TYMED_HGLOBAL,
+                TYMED_ISTREAM,
             },
             DataExchange::RegisterClipboardFormatW,
             Memory::{GlobalLock, GlobalSize, GlobalUnlock},
@@ -572,17 +575,24 @@ impl PlatformDataReader {
             TYMED_ISTREAM => match unsafe { medium.u.pstm.as_ref() } {
                 Some(stream) => {
                     if supports_async {
-                        let copier = AsyncVirtualStreamCopier {
-                            sender: RunLoop::current().new_sender(),
-                            stream: unsafe { Movable::new(stream.clone()) },
-                            file_name: file_name.into(),
-                            target_folder,
-                            progress,
-                            completer: Capsule::new(completer),
-                        };
-                        thread::spawn(move || {
-                            copier.copy();
-                        });
+                        let marshaled =
+                            unsafe { CoMarshalInterThreadInterfaceInStream(&IStream::IID, stream) };
+                        match marshaled {
+                            Ok(marshaled) => {
+                                let copier = AsyncVirtualStreamCopier {
+                                    sender: RunLoop::current().new_sender(),
+                                    marshaled_stream: Some(unsafe { Movable::new(marshaled) }),
+                                    file_name: file_name.into(),
+                                    target_folder,
+                                    progress,
+                                    completer: Capsule::new(completer),
+                                };
+                                thread::spawn(move || {
+                                    copier.copy();
+                                });
+                            }
+                            Err(err) => completer.complete(Err(err.into())),
+                        }
                     } else {
                         let path = get_target_path(&target_folder, file_name);
                         unsafe { stream.Seek(0, STREAM_SEEK_SET, None).ok_log() };
@@ -840,12 +850,14 @@ impl VirtualFileReader for AsyncStreamReader {
     }
 }
 
-// Most streams in COM should be agile, also the documentation for IDataObjectAsyncCapability
-// assumes that the stream is read on background thread so we wrap it inside Movable
-// in order to be able to send it.
+// The documentation for IDataObjectAsyncCapability assumes that the stream is
+// read on a background thread. Not every stream is agile (Windows Portable
+// Devices streams for MTP phones are apartment-threaded and fail with
+// RPC_E_WRONG_THREAD), so the stream is marshaled on the owning thread and
+// unmarshaled on the copying thread.
 struct AsyncVirtualStreamCopier {
     sender: RunLoopSender,
-    stream: Movable<IStream>,
+    marshaled_stream: Option<Movable<IStream>>,
     file_name: String,
     target_folder: PathBuf,
     progress: Arc<ReadProgress>,
@@ -853,15 +865,15 @@ struct AsyncVirtualStreamCopier {
 }
 
 impl AsyncVirtualStreamCopier {
-    fn get_length(&self) -> NativeExtensionsResult<u64> {
+    fn get_length(stream: &IStream) -> NativeExtensionsResult<u64> {
         let mut stat = STATSTG::default();
         unsafe {
-            self.stream.Stat(&mut stat as *mut _, STATFLAG_NONAME)?;
+            stream.Stat(&mut stat as *mut _, STATFLAG_NONAME)?;
         }
         Ok(stat.cbSize)
     }
 
-    fn read_inner(&self) -> NativeExtensionsResult<PathBuf> {
+    fn read_inner(&self, stream: &IStream) -> NativeExtensionsResult<PathBuf> {
         let temp_name: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(30)
@@ -874,7 +886,7 @@ impl AsyncVirtualStreamCopier {
             let path = HSTRING::from(path);
             SetFileAttributesW(&path, FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_TEMPORARY)?;
         }
-        match self.read_and_write(file) {
+        match self.read_and_write(stream, file) {
             Ok(_) => {
                 let path = get_target_path(&self.target_folder, &self.file_name);
                 fs::rename(temp_path, &path)?;
@@ -892,20 +904,20 @@ impl AsyncVirtualStreamCopier {
         }
     }
 
-    fn read_and_write(&self, mut f: File) -> NativeExtensionsResult<()> {
+    fn read_and_write(&self, stream: &IStream, mut f: File) -> NativeExtensionsResult<()> {
         let cancelled = Arc::new(AtomicBool::new(false));
         let cancelled_clone = cancelled.clone();
         self.progress
             .set_cancellation_handler(Some(Box::new(move || {
                 cancelled_clone.store(true, Ordering::Release);
             })));
-        let length = self.get_length()?;
+        let length = Self::get_length(stream)?;
         let mut num_read: u64 = 0;
         let mut buf = vec![0u8; 1024 * 1024];
         let mut last_reported_progress = 0f64;
 
         unsafe {
-            self.stream.Seek(0, STREAM_SEEK_SET, None)?;
+            stream.Seek(0, STREAM_SEEK_SET, None)?;
         }
 
         loop {
@@ -920,7 +932,7 @@ impl AsyncVirtualStreamCopier {
             }
             let mut did_read = 0u32;
             let res = unsafe {
-                self.stream.Read(
+                stream.Read(
                     buf.as_mut_ptr() as *mut _,
                     to_read,
                     Some(&mut did_read as *mut _),
@@ -948,8 +960,30 @@ impl AsyncVirtualStreamCopier {
         Ok(())
     }
 
-    fn copy(self) {
-        let res = self.read_inner();
+    fn copy(mut self) {
+        let res = match unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) } {
+            Ok(()) => {
+                let marshaled = self.marshaled_stream.take().map(Movable::take);
+                let res = match marshaled {
+                    Some(marshaled) => {
+                        let unmarshaled =
+                            unsafe { CoGetInterfaceAndReleaseStream::<_, IStream>(&marshaled) };
+                        // CoGetInterfaceAndReleaseStream releases the stream itself.
+                        std::mem::forget(marshaled);
+                        match unmarshaled {
+                            Ok(stream) => self.read_inner(&stream),
+                            Err(err) => Err(err.into()),
+                        }
+                    }
+                    None => Err(NativeExtensionsError::VirtualFileReceiveError(
+                        "stream missing".into(),
+                    )),
+                };
+                unsafe { CoUninitialize() };
+                res
+            }
+            Err(err) => Err(err.into()),
+        };
         let mut completer = self.completer;
         self.sender.send(move || {
             let completer = completer.take().unwrap();
