@@ -2174,7 +2174,7 @@ class _ItemRowState extends State<_ItemRow> {
           ),
         );
         final move =
-            virtual || DragHintController.instance.mode.value == DragMode.move;
+            !virtual && DragHintController.instance.mode.value == DragMode.move;
         if (paths.isNotEmpty) widget.onDropFiles(paths, move: move);
         if (_dragOver) setState(() => _dragOver = false);
       },

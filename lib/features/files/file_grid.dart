@@ -426,7 +426,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                       ),
                     );
                     final move =
-                        virtual ||
+                        !virtual &&
                         DragHintController.instance.mode.value == DragMode.move;
                     if (paths.isNotEmpty) {
                       widget.onDropFiles?.call(

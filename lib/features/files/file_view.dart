@@ -968,7 +968,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                       ),
                                     );
                                     final move =
-                                        virtual ||
+                                        !virtual &&
                                         DragHintController
                                                 .instance
                                                 .mode

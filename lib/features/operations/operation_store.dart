@@ -8,6 +8,7 @@ import 'package:waydir/ui/icons/waydir_icons.dart';
 import 'package:path/path.dart' as p;
 import 'package:signals/signals.dart';
 import '../../core/archive/archive_passwords.dart';
+import '../../core/archive/archive_temp.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/models/app_notification.dart';
 import '../../core/models/file_operation.dart';
@@ -885,6 +886,7 @@ class OperationStore {
 
       void finishTask(TaskStatus status, {List<TaskError>? errors}) {
         if (completer.isCompleted) return;
+        if (task.type == TaskType.copy) _cleanupDropStaging(task.sources);
         _currentCancelWatchdog?.cancel();
         _currentCancelWatchdog = null;
         if (errors != null) task.errors = errors;
@@ -1058,6 +1060,33 @@ class OperationStore {
         _completeCurrentAsCancelled = null;
       }
     }
+  }
+
+  static Set<String> dropStagingDirs(List<String> sources) {
+    final root = p.canonicalize(ArchiveTemp.stageRoot);
+
+    return {
+      for (final source in sources)
+        if (p.isWithin(root, p.canonicalize(source)))
+          p.join(
+            root,
+            p.split(p.relative(p.canonicalize(source), from: root)).first,
+          ),
+    }..removeWhere((dir) => !p.basename(dir).startsWith('drop-'));
+  }
+
+  static void _cleanupDropStaging(List<String> sources) {
+    final dirs = dropStagingDirs(sources);
+    if (dirs.isEmpty) return;
+    unawaited(
+      Isolate.run(() {
+        for (final dir in dirs) {
+          try {
+            Directory(dir).deleteSync(recursive: true);
+          } on FileSystemException catch (_) {}
+        }
+      }),
+    );
   }
 
   void _cleanupCancelledTaskTemps(FileTask task) {
