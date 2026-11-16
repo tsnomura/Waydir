@@ -15,6 +15,7 @@ import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../../ui/overlays/context_menu.dart';
 import '../../ui/overlays/popup_overlay.dart';
+import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../utils/drag_drop.dart';
@@ -930,6 +931,9 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                   hitTestBehavior: HitTestBehavior.opaque,
                                   onDropOver: (event) {
                                     _updateHover(event.position.local);
+                                    if (isVirtualDrop(event.session)) {
+                                      return DropOperation.copy;
+                                    }
 
                                     return DragHintController
                                                 .instance
@@ -951,15 +955,25 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                         !displayFiles[index].isGhost) {
                                       target = displayFiles[index].path;
                                     }
-                                    final paths = await pathsFromSession(
+                                    final virtual = isVirtualDrop(
                                       event.session,
                                     );
+                                    final paths = await pathsFromSession(
+                                      event.session,
+                                      onReceiving: (count) => showToast(
+                                        context: context,
+                                        message: t.toast.receivingDroppedItems(
+                                          count: count,
+                                        ),
+                                      ),
+                                    );
                                     final move =
+                                        virtual ||
                                         DragHintController
-                                            .instance
-                                            .mode
-                                            .value ==
-                                        DragMode.move;
+                                                .instance
+                                                .mode
+                                                .value ==
+                                            DragMode.move;
                                     if (paths.isNotEmpty) {
                                       widget.onDropFiles?.call(
                                         paths,

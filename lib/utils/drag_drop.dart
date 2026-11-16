@@ -10,11 +10,92 @@ const formatLocalFile = CustomValueFormat<String>(
   applicationId: 'dev.waydir.local-file',
 );
 
-Future<List<String>> pathsFromSession(DropSession session) async {
+bool isVirtualDrop(DropSession session) =>
+    session.items.isNotEmpty &&
+    session.items.every(
+      (i) =>
+          i.localData == null &&
+          !i.canProvide(Formats.fileUri) &&
+          !i.canProvide(formatLocalFile),
+    );
+
+Future<List<String>> pathsFromSession(
+  DropSession session, {
+  void Function(int count)? onReceiving,
+}) async {
+  if (isVirtualDrop(session)) {
+    return receiveVirtualFiles(session.items, onReceiving: onReceiving);
+  }
   final paths = await _pathsFromSession(session);
   if (session.items.every((i) => i.localData != null)) return paths;
 
   return stageVolatileDropSources(paths);
+}
+
+Future<List<String>> receiveVirtualFiles(
+  List<DropItem> items, {
+  void Function(int count)? onReceiving,
+}) async {
+  final entries = <({DropItem item, String rel})>[];
+  for (final item in items) {
+    final name = await item.dataReader?.getSuggestedName();
+    if (name == null) continue;
+    final rel = p.posix.normalize(name.replaceAll('\\', '/'));
+    if (rel.isEmpty ||
+        rel == '.' ||
+        p.posix.isAbsolute(rel) ||
+        p.posix.split(rel).contains('..') ||
+        rel.contains(':')) {
+      continue;
+    }
+    entries.add((item: item, rel: rel));
+  }
+  if (entries.isEmpty) return const [];
+  onReceiving?.call(entries.length);
+
+  final stage = Directory(
+    p.join(
+      ArchiveTemp.stageRoot,
+      'drop-${DateTime.now().microsecondsSinceEpoch}',
+    ),
+  )..createSync(recursive: true);
+  final folders = {
+    for (final e in entries)
+      if (entries.any((o) => o.rel.startsWith('${e.rel}/'))) e.rel,
+  };
+  final received = <String>{};
+  for (final e in entries) {
+    final dest = p.joinAll([stage.path, ...p.posix.split(e.rel)]);
+    if (folders.contains(e.rel)) {
+      Directory(dest).createSync(recursive: true);
+      received.add(e.rel);
+      continue;
+    }
+    Directory(p.dirname(dest)).createSync(recursive: true);
+    try {
+      final receiver = await e.item.dataReader?.getVirtualFileReceiver();
+      if (receiver == null) continue;
+      final (copied, _) = receiver.copyVirtualFile(targetFolder: stage.path);
+      await copied;
+      received.add(e.rel);
+    } catch (err) {
+      if (p.posix.extension(e.rel).isEmpty) {
+        Directory(dest).createSync(recursive: true);
+        received.add(e.rel);
+      } else {
+        log.warn('drop', 'could not receive dropped ${e.rel}', error: err);
+      }
+    }
+  }
+
+  final tops = {for (final rel in received) p.posix.split(rel).first};
+
+  return [
+    for (final top in tops)
+      if (FileSystemEntity.typeSync(p.join(stage.path, top)) !=
+          FileSystemEntityType.notFound)
+        p.join(stage.path, top),
+  ];
 }
 
 Future<List<String>> stageVolatileDropSources(List<String> paths) async {

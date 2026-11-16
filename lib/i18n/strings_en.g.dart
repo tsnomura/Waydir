@@ -1585,6 +1585,9 @@ class Translations$toast$en {
 	/// en: 'Couldn't start $name: $error'
 	String launcherFailed({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}';
 
+	/// en: 'Receiving $count items from the source...'
+	String receivingDroppedItems({required Object count}) => 'Receiving ${count} items from the source...';
+
 	/// en: 'Copied $count items'
 	String copiedItems({required Object count}) => 'Copied ${count} items';
 
@@ -5470,6 +5473,7 @@ extension on Translations {
 			'quickLook.generatorFenceFailed' => ({required Object id}) => 'Generator "${id}" produced no output. See Help → View Logs.',
 			'quickLook.generatorFenceError' => ({required Object id, required Object error}) => 'Generator "${id}" failed: ${error}',
 			'toast.launcherFailed' => ({required Object name, required Object error}) => 'Couldn\'t start ${name}: ${error}',
+			'toast.receivingDroppedItems' => ({required Object count}) => 'Receiving ${count} items from the source...',
 			'toast.copiedItems' => ({required Object count}) => 'Copied ${count} items',
 			'toast.duplicatedItems' => ({required Object count}) => 'Duplicated ${count} items',
 			'toast.cutItems' => ({required Object count}) => 'Cut ${count} items',
@@ -5680,9 +5684,9 @@ extension on Translations {
 			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
 			'password.authenticationRequired' => 'Authentication Required',
 			'password.dismiss' => 'Dismiss',
-			'password.mountPrompt' => 'Enter your password to mount this drive.',
 			_ => null,
 		} ?? switch (path) {
+			'password.mountPrompt' => 'Enter your password to mount this drive.',
 			'password.archivePrompt' => 'This archive is password-protected.',
 			'password.archiveWrongPassword' => 'Wrong password. Try again.',
 			'password.smbPrompt' => 'Enter credentials for this network share.',

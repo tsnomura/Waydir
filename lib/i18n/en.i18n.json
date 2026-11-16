@@ -971,6 +971,8 @@
   },
   "toast": {
     "launcherFailed": "Couldn't start $name: $error",
+    "receivingDroppedItems(one)": "Receiving 1 item from the source...",
+    "receivingDroppedItems(other)": "Receiving $count items from the source...",
     "copiedItems(one)": "Copied 1 item",
     "copiedItems(other)": "Copied $count items",
     "duplicatedItems(one)": "Duplicated 1 item",

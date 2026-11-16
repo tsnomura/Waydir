@@ -22,6 +22,7 @@ import '../../ui/dialogs/password_dialog.dart';
 import '../../ui/dialogs/rename_dialog.dart';
 import '../../ui/dialogs/sftp_credentials_dialog.dart';
 import '../../ui/overlays/context_menu.dart';
+import '../../ui/overlays/toast.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/platform/trash_location.dart';
@@ -1439,6 +1440,11 @@ class _SidebarDropTargetState extends State<_SidebarDropTarget> {
         if (_dragOver) setState(() => _dragOver = false);
       },
       onPerformDrop: (event) async {
+        if (isVirtualDrop(event.session)) {
+          if (_dragOver) setState(() => _dragOver = false);
+
+          return;
+        }
         final paths = await pathsFromSession(event.session);
         for (final path in paths) {
           if (Directory(path).existsSync()) {
@@ -1805,7 +1811,7 @@ class _SidebarOperationsButtonState extends State<_SidebarOperationsButton> {
 
         if (widget.collapsed) {
           return Tooltip(
-            message: '${t.toolbar.operations} · $progressText',
+            message: '${t.toolbar.operations} ﾂｷ $progressText',
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               onEnter: (_) => setState(() => _hovered = true),
@@ -1899,7 +1905,7 @@ class _SidebarOperationsButtonState extends State<_SidebarOperationsButton> {
                         const SizedBox(width: 6),
                         Text(
                           activeCount > 1
-                              ? '$progressText · $activeCount'
+                              ? '$progressText ﾂｷ $activeCount'
                               : progressText,
                           style: context.txt.caption.copyWith(
                             color: AppColors.fgAccent,
@@ -2141,6 +2147,7 @@ class _ItemRowState extends State<_ItemRow> {
       onDropOver: (event) {
         if (!_dragOver) setState(() => _dragOver = true);
         if (widget.isTagTarget) return DropOperation.link;
+        if (isVirtualDrop(event.session)) return DropOperation.copy;
 
         return DragHintController.instance.mode.value == DragMode.move
             ? DropOperation.move
@@ -2153,8 +2160,21 @@ class _ItemRowState extends State<_ItemRow> {
         if (_dragOver) setState(() => _dragOver = false);
       },
       onPerformDrop: (event) async {
-        final paths = await pathsFromSession(event.session);
-        final move = DragHintController.instance.mode.value == DragMode.move;
+        final virtual = isVirtualDrop(event.session);
+        if (virtual && widget.isTagTarget) {
+          if (_dragOver) setState(() => _dragOver = false);
+
+          return;
+        }
+        final paths = await pathsFromSession(
+          event.session,
+          onReceiving: (count) => showToast(
+            context: context,
+            message: t.toast.receivingDroppedItems(count: count),
+          ),
+        );
+        final move =
+            virtual || DragHintController.instance.mode.value == DragMode.move;
         if (paths.isNotEmpty) widget.onDropFiles(paths, move: move);
         if (_dragOver) setState(() => _dragOver = false);
       },
