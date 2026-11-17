@@ -472,6 +472,12 @@ class SettingsRegistry {
           label: () => t.preferences.appearance.columnWidthModeResizable,
           icon: WaydirIconsRegular.columns,
         ),
+        SettingChoice(
+          value: 'resizableAutomatic',
+          label: () =>
+              t.preferences.appearance.columnWidthModeResizableAutomatic,
+          icon: WaydirIconsRegular.arrowsLeftRight,
+        ),
       ],
     ),
     ChoiceSetting<int>(
