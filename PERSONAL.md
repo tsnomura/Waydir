@@ -2970,6 +2970,23 @@ cursor instead of the list's build. In the debug-mode benchmark a cursor
 move went from 4.6 ms to 1.2 ms in the list and from 9.5 ms to 2.0 ms in
 the grid. Tests construct a view with `FileListSelection.fixed(...)`.
 
+### `file_view.dart` split, list and grid share their item logic
+
+`file_view.dart` (2 563 lines) is now the `FileList` widget and its state
+plus four `part` files under `lib/features/files/file_view/`: `columns.dart`
+(column ids, labels, widths), `header.dart` (header, resize handles, column
+menu), `row.dart` (list row) and `scrollbar.dart`. The code moved as is.
+
+The list row and the grid tile had separate copies of the same logic; it
+now lives in one place:
+
+- `file_item.dart`: `FileItemWidget` (the shared fields) and the
+  `FileItemState` mixin — cursor and mark subscriptions, the inline rename
+  field, single/double click handling, drag items and the multi-file drag
+  configuration (used by the list; the grid still drags as one item).
+- `file_view_behavior.dart`: the `FileViewBehavior` mixin — scrolling the
+  cursor into view when it moves, and the drop region with folder hover.
+
 ### `visibleFiles` no longer writes state while computing
 
 The `visibleFiles` computed stored its own result in

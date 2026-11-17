@@ -12,20 +12,19 @@ import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/icons/waydir_icons.dart';
-import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/theme/motion.dart';
 import '../../utils/cancel_token.dart';
-import '../../utils/drag_drop.dart';
 import '../../utils/format.dart';
-import '../operations/drag_hint.dart';
 import '../quick_look/generators/generator_def.dart';
 import '../quick_look/generators/generator_registry.dart';
 import '../quick_look/generators/generator_runner.dart';
 import 'cursor_tooltip.dart';
 import 'file_icons.dart';
+import 'file_item.dart';
 import 'file_list_selection.dart';
+import 'file_view_behavior.dart';
 import 'path_ellipsis.dart';
 import 'pdf_thumbnail_cache.dart';
 import 'pointer_hover_store.dart';
@@ -45,8 +44,6 @@ import 'file_view.dart'
         OpenInNewTabCallback,
         RenameCancelCallback,
         RenameSubmitCallback;
-
-const _kGridDoubleTapMs = 300;
 
 const _kGridBaseTileWidth = 152.0;
 const _kGridBaseThumb = 80.0;
@@ -142,7 +139,8 @@ class FileGrid extends StatefulWidget {
   State<FileGrid> createState() => _FileGridState();
 }
 
-class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
+class _FileGridState extends State<FileGrid>
+    with ScrollLinkBinding, FileViewBehavior<FileGrid> {
   late final _scrollController = ScrollController(
     initialScrollOffset: widget.scrollLink?.offsetFor(scrollMemoryKey) ?? 0,
   );
@@ -161,40 +159,22 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
     super.initState();
     initScrollLink();
     _scrollController.addListener(_reportCursorRow);
-    _watchCursor();
+    watchCursor();
   }
 
   FileListSelection get _selection =>
       widget.selection ?? FileListSelection.none;
 
-  void Function()? _cursorDisposer;
+  @override
+  FileListSelection get viewSelection => _selection;
 
-  void _watchCursor() {
-    _cursorDisposer?.call();
-    var first = true;
-    _cursorDisposer = effect(() {
-      _selection.cursorIndex.value;
-      if (first) {
-        first = false;
+  @override
+  void revealCursor() => _revealSelectedTile();
 
-        return;
-      }
-      untracked(_onCursorMoved);
-    });
-  }
-
-  void _onCursorMoved() {
-    if (!mounted) return;
-    _revealSelectedTile();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _reportCursorRow();
-    });
-    WidgetsBinding.instance.ensureVisualUpdate();
-  }
+  @override
+  void reportCursorRow() => _reportCursorRow();
 
   String? _lastRevealedKey;
-  String? _hoveredFolderPath;
-  bool _isDragOver = false;
   int _lastColumns = 0;
   int _lastRows = 0;
   double _tileHeight = _kGridBaseThumb;
@@ -211,7 +191,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
       switchScrollMemory('grid|${oldWidget.currentPath}');
     }
     if (!identical(oldWidget.selection, widget.selection)) {
-      _watchCursor();
+      watchCursor();
       _revealSelectedTile();
     } else if (oldWidget.files != widget.files) {
       _revealSelectedTile();
@@ -220,7 +200,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
 
   @override
   void dispose() {
-    _cursorDisposer?.call();
+    stopWatchingCursor();
     disposeScrollLink();
     _scrollController.removeListener(_reportCursorRow);
     _scrollController.dispose();
@@ -255,32 +235,6 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
     }
 
     return paths;
-  }
-
-  void _updateHover(Offset localPosition, int columns) {
-    final index = _indexAt(localPosition, columns);
-    String? folder;
-    if (index >= 0) {
-      final entry = widget.files[index];
-      if (entry.type == FileItemType.folder && !entry.isGhost) {
-        folder = entry.path;
-      }
-    }
-    if (folder != _hoveredFolderPath || !_isDragOver) {
-      setState(() {
-        _isDragOver = true;
-        _hoveredFolderPath = folder;
-      });
-    }
-  }
-
-  void _clearDrag() {
-    if (_isDragOver || _hoveredFolderPath != null) {
-      setState(() {
-        _isDragOver = false;
-        _hoveredFolderPath = null;
-      });
-    }
   }
 
   double get _rowExtent => _tileHeight + _mainAxisGap;
@@ -431,49 +385,13 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
 
             return Stack(
               children: [
-                DropRegion(
-                  formats: [Formats.fileUri, formatLocalFile],
-                  hitTestBehavior: HitTestBehavior.opaque,
-                  onDropOver: (event) {
-                    _updateHover(event.position.local, columns);
-                    if (isVirtualDrop(event.session)) return DropOperation.copy;
-
-                    return DragHintController.instance.mode.value ==
-                            DragMode.move
-                        ? DropOperation.move
-                        : DropOperation.copy;
+                buildDropRegion(
+                  entryAt: (position) {
+                    final index = _indexAt(position, columns);
+                    return index < 0 ? null : widget.files[index];
                   },
-                  onDropLeave: (_) => _clearDrag(),
-                  onDropEnded: (_) => _clearDrag(),
-                  onPerformDrop: (event) async {
-                    final pos = event.position.local;
-                    final index = _indexAt(pos, columns);
-                    String? target;
-                    if (index >= 0 &&
-                        widget.files[index].type == FileItemType.folder &&
-                        !widget.files[index].isGhost) {
-                      target = widget.files[index].path;
-                    }
-                    final virtual = isVirtualDrop(event.session);
-                    final paths = await pathsFromSession(
-                      event.session,
-                      onReceiving: (count) => showToast(
-                        context: context,
-                        message: t.toast.receivingDroppedItems(count: count),
-                      ),
-                    );
-                    final move =
-                        !virtual &&
-                        DragHintController.instance.mode.value == DragMode.move;
-                    if (paths.isNotEmpty) {
-                      widget.onDropFiles?.call(
-                        paths,
-                        target ?? widget.currentPath,
-                        move: move,
-                      );
-                    }
-                    _clearDrag();
-                  },
+                  currentPath: () => widget.currentPath,
+                  onDropFiles: () => widget.onDropFiles,
                   child: RubberBandLayer(
                     scrollController: _scrollController,
                     itemCount: widget.files.length,
@@ -527,7 +445,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                                 widget.rowDecorations[entry.path] ??
                                 widget.rowDecorations[entry.realPath],
                             isCut: widget.cutPaths.contains(entry.path),
-                            isFolderDragOver: _hoveredFolderPath == entry.path,
+                            isFolderDragOver: hoveredFolderPath == entry.path,
                             isRenaming: widget.renamingPath == entry.path,
                             renameAttempt: widget.renameAttempt,
                             onRenameSubmit: widget.onRenameSubmit,
@@ -558,7 +476,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                       ),
                     ),
                   ),
-                if (_isDragOver)
+                if (isDragOver)
                   Positioned.fill(
                     child: IgnorePointer(
                       child: DecoratedBox(
@@ -579,9 +497,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
   }
 }
 
-class _GridTile extends StatefulWidget {
-  final FileEntry entry;
-  final int index;
+class _GridTile extends FileItemWidget {
   final double scale;
   final double thumbSize;
   final double tilePadding;
@@ -589,25 +505,15 @@ class _GridTile extends StatefulWidget {
   final double nameBlock;
   final double captionGap;
   final double captionBlock;
-  final FileListSelection selection;
   final bool cursorTooltips;
   final RowDecoration? rowDecoration;
   final bool isCut;
   final bool isFolderDragOver;
-  final bool isRenaming;
-  final int renameAttempt;
-  final RenameSubmitCallback? onRenameSubmit;
-  final RenameCancelCallback? onRenameCancel;
-  final FileSelectCallback onSelect;
-  final FileOpenCallback onOpen;
-  final FileContextMenuCallback? onContextMenu;
-  final OpenInNewTabCallback? onOpenInNewTab;
-  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final bool remoteThumbnails;
 
   const _GridTile({
-    required this.entry,
-    required this.index,
+    required super.entry,
+    required super.index,
     required this.scale,
     required this.thumbSize,
     required this.tilePadding,
@@ -615,20 +521,20 @@ class _GridTile extends StatefulWidget {
     required this.nameBlock,
     required this.captionGap,
     required this.captionBlock,
-    required this.selection,
+    required super.selection,
     this.cursorTooltips = false,
     this.rowDecoration,
     required this.isCut,
     required this.isFolderDragOver,
-    required this.isRenaming,
-    required this.renameAttempt,
-    this.onRenameSubmit,
-    this.onRenameCancel,
-    required this.onSelect,
-    required this.onOpen,
-    this.onContextMenu,
-    this.onOpenInNewTab,
-    this.onOpenInOtherPaneNewTab,
+    required super.isRenaming,
+    required super.renameAttempt,
+    super.onRenameSubmit,
+    super.onRenameCancel,
+    required super.onSelect,
+    required super.onOpen,
+    super.onContextMenu,
+    super.onOpenInNewTab,
+    super.onOpenInOtherPaneNewTab,
     required this.remoteThumbnails,
   });
 
@@ -636,167 +542,11 @@ class _GridTile extends StatefulWidget {
   State<_GridTile> createState() => _GridTileState();
 }
 
-class _GridTileState extends State<_GridTile> {
+class _GridTileState extends State<_GridTile> with FileItemState<_GridTile> {
   bool _hovered = false;
-  bool _dragging = false;
-  DateTime? _lastTap;
-  TextEditingController? _renameController;
-  FocusNode? _renameFocusNode;
-  bool _renameCommitted = false;
-  late ReadonlySignal<bool> _isCursor = widget.selection.cursorAt(widget.index);
-  late ReadonlySignal<bool> _isSelected = widget.selection.marked(
-    widget.entry.path,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isRenaming) _initRenameFields();
-  }
-
-  @override
-  void didUpdateWidget(covariant _GridTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final selectionChanged = !identical(oldWidget.selection, widget.selection);
-    if (selectionChanged || oldWidget.index != widget.index) {
-      _isCursor = widget.selection.cursorAt(widget.index);
-    }
-    if (selectionChanged || oldWidget.entry.path != widget.entry.path) {
-      _isSelected = widget.selection.marked(widget.entry.path);
-    }
-    if (widget.isRenaming && !oldWidget.isRenaming) {
-      _initRenameFields();
-    } else if (!widget.isRenaming && oldWidget.isRenaming) {
-      _disposeRenameFields();
-    } else if (widget.isRenaming &&
-        widget.renameAttempt != oldWidget.renameAttempt) {
-      _renameCommitted = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _renameFocusNode == null || _renameController == null) {
-          return;
-        }
-        _renameFocusNode!.requestFocus();
-        _renameController!.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: _renameController!.text.length,
-        );
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _disposeRenameFields();
-    super.dispose();
-  }
-
-  void _initRenameFields() {
-    _renameCommitted = false;
-    final name = widget.entry.name;
-    final dotIndex = widget.entry.type == FileItemType.file
-        ? name.lastIndexOf('.')
-        : -1;
-    final selectionEnd = dotIndex > 0 ? dotIndex : name.length;
-    _renameController = TextEditingController(text: name);
-    _renameController!.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: selectionEnd,
-    );
-    _renameFocusNode = FocusNode();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _renameFocusNode != null) {
-        _renameFocusNode!.requestFocus();
-      }
-    });
-  }
-
-  void _disposeRenameFields() {
-    _renameController?.dispose();
-    _renameController = null;
-    _renameFocusNode?.dispose();
-    _renameFocusNode = null;
-  }
-
-  void _commitRename() {
-    if (_renameCommitted) return;
-    _renameCommitted = true;
-    widget.onRenameSubmit?.call(_renameController?.text ?? '');
-  }
-
-  void _handleTap() {
-    final now = DateTime.now();
-    if (_lastTap != null &&
-        now.difference(_lastTap!).inMilliseconds < _kGridDoubleTapMs) {
-      _lastTap = null;
-      final keys = HardwareKeyboard.instance;
-      final isFolder = widget.entry.type == FileItemType.folder;
-      if (widget.entry.isGhost) {
-        widget.onSelect(
-          FileSelectionEvent(entry: widget.entry, index: widget.index),
-        );
-      } else if (isFolder && keys.isShiftPressed) {
-        widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
-      } else if (isFolder && keys.isControlPressed) {
-        widget.onOpenInNewTab?.call(widget.entry.path);
-      } else {
-        widget.onOpen(widget.entry);
-      }
-
-      return;
-    }
-    _lastTap = now;
-    widget.onSelect(
-      FileSelectionEvent(entry: widget.entry, index: widget.index),
-    );
-  }
-
-  void _handleSecondaryTap(TapUpDetails details) {
-    if (widget.entry.isGhost) return;
-    widget.onContextMenu?.call(
-      FileSelectionEvent(entry: widget.entry, index: widget.index),
-      details.globalPosition,
-    );
-  }
-
-  List<String> _pathsToDrag() {
-    final selectedPaths = widget.selection.selectedPaths.peek().toList();
-    if (_isSelected.value && selectedPaths.isNotEmpty) return selectedPaths;
-
-    return [widget.entry.path];
-  }
-
-  DragItem _dragItemForPaths(List<String> paths) {
-    final item = DragItem(
-      localData: {'paths': paths},
-      suggestedName: paths.length == 1 ? widget.entry.name : null,
-    );
-    item.add(formatLocalFile(paths.join('\n')));
-    for (final path in paths) {
-      item.add(Formats.fileUri(Uri.file(path)));
-    }
-
-    return item;
-  }
-
-  Future<DragItem?> _provideDragItem(DragItemRequest request) async {
-    if (HardwareKeyboard.instance.isShiftPressed) return null;
-
-    final initialMode = initialDragMode();
-
-    void updateDragging() {
-      final isDragging = request.session.dragging.value;
-      if (mounted) setState(() => _dragging = isDragging);
-      if (isDragging) DragHintController.instance.mode.value = initialMode;
-    }
-
-    request.session.dragging.addListener(updateDragging);
-    updateDragging();
-
-    return _dragItemForPaths(_pathsToDrag());
-  }
 
   Widget _buildDragImage(BuildContext context, Widget child) {
-    final paths = _pathsToDrag();
+    final paths = pathsToDrag();
     final entry = widget.entry;
 
     return Container(
@@ -841,7 +591,7 @@ class _GridTileState extends State<_GridTile> {
 
   Widget _build(BuildContext context) {
     final entry = widget.entry;
-    final selected = _isSelected.value;
+    final selected = marked.value;
     final scale = widget.scale;
     final thumbSize = widget.thumbSize;
     final nameStyle = context.txt.row.copyWith(
@@ -856,7 +606,7 @@ class _GridTileState extends State<_GridTile> {
     final tint = widget.rowDecoration?.badge == null
         ? widget.rowDecoration?.tint
         : null;
-    final isCursor = _isCursor.value;
+    final isCursor = cursorOn.value;
     final bg = widget.isFolderDragOver
         ? AppColors.accent.withValues(alpha: 0.12)
         : selected
@@ -883,14 +633,14 @@ class _GridTileState extends State<_GridTile> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _handleTap,
-        onSecondaryTapUp: _handleSecondaryTap,
+        onTap: handleTap,
+        onSecondaryTapUp: handleSecondaryTap,
         child: Opacity(
           opacity: entry.isGhost
               ? 0.5
               : widget.isCut
               ? 0.45
-              : (_dragging ? 0.45 : 1),
+              : (dragging ? 0.45 : 1),
           child: Stack(
             children: [
               Container(
@@ -956,17 +706,17 @@ class _GridTileState extends State<_GridTile> {
                     ),
                     SizedBox(height: widget.thumbGap),
                     if (widget.isRenaming &&
-                        _renameController != null &&
-                        _renameFocusNode != null)
+                        renameController != null &&
+                        renameFocusNode != null)
                       SizedBox(
                         height: widget.nameBlock,
                         child: TextField(
-                          controller: _renameController,
-                          focusNode: _renameFocusNode,
-                          onSubmitted: (_) => _commitRename(),
-                          onEditingComplete: _commitRename,
-                          onTapOutside: (_) => _commitRename(),
-                          onChanged: (_) => _renameCommitted = false,
+                          controller: renameController,
+                          focusNode: renameFocusNode,
+                          onSubmitted: (_) => commitRename(),
+                          onEditingComplete: commitRename,
+                          onTapOutside: (_) => commitRename(),
+                          onChanged: (_) => reopenRename(),
                           style: nameStyle.copyWith(color: AppColors.fg),
                           decoration: InputDecoration(
                             isDense: true,
@@ -993,7 +743,7 @@ class _GridTileState extends State<_GridTile> {
                           child: _GridTileName(
                             name: entry.name,
                             showForCursor:
-                                _isCursor.value && widget.cursorTooltips,
+                                cursorOn.value && widget.cursorTooltips,
                             style: entry.isGhost
                                 ? nameStyle.copyWith(
                                     color: AppColors.fgSubtle,
@@ -1035,7 +785,7 @@ class _GridTileState extends State<_GridTile> {
     if (widget.isRenaming || entry.isGhost) return tile;
 
     return DragItemWidget(
-      dragItemProvider: _provideDragItem,
+      dragItemProvider: provideDragItem,
       allowedOperations: () => [DropOperation.copy, DropOperation.move],
       canAddItemToExistingSession: true,
       dragBuilder: _buildDragImage,
