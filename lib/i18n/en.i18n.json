@@ -446,6 +446,7 @@
       "columnWidthMode": "List column widths",
       "columnWidthModeAutomatic": "Automatic columns",
       "columnWidthModeResizable": "Resizable columns",
+      "columnWidthModeResizableAutomatic": "Automatic, resizable columns",
       "fileListVerticalSpacing": "Vertical spacing",
       "dateFormat": "Date format",
       "dateFormatIso": "ISO (2026-05-14 13:45)",

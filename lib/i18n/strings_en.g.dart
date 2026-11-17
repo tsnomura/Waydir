@@ -3484,6 +3484,9 @@ class Translations$preferences$appearance$en {
 	/// en: 'Resizable columns'
 	String get columnWidthModeResizable => 'Resizable columns';
 
+	/// en: 'Automatic, resizable columns'
+	String get columnWidthModeResizableAutomatic => 'Automatic, resizable columns';
+
 	/// en: 'Vertical spacing'
 	String get fileListVerticalSpacing => 'Vertical spacing';
 
@@ -5063,6 +5066,7 @@ extension on Translations {
 			'preferences.appearance.columnWidthMode' => 'List column widths',
 			'preferences.appearance.columnWidthModeAutomatic' => 'Automatic columns',
 			'preferences.appearance.columnWidthModeResizable' => 'Resizable columns',
+			'preferences.appearance.columnWidthModeResizableAutomatic' => 'Automatic, resizable columns',
 			'preferences.appearance.fileListVerticalSpacing' => 'Vertical spacing',
 			'preferences.appearance.dateFormat' => 'Date format',
 			'preferences.appearance.dateFormatIso' => 'ISO (2026-05-14 13:45)',
@@ -5169,9 +5173,9 @@ extension on Translations {
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
-			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
 			'help.groups.navigating.title' => 'Navigating',
 			'help.groups.navigating.moving.title' => 'Moving Around',
 			'help.groups.navigating.moving.body' => 'Browse without reaching for the mouse. Waydir keeps the cursor, selection and history close to the main file list.\n\n- `↑` / `↓` move the cursor through visible files.\n- `Enter` opens the selected item; double-click does the same.\n- `Backspace` goes to the parent folder.\n- `Alt+←` / `Alt+→` step back and forward through folder history.\n- `Ctrl+R` refreshes the current folder.',
@@ -5683,9 +5687,9 @@ extension on Translations {
 			'dialog.confirmMoveSingle' => ({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?',
 			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
 			'password.authenticationRequired' => 'Authentication Required',
-			'password.dismiss' => 'Dismiss',
 			_ => null,
 		} ?? switch (path) {
+			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',
 			'password.archivePrompt' => 'This archive is password-protected.',
 			'password.archiveWrongPassword' => 'Wrong password. Try again.',

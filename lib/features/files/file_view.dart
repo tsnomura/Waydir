@@ -460,6 +460,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   double _itemExt = _kRowHeightComfortable + _kRowGapComfortable;
   double _listHorizontalSpacing = _kRowGapComfortable;
   double _viewportWidth = 0;
+  Map<String, double> _shownColumnWidths = const {};
   String _dateFmt = 'locale';
   bool _recentDatesRelative = true;
   String? _lastRevealedKey;
@@ -544,17 +545,54 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     final widths = Map<String, double>.of(
       parseColumnWidths(settings.columnWidths.value),
     );
-    final current = _persistedColumnWidth(
-      widths,
-      key,
-      key == _kColumnWidthsNameKey
-          ? _kNameManualDefaultWidth
-          : key == _kColumnWidthsLocationKey
-          ? _kLocationWidth
-          : minColumnWidth(key),
-    );
+    final shown = settings.columnWidthMode.value == 'resizableAutomatic'
+        ? _shownColumnWidths[key]
+        : null;
+    final current =
+        shown ??
+        _persistedColumnWidth(
+          widths,
+          key,
+          key == _kColumnWidthsNameKey
+              ? _kNameManualDefaultWidth
+              : key == _kColumnWidthsLocationKey
+              ? _kLocationWidth
+              : minColumnWidth(key),
+        );
     widths[key] = math.max(minColumnWidth(key), current + delta);
     settings.columnWidths.value = columnWidthsToString(widths);
+  }
+
+  void _autoFitColumn(String key) {
+    final settings = SettingsStore.instance;
+    final widths = Map<String, double>.of(
+      parseColumnWidths(settings.columnWidths.value),
+    );
+    if (key == _kColumnWidthsNameKey) {
+      widths[key] = _fitNameWidth();
+    } else {
+      widths.remove(key);
+    }
+    settings.columnWidths.value = columnWidthsToString(widths);
+  }
+
+  void _resetColumnWidths() {
+    SettingsStore.instance.columnWidths.value = columnWidthsToString(const {});
+  }
+
+  double _fitNameWidth() {
+    var longest = '';
+    for (final e in _displayFiles) {
+      if (e.name.length > longest.length) longest = e.name;
+    }
+    final dots = widget.rowDecorations.values.fold<int>(
+      0,
+      (max, d) => math.max(max, d.badgeColors.length),
+    );
+    final dotsWidth = dots == 0 ? 0.0 : 6.0 + dots * 10;
+    final width = _measureWidth(longest, context.txt.bodyEmphasis) + dotsWidth;
+
+    return math.max(_kNameMinWidth, width.ceilToDouble() + 8);
   }
 
   void _openColumnMenu(BuildContext context, Offset position) {
@@ -768,8 +806,10 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
           columns,
           displayFiles,
         );
+        final columnWidthMode = SettingsStore.instance.columnWidthMode.value;
+        final resizableAutomatic = columnWidthMode == 'resizableAutomatic';
         final resizableColumns =
-            SettingsStore.instance.columnWidthMode.value == 'resizable';
+            resizableAutomatic || columnWidthMode == 'resizable';
         final persistedColumnWidths = parseColumnWidths(
           SettingsStore.instance.columnWidths.value,
         );
@@ -824,20 +864,13 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
               _kNameMinWidth,
               automaticAvailable,
             );
-            final nameWidth = resizableColumns
-                ? _persistedColumnWidth(
-                    persistedColumnWidths,
-                    _kColumnWidthsNameKey,
-                    automaticNameWidth.isFinite
-                        ? automaticNameWidth
-                        : _kNameManualDefaultWidth,
-                  )
-                : automaticNameWidth;
             final locationWidth = resizableColumns
                 ? _persistedColumnWidth(
                     persistedColumnWidths,
                     _kColumnWidthsLocationKey,
-                    _kLocationWidth,
+                    resizableAutomatic
+                        ? automaticLocationWidth
+                        : _kLocationWidth,
                   )
                 : automaticLocationWidth;
             final columnWidths = resizableColumns
@@ -858,6 +891,28 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                 iconSlot +
                 optionalCols +
                 (recursive ? locationWidth + _kColumnGap : 0);
+            final remainingNameWidth = math.max(
+              _kNameMinWidth,
+              _viewportWidth - rowChrome - fixedCols,
+            );
+            final fallbackNameWidth = resizableAutomatic
+                ? remainingNameWidth
+                : automaticNameWidth;
+            final nameWidth = resizableColumns
+                ? _persistedColumnWidth(
+                    persistedColumnWidths,
+                    _kColumnWidthsNameKey,
+                    fallbackNameWidth.isFinite
+                        ? fallbackNameWidth
+                        : _kNameManualDefaultWidth,
+                  )
+                : automaticNameWidth;
+            _shownColumnWidths = {
+              _kColumnWidthsNameKey: nameWidth,
+              _kColumnWidthsLocationKey: locationWidth,
+              for (final col in columns)
+                columnWidthKey(col): columnWidths[col]!,
+            };
             _contentWidth = nameWidth + fixedCols + rowChrome;
             final bodyWidth = math.max(_contentWidth, _viewportWidth);
 
@@ -897,6 +952,12 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                     sortAscending: widget.sortAscending,
                                     onSortColumn: widget.onSortColumn,
                                     onResizeColumn: _resizeColumn,
+                                    onAutoFitColumn: resizableAutomatic
+                                        ? _autoFitColumn
+                                        : null,
+                                    onResetColumns: resizableAutomatic
+                                        ? _resetColumnWidths
+                                        : null,
                                     onConfigureColumns: (pos) =>
                                         _openColumnMenu(context, pos),
                                   ),
@@ -1187,6 +1248,8 @@ class _ListHeader extends StatelessWidget {
   final bool sortAscending;
   final void Function(SortKey key)? onSortColumn;
   final void Function(String key, double delta)? onResizeColumn;
+  final void Function(String key)? onAutoFitColumn;
+  final VoidCallback? onResetColumns;
   final void Function(Offset globalPosition)? onConfigureColumns;
   const _ListHeader({
     this.recursive = false,
@@ -1200,6 +1263,8 @@ class _ListHeader extends StatelessWidget {
     this.sortAscending = true,
     this.onSortColumn,
     this.onResizeColumn,
+    this.onAutoFitColumn,
+    this.onResetColumns,
     this.onConfigureColumns,
   });
 
@@ -1294,6 +1359,9 @@ class _ListHeader extends StatelessWidget {
               width: _kResizeHandleWidth,
               child: _ColumnResizeHandle(
                 onDelta: (delta) => onResizeColumn!(resizeKey, delta),
+                onDoubleTap: onAutoFitColumn == null
+                    ? null
+                    : () => onAutoFitColumn!(resizeKey),
               ),
             ),
         ],
@@ -1307,7 +1375,7 @@ class _ListHeader extends StatelessWidget {
 
     return Container(
       height: 24,
-      padding: const EdgeInsets.only(left: 12, right: 16),
+      padding: const EdgeInsets.only(left: 12),
       decoration: BoxDecoration(color: AppColors.bg),
       child: Row(
         children: [
@@ -1365,6 +1433,12 @@ class _ListHeader extends StatelessWidget {
               ),
             ),
           ],
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onDoubleTap: onResetColumns,
+            ),
+          ),
         ],
       ),
     );
@@ -1459,8 +1533,9 @@ class _LocationText extends StatelessWidget {
 
 class _ColumnResizeHandle extends StatefulWidget {
   final ValueChanged<double> onDelta;
+  final VoidCallback? onDoubleTap;
 
-  const _ColumnResizeHandle({required this.onDelta});
+  const _ColumnResizeHandle({required this.onDelta, this.onDoubleTap});
 
   @override
   State<_ColumnResizeHandle> createState() => _ColumnResizeHandleState();
@@ -1480,6 +1555,7 @@ class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
+        onDoubleTap: widget.onDoubleTap,
         onHorizontalDragStart: (_) => setState(() => _dragging = true),
         onHorizontalDragUpdate: (details) => widget.onDelta(details.delta.dx),
         onHorizontalDragEnd: (_) => setState(() => _dragging = false),
