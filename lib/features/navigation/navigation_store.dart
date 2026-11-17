@@ -99,6 +99,8 @@ class NavigationStore {
   bool get effectiveFoldersFirst =>
       sortLeader.value?.foldersFirst.value ?? foldersFirst.value;
   final folderSizes = FolderSizeScanner();
+  final sizeBars = signal(false);
+  void Function()? _sizeBarsDisposer;
   final decorations = RowDecorationStore();
   final fileTags = signal<Map<String, Set<int>>>({});
   int _sortLoadToken = 0;
@@ -402,7 +404,38 @@ class NavigationStore {
     _setupTagsEffect();
     _setupFileTagsEffect();
     _setupTreeLoadEffect();
+    _setupSizeBarsEffect();
   }
+
+  void _setupSizeBarsEffect() {
+    _sizeBarsDisposer = effect(() {
+      if (!sizeBars.value) return;
+      final targets = _sizeScanTargets(_selectionFiles);
+      if (targets.isEmpty) return;
+      scheduleMicrotask(() {
+        final known = folderSizes.sizes.peek();
+        folderSizes.scan([
+          for (final path in targets)
+            if (!known.containsKey(path)) path,
+        ]);
+      });
+    });
+  }
+
+  List<String> _sizeScanTargets(Iterable<FileEntry> entries) {
+    if (isTrashView) return const [];
+
+    return [
+      for (final e in entries)
+        if (e.type == FileItemType.folder &&
+            !e.isGhost &&
+            !PlatformPaths.isNetworkPath(e.realPath) &&
+            !PlatformPaths.isSftpUri(e.realPath))
+          e.realPath,
+    ];
+  }
+
+  void toggleSizeBars() => sizeBars.value = !sizeBars.value;
 
   void _setupTreeLoadEffect() {
     _treeLoadDisposer = effect(() {
@@ -1731,13 +1764,7 @@ class NavigationStore {
     final entries = _vf;
     final sel = selectedPaths.value;
     final targets = <String>[];
-    void consider(FileEntry e) {
-      if (e.type != FileItemType.folder || e.isGhost) return;
-      final path = e.realPath;
-      if (PlatformPaths.isNetworkPath(path)) return;
-      if (PlatformPaths.isSftpUri(path)) return;
-      targets.add(path);
-    }
+    void consider(FileEntry e) => targets.addAll(_sizeScanTargets([e]));
 
     if (sel.isEmpty) {
       final idx = cursorIndex.value;
@@ -2363,6 +2390,8 @@ class NavigationStore {
     _fileTagsDisposer = null;
     _treeLoadDisposer?.call();
     _treeLoadDisposer = null;
+    _sizeBarsDisposer?.call();
+    _sizeBarsDisposer = null;
     _tagDecorations.dispose();
     gitStatus.dispose();
     _searchController.dispose();

@@ -490,6 +490,12 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
+    if (AppShortcuts.matches('toggle_size_bars', key)) {
+      store.toggleSizeBars();
+
+      return KeyEventResult.handled;
+    }
+
     if (AppShortcuts.matches('compute_folder_size', key)) {
       store.computeSelectedFolderSizes();
 

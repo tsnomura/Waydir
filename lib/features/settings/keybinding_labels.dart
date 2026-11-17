@@ -130,6 +130,7 @@ String shortcutLabel(ShortcutDef s) => switch (s.id) {
   'save_selection' => t.keybindings.saveSelection,
   'load_selection' => t.keybindings.loadSelection,
   'compute_folder_size' => t.keybindings.computeFolderSize,
+  'toggle_size_bars' => t.keybindings.toggleSizeBars,
   'search' => t.keybindings.search,
   'recursive_search' => t.keybindings.recursiveSearch,
   'toggle_hidden' => t.menu.showHidden,
