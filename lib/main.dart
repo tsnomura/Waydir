@@ -18,6 +18,7 @@ import 'core/fs/fs_worker_pool.dart';
 import 'core/fs/local_fs.dart';
 import 'core/fs/sftp_fs.dart';
 import 'core/logging/app_logger.dart';
+import 'core/platform/app_activity.dart';
 import 'core/settings/settings_store.dart';
 import 'core/update/update_store.dart';
 import 'features/launchers/launcher_registry.dart';
@@ -36,6 +37,7 @@ void main(List<String> args) async {
   runZonedGuarded(
     () async {
       WaydirWidgetsBinding.ensureInitialized();
+      AppActivity.instance.attach();
       fvp.registerWith(
         options: Platform.isLinux
             ? {

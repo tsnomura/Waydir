@@ -302,8 +302,6 @@ class _TabContent extends StatelessWidget {
               );
             }
             final files = store.visibleFiles.value;
-            final selected = store.selectedPaths.value;
-            final cursorIndex = store.cursorIndex.value;
             final cutPaths = store.clipboardMode.value == ClipboardMode.cut
                 ? store.clipboardPaths.value
                 : <String>{};
@@ -324,8 +322,7 @@ class _TabContent extends StatelessWidget {
                 onBackgroundContextMenu: onBackgroundContextMenu,
                 onContextMenu: onContextMenu,
                 onDropFiles: store.dropFiles,
-                selectedPaths: selected,
-                cursorIndex: cursorIndex,
+                selection: store.selection,
                 cutPaths: cutPaths,
                 renamingPath: store.renamingPath.value,
                 renameAttempt: store.renameAttempt.value,
@@ -357,8 +354,7 @@ class _TabContent extends StatelessWidget {
                 onContextMenu: onContextMenu,
                 onMenuAction: onMenuAction,
                 onDropFiles: store.dropFiles,
-                selectedPaths: selected,
-                cursorIndex: cursorIndex,
+                selection: store.selection,
                 cutPaths: cutPaths,
                 renamingPath: store.renamingPath.value,
                 renameAttempt: store.renameAttempt.value,
@@ -392,8 +388,7 @@ class _TabContent extends StatelessWidget {
               onContextMenu: onContextMenu,
               onMenuAction: onMenuAction,
               onDropFiles: store.dropFiles,
-              selectedPaths: selected,
-              cursorIndex: cursorIndex,
+              selection: store.selection,
               cutPaths: cutPaths,
               renamingPath: store.renamingPath.value,
               renameAttempt: store.renameAttempt.value,

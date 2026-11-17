@@ -2,13 +2,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:signals/signals.dart';
 import '../../core/logging/app_logger.dart';
+import '../../core/platform/app_activity.dart';
 import 'drive_model.dart';
 import 'drive_service.dart';
 
 class DriveStore {
   final drives = signal<List<Drive>>([]);
   final DriveService _service;
-  Timer? _timer;
+  late final _poller = ActivityPoller(
+    interval: const Duration(seconds: 3),
+    onPoll: _refresh,
+  );
   Future<void>? _inFlight;
   bool _refreshAgain = false;
 
@@ -21,9 +25,7 @@ class DriveStore {
 
   void _init() {
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _refresh();
-    });
+    _poller.start();
   }
 
   Future<void> _refresh() {
@@ -76,7 +78,7 @@ class DriveStore {
   }
 
   void dispose() {
-    _timer?.cancel();
+    _poller.dispose();
   }
 }
 

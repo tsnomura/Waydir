@@ -21,6 +21,7 @@ import '../locations/location_resolver.dart';
 import '../locations/location_uri.dart';
 import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
+import '../files/file_list_selection.dart';
 import '../files/row_decorations.dart';
 import '../files/scroll_link.dart';
 import '../git/git_status_store.dart';
@@ -155,6 +156,10 @@ class NavigationStore {
   final pathBarFocusRequest = signal(0);
   final renameAttempt = signal(0);
   final gridColumns = signal(1);
+  late final selection = FileListSelection(
+    cursorIndex: computed(() => cursorIndex.value),
+    selectedPaths: selectedPaths,
+  );
   final treeExpandedPaths = signal<Set<String>>({});
   final treeLoadingPaths = signal<Set<String>>({});
   final treeChildren = signal<Map<String, List<FileEntry>>>({});
@@ -188,6 +193,7 @@ class NavigationStore {
 
   void Function()? _showHiddenDisposer;
   void Function()? _ghostSelectionDisposer;
+  void Function()? _orderHistoryDisposer;
 
   late final canGoBack = computed(() => historyIndex.value > 0);
   late final canGoForward = computed(
@@ -232,7 +238,7 @@ class NavigationStore {
 
   late final visibleFiles = computed(() {
     final pending = pendingCreate.value;
-    if (searchActive.value && (searchRecursive.value || searchContent.value)) {
+    if (_showsSearchResults) {
       var results = searchResults.value;
       if (SettingsStore.instance.searchMode.value == filterSearchMode) {
         final parsed = parseFilterQuery(searchQuery.value);
@@ -253,7 +259,6 @@ class NavigationStore {
         sortFolders: SettingsStore.instance.sortFolders.value,
         folderSize: _folderSizeFor,
       );
-      _previousSearchOrder = sorted;
 
       return pending != null ? [pending, ...sorted] : sorted;
     }
@@ -296,10 +301,24 @@ class NavigationStore {
       sortFolders: SettingsStore.instance.sortFolders.value,
       folderSize: _folderSizeFor,
     );
-    _previousBrowseOrder = list;
 
     return pending != null ? [pending, ...list] : list;
   });
+
+  bool get _showsSearchResults =>
+      searchActive.value && (searchRecursive.value || searchContent.value);
+
+  void _setupOrderHistoryEffect() {
+    _orderHistoryDisposer = effect(() {
+      final shown = visibleFiles.value;
+      if (_showsSearchResults) {
+        _previousSearchOrder = shown;
+      } else {
+        _previousBrowseOrder = shown;
+      }
+    });
+  }
+
   late final treeRows = computed(() {
     final expanded = treeExpandedPaths.value;
     final loading = treeLoadingPaths.value;
@@ -405,6 +424,7 @@ class NavigationStore {
     _setupFileTagsEffect();
     _setupTreeLoadEffect();
     _setupSizeBarsEffect();
+    _setupOrderHistoryEffect();
   }
 
   void _setupSizeBarsEffect() {
@@ -2382,6 +2402,8 @@ class NavigationStore {
     _showHiddenDisposer = null;
     _ghostSelectionDisposer?.call();
     _ghostSelectionDisposer = null;
+    _orderHistoryDisposer?.call();
+    _orderHistoryDisposer = null;
     _sortDefaultsDisposer?.call();
     _sortDefaultsDisposer = null;
     _gitStatusDisposer?.call();

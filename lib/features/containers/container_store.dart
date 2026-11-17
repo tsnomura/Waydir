@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:signals/signals.dart';
 
 import '../../core/logging/app_logger.dart';
+import '../../core/platform/app_activity.dart';
 import '../../core/platform/platform_paths.dart';
 import 'container_service.dart';
 import 'wsl_distribution.dart';
@@ -11,7 +12,10 @@ import 'wsl_distribution.dart';
 class ContainerStore {
   final distributions = signal<List<WslDistribution>>([]);
   final ContainerService _service = ContainerService();
-  Timer? _timer;
+  late final _poller = ActivityPoller(
+    interval: const Duration(seconds: 8),
+    onPoll: _refresh,
+  );
 
   ContainerStore() {
     if (PlatformPaths.isWindows) _init();
@@ -19,7 +23,7 @@ class ContainerStore {
 
   void _init() {
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 8), (_) => _refresh());
+    _poller.start();
   }
 
   Future<void> _refresh() async {
@@ -34,7 +38,7 @@ class ContainerStore {
   }
 
   void dispose() {
-    _timer?.cancel();
+    _poller.dispose();
   }
 }
 

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -15,23 +14,28 @@ import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../../ui/overlays/context_menu.dart';
 import '../../ui/overlays/popup_overlay.dart';
-import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/theme/motion.dart';
 import '../../ui/widgets/app_spinner.dart';
-import '../../utils/drag_drop.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/format.dart';
-import '../operations/drag_hint.dart';
 import 'cursor_tooltip.dart';
 import 'file_icons.dart';
+import 'file_item.dart';
+import 'file_list_selection.dart';
+import 'file_view_behavior.dart';
 import 'path_ellipsis.dart';
 import 'pointer_hover_store.dart';
 import 'row_decorations.dart';
 import 'rubber_band_layer.dart';
 import 'scroll_link.dart';
 import 'status_chip.dart';
+
+part 'file_view/columns.dart';
+part 'file_view/header.dart';
+part 'file_view/row.dart';
+part 'file_view/scrollbar.dart';
 
 typedef FileSelectCallback = void Function(FileSelectionEvent event);
 typedef FileOpenCallback = void Function(FileEntry entry);
@@ -46,7 +50,6 @@ typedef RenameSubmitCallback = void Function(String newName);
 typedef RenameCancelCallback = void Function();
 typedef OpenInNewTabCallback = void Function(String path);
 
-const _kDoubleTapMs = 300;
 const _kRowHeightComfortable = 26.0;
 const _kRowHeightCompact = 20.0;
 const _kRowGapComfortable = 6.0;
@@ -66,182 +69,6 @@ const _kColumnWidthsNameKey = 'name';
 const _kColumnWidthsLocationKey = 'location';
 const _kTreeIndentWidth = 14.0;
 const _kTreeDisclosureWidth = 18.0;
-
-/// Optional, user-toggleable file-list columns (Name and the recursive-search
-/// Location column are not part of this set). Order here is the display order.
-enum FileColumn { size, date, kind, created, added, permissions, owner }
-
-String fileColumnLabel(FileColumn col) {
-  final c = t.fileView.columns;
-  switch (col) {
-    case FileColumn.size:
-      return c.size;
-    case FileColumn.date:
-      return c.dateModified;
-    case FileColumn.kind:
-      return c.kind;
-    case FileColumn.created:
-      return c.dateCreated;
-    case FileColumn.added:
-      return c.dateAdded;
-    case FileColumn.permissions:
-      return c.permissions;
-    case FileColumn.owner:
-      return c.owner;
-  }
-}
-
-SortKey fileColumnSortKey(FileColumn col) {
-  switch (col) {
-    case FileColumn.size:
-      return SortKey.size;
-    case FileColumn.date:
-      return SortKey.date;
-    case FileColumn.kind:
-      return SortKey.kind;
-    case FileColumn.created:
-      return SortKey.created;
-    case FileColumn.added:
-      return SortKey.added;
-    case FileColumn.permissions:
-      return SortKey.permissions;
-    case FileColumn.owner:
-      return SortKey.owner;
-  }
-}
-
-String fileColumnText(
-  FileColumn col,
-  FileEntry e, {
-  required String dateFmt,
-  required bool recentDatesRelative,
-  int? folderSize,
-}) {
-  final isFolder = e.type == FileItemType.folder;
-  switch (col) {
-    case FileColumn.size:
-      if (isFolder) return folderSize == null ? '--' : formatBytes(folderSize);
-
-      return formatBytes(e.size);
-    case FileColumn.date:
-      return _formatDateBy(
-        e.modified,
-        dateFmt,
-        recentDatesRelative: recentDatesRelative,
-      );
-    case FileColumn.kind:
-      return e.kind;
-    case FileColumn.created:
-      return _formatDateBy(
-        e.created,
-        dateFmt,
-        recentDatesRelative: recentDatesRelative,
-      );
-    case FileColumn.added:
-      return _formatDateBy(
-        e.added,
-        dateFmt,
-        recentDatesRelative: recentDatesRelative,
-      );
-    case FileColumn.permissions:
-      return e.permissionsString;
-    case FileColumn.owner:
-      return e.ownerName;
-  }
-}
-
-Signal<bool> fileColumnSignal(FileColumn col) {
-  final s = SettingsStore.instance;
-  switch (col) {
-    case FileColumn.size:
-      return s.showColumnSize;
-    case FileColumn.date:
-      return s.showColumnDate;
-    case FileColumn.kind:
-      return s.showColumnKind;
-    case FileColumn.created:
-      return s.showColumnCreated;
-    case FileColumn.added:
-      return s.showColumnAdded;
-    case FileColumn.permissions:
-      return s.showColumnPermissions;
-    case FileColumn.owner:
-      return s.showColumnOwner;
-  }
-}
-
-/// Parses the saved column order (a CSV of [FileColumn] names) into the full
-/// ordered list. Unknown ids are dropped and any column missing from the saved
-/// string is appended in declaration order, so newly added columns always show.
-List<FileColumn> parseColumnOrder(String csv) {
-  final byName = {for (final c in FileColumn.values) c.name: c};
-  final out = <FileColumn>[];
-  for (final id in csv.split(',')) {
-    final col = byName[id.trim()];
-    if (col != null && !out.contains(col)) out.add(col);
-  }
-  for (final c in FileColumn.values) {
-    if (!out.contains(c)) out.add(c);
-  }
-
-  return out;
-}
-
-String columnOrderToString(List<FileColumn> columns) =>
-    columns.map((c) => c.name).join(',');
-
-/// Whether [col] is meaningful on the current platform. Permissions and owner
-/// are POSIX concepts that Windows doesn't expose, so they're hidden there.
-/// Date added relies on kMDItemDateAdded (macOS xattr) and is macOS-only.
-bool columnAvailable(FileColumn col) {
-  if (PlatformPaths.isWindows &&
-      (col == FileColumn.permissions || col == FileColumn.owner)) {
-    return false;
-  }
-
-  if (col == FileColumn.added && !PlatformPaths.isMacOS) {
-    return false;
-  }
-
-  return true;
-}
-
-/// All optional columns in the user-defined display order.
-List<FileColumn> orderedColumns() => [
-  for (final col in parseColumnOrder(SettingsStore.instance.columnOrder.value))
-    if (columnAvailable(col)) col,
-];
-
-String columnWidthKey(FileColumn col) => col.name;
-
-Map<String, double> parseColumnWidths(String json) {
-  try {
-    final decoded = jsonDecode(json);
-    if (decoded is! Map<String, dynamic>) return const {};
-
-    return {
-      for (final entry in decoded.entries)
-        if (entry.value is num) entry.key: (entry.value as num).toDouble(),
-    };
-  } catch (_) {
-    return const {};
-  }
-}
-
-String columnWidthsToString(Map<String, double> widths) {
-  final sorted = Map<String, double>.fromEntries(
-    widths.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
-  );
-
-  return jsonEncode(sorted);
-}
-
-double minColumnWidth(String key) {
-  if (key == _kColumnWidthsNameKey) return _kNameMinWidth;
-  if (key == _kColumnWidthsLocationKey) return _kLocationMinWidth;
-
-  return 56;
-}
 
 class _Memo<T> {
   List<Object?>? _deps;
@@ -278,8 +105,7 @@ class FileList extends StatefulWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final FileDropCallback? onDropFiles;
-  final Set<String> selectedPaths;
-  final int cursorIndex;
+  final FileListSelection? selection;
   final Set<String> cutPaths;
   final String? renamingPath;
   final int renameAttempt;
@@ -325,8 +151,7 @@ class FileList extends StatefulWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onDropFiles,
-    this.selectedPaths = const {},
-    this.cursorIndex = -1,
+    this.selection,
     this.cutPaths = const {},
     this.renamingPath,
     this.renameAttempt = 0,
@@ -354,8 +179,7 @@ class FileTree extends StatelessWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final FileDropCallback? onDropFiles;
-  final Set<String> selectedPaths;
-  final int cursorIndex;
+  final FileListSelection? selection;
   final Set<String> cutPaths;
   final String? renamingPath;
   final int renameAttempt;
@@ -399,8 +223,7 @@ class FileTree extends StatelessWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onDropFiles,
-    this.selectedPaths = const {},
-    this.cursorIndex = -1,
+    this.selection,
     this.cutPaths = const {},
     this.renamingPath,
     this.renameAttempt = 0,
@@ -429,8 +252,7 @@ class FileTree extends StatelessWidget {
       onContextMenu: onContextMenu,
       onMenuAction: onMenuAction,
       onDropFiles: onDropFiles,
-      selectedPaths: selectedPaths,
-      cursorIndex: cursorIndex,
+      selection: selection,
       cutPaths: cutPaths,
       renamingPath: renamingPath,
       renameAttempt: renameAttempt,
@@ -454,7 +276,8 @@ class FileTree extends StatelessWidget {
   }
 }
 
-class _FileListState extends State<FileList> with ScrollLinkBinding {
+class _FileListState extends State<FileList>
+    with ScrollLinkBinding, FileViewBehavior<FileList> {
   @override
   ScrollController get linkedScrollController => _scrollController;
 
@@ -469,6 +292,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     super.initState();
     initScrollLink();
     _scrollController.addListener(_reportCursorRow);
+    watchCursor();
   }
 
   @override
@@ -478,6 +302,25 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     if (oldWidget.currentPath != widget.currentPath) {
       switchScrollMemory('list|${oldWidget.currentPath}');
     }
+    if (!identical(oldWidget.selection, widget.selection)) watchCursor();
+  }
+
+  FileListSelection get _selection =>
+      widget.selection ?? FileListSelection.none;
+
+  @override
+  FileListSelection get viewSelection => _selection;
+
+  @override
+  void revealCursor() => _revealSelectedRow();
+
+  @override
+  void reportCursorRow() => _reportCursorRow();
+
+  FileEntry? _entryAt(Offset localPosition) {
+    final index = _rowAt(localPosition);
+
+    return index < 0 ? null : _displayFiles[index];
   }
 
   late final _scrollController = ScrollController(
@@ -485,8 +328,6 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   );
   final _hScrollController = ScrollController();
   double _contentWidth = 0;
-  bool _isDragOver = false;
-  String? _hoveredFolderPath;
   double _rowH = _kRowHeightComfortable;
   double _rowG = _kRowGapComfortable;
   double _itemExt = _kRowHeightComfortable + _kRowGapComfortable;
@@ -518,8 +359,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     ], () => [for (final row in rows) row.entry]);
   }
 
-  List<double> _markFractions(List<FileEntry> files) {
-    final selected = widget.selectedPaths;
+  List<double> _markFractions(List<FileEntry> files, Set<String> selected) {
     if (selected.isEmpty || files.isEmpty) return const [];
 
     return _markFractionsMemo(
@@ -774,34 +614,8 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     return localPosition.dx < _contentWidth - _listHorizontalPadding;
   }
 
-  void _updateHover(Offset localPosition) {
-    final index = _rowAt(localPosition);
-    String? folder;
-    if (index >= 0) {
-      final entry = _displayFiles[index];
-      if (entry.type == FileItemType.folder && !entry.isGhost) {
-        folder = entry.path;
-      }
-    }
-    if (folder != _hoveredFolderPath || !_isDragOver) {
-      setState(() {
-        _isDragOver = true;
-        _hoveredFolderPath = folder;
-      });
-    }
-  }
-
-  void _clearDrag() {
-    if (_isDragOver || _hoveredFolderPath != null) {
-      setState(() {
-        _isDragOver = false;
-        _hoveredFolderPath = null;
-      });
-    }
-  }
-
   double? _cursorRowTop() {
-    final index = widget.cursorIndex;
+    final index = _selection.cursorIndex.peek();
     if (index < 0 || index >= _displayFiles.length) return null;
 
     return _listTopPadding + index * _itemExt;
@@ -823,7 +637,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
       if (index >= 0) return index;
     }
 
-    return widget.cursorIndex;
+    return _selection.cursorIndex.peek();
   }
 
   void _revealSelectedRow() {
@@ -892,6 +706,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
 
   @override
   void dispose() {
+    stopWatchingCursor();
     disposeScrollLink();
     _scrollController.removeListener(_reportCursorRow);
     _scrollController.dispose();
@@ -941,7 +756,6 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
         final maxItemSize = _maxItemSize(displayFiles);
         final maxTreeDepth = _maxTreeDepth();
         final hasStatusBadge = _hasStatusBadge();
-        final marks = _markFractions(displayFiles);
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -1105,65 +919,12 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                 rowAt: _rowAt,
                                 canStartSelectionAt: _canStartRubberBandAt,
                                 onSelectionChanged: widget.onRectSelect,
-                                currentSelection: () => widget.selectedPaths,
+                                currentSelection: _selection.selectedPaths.peek,
                                 onBackgroundTap: widget.onBackgroundTap,
-                                child: DropRegion(
-                                  formats: [Formats.fileUri, formatLocalFile],
-                                  hitTestBehavior: HitTestBehavior.opaque,
-                                  onDropOver: (event) {
-                                    _updateHover(event.position.local);
-                                    if (isVirtualDrop(event.session)) {
-                                      return DropOperation.copy;
-                                    }
-
-                                    return DragHintController
-                                                .instance
-                                                .mode
-                                                .value ==
-                                            DragMode.move
-                                        ? DropOperation.move
-                                        : DropOperation.copy;
-                                  },
-                                  onDropLeave: (_) => _clearDrag(),
-                                  onDropEnded: (_) => _clearDrag(),
-                                  onPerformDrop: (event) async {
-                                    final pos = event.position.local;
-                                    final index = _rowAt(pos);
-                                    String? target;
-                                    if (index >= 0 &&
-                                        displayFiles[index].type ==
-                                            FileItemType.folder &&
-                                        !displayFiles[index].isGhost) {
-                                      target = displayFiles[index].path;
-                                    }
-                                    final virtual = isVirtualDrop(
-                                      event.session,
-                                    );
-                                    final paths = await pathsFromSession(
-                                      event.session,
-                                      onReceiving: (count) => showToast(
-                                        context: context,
-                                        message: t.toast.receivingDroppedItems(
-                                          count: count,
-                                        ),
-                                      ),
-                                    );
-                                    final move =
-                                        !virtual &&
-                                        DragHintController
-                                                .instance
-                                                .mode
-                                                .value ==
-                                            DragMode.move;
-                                    if (paths.isNotEmpty) {
-                                      widget.onDropFiles?.call(
-                                        paths,
-                                        target ?? widget.currentPath,
-                                        move: move,
-                                      );
-                                    }
-                                    _clearDrag();
-                                  },
+                                child: buildDropRegion(
+                                  entryAt: _entryAt,
+                                  currentPath: () => widget.currentPath,
+                                  onDropFiles: () => widget.onDropFiles,
                                   child: ScrollConfiguration(
                                     behavior: ScrollConfiguration.of(
                                       context,
@@ -1228,24 +989,14 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                                 index: i,
                                                 nameWidth: nameWidth,
                                                 locationWidth: locationWidth,
-                                                selected: widget.selectedPaths
-                                                    .contains(
-                                                      displayFiles[i].path,
-                                                    ),
-                                                isCursor:
-                                                    i == widget.cursorIndex,
+                                                selection: _selection,
                                                 cursorTooltips:
                                                     widget.cursorTooltips,
-                                                selectedPaths:
-                                                    widget.selectedPaths,
                                                 isCut: widget.cutPaths.contains(
                                                   displayFiles[i].path,
                                                 ),
-                                                isDraggingSelected: widget
-                                                    .selectedPaths
-                                                    .isNotEmpty,
                                                 isFolderDragOver:
-                                                    _hoveredFolderPath ==
+                                                    hoveredFolderPath ==
                                                     displayFiles[i].path,
                                                 isRenaming:
                                                     widget.renamingPath ==
@@ -1321,9 +1072,14 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                   right: 0,
                   bottom: 0,
                   width: _kScrollbarGutterWidth,
-                  child: _PinnedVerticalScrollbar(
-                    controller: _scrollController,
-                    marks: marks,
+                  child: SignalBuilder(
+                    builder: (_) => _PinnedVerticalScrollbar(
+                      controller: _scrollController,
+                      marks: _markFractions(
+                        displayFiles,
+                        _selection.selectedPaths.value,
+                      ),
+                    ),
                   ),
                 ),
                 if (displayFiles.isEmpty)
@@ -1339,7 +1095,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                       ),
                     ),
                   ),
-                if (_isDragOver)
+                if (isDragOver)
                   Positioned.fill(
                     child: IgnorePointer(
                       child: Container(
@@ -1358,1230 +1114,6 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
           },
         );
       },
-    );
-  }
-}
-
-class _ListHeader extends StatelessWidget {
-  final bool recursive;
-  final double leadingWidth;
-  final double nameWidth;
-  final double locationWidth;
-  final List<FileColumn> columns;
-  final Map<FileColumn, double> columnWidths;
-  final bool resizable;
-  final SortKey sortColumn;
-  final bool sortAscending;
-  final void Function(SortKey key)? onSortColumn;
-  final void Function(String key, double delta)? onResizeColumn;
-  final void Function(String key)? onAutoFitColumn;
-  final VoidCallback? onResetColumns;
-  final void Function(Offset globalPosition)? onConfigureColumns;
-  const _ListHeader({
-    this.recursive = false,
-    this.leadingWidth = 22,
-    this.nameWidth = 0,
-    this.locationWidth = _kLocationWidth,
-    this.columns = const [],
-    this.columnWidths = const {},
-    this.resizable = false,
-    this.sortColumn = SortKey.name,
-    this.sortAscending = true,
-    this.onSortColumn,
-    this.onResizeColumn,
-    this.onAutoFitColumn,
-    this.onResetColumns,
-    this.onConfigureColumns,
-  });
-
-  Widget _sortable(
-    BuildContext context,
-    String label,
-    SortKey key,
-    TextStyle style, {
-    FileColumn? column,
-  }) {
-    final active = sortColumn == key;
-    final ascending = sortAscending;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onSortColumn == null ? null : () => onSortColumn!(key),
-        onSecondaryTapUp: column != null && _isDateColumn(column)
-            ? (details) => _showDateColumnMenu(context, details.globalPosition)
-            : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                style: active ? style.copyWith(color: AppColors.fg) : style,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.clip,
-              ),
-            ),
-            if (active) ...[
-              const SizedBox(width: 3),
-              Icon(
-                ascending
-                    ? WaydirIconsRegular.caretUp
-                    : WaydirIconsRegular.caretDown,
-                size: 10,
-                color: AppColors.fgAccent,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  static bool _isDateColumn(FileColumn column) => switch (column) {
-    FileColumn.date || FileColumn.created || FileColumn.added => true,
-    _ => false,
-  };
-
-  static void _showDateColumnMenu(BuildContext context, Offset position) {
-    final signal = SettingsStore.instance.recentDatesRelative;
-    const action = 'toggle_recent_dates_relative';
-    showContextMenu(
-      context: context,
-      position: position,
-      items: [
-        ContextMenuItem(
-          icon: WaydirIconsRegular.clockClockwise,
-          label: t.preferences.appearance.recentDatesRelative,
-          action: action,
-          isToggle: true,
-          toggleSignal: signal,
-        ),
-      ],
-      onSelect: (selected) {
-        if (selected == action) signal.value = !signal.value;
-      },
-    );
-  }
-
-  Widget _cell({
-    required double width,
-    required Widget child,
-    required String resizeKey,
-  }) {
-    return SizedBox(
-      width: width,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(child: child),
-          if (resizable && onResizeColumn != null)
-            Positioned(
-              top: 0,
-              right: -_kResizeHandleWidth / 2,
-              bottom: 0,
-              width: _kResizeHandleWidth,
-              child: _ColumnResizeHandle(
-                onDelta: (delta) => onResizeColumn!(resizeKey, delta),
-                onDoubleTap: onAutoFitColumn == null
-                    ? null
-                    : () => onAutoFitColumn!(resizeKey),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final headerStyle = context.txt.fieldLabel;
-
-    return Container(
-      height: 24,
-      padding: const EdgeInsets.only(left: 12),
-      decoration: BoxDecoration(color: AppColors.bg),
-      child: Row(
-        children: [
-          SizedBox(
-            width: leadingWidth,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: _ConfigureColumnsButton(onTap: onConfigureColumns),
-            ),
-          ),
-          _cell(
-            width: nameWidth,
-            resizeKey: _kColumnWidthsNameKey,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _sortable(
-                context,
-                t.fileView.columns.name,
-                SortKey.name,
-                headerStyle,
-              ),
-            ),
-          ),
-          if (recursive) ...[
-            const SizedBox(width: _kColumnGap),
-            _cell(
-              width: locationWidth,
-              resizeKey: _kColumnWidthsLocationKey,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  t.fileView.columns.location,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.clip,
-                  style: headerStyle,
-                ),
-              ),
-            ),
-          ],
-          for (final col in columns) ...[
-            const SizedBox(width: _kColumnGap),
-            _cell(
-              width: columnWidths[col] ?? 0,
-              resizeKey: columnWidthKey(col),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _sortable(
-                  context,
-                  fileColumnLabel(col),
-                  fileColumnSortKey(col),
-                  headerStyle,
-                  column: col,
-                ),
-              ),
-            ),
-          ],
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onDoubleTap: onResetColumns,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ConfigureColumnsButton extends StatefulWidget {
-  final void Function(Offset globalPosition)? onTap;
-  const _ConfigureColumnsButton({this.onTap});
-
-  @override
-  State<_ConfigureColumnsButton> createState() =>
-      _ConfigureColumnsButtonState();
-}
-
-class _ConfigureColumnsButtonState extends State<_ConfigureColumnsButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: widget.onTap == null
-            ? null
-            : (d) => widget.onTap!(d.globalPosition),
-        child: Tooltip(
-          message: t.fileView.columns.configure,
-          child: Container(
-            height: 18,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _hovered ? AppColors.bgHoverStrong : Colors.transparent,
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Icon(
-              WaydirIconsRegular.slidersHorizontal,
-              size: 14,
-              color: _hovered ? AppColors.fg : AppColors.fgMuted,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LocationText extends StatelessWidget {
-  final String location;
-  final bool showForCursor;
-
-  const _LocationText(this.location, {this.showForCursor = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final style = context.txt.muted;
-    final scaler = MediaQuery.textScalerOf(context);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final shown = ellipsizePathStart(
-          location,
-          textFits(
-            style: style,
-            scaler: scaler,
-            maxWidth: constraints.maxWidth,
-          ),
-          separator: p.separator,
-        );
-        final text = Text(
-          shown,
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.clip,
-          textAlign: TextAlign.right,
-          style: style,
-        );
-        if (shown == location) return text;
-
-        return CursorTooltip(
-          message: location,
-          showForCursor: showForCursor,
-          child: text,
-        );
-      },
-    );
-  }
-}
-
-class _ColumnResizeHandle extends StatefulWidget {
-  final ValueChanged<double> onDelta;
-  final VoidCallback? onDoubleTap;
-
-  const _ColumnResizeHandle({required this.onDelta, this.onDoubleTap});
-
-  @override
-  State<_ColumnResizeHandle> createState() => _ColumnResizeHandleState();
-}
-
-class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
-  bool _hovered = false;
-  bool _dragging = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = _hovered || _dragging;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.resizeColumn,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onDoubleTap: widget.onDoubleTap,
-        onHorizontalDragStart: (_) => setState(() => _dragging = true),
-        onHorizontalDragUpdate: (details) => widget.onDelta(details.delta.dx),
-        onHorizontalDragEnd: (_) => setState(() => _dragging = false),
-        onHorizontalDragCancel: () => setState(() => _dragging = false),
-        child: Center(
-          child: Container(
-            width: active ? 2 : 1,
-            height: double.infinity,
-            color: active ? AppColors.accent : AppColors.borderColor,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Popup that lets the user toggle optional file-list columns on/off and
-/// reorder them by dragging, mirroring the sidebar edit-mode interaction.
-class _ColumnConfigMenu extends StatelessWidget {
-  const _ColumnConfigMenu();
-
-  void _reorder(int oldIndex, int newIndex) {
-    final cols = orderedColumns();
-    if (oldIndex < 0 || oldIndex >= cols.length) return;
-    var to = newIndex.clamp(0, cols.length - 1);
-    if (to == oldIndex) return;
-    final moved = cols.removeAt(oldIndex);
-    cols.insert(to, moved);
-    SettingsStore.instance.columnOrder.value = columnOrderToString(cols);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 230,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface,
-        border: Border.all(color: AppColors.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SignalBuilder(
-            builder: (context) {
-              final cols = orderedColumns();
-
-              return ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: false,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                itemCount: cols.length,
-                onReorderItem: _reorder,
-                itemBuilder: (context, index) {
-                  final col = cols[index];
-
-                  return _ColumnConfigRow(
-                    key: ValueKey(col),
-                    col: col,
-                    index: index,
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ColumnConfigRow extends StatefulWidget {
-  final FileColumn col;
-  final int index;
-
-  const _ColumnConfigRow({super.key, required this.col, required this.index});
-
-  @override
-  State<_ColumnConfigRow> createState() => _ColumnConfigRowState();
-}
-
-class _ColumnConfigRowState extends State<_ColumnConfigRow> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final signal = fileColumnSignal(widget.col);
-    final visible = signal.value;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => signal.value = !signal.value,
-        child: Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          color: _hovered ? AppColors.bgHoverStrong : Colors.transparent,
-          child: Row(
-            children: [
-              ReorderableDragStartListener(
-                index: widget.index,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.grab,
-                  child: Icon(
-                    WaydirIconsRegular.list,
-                    size: 14,
-                    color: AppColors.fgSubtle,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  fileColumnLabel(widget.col),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.txt.body.copyWith(
-                    color: visible ? AppColors.fg : AppColors.fgMuted,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _ColumnCheckbox(value: visible),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ColumnCheckbox extends StatelessWidget {
-  final bool value;
-
-  const _ColumnCheckbox({required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        color: value ? AppColors.accent : Colors.transparent,
-        border: Border.all(
-          color: value ? AppColors.accent : AppColors.borderColor,
-          width: 1,
-        ),
-      ),
-      child: value
-          ? Icon(WaydirIconsRegular.check, size: 10, color: Colors.white)
-          : null,
-    );
-  }
-}
-
-class _ListRow extends StatefulWidget {
-  final FileEntry entry;
-  final int index;
-  final bool selected;
-  final bool isCursor;
-  final bool cursorTooltips;
-  final Set<String> selectedPaths;
-  final bool isCut;
-  final bool isDraggingSelected;
-  final bool isFolderDragOver;
-  final bool isRenaming;
-  final int renameAttempt;
-  final RenameSubmitCallback? onRenameSubmit;
-  final RenameCancelCallback? onRenameCancel;
-  final FileSelectCallback onSelect;
-  final FileOpenCallback onOpen;
-  final FileContextMenuCallback? onContextMenu;
-  final FileMenuActionCallback? onMenuAction;
-  final bool recursive;
-  final double nameWidth;
-  final double locationWidth;
-  final List<FileColumn> columns;
-  final Map<FileColumn, double> columnWidths;
-  final double rowHeight;
-  final double iconSize;
-  final String dateFmt;
-  final bool recentDatesRelative;
-  final String? location;
-  final OpenInNewTabCallback? onOpenInNewTab;
-  final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
-  final int? folderSize;
-  final double sizeFraction;
-  final RowDecoration? rowDecoration;
-  final bool showStatus;
-  final bool treeMode;
-  final int treeDepth;
-  final bool treeExpanded;
-  final bool treeLoading;
-  final VoidCallback? onToggleTree;
-
-  const _ListRow({
-    required this.entry,
-    required this.index,
-    this.folderSize,
-    this.sizeFraction = 0,
-    this.rowDecoration,
-    required this.selected,
-    this.isCursor = false,
-    this.cursorTooltips = false,
-    required this.selectedPaths,
-    this.isCut = false,
-    this.isDraggingSelected = false,
-    this.isFolderDragOver = false,
-    this.isRenaming = false,
-    this.renameAttempt = 0,
-    this.onRenameSubmit,
-    this.onRenameCancel,
-    required this.onSelect,
-    required this.onOpen,
-    this.onContextMenu,
-    this.onMenuAction,
-    this.recursive = false,
-    this.nameWidth = 0,
-    this.locationWidth = _kLocationWidth,
-    this.columns = const [],
-    this.columnWidths = const {},
-    this.rowHeight = _kRowHeightComfortable,
-    this.iconSize = 16,
-    this.dateFmt = 'locale',
-    this.recentDatesRelative = true,
-    this.location,
-    this.onOpenInNewTab,
-    this.onOpenInOtherPaneNewTab,
-    this.showStatus = false,
-    this.treeMode = false,
-    this.treeDepth = 0,
-    this.treeExpanded = false,
-    this.treeLoading = false,
-    this.onToggleTree,
-  });
-
-  @override
-  State<_ListRow> createState() => _ListRowState();
-}
-
-class _ListRowState extends State<_ListRow> {
-  bool _hovered = false;
-  bool _treeDisclosureHovered = false;
-  bool _dragging = false;
-  DateTime? _lastTap;
-  TextEditingController? _renameController;
-  FocusNode? _renameFocusNode;
-  bool _renameCommitted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.isRenaming) _initRenameFields();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ListRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isRenaming && !oldWidget.isRenaming) {
-      _initRenameFields();
-    } else if (!widget.isRenaming && oldWidget.isRenaming) {
-      _disposeRenameFields();
-    } else if (widget.isRenaming &&
-        widget.renameAttempt != oldWidget.renameAttempt) {
-      _renameCommitted = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _renameFocusNode == null || _renameController == null) {
-          return;
-        }
-        _renameFocusNode!.requestFocus();
-        _renameController!.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: _renameController!.text.length,
-        );
-      });
-    }
-  }
-
-  void _initRenameFields() {
-    _renameCommitted = false;
-    final name = widget.entry.name;
-    String initialText;
-    int selectionEnd;
-    if (widget.entry.type == FileItemType.file) {
-      final dotIndex = name.lastIndexOf('.');
-      if (dotIndex > 0) {
-        initialText = name;
-        selectionEnd = dotIndex;
-      } else {
-        initialText = name;
-        selectionEnd = name.length;
-      }
-    } else {
-      initialText = name;
-      selectionEnd = name.length;
-    }
-    _renameController = TextEditingController(text: initialText);
-    _renameController!.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: selectionEnd,
-    );
-    _renameFocusNode = FocusNode();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _renameFocusNode != null) {
-        _renameFocusNode!.requestFocus();
-      }
-    });
-  }
-
-  void _disposeRenameFields() {
-    _renameController?.dispose();
-    _renameController = null;
-    _renameFocusNode?.dispose();
-    _renameFocusNode = null;
-  }
-
-  @override
-  void dispose() {
-    _disposeRenameFields();
-    super.dispose();
-  }
-
-  void _commitRename() {
-    if (_renameCommitted) return;
-    _renameCommitted = true;
-    final newName = _renameController?.text ?? '';
-    widget.onRenameSubmit?.call(newName);
-  }
-
-  void _cancelRename() {
-    if (_renameCommitted) return;
-    _renameCommitted = true;
-    widget.onRenameCancel?.call();
-  }
-
-  Color get _bg {
-    if (widget.isFolderDragOver) {
-      return AppColors.accent.withValues(alpha: 0.12);
-    }
-    if (_dragging) return AppColors.accent.withValues(alpha: 0.08);
-    if (widget.selected) return AppColors.bgSelectedMuted;
-    if (widget.isCursor) return AppColors.bgHoverStrong;
-    if (_hovered && !PointerHoverStore.instance.suppressed.value) {
-      return AppColors.bgHover;
-    }
-    final decoration = widget.rowDecoration;
-    if (decoration != null && decoration.badge == null) {
-      return decoration.tint.withValues(alpha: 0.18);
-    }
-
-    return Colors.transparent;
-  }
-
-  double get _leftBorderWidth {
-    if (widget.selected) return 2;
-    if (widget.isCursor) return 1;
-
-    return 0;
-  }
-
-  double get _rightBorderWidth {
-    if (widget.isCursor) return 1;
-
-    return 0;
-  }
-
-  Gradient? get _sizeBar {
-    final fraction = widget.sizeFraction.clamp(0.0, 1.0);
-    if (fraction <= 0) return null;
-    final bg = _bg;
-    final bar = Color.alphaBlend(AppColors.accent.withValues(alpha: 0.22), bg);
-
-    return LinearGradient(
-      colors: [bar, bar, bg, bg],
-      stops: [0, fraction, fraction, 1],
-    );
-  }
-
-  BoxBorder? get _border {
-    if (widget.isFolderDragOver) {
-      return Border.all(color: AppColors.accent.withValues(alpha: 0.4));
-    }
-    if (widget.isCursor) {
-      final outline = BorderSide(
-        color: AppColors.accent.withValues(alpha: 0.7),
-      );
-
-      return Border(
-        top: outline,
-        right: outline,
-        bottom: outline,
-        left: widget.selected
-            ? BorderSide(color: AppColors.accent, width: 2)
-            : outline,
-      );
-    }
-    if (widget.selected) {
-      return Border(left: BorderSide(color: AppColors.accent, width: 2));
-    }
-
-    return null;
-  }
-
-  Widget _buildTagDots() {
-    final colors = widget.rowDecoration?.badgeColors ?? const [];
-    if (colors.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 6),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final color in colors)
-            Padding(
-              padding: const EdgeInsets.only(left: 2),
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIconWithBadge(FileEntry e) {
-    return FileEntryIcon(entry: e, size: widget.iconSize);
-  }
-
-  Widget _buildStatusCell() {
-    if (!widget.showStatus) return const SizedBox.shrink();
-    final decoration = widget.rowDecoration;
-    final badge = decoration?.badge;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: badge == null
-          ? SizedBox(width: widget.iconSize)
-          : StatusChip(
-              glyph: badge,
-              color: decoration!.tint,
-              size: widget.iconSize,
-            ),
-    );
-  }
-
-  Widget _buildTreePrefix(bool isFolder) {
-    if (!widget.treeMode) return const SizedBox.shrink();
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(width: widget.treeDepth * _kTreeIndentWidth),
-        SizedBox(
-          width: _kTreeDisclosureWidth,
-          height: widget.rowHeight,
-          child: isFolder
-              ? MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  onEnter: (_) => setState(() => _treeDisclosureHovered = true),
-                  onExit: (_) => setState(() => _treeDisclosureHovered = false),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: widget.onToggleTree,
-                    child: Center(
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: _treeDisclosureHovered
-                              ? AppColors.bgHoverStrong
-                              : Colors.transparent,
-                          border: Border.all(
-                            color: _treeDisclosureHovered
-                                ? AppColors.borderColor
-                                : Colors.transparent,
-                          ),
-                        ),
-                        child: widget.treeLoading
-                            ? SizedBox(
-                                width: 10,
-                                height: 10,
-                                child: AppSpinner(
-                                  strokeWidth: 1.5,
-                                  color: AppColors.fgSubtle,
-                                ),
-                              )
-                            : Icon(
-                                widget.treeExpanded
-                                    ? WaydirIconsRegular.caretDown
-                                    : WaydirIconsRegular.caretRight,
-                                size: 12,
-                                color: _treeDisclosureHovered
-                                    ? AppColors.fg
-                                    : AppColors.fgSubtle,
-                              ),
-                      ),
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _buildColumnCells(BuildContext context, FileEntry e) {
-    final muted = context.txt.muted;
-
-    return [
-      for (final col in widget.columns) ...[
-        const SizedBox(width: _kColumnGap),
-        SizedBox(
-          width: widget.columnWidths[col] ?? 0,
-          child: Text(
-            fileColumnText(
-              col,
-              e,
-              dateFmt: widget.dateFmt,
-              recentDatesRelative: widget.recentDatesRelative,
-              folderSize: widget.folderSize,
-            ),
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.clip,
-            style: muted,
-          ),
-        ),
-      ],
-    ];
-  }
-
-  void _handleTap() {
-    final now = DateTime.now();
-    if (_lastTap != null &&
-        now.difference(_lastTap!).inMilliseconds < _kDoubleTapMs) {
-      _lastTap = null;
-      final keys = HardwareKeyboard.instance;
-      final isFolder = widget.entry.type == FileItemType.folder;
-      if (widget.entry.isGhost) {
-        widget.onSelect(
-          FileSelectionEvent(entry: widget.entry, index: widget.index),
-        );
-      } else if (isFolder && keys.isShiftPressed) {
-        widget.onOpenInOtherPaneNewTab?.call(widget.entry.path);
-      } else if (isFolder && keys.isControlPressed) {
-        widget.onOpenInNewTab?.call(widget.entry.path);
-      } else {
-        widget.onOpen(widget.entry);
-      }
-
-      return;
-    }
-    _lastTap = now;
-    widget.onSelect(
-      FileSelectionEvent(entry: widget.entry, index: widget.index),
-    );
-  }
-
-  void _handleSecondaryTap(TapUpDetails details) {
-    if (widget.entry.isGhost) return;
-    widget.onContextMenu?.call(
-      FileSelectionEvent(entry: widget.entry, index: widget.index),
-      details.globalPosition,
-    );
-  }
-
-  Widget _buildDragImage(BuildContext context, Widget child) {
-    final dragCount = widget.selected ? widget.selectedPaths.length : 1;
-
-    final e = widget.entry;
-
-    final visualRow = Container(
-      width: 260,
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.bgSidebar,
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: AppColors.bgDivider),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          FileEntryIcon(entry: e, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              dragCount > 1 ? t.fileView.movingItems(count: dragCount) : e.name,
-              overflow: TextOverflow.ellipsis,
-              style: context.txt.dialogTitle.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return visualRow;
-  }
-
-  Future<DragItem?> _provideDragItem(DragItemRequest request) async {
-    if (HardwareKeyboard.instance.isShiftPressed) return null;
-
-    final pathsToDrag = _pathsToDrag();
-    final item = _dragItemForPaths(pathsToDrag);
-
-    final initialMode = initialDragMode();
-
-    void updateDragging() {
-      final isDragging = request.session.dragging.value;
-      if (mounted) {
-        setState(() => _dragging = isDragging);
-      }
-      if (isDragging) {
-        DragHintController.instance.mode.value = initialMode;
-      }
-    }
-
-    request.session.dragging.addListener(updateDragging);
-    updateDragging();
-
-    return item;
-  }
-
-  List<String> _pathsToDrag() {
-    final selectedPaths = widget.selectedPaths.toList();
-    if (widget.selected && selectedPaths.isNotEmpty) return selectedPaths;
-
-    return [widget.entry.path];
-  }
-
-  DragItem _dragItemForPaths(List<String> paths) {
-    final item = DragItem(
-      localData: {'paths': paths},
-      suggestedName: paths.length == 1 ? p.basename(paths.first) : null,
-    );
-    item.add(formatLocalFile(paths.join('\n')));
-
-    for (final path in paths) {
-      item.add(Formats.fileUri(Uri.file(path)));
-    }
-
-    return item;
-  }
-
-  Future<DragConfiguration> _expandDragConfiguration(
-    DragConfiguration configuration,
-    DragSession session,
-  ) async {
-    final paths = _pathsToDrag();
-    if (paths.length <= 1 || configuration.items.isEmpty) {
-      return configuration;
-    }
-
-    final preview = configuration.items.first;
-    final extraImages = <TargetedWidgetSnapshot>[];
-    for (var i = 1; i < paths.length; i++) {
-      extraImages.add(await _transparentDragSnapshot(preview.image));
-    }
-
-    return DragConfiguration(
-      items: [
-        for (final (index, path) in paths.indexed)
-          DragConfigurationItem(
-            item: _dragItemForPaths([path]),
-            image: index == 0 ? preview.image : extraImages[index - 1],
-          ),
-      ],
-      allowedOperations: configuration.allowedOperations,
-      options: configuration.options,
-    );
-  }
-
-  Future<TargetedWidgetSnapshot> _transparentDragSnapshot(
-    TargetedWidgetSnapshot preview,
-  ) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-    canvas.drawColor(Colors.transparent, ui.BlendMode.clear);
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(1, 1);
-    picture.dispose();
-
-    return TargetedWidgetSnapshot(
-      WidgetSnapshot.image(image),
-      Rect.fromLTWH(preview.rect.left, preview.rect.top, 1, 1),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) => SignalBuilder(builder: _build);
-
-  Widget _build(BuildContext context) {
-    final e = widget.entry;
-    final isFolder = e.type == FileItemType.folder;
-    final opacity = e.isGhost
-        ? 0.5
-        : widget.isCut
-        ? 0.4
-        : (_dragging ? 0.4 : 1.0);
-
-    if (widget.isRenaming) {
-      return MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: Container(
-          height: widget.rowHeight,
-          padding: const EdgeInsets.only(
-            left: _kRowPaddingLeft,
-            right: _kRowPaddingRight,
-          ),
-          decoration: BoxDecoration(color: _bg, border: _border),
-          child: Opacity(
-            opacity: opacity,
-            child: Row(
-              children: [
-                _buildStatusCell(),
-                _buildTreePrefix(isFolder),
-                _buildIconWithBadge(e),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: widget.nameWidth,
-                  child: CallbackShortcuts(
-                    bindings: {
-                      const SingleActivator(LogicalKeyboardKey.escape):
-                          _cancelRename,
-                    },
-                    child: TextField(
-                      controller: _renameController,
-                      focusNode: _renameFocusNode,
-                      autofocus: true,
-                      style: context.txt.bodyEmphasis,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 3,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.bgInput,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(
-                            color: AppColors.accent,
-                            width: 1,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(
-                            color: AppColors.bgDivider,
-                            width: 1,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.zero,
-                          borderSide: BorderSide(
-                            color: AppColors.accent,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      onSubmitted: (_) => _commitRename(),
-                      onTapOutside: (_) => _commitRename(),
-                    ),
-                  ),
-                ),
-                if (widget.recursive) ...[
-                  const SizedBox(width: _kColumnGap),
-                  SizedBox(
-                    width: widget.locationWidth,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: _LocationText(
-                        widget.location ?? '',
-                        showForCursor: widget.isCursor && widget.cursorTooltips,
-                      ),
-                    ),
-                  ),
-                ],
-                ..._buildColumnCells(context, e),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    final row = MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: _handleTap,
-        onSecondaryTapUp: _handleSecondaryTap,
-        onTertiaryTapUp: (_) {
-          if (widget.entry.type == FileItemType.folder) {
-            widget.onOpenInNewTab?.call(widget.entry.path);
-          }
-        },
-        child: Container(
-          height: widget.rowHeight,
-          padding: EdgeInsets.only(
-            left: _kRowPaddingLeft - _leftBorderWidth,
-            right: _kRowPaddingRight - _rightBorderWidth,
-          ),
-          decoration: BoxDecoration(
-            color: _sizeBar == null ? _bg : null,
-            gradient: _sizeBar,
-            borderRadius: widget.isFolderDragOver ? BorderRadius.zero : null,
-            border: _border,
-          ),
-          child: Opacity(
-            opacity: opacity,
-            child: Row(
-              children: [
-                _buildStatusCell(),
-                _buildTreePrefix(isFolder),
-                _buildIconWithBadge(e),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: widget.nameWidth,
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          e.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: e.isGhost
-                              ? context.txt.body.copyWith(
-                                  color: AppColors.fgSubtle,
-                                  decoration: TextDecoration.lineThrough,
-                                  decorationColor: AppColors.fgSubtle,
-                                )
-                              : context.txt.body.copyWith(
-                                  color: widget.selected
-                                      ? AppColors.fg
-                                      : AppColors.fg.withValues(alpha: 0.9),
-                                  fontWeight: widget.selected
-                                      ? FontWeight.w500
-                                      : FontWeight.normal,
-                                ),
-                        ),
-                      ),
-                      _buildTagDots(),
-                    ],
-                  ),
-                ),
-                if (widget.recursive) ...[
-                  const SizedBox(width: _kColumnGap),
-                  SizedBox(
-                    width: widget.locationWidth,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: _LocationText(
-                        widget.location ?? '',
-                        showForCursor: widget.isCursor && widget.cursorTooltips,
-                      ),
-                    ),
-                  ),
-                ],
-                ..._buildColumnCells(context, e),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    if (e.isGhost) return row;
-
-    return DragItemWidget(
-      dragItemProvider: _provideDragItem,
-      allowedOperations: () => [DropOperation.copy, DropOperation.move],
-      canAddItemToExistingSession: true,
-      dragBuilder: _buildDragImage,
-      child: DraggableWidget(
-        onDragConfiguration: _expandDragConfiguration,
-        child: row,
-      ),
     );
   }
 }
@@ -2639,130 +1171,4 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatDateBy(
-  DateTime d,
-  String mode, {
-  required bool recentDatesRelative,
-}) => formatEntryDate(d, mode, recentDatesRelative: recentDatesRelative);
-
-class _PinnedVerticalScrollbar extends StatelessWidget {
-  final ScrollController controller;
-  final List<double> marks;
-  const _PinnedVerticalScrollbar({
-    required this.controller,
-    this.marks = const [],
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final trackHeight = constraints.maxHeight;
-
-        return AnimatedBuilder(
-          animation: controller,
-          builder: (context, _) {
-            if (!controller.hasClients) return const SizedBox.shrink();
-            final position = controller.position;
-            if (!position.hasContentDimensions ||
-                !position.hasViewportDimension ||
-                !position.hasPixels) {
-              return const SizedBox.shrink();
-            }
-            final maxScroll = position.maxScrollExtent;
-            final viewport = position.viewportDimension;
-            if (maxScroll <= 0 || viewport <= 0) {
-              return const SizedBox.shrink();
-            }
-            final thumbHeight = math.max(
-              24.0,
-              trackHeight * viewport / (viewport + maxScroll),
-            );
-            final maxTravel = trackHeight - thumbHeight;
-            final t = (position.pixels / maxScroll).clamp(0.0, 1.0);
-            final top = maxTravel * t;
-
-            return Stack(
-              children: [
-                if (marks.isNotEmpty)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: RepaintBoundary(
-                        child: CustomPaint(
-                          painter: _ScrollbarMarksPainter(
-                            marks: marks,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  top: top,
-                  right: 0,
-                  width: _kScrollbarThumbWidth,
-                  height: thumbHeight,
-                  child: GestureDetector(
-                    onVerticalDragUpdate: (d) {
-                      if (maxTravel <= 0) return;
-                      final delta = d.delta.dy / maxTravel * maxScroll;
-                      controller.jumpTo(
-                        (position.pixels + delta).clamp(
-                          position.minScrollExtent,
-                          position.maxScrollExtent,
-                        ),
-                      );
-                    },
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.fgSubtle.withValues(
-                          alpha: marks.isEmpty ? 1 : 0.6,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _ScrollbarMarksPainter extends CustomPainter {
-  final List<double> marks;
-  final Color color;
-
-  const _ScrollbarMarksPainter({required this.marks, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    const tick = 2.0;
-    var runTop = -1.0;
-    var runBottom = -1.0;
-    for (final f in marks) {
-      final y = (f * size.height - tick / 2).clamp(0.0, size.height - tick);
-      if (runTop >= 0 && y <= runBottom) {
-        runBottom = math.max(runBottom, y + tick);
-        continue;
-      }
-      if (runTop >= 0) {
-        canvas.drawRect(Rect.fromLTRB(0, runTop, size.width, runBottom), paint);
-      }
-      runTop = y;
-      runBottom = y + tick;
-    }
-    if (runTop >= 0) {
-      canvas.drawRect(Rect.fromLTRB(0, runTop, size.width, runBottom), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ScrollbarMarksPainter old) =>
-      old.color != color || !listEquals(old.marks, marks);
 }

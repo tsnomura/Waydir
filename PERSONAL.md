@@ -2955,6 +2955,50 @@ adjacent ticks are drawn as one rectangle, so scrolling with tens of
 thousands of marks no longer redraws each tick per frame. Grid view was
 already independent of folder size.
 
+### Cursor and marks rebuild only the rows they touch
+
+`_TabContent` used to read the cursor and the marks in the same
+`SignalBuilder` as everything else and pass them to the view as plain
+values, so each cursor move rebuilt the list widget and every visible row.
+The views now take a `FileListSelection` (`NavigationStore.selection`,
+`lib/features/files/file_list_selection.dart`) holding the two signals.
+Each row or tile subscribes to its own `cursorAt(index)` /
+`marked(path)`, so a cursor move rebuilds the two rows involved and a mark
+change the rows whose mark flipped; the scrollbar mark ticks subscribe
+separately. Scrolling the cursor into view is driven by an effect on the
+cursor instead of the list's build. In the debug-mode benchmark a cursor
+move went from 4.6 ms to 1.2 ms in the list and from 9.5 ms to 2.0 ms in
+the grid. Tests construct a view with `FileListSelection.fixed(...)`.
+
+### `file_view.dart` split, list and grid share their item logic
+
+`file_view.dart` (2 563 lines) is now the `FileList` widget and its state
+plus four `part` files under `lib/features/files/file_view/`: `columns.dart`
+(column ids, labels, widths), `header.dart` (header, resize handles, column
+menu), `row.dart` (list row) and `scrollbar.dart`. The code moved as is.
+
+The list row and the grid tile had separate copies of the same logic; it
+now lives in one place:
+
+- `file_item.dart`: `FileItemWidget` (the shared fields) and the
+  `FileItemState` mixin — cursor and mark subscriptions, the inline rename
+  field, single/double click handling, drag items and the multi-file drag
+  configuration (used by the list; the grid still drags as one item).
+- `file_view_behavior.dart`: the `FileViewBehavior` mixin — scrolling the
+  cursor into view when it moves, and the drop region with folder hover.
+
+### `visibleFiles` no longer writes state while computing
+
+The `visibleFiles` computed stored its own result in
+`_previousBrowseOrder` / `_previousSearchOrder` (the order ties fall back
+to after a sort change) as it ran. That write now happens in an effect
+that observes the list, so evaluating the computed has no side effect.
+Behaviour is unchanged; `test/integration/navigation/sort_tie_order_test.dart`
+pins the tie order. The effects that defer a signal write with
+`scheduleMicrotask` (ghost marks, size bars, tree loading, compare
+restart) were reviewed and left alone: writing in the effect itself would
+re-enter it, and none of them showed a defect.
+
 ### Fewer frames when idle and under Reduce motion
 
 Each frame is cheap on a local GPU but expensive over xpra (software GL
@@ -2984,6 +3028,16 @@ producing fewer frames.
   list assigned a new list on every tick, which rebuilt the sidebar and
   produced a frame even when nothing had changed. They now only publish
   changes, so an idle window stays idle.
+
+- Those three polls also follow the window state (`AppActivity` /
+  `ActivityPoller` in `lib/core/platform/app_activity.dart`, fed by the
+  app lifecycle): every interval while the window is focused, every fifth
+  interval while it is visible but unfocused, not at all while it is
+  minimized, and once immediately when it gets the focus back. A drive
+  plugged in while Waydir is unfocused therefore shows up after up to 15 s
+  instead of 3 s. They are still polls: OS notifications (Windows device
+  change messages, Linux mount monitoring) need native code per platform
+  and were left for later.
 
 Not done: the mouse hover highlight still repaints a row per pointer
 move, and operation progress bars with an unknown total still animate.

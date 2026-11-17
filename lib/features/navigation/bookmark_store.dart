@@ -8,6 +8,7 @@ import 'package:signals/signals.dart';
 import '../../core/database/app_database.dart';
 import '../../core/fs/file_system_service.dart';
 import '../../core/logging/app_logger.dart';
+import '../../core/platform/app_activity.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../core/settings/settings_store.dart';
 import '../locations/location_resolver.dart';
@@ -20,7 +21,10 @@ class BookmarkStore {
 
   final bookmarks = signal<List<Bookmark>>([]);
   final mounted = signal<Map<String, bool>>({});
-  Timer? _mountTimer;
+  late final _mountPoller = ActivityPoller(
+    interval: const Duration(seconds: 10),
+    onPoll: _refreshMounted,
+  );
   Future<void>? _mountCheck;
   bool _checkAgain = false;
 
@@ -29,10 +33,7 @@ class BookmarkStore {
   Future<void> load() async {
     bookmarks.value = await _db.getBookmarks();
     _refreshMounted();
-    _mountTimer ??= Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => _refreshMounted(),
-    );
+    _mountPoller.start();
   }
 
   void _refreshMounted() {
