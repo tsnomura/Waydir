@@ -54,4 +54,73 @@ void main() {
     expect(store.drives.value.map((d) => d.id), ['C:\\', 'D:\\']);
     expect(service.pending, hasLength(3));
   });
+
+  group('sameDrivesForDisplay', () {
+    Drive spaced(int free) => Drive(
+      id: '/dev/sdb1',
+      label: 'data',
+      mountPoint: '/mnt/data',
+      isRemovable: false,
+      space: DriveSpace(totalBytes: 1000000, freeBytes: free),
+    );
+
+    test('ignores free space changes below 0.1% of the disk', () {
+      expect(sameDrivesForDisplay([spaced(500000)], [spaced(500999)]), isTrue);
+    });
+
+    test('reports free space changes of 0.1% or more', () {
+      expect(sameDrivesForDisplay([spaced(500000)], [spaced(501000)]), isFalse);
+    });
+
+    test('reports any other change', () {
+      expect(
+        sameDrivesForDisplay([spaced(500000)], [_drive('/dev/sdb1')]),
+        isFalse,
+      );
+      expect(sameDrivesForDisplay([spaced(500000)], []), isFalse);
+      expect(
+        sameDrivesForDisplay(
+          [spaced(500000)],
+          [
+            Drive(
+              id: '/dev/sdb1',
+              label: 'renamed',
+              mountPoint: '/mnt/data',
+              isRemovable: false,
+              space: const DriveSpace(totalBytes: 1000000, freeBytes: 500000),
+            ),
+          ],
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  test('small free space drift accumulates until it is published', () async {
+    final service = _SlowDriveService();
+    final store = DriveStore(service: service);
+    addTearDown(store.dispose);
+    Drive at(int free) => Drive(
+      id: '/',
+      label: 'root',
+      isRemovable: false,
+      space: DriveSpace(totalBytes: 1000000, freeBytes: free),
+    );
+
+    service.pending.last.complete([at(500000)]);
+    await pumpEventQueue();
+    final shown = store.drives.value;
+
+    for (final free in [500400, 500800]) {
+      store.refresh();
+      service.pending.last.complete([at(free)]);
+      await pumpEventQueue();
+      expect(identical(store.drives.value, shown), isTrue);
+    }
+
+    store.refresh();
+    service.pending.last.complete([at(501200)]);
+    await pumpEventQueue();
+    expect(store.drives.value.single.space!.freeBytes, 501200);
+  });
 }

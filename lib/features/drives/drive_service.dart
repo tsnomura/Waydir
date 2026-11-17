@@ -6,6 +6,7 @@ import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
 
 import 'drive_model.dart';
+import 'unix_statvfs.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../i18n/strings.g.dart';
@@ -236,20 +237,81 @@ class _WindowsDriveService implements DriveService {
   }
 }
 
+typedef LsblkRunner = Future<String?> Function();
+typedef BlockSignatureReader = Future<String?> Function();
+
+Future<String?> _runLsblk() async {
+  final result = await Process.run('lsblk', [
+    '-J',
+    '-o',
+    'NAME,TYPE,MOUNTPOINT,SIZE,LABEL,RM,FSTYPE,PARTTYPENAME',
+  ]);
+  if (result.exitCode != 0) return null;
+
+  return result.stdout as String;
+}
+
+Future<String?> _readBlockSignature() async {
+  try {
+    final mounts = await File('/proc/self/mountinfo').readAsString();
+    final names = <String>[
+      await for (final entry in Directory('/sys/class/block').list())
+        entry.path,
+    ]..sort();
+
+    return '${names.join('\n')}\n$mounts';
+  } catch (_) {
+    return null;
+  }
+}
+
+DriveService linuxDriveServiceForTesting({
+  required LsblkRunner lsblk,
+  required BlockSignatureReader signature,
+}) => _LinuxDriveService(lsblk: lsblk, signature: signature);
+
 class _LinuxDriveService implements DriveService {
+  static const _fullRefreshEvery = 20;
+
+  final LsblkRunner _lsblk;
+  final BlockSignatureReader _signature;
+  String? _lastSignature;
+  List<dynamic>? _devices;
+  int _sinceFullRefresh = 0;
+
+  _LinuxDriveService({
+    LsblkRunner lsblk = _runLsblk,
+    BlockSignatureReader signature = _readBlockSignature,
+  }) : _lsblk = lsblk,
+       _signature = signature;
+
+  Future<List<dynamic>?> _blockDevices() async {
+    final signature = await _signature();
+    final cached = _devices;
+    if (cached != null &&
+        signature != null &&
+        signature == _lastSignature &&
+        _sinceFullRefresh < _fullRefreshEvery) {
+      _sinceFullRefresh++;
+
+      return cached;
+    }
+    final output = await _lsblk();
+    if (output == null) return null;
+    final data = jsonDecode(output) as Map<String, dynamic>;
+    final devices = data['blockdevices'] as List<dynamic>? ?? [];
+    _devices = devices;
+    _lastSignature = signature;
+    _sinceFullRefresh = 0;
+
+    return devices;
+  }
+
   @override
   Future<List<Drive>> getDrives() async {
     try {
-      final result = await Process.run('lsblk', [
-        '-J',
-        '-o',
-        'NAME,TYPE,MOUNTPOINT,SIZE,LABEL,RM,FSTYPE,PARTTYPENAME',
-      ]);
-
-      if (result.exitCode != 0) return [];
-
-      final data = jsonDecode(result.stdout as String) as Map<String, dynamic>;
-      final devices = data['blockdevices'] as List<dynamic>? ?? [];
+      final devices = await _blockDevices();
+      if (devices == null) return [];
 
       final drives = <Drive>[];
       drives.add(
@@ -489,6 +551,7 @@ class _MacDriveService implements DriveService {
 }
 
 Future<DriveSpace?> _unixSpace(String path) async {
+  if (statvfsAvailable) return statvfsSpace(path);
   try {
     final result = await Process.run('df', ['-Pk', path]);
     if (result.exitCode != 0) return null;
