@@ -8,6 +8,7 @@ import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/widgets/app_spinner.dart';
 import 'filter_query.dart';
 import 'navigation_store.dart';
 
@@ -391,7 +392,7 @@ class _StatusLine extends StatelessWidget {
                         child: SizedBox(
                           width: 12,
                           height: 12,
-                          child: CircularProgressIndicator(
+                          child: AppSpinner(
                             strokeWidth: 1.5,
                             color: AppColors.fgMuted,
                           ),

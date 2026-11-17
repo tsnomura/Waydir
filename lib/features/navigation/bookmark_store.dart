@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:signals/signals.dart';
 
 import '../../core/database/app_database.dart';
@@ -45,7 +46,11 @@ class BookmarkStore {
         if (LocationUri.parse(b.path).isLocal) b.path,
     ];
     _mountCheck = _checkPaths(paths)
-        .then((result) => mounted.value = result)
+        .then(
+          (result) => mapEquals(mounted.value, result)
+              ? mounted.value
+              : mounted.value = result,
+        )
         .catchError((Object e, StackTrace st) {
           log.warn('bookmarks', 'mount check failed', error: e, stack: st);
 

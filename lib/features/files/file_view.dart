@@ -18,6 +18,8 @@ import '../../ui/overlays/popup_overlay.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/theme/motion.dart';
+import '../../ui/widgets/app_spinner.dart';
 import '../../utils/drag_drop.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/format.dart';
@@ -241,6 +243,31 @@ double minColumnWidth(String key) {
   return 56;
 }
 
+class _Memo<T> {
+  List<Object?>? _deps;
+  late T _value;
+
+  T call(List<Object?> deps, T Function() compute) {
+    final previous = _deps;
+    if (previous != null && _sameDeps(previous, deps)) return _value;
+    _deps = deps;
+
+    return _value = compute();
+  }
+
+  static bool _sameDeps(List<Object?> a, List<Object?> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final x = a[i];
+      final y = b[i];
+      if (identical(x, y)) continue;
+      if (x is List || x is Map || x is Set || x != y) return false;
+    }
+
+    return true;
+  }
+}
+
 class FileList extends StatefulWidget {
   final List<FileEntry> files;
   final String currentPath;
@@ -390,7 +417,7 @@ class FileTree extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FileList(
-      files: [for (final row in rows) row.entry],
+      files: const [],
       treeRows: rows,
       currentPath: currentPath,
       recursiveResults: recursiveResults,
@@ -473,18 +500,74 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
 
   double get _listTopPadding => _rowG;
   double get _listHorizontalPadding => _listHorizontalSpacing;
-  List<FileEntry> get _displayFiles => widget.treeRows == null
-      ? widget.files
-      : [for (final row in widget.treeRows!) row.entry];
+  final _displayFilesMemo = _Memo<List<FileEntry>>();
+  final _markFractionsMemo = _Memo<List<double>>();
+  final _columnWidthsMemo = _Memo<Map<FileColumn, double>>();
+  final _maxItemSizeMemo = _Memo<int>();
+  final _maxTreeDepthMemo = _Memo<int>();
+  final _hasBadgeMemo = _Memo<bool>();
+  final _locationWantedMemo = _Memo<double>();
+
+  List<FileEntry> get _displayFiles {
+    final rows = widget.treeRows;
+    if (rows == null) return widget.files;
+
+    return _displayFilesMemo([
+      rows,
+      rows.length,
+    ], () => [for (final row in rows) row.entry]);
+  }
 
   List<double> _markFractions(List<FileEntry> files) {
     final selected = widget.selectedPaths;
     if (selected.isEmpty || files.isEmpty) return const [];
 
-    return [
-      for (var i = 0; i < files.length; i++)
-        if (selected.contains(files[i].path)) (i + 0.5) / files.length,
-    ];
+    return _markFractionsMemo(
+      [files, files.length, selected, selected.length],
+      () => [
+        for (var i = 0; i < files.length; i++)
+          if (selected.contains(files[i].path)) (i + 0.5) / files.length,
+      ],
+    );
+  }
+
+  int _maxItemSize(List<FileEntry> files) {
+    if (!widget.sizeBars) return 0;
+
+    return _maxItemSizeMemo([
+      files,
+      files.length,
+      widget.folderSizes,
+      widget.folderSizes.length,
+    ], () => files.fold<int>(0, (max, e) => math.max(max, _itemSize(e))));
+  }
+
+  int _maxTreeDepth() {
+    final rows = widget.treeRows;
+    if (rows == null) return 0;
+
+    return _maxTreeDepthMemo(
+      [rows, rows.length],
+      () => rows.fold<int>(0, (max, row) => row.depth > max ? row.depth : max),
+    );
+  }
+
+  bool _hasStatusBadge() {
+    final decorations = widget.rowDecorations;
+    if (decorations.isEmpty) return false;
+
+    return _hasBadgeMemo([
+      decorations,
+      decorations.length,
+    ], () => decorations.values.any((d) => d.badge != null));
+  }
+
+  int get _relativeDateBucket {
+    final relative =
+        _dateFmt == 'relative' ||
+        (_dateFmt == 'locale' && _recentDatesRelative);
+
+    return relative ? DateTime.now().millisecondsSinceEpoch ~/ 60000 : 0;
   }
 
   int _itemSize(FileEntry e) => e.type == FileItemType.folder
@@ -515,25 +598,44 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   ) {
     final muted = context.txt.muted;
     final headerStyle = context.txt.fieldLabel;
-    final widths = <FileColumn, double>{};
-    for (final col in columns) {
-      var longest = fileColumnLabel(col);
-      for (final e in files) {
-        final v = fileColumnText(
-          col,
-          e,
-          dateFmt: _dateFmt,
-          recentDatesRelative: _recentDatesRelative,
-          folderSize: widget.folderSizes[e.realPath],
-        );
-        if (v.length > longest.length) longest = v;
-      }
-      final cellW = _measureWidth(longest, muted);
-      final headerW = _measureWidth(fileColumnLabel(col), headerStyle) + 14;
-      widths[col] = math.max(cellW, headerW).ceilToDouble() + 8;
-    }
+    final folderSizes = widget.folderSizes;
 
-    return widths;
+    return _columnWidthsMemo(
+      [
+        files,
+        files.length,
+        columns.map((c) => c.name).join(','),
+        _dateFmt,
+        _recentDatesRelative,
+        _relativeDateBucket,
+        columns.contains(FileColumn.size) ? folderSizes : null,
+        folderSizes.length,
+        muted,
+        headerStyle,
+        t,
+      ],
+      () {
+        final widths = <FileColumn, double>{};
+        for (final col in columns) {
+          var longest = fileColumnLabel(col);
+          for (final e in files) {
+            final v = fileColumnText(
+              col,
+              e,
+              dateFmt: _dateFmt,
+              recentDatesRelative: _recentDatesRelative,
+              folderSize: folderSizes[e.realPath],
+            );
+            if (v.length > longest.length) longest = v;
+          }
+          final cellW = _measureWidth(longest, muted);
+          final headerW = _measureWidth(fileColumnLabel(col), headerStyle) + 14;
+          widths[col] = math.max(cellW, headerW).ceilToDouble() + 8;
+        }
+
+        return widths;
+      },
+    );
   }
 
   double _persistedColumnWidth(
@@ -625,12 +727,20 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     List<FileEntry> files,
     double room,
   ) {
-    var longest = '';
-    for (final e in files) {
-      final rel = _relativeParent(e.path, widget.currentPath);
-      if (rel != null && rel.length > longest.length) longest = rel;
-    }
-    final wanted = _measureWidth(longest, context.txt.muted) + 8 + 8;
+    final muted = context.txt.muted;
+    final currentPath = widget.currentPath;
+    final wanted = _locationWantedMemo(
+      [files, files.length, currentPath, muted],
+      () {
+        var longest = '';
+        for (final e in files) {
+          final rel = _relativeParent(e.path, currentPath);
+          if (rel != null && rel.length > longest.length) longest = rel;
+        }
+
+        return _measureWidth(longest, muted) + 8 + 8;
+      },
+    );
     final cap = math.max(
       _kLocationMinWidth,
       math.min(_viewportWidth * _kLocationMaxFraction, room),
@@ -754,14 +864,19 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
           ? bottom - viewport
           : current;
       if (target == current) return;
-      _scrollController.animateTo(
-        target.clamp(
-          _scrollController.position.minScrollExtent,
-          _scrollController.position.maxScrollExtent,
-        ),
-        duration: const Duration(milliseconds: 80),
-        curve: Curves.easeOut,
+      final clamped = target.clamp(
+        _scrollController.position.minScrollExtent,
+        _scrollController.position.maxScrollExtent,
       );
+      if (context.reduceMotion) {
+        _scrollController.jumpTo(clamped);
+      } else {
+        _scrollController.animateTo(
+          clamped,
+          duration: const Duration(milliseconds: 80),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -823,26 +938,19 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
           SettingsStore.instance.columnWidths.value,
         );
         final recursive = widget.recursiveResults;
-        final maxItemSize = widget.sizeBars
-            ? displayFiles.fold<int>(0, (max, e) => math.max(max, _itemSize(e)))
-            : 0;
+        final maxItemSize = _maxItemSize(displayFiles);
+        final maxTreeDepth = _maxTreeDepth();
+        final hasStatusBadge = _hasStatusBadge();
+        final marks = _markFractions(displayFiles);
 
         return LayoutBuilder(
           builder: (context, constraints) {
             _viewportWidth = constraints.maxWidth;
 
-            final maxTreeDepth = widget.treeRows == null
-                ? 0
-                : widget.treeRows!.fold<int>(
-                    0,
-                    (max, row) => row.depth > max ? row.depth : max,
-                  );
             final treeLeading = widget.treeRows == null
                 ? 0.0
                 : maxTreeDepth * _kTreeIndentWidth + _kTreeDisclosureWidth;
-            final showStatus =
-                widget.showStatusColumn ||
-                widget.rowDecorations.values.any((d) => d.badge != null);
+            final showStatus = widget.showStatusColumn || hasStatusBadge;
             final statusSlot = showStatus ? 16.0 + 6 : 0.0;
             final iconSlot = statusSlot + 16.0 + 6 + treeLeading;
             final rowChrome =
@@ -1215,7 +1323,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                   width: _kScrollbarGutterWidth,
                   child: _PinnedVerticalScrollbar(
                     controller: _scrollController,
-                    marks: _markFractions(displayFiles),
+                    marks: marks,
                   ),
                 ),
                 if (displayFiles.isEmpty)
@@ -2069,7 +2177,7 @@ class _ListRowState extends State<_ListRow> {
                             ? SizedBox(
                                 width: 10,
                                 height: 10,
-                                child: CircularProgressIndicator(
+                                child: AppSpinner(
                                   strokeWidth: 1.5,
                                   color: AppColors.fgSubtle,
                                 ),
@@ -2581,10 +2689,12 @@ class _PinnedVerticalScrollbar extends StatelessWidget {
                 if (marks.isNotEmpty)
                   Positioned.fill(
                     child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _ScrollbarMarksPainter(
-                          marks: marks,
-                          color: AppColors.accent,
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          painter: _ScrollbarMarksPainter(
+                            marks: marks,
+                            color: AppColors.accent,
+                          ),
                         ),
                       ),
                     ),
@@ -2633,9 +2743,22 @@ class _ScrollbarMarksPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
     const tick = 2.0;
+    var runTop = -1.0;
+    var runBottom = -1.0;
     for (final f in marks) {
       final y = (f * size.height - tick / 2).clamp(0.0, size.height - tick);
-      canvas.drawRect(Rect.fromLTWH(0, y, size.width, tick), paint);
+      if (runTop >= 0 && y <= runBottom) {
+        runBottom = math.max(runBottom, y + tick);
+        continue;
+      }
+      if (runTop >= 0) {
+        canvas.drawRect(Rect.fromLTRB(0, runTop, size.width, runBottom), paint);
+      }
+      runTop = y;
+      runBottom = y + tick;
+    }
+    if (runTop >= 0) {
+      canvas.drawRect(Rect.fromLTRB(0, runTop, size.width, runBottom), paint);
     }
   }
 

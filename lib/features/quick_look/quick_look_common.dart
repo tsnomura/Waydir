@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/logging/app_logger.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/widgets/app_spinner.dart';
 
 const imageExts = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'};
 
@@ -111,10 +112,7 @@ class QlCentered extends StatelessWidget {
           ? SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.fgMuted,
-              ),
+              child: AppSpinner(strokeWidth: 2, color: AppColors.fgMuted),
             )
           : Column(
               mainAxisSize: MainAxisSize.min,

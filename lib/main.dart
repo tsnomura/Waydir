@@ -30,11 +30,12 @@ import 'features/quick_look/player/player_registry.dart';
 import 'features/tags/tag_store.dart';
 import 'i18n/strings.g.dart';
 import 'ui/theme/app_theme_registry.dart';
+import 'ui/theme/motion.dart';
 
 void main(List<String> args) async {
   runZonedGuarded(
     () async {
-      WidgetsFlutterBinding.ensureInitialized();
+      WaydirWidgetsBinding.ensureInitialized();
       fvp.registerWith(
         options: Platform.isLinux
             ? {

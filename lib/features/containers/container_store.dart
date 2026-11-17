@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:signals/signals.dart';
 
 import '../../core/logging/app_logger.dart';
@@ -23,7 +24,10 @@ class ContainerStore {
 
   Future<void> _refresh() async {
     try {
-      distributions.value = await _service.list();
+      final updated = await _service.list();
+      if (!listEquals(distributions.value, updated)) {
+        distributions.value = updated;
+      }
     } catch (e, st) {
       log.warn('containers', 'container refresh failed', error: e, stack: st);
     }

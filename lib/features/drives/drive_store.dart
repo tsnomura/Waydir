@@ -48,7 +48,9 @@ class DriveStore {
   Future<void> _load() async {
     try {
       final updatedDrives = await _service.getDrives();
-      drives.value = updatedDrives;
+      if (!listEquals(drives.value, updatedDrives)) {
+        drives.value = updatedDrives;
+      }
     } catch (e, st) {
       log.warn('drives', 'drive refresh failed', error: e, stack: st);
     }

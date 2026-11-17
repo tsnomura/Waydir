@@ -9,6 +9,7 @@ import '../../core/open/open_service.dart';
 import '../../i18n/strings.g.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_spinner.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_modal.dart';
 import 'dialog.dart';
@@ -139,7 +140,7 @@ class _OpenWithBodyState extends State<_OpenWithBody> {
             if (snap.connectionState != ConnectionState.done) {
               return const SizedBox(
                 height: 160,
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                child: Center(child: AppSpinner(strokeWidth: 2)),
               );
             }
             if (!snap.hasData) {

@@ -2932,3 +2932,63 @@ keys, keys that only work inside the Quick Look window, numbered tab and
 bookmark jumps.
 
 Relevant commit: `e614189`.
+
+## UI responsiveness, locally and over xpra
+
+### List and tree view: no per-frame pass over every file
+
+Every rebuild of the list (each cursor move, mark, hover-driven drag
+state, folder-size tick) walked the whole folder several times: formatting
+every file's size/date/kind to find the widest cell per column, summing the
+largest item for size bars, mapping marks to scrollbar ticks, scanning the
+decorations for a badge, and in tree view copying the row list (the copy
+also ran on every scroll tick and pointer hit test). Cost grew with the
+folder: in a debug-mode widget benchmark one cursor move took 46 ms with
+5 000 files and 380 ms with 50 000.
+
+These results are now cached in `_FileListState` (`_Memo`) and recomputed
+only when their inputs change (the file list, visible columns, date format,
+folder sizes, marks, decorations, text style). The same benchmark is ~5 ms
+at any folder size. Relative dates ("5 minutes ago") re-measure at most
+once a minute. The scrollbar mark ticks sit behind a `RepaintBoundary` and
+adjacent ticks are drawn as one rectangle, so scrolling with tens of
+thousands of marks no longer redraws each tick per frame. Grid view was
+already independent of folder size.
+
+### Fewer frames when idle and under Reduce motion
+
+Each frame is cheap on a local GPU but expensive over xpra (software GL
+plus encoding and sending the window), so the remote-display work is about
+producing fewer frames.
+
+- Reduce motion now reaches every framework animation, not just the popup
+  fade and Quick Look: `WaydirWidgetsBinding` (installed in `main.dart`)
+  overrides `SemanticsBinding.disableAnimations`, which makes
+  `AnimationController`s run at 5% of their duration. Dialog transitions,
+  toasts, notifications, tooltips and implicit animations finish in a frame
+  or two.
+- Scrolling the cursor into view (list, tree, grid) and PageUp/PageDown in
+  Quick Look jump instead of animating under Reduce motion. A held arrow
+  key then costs 2–3 frames per step instead of an 80 ms animation each.
+- Indeterminate spinners (`AppSpinner`: folder loading, search, checksum,
+  tree expansion, Open With, Quick Look) advance four times a second under
+  Reduce motion instead of repainting at the display rate for as long as
+  the work runs.
+- With the setting on "System default", Reduce motion also turns on when
+  the display looks remote on Linux: an `XPRA_*` environment variable, or a
+  `DISPLAY` with a host part (`localhost:10.0`). The xpra variable check is
+  a guess at what the server exports and wasn't verified against a real
+  session; setting Reduce motion to On is the reliable switch, and Off
+  overrides the detection.
+- The 3 s drive probe, the 10 s bookmark presence check and the 8 s WSL
+  list assigned a new list on every tick, which rebuilt the sidebar and
+  produced a frame even when nothing had changed. They now only publish
+  changes, so an idle window stays idle.
+
+Not done: the mouse hover highlight still repaints a row per pointer
+move, and operation progress bars with an unknown total still animate.
+Flutter's software renderer (`FLUTTER_LINUX_RENDERER=software`) is an
+untested option for hosts where GL is llvmpipe.
+
+Tests: `test/unit/files/file_list_responsiveness_test.dart`,
+`test/unit/ui/motion_test.dart`.

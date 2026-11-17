@@ -90,6 +90,7 @@ import '../ui/overlays/notification_store.dart';
 import '../ui/overlays/toast.dart';
 import '../ui/theme/app_theme.dart';
 import '../ui/theme/app_text_styles.dart';
+import '../ui/widgets/app_spinner.dart';
 import '../ui/window/cursor_position.dart';
 import '../ui/window/window.dart';
 
@@ -426,7 +427,7 @@ class _WaydirShellState extends State<WaydirShell>
                             child: SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
+                              child: AppSpinner(
                                 strokeWidth: 2,
                                 color: AppColors.fgMuted,
                               ),
