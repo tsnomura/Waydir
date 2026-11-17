@@ -2970,6 +2970,18 @@ cursor instead of the list's build. In the debug-mode benchmark a cursor
 move went from 4.6 ms to 1.2 ms in the list and from 9.5 ms to 2.0 ms in
 the grid. Tests construct a view with `FileListSelection.fixed(...)`.
 
+### `visibleFiles` no longer writes state while computing
+
+The `visibleFiles` computed stored its own result in
+`_previousBrowseOrder` / `_previousSearchOrder` (the order ties fall back
+to after a sort change) as it ran. That write now happens in an effect
+that observes the list, so evaluating the computed has no side effect.
+Behaviour is unchanged; `test/integration/navigation/sort_tie_order_test.dart`
+pins the tie order. The effects that defer a signal write with
+`scheduleMicrotask` (ghost marks, size bars, tree loading, compare
+restart) were reviewed and left alone: writing in the effect itself would
+re-enter it, and none of them showed a defect.
+
 ### Fewer frames when idle and under Reduce motion
 
 Each frame is cheap on a local GPU but expensive over xpra (software GL
