@@ -16,6 +16,7 @@ import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/theme/motion.dart';
+import '../../utils/cancel_token.dart';
 import '../../utils/drag_drop.dart';
 import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
@@ -1060,7 +1061,7 @@ class _GridPreview extends StatelessWidget {
               entry: entry,
               thumbSize: thumbSize,
               fallback: fallbackIcon,
-              resolve: RemoteThumbnailCache.fetch,
+              resolve: _remoteThumbnail,
             )
           : _ImageThumbnail(entry: entry, thumbSize: thumbSize);
     }
@@ -1081,7 +1082,7 @@ class _GridPreview extends StatelessWidget {
         entry: entry,
         thumbSize: thumbSize,
         fallback: fallbackIcon,
-        resolve: PdfThumbnailCache.thumbnail,
+        resolve: _pdfThumbnail,
       );
     }
 
@@ -1089,8 +1090,14 @@ class _GridPreview extends StatelessWidget {
   }
 }
 
-Future<String?> _generatorThumbnail(FileEntry entry) =>
-    GeneratorRunner.thumbnail(entry);
+Future<String?> _generatorThumbnail(FileEntry entry, CancelToken cancel) =>
+    GeneratorRunner.thumbnail(entry, cancel: cancel);
+
+Future<String?> _pdfThumbnail(FileEntry entry, CancelToken cancel) =>
+    PdfThumbnailCache.thumbnail(entry, cancel: cancel);
+
+Future<String?> _remoteThumbnail(FileEntry entry, CancelToken cancel) =>
+    RemoteThumbnailCache.fetch(entry);
 
 class _ImageThumbnail extends StatelessWidget {
   final FileEntry entry;
@@ -1134,7 +1141,7 @@ class _ResolvedThumbnail extends StatefulWidget {
   final FileEntry entry;
   final double thumbSize;
   final Widget fallback;
-  final Future<String?> Function(FileEntry entry) resolve;
+  final Future<String?> Function(FileEntry entry, CancelToken cancel) resolve;
 
   const _ResolvedThumbnail({
     required this.entry,
@@ -1152,6 +1159,7 @@ class _ResolvedThumbnailState extends State<_ResolvedThumbnail> {
   Timer? _settleTimer;
   String? _path;
   int _gen = 0;
+  CancelToken? _cancel;
 
   @override
   void initState() {
@@ -1176,12 +1184,15 @@ class _ResolvedThumbnailState extends State<_ResolvedThumbnail> {
 
   void _startGeneration() {
     _settleTimer?.cancel();
+    _cancel?.cancel();
+    _cancel = null;
     final gen = ++_gen;
     _settleTimer = Timer(_kResolvedThumbnailSettleDelay, () => _generate(gen));
   }
 
   Future<void> _generate(int gen) async {
-    final path = await widget.resolve(widget.entry);
+    final cancel = _cancel = CancelToken();
+    final path = await widget.resolve(widget.entry, cancel);
     if (_disposed || !mounted || gen != _gen) return;
     setState(() => _path = path);
   }
@@ -1190,6 +1201,7 @@ class _ResolvedThumbnailState extends State<_ResolvedThumbnail> {
   void dispose() {
     _disposed = true;
     _settleTimer?.cancel();
+    _cancel?.cancel();
     super.dispose();
   }
 
