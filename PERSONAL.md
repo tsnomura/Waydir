@@ -3057,6 +3057,20 @@ Flutter's software renderer skips GL. Launch with
 FLUTTER_LINUX_RENDERER=software waydir
 ```
 
+To make it the default on one host, replace the `~/bin/waydir` symlink
+with a launcher script. `scripts/build_and_install_linux.sh` keeps a
+regular file there and only refreshes the symlink, and the `.desktop`
+entry it writes runs `~/bin/waydir`, so both pick the script up:
+
+```sh
+#!/bin/sh
+export FLUTTER_LINUX_RENDERER="${FLUTTER_LINUX_RENDERER-software}"
+exec "$HOME/.local/share/waydir/waydir" "$@"
+```
+
+`FLUTTER_LINUX_RENDERER= waydir` (set but empty) goes back to the default
+renderer for one launch.
+
 The software renderer cannot draw Impeller's text, so the Linux runner
 (`linux/runner/my_application.cc`) turns Impeller off when that variable is
 set. Without this, the app aborted on the first frame
