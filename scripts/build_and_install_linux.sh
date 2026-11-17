@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the Linux release bundle (with the personal version info shown in
 # About) and installs it to ~/.local/share/waydir, symlinked from
-# ~/bin/waydir. Rebuilds the native waydir_core first if it is missing.
+# ~/bin/waydir (a launcher script already there is kept). Rebuilds the
+# native waydir_core first if it is missing.
 # Uses whichever flutter is on PATH. Prints every command it runs.
 set -euxo pipefail
 
@@ -32,7 +33,11 @@ else
 fi
 
 mkdir -p "$HOME/bin"
-ln -sf "$dest/waydir" "$HOME/bin/waydir"
+if [ -L "$HOME/bin/waydir" ] || [ ! -e "$HOME/bin/waydir" ]; then
+  ln -sf "$dest/waydir" "$HOME/bin/waydir"
+else
+  echo "keeping the existing launcher script $HOME/bin/waydir"
+fi
 
 # A dev install otherwise has no .desktop file, so the window manager has
 # nothing to resolve _NET_WM_ICON from and shows a generic taskbar icon.

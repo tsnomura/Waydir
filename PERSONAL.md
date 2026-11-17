@@ -3041,8 +3041,59 @@ producing fewer frames.
 
 Not done: the mouse hover highlight still repaints a row per pointer
 move, and operation progress bars with an unknown total still animate.
-Flutter's software renderer (`FLUTTER_LINUX_RENDERER=software`) is an
-untested option for hosts where GL is llvmpipe.
+
+### Software renderer over xpra
+
+Over xpra with VirtualGL (`vglrun`), most of a frame's cost is outside
+Flutter: GDK switches GL contexts while compositing the Flutter view, and
+each switch goes through VirtualGL's faker into the NVIDIA EGL driver.
+Frames end up about 200–500 ms apart however small the window is, so a
+held arrow key shows a few frames per second and lags behind the input.
+
+Flutter's software renderer skips GL. Launch with
+`FLUTTER_LINUX_RENDERER=software` and without `vglrun`:
+
+```sh
+FLUTTER_LINUX_RENDERER=software waydir
+```
+
+To make it the default on one host, replace the `~/bin/waydir` symlink
+with a launcher script. `scripts/build_and_install_linux.sh` keeps a
+regular file there and only refreshes the symlink, and the `.desktop`
+entry it writes runs `~/bin/waydir`, so both pick the script up:
+
+```sh
+#!/bin/sh
+export FLUTTER_LINUX_RENDERER="${FLUTTER_LINUX_RENDERER-software}"
+exec "$HOME/.local/share/waydir/waydir" "$@"
+```
+
+`FLUTTER_LINUX_RENDERER= waydir` (set but empty) goes back to the default
+renderer for one launch.
+
+The software renderer cannot draw Impeller's text, so the Linux runner
+(`linux/runner/my_application.cc`) turns Impeller off when that variable is
+set. Without this, the app aborted on the first frame
+(`Impeller DlText cannot be drawn to a Skia canvas`), and release builds
+ignore the `FLUTTER_ENGINE_SWITCHES` way of turning it off.
+
+Measured on xpra (20 000-file folder, 1920×1181 window, Reduce motion on,
+three runs each, profile builds):
+
+| | ↓ ×100, frames | ↓ frame gap | PageDown ×20, frames | PageDown frame gap |
+|---|---|---|---|---|
+| `vglrun`, Impeller GL | 13–17 | 270–280 ms | 16–25 | 280–490 ms |
+| software renderer | 86–142 | 20–80 ms | 56–58 | 80–150 ms |
+
+With the software renderer the last frame lands when the input stops; with
+`vglrun` it trails by 0.3–1.2 s. The process uses about 1.5–2× the CPU
+time, spread over the raster thread. Without `vglrun` and with the default
+renderer (Mesa llvmpipe), frames rasterize in about 280 ms each on many
+cores (around 300% CPU).
+
+Flutter warns that not every feature works with the software renderer.
+The file list, sidebar, Quick Look with generator frames and the image
+info pane draw correctly; in-app video playback was not checked.
 
 Tests: `test/unit/files/file_list_responsiveness_test.dart`,
 `test/unit/ui/motion_test.dart`.
