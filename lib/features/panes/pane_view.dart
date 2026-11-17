@@ -31,6 +31,7 @@ import '../tabs/tab_strip.dart';
 import '../../ui/icons/waydir_icons.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/theme/app_text_styles.dart';
+import '../../ui/widgets/app_spinner.dart';
 import '../../ui/widgets/app_close_button.dart';
 import '../../i18n/strings.g.dart';
 import 'pane_store.dart';
@@ -280,10 +281,7 @@ class _TabContent extends StatelessWidget {
             child: SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.fgMuted,
-              ),
+              child: AppSpinner(strokeWidth: 2, color: AppColors.fgMuted),
             ),
           );
         }

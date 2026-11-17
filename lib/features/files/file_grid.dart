@@ -324,14 +324,19 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
           ? bottom - viewport
           : current;
       if (target == current) return;
-      _scrollController.animateTo(
-        target.clamp(
-          _scrollController.position.minScrollExtent,
-          _scrollController.position.maxScrollExtent,
-        ),
-        duration: const Duration(milliseconds: 80),
-        curve: Curves.easeOut,
+      final clamped = target.clamp(
+        _scrollController.position.minScrollExtent,
+        _scrollController.position.maxScrollExtent,
       );
+      if (context.reduceMotion) {
+        _scrollController.jumpTo(clamped);
+      } else {
+        _scrollController.animateTo(
+          clamped,
+          duration: const Duration(milliseconds: 80),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 

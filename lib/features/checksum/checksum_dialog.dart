@@ -9,6 +9,7 @@ import '../../ui/dialogs/dialog.dart';
 import '../../ui/icons/waydir_icons.dart';
 import '../../ui/theme/app_text_styles.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/app_spinner.dart';
 import '../../ui/widgets/app_modal.dart';
 import '../../ui/widgets/app_text_field.dart';
 import '../../ui/widgets/app_toggle_chip.dart';
@@ -210,10 +211,7 @@ class _ChecksumDialogState extends State<_ChecksumDialog> {
                   SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.fgMuted,
-                    ),
+                    child: AppSpinner(strokeWidth: 2, color: AppColors.fgMuted),
                   ),
                   const SizedBox(width: 10),
                   Text(t.checksum.calculating, style: context.txt.muted),

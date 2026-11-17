@@ -15,6 +15,7 @@ import '../../core/settings/settings_store.dart';
 import '../../i18n/strings.g.dart';
 import '../../ui/overlays/toast.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/theme/motion.dart';
 import '../../ui/window/window.dart';
 import 'code_editor.dart';
 import 'generators/generator_page_controller.dart';
@@ -235,11 +236,15 @@ class _QuickLookWindowState extends State<QuickLookWindow>
         position.minScrollExtent,
         position.maxScrollExtent,
       );
-      _contentScroll.animateTo(
-        target,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-      );
+      if (context.reduceMotion) {
+        _contentScroll.jumpTo(target);
+      } else {
+        _contentScroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      }
     }
 
     return KeyEventResult.handled;

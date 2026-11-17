@@ -303,11 +303,15 @@ class _QuickLookState extends State<_QuickLook>
         position.minScrollExtent,
         position.maxScrollExtent,
       );
-      _contentScroll.animateTo(
-        target,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-      );
+      if (context.reduceMotion) {
+        _contentScroll.jumpTo(target);
+      } else {
+        _contentScroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      }
     }
 
     return KeyEventResult.handled;
