@@ -10,7 +10,10 @@ class FolderSizeScanner {
   final progress = signal<Map<String, int>>({});
   final computing = signal<Set<String>>({});
 
+  static const _maxSessions = 4;
+
   final _sessions = <String, int>{};
+  final _pending = <String>[];
   Timer? _timer;
 
   late final displaySizes = computed<Map<String, int>>(() {
@@ -22,8 +25,22 @@ class FolderSizeScanner {
   });
 
   void scan(Iterable<String> paths) {
-    for (final path in paths) {
-      if (_sessions.containsKey(path)) continue;
+    final queued = <String>[
+      for (final path in paths)
+        if (!_sessions.containsKey(path) && !_pending.contains(path)) path,
+    ];
+    if (queued.isEmpty) return;
+    _pending.addAll(queued);
+    computing.value = {...computing.value, ...queued};
+    _startPending();
+    _ensureTimer();
+  }
+
+  void _startPending() {
+    final started = <String>[];
+    final failed = <String>[];
+    while (_pending.isNotEmpty && _sessions.length < _maxSessions) {
+      final path = _pending.removeAt(0);
       int? session;
       try {
         session = WaydirCoreLoader.folderScanStart(path);
@@ -36,12 +53,19 @@ class FolderSizeScanner {
         );
         session = null;
       }
-      if (session == null) continue;
+      if (session == null) {
+        failed.add(path);
+        continue;
+      }
       _sessions[path] = session;
-      computing.value = {...computing.value, path};
-      progress.value = {...progress.value, path: 0};
+      started.add(path);
     }
-    _ensureTimer();
+    if (failed.isNotEmpty) {
+      computing.value = computing.value.difference(failed.toSet());
+    }
+    if (started.isNotEmpty) {
+      progress.value = {...progress.value, for (final path in started) path: 0};
+    }
   }
 
   void _ensureTimer() {
@@ -104,6 +128,7 @@ class FolderSizeScanner {
       sizes.value = sizesNext;
       computing.value = computingNext;
     });
+    _startPending();
     _ensureTimer();
   }
 
@@ -124,6 +149,7 @@ class FolderSizeScanner {
       }
     }
     _sessions.clear();
+    _pending.clear();
     if (sizes.value.isEmpty &&
         progress.value.isEmpty &&
         computing.value.isEmpty) {

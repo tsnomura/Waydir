@@ -82,6 +82,7 @@ mixin _WaydirCommandPaletteMixin
         store.computeSelectedFolderSizes,
         enabled: hasTarget,
       ),
+      _cmd('toggle_size_bars', store.toggleSizeBars),
       _cmd(
         'properties',
         () => _openPropertiesFromMenu(store),

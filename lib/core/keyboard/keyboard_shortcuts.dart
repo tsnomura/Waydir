@@ -821,6 +821,14 @@ class AppShortcuts {
       alt: true,
     ),
     ShortcutDef(
+      id: 'toggle_size_bars',
+      label: () => '',
+      group: ShortcutGroup.selection,
+      key: LogicalKeyboardKey.keyS,
+      alt: true,
+      shift: true,
+    ),
+    ShortcutDef(
       id: 'search',
       label: () => '',
       group: ShortcutGroup.search,

@@ -1174,6 +1174,9 @@ class Translations$keybindings$en {
 	/// en: 'Calculate folder size'
 	String get computeFolderSize => 'Calculate folder size';
 
+	/// en: 'Toggle size bars'
+	String get toggleSizeBars => 'Toggle size bars';
+
 	/// en: 'Search'
 	String get search => 'Search';
 
@@ -5349,6 +5352,7 @@ extension on Translations {
 			'keybindings.saveSelection' => 'Save selection to file',
 			'keybindings.loadSelection' => 'Load selection from file',
 			'keybindings.computeFolderSize' => 'Calculate folder size',
+			'keybindings.toggleSizeBars' => 'Toggle size bars',
 			'keybindings.search' => 'Search',
 			'keybindings.recursiveSearch' => 'Recursive search',
 			'keybindings.closeSearch' => 'Close search',
@@ -5686,9 +5690,9 @@ extension on Translations {
 			'dialog.confirmMoveTitle' => 'Move items?',
 			'dialog.confirmMoveSingle' => ({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?',
 			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
-			'password.authenticationRequired' => 'Authentication Required',
 			_ => null,
 		} ?? switch (path) {
+			'password.authenticationRequired' => 'Authentication Required',
 			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',
 			'password.archivePrompt' => 'This archive is password-protected.',

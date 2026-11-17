@@ -268,6 +268,7 @@ class FileList extends StatefulWidget {
   final void Function(SortKey key)? onSortColumn;
   final ValueChanged<int>? onPageRows;
   final Map<String, int> folderSizes;
+  final bool sizeBars;
   final Map<String, RowDecoration> rowDecorations;
   final bool showStatusColumn;
   final bool cursorTooltips;
@@ -281,6 +282,7 @@ class FileList extends StatefulWidget {
     required this.currentPath,
     this.scrollLink,
     this.folderSizes = const {},
+    this.sizeBars = false,
     this.rowDecorations = const {},
     this.showStatusColumn = false,
     this.cursorTooltips = false,
@@ -341,6 +343,7 @@ class FileTree extends StatelessWidget {
   final void Function(SortKey key)? onSortColumn;
   final ValueChanged<int>? onPageRows;
   final Map<String, int> folderSizes;
+  final bool sizeBars;
   final Map<String, RowDecoration> rowDecorations;
   final bool showStatusColumn;
   final bool cursorTooltips;
@@ -357,6 +360,7 @@ class FileTree extends StatelessWidget {
     required this.onOpen,
     required this.onToggleFolder,
     this.folderSizes = const {},
+    this.sizeBars = false,
     this.rowDecorations = const {},
     this.showStatusColumn = false,
     this.cursorTooltips = false,
@@ -414,6 +418,7 @@ class FileTree extends StatelessWidget {
       onSortColumn: onSortColumn,
       onPageRows: onPageRows,
       folderSizes: folderSizes,
+      sizeBars: sizeBars,
       rowDecorations: rowDecorations,
       showStatusColumn: showStatusColumn,
       cursorTooltips: cursorTooltips,
@@ -481,6 +486,10 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
         if (selected.contains(files[i].path)) (i + 0.5) / files.length,
     ];
   }
+
+  int _itemSize(FileEntry e) => e.type == FileItemType.folder
+      ? widget.folderSizes[e.realPath] ?? 0
+      : e.size;
 
   double _measureWidth(String text, TextStyle style) {
     if (text.isEmpty) return 0;
@@ -814,6 +823,9 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
           SettingsStore.instance.columnWidths.value,
         );
         final recursive = widget.recursiveResults;
+        final maxItemSize = widget.sizeBars
+            ? displayFiles.fold<int>(0, (max, e) => math.max(max, _itemSize(e)))
+            : 0;
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -1092,6 +1104,12 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                                     widget
                                                         .folderSizes[displayFiles[i]
                                                         .realPath],
+                                                sizeFraction: maxItemSize == 0
+                                                    ? 0
+                                                    : _itemSize(
+                                                            displayFiles[i],
+                                                          ) /
+                                                          maxItemSize,
                                                 rowDecoration:
                                                     widget
                                                         .rowDecorations[displayFiles[i]
@@ -1753,6 +1771,7 @@ class _ListRow extends StatefulWidget {
   final OpenInNewTabCallback? onOpenInNewTab;
   final OpenInNewTabCallback? onOpenInOtherPaneNewTab;
   final int? folderSize;
+  final double sizeFraction;
   final RowDecoration? rowDecoration;
   final bool showStatus;
   final bool treeMode;
@@ -1765,6 +1784,7 @@ class _ListRow extends StatefulWidget {
     required this.entry,
     required this.index,
     this.folderSize,
+    this.sizeFraction = 0,
     this.rowDecoration,
     required this.selected,
     this.isCursor = false,
@@ -1929,6 +1949,18 @@ class _ListRowState extends State<_ListRow> {
     if (widget.isCursor) return 1;
 
     return 0;
+  }
+
+  Gradient? get _sizeBar {
+    final fraction = widget.sizeFraction.clamp(0.0, 1.0);
+    if (fraction <= 0) return null;
+    final bg = _bg;
+    final bar = Color.alphaBlend(AppColors.accent.withValues(alpha: 0.22), bg);
+
+    return LinearGradient(
+      colors: [bar, bar, bg, bg],
+      stops: [0, fraction, fraction, 1],
+    );
   }
 
   BoxBorder? get _border {
@@ -2369,7 +2401,8 @@ class _ListRowState extends State<_ListRow> {
             right: _kRowPaddingRight - _rightBorderWidth,
           ),
           decoration: BoxDecoration(
-            color: _bg,
+            color: _sizeBar == null ? _bg : null,
+            gradient: _sizeBar,
             borderRadius: widget.isFolderDragOver ? BorderRadius.zero : null,
             border: _border,
           ),

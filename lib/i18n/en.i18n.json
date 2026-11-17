@@ -838,6 +838,7 @@
     "saveSelection": "Save selection to file",
     "loadSelection": "Load selection from file",
     "computeFolderSize": "Calculate folder size",
+    "toggleSizeBars": "Toggle size bars",
     "search": "Search",
     "recursiveSearch": "Recursive search",
     "closeSearch": "Close search",
