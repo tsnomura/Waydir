@@ -3012,6 +3012,16 @@ producing fewer frames.
   produced a frame even when nothing had changed. They now only publish
   changes, so an idle window stays idle.
 
+- Those three polls also follow the window state (`AppActivity` /
+  `ActivityPoller` in `lib/core/platform/app_activity.dart`, fed by the
+  app lifecycle): every interval while the window is focused, every fifth
+  interval while it is visible but unfocused, not at all while it is
+  minimized, and once immediately when it gets the focus back. A drive
+  plugged in while Waydir is unfocused therefore shows up after up to 15 s
+  instead of 3 s. They are still polls: OS notifications (Windows device
+  change messages, Linux mount monitoring) need native code per platform
+  and were left for later.
+
 Not done: the mouse hover highlight still repaints a row per pointer
 move, and operation progress bars with an unknown total still animate.
 Flutter's software renderer (`FLUTTER_LINUX_RENDERER=software`) is an
