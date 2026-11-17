@@ -72,6 +72,9 @@ static void my_application_activate(GApplication* application) {
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project, self->dart_entrypoint_arguments);
+  if (g_strcmp0(g_getenv("FLUTTER_LINUX_RENDERER"), "software") == 0) {
+    fl_dart_project_set_enable_impeller(project, FALSE);
+  }
 
   FlView* view = fl_view_new(project);
   GdkRGBA background_color;
