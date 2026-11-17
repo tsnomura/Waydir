@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:waydir/core/models/file_entry.dart';
 import 'package:waydir/core/settings/settings_store.dart';
+import 'package:waydir/features/files/file_list_selection.dart';
 import 'package:waydir/features/files/file_view.dart';
 import 'package:waydir/features/files/scroll_link.dart';
 import 'package:waydir/ui/theme/app_theme.dart';
@@ -33,7 +34,7 @@ void main() {
             files: files,
             currentPath: path,
             scrollLink: link,
-            cursorIndex: cursor,
+            selection: FileListSelection.fixed(cursorIndex: cursor),
             onSelect: (_) {},
             onOpen: (_) {},
           ),

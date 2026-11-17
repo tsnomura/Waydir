@@ -2955,6 +2955,21 @@ adjacent ticks are drawn as one rectangle, so scrolling with tens of
 thousands of marks no longer redraws each tick per frame. Grid view was
 already independent of folder size.
 
+### Cursor and marks rebuild only the rows they touch
+
+`_TabContent` used to read the cursor and the marks in the same
+`SignalBuilder` as everything else and pass them to the view as plain
+values, so each cursor move rebuilt the list widget and every visible row.
+The views now take a `FileListSelection` (`NavigationStore.selection`,
+`lib/features/files/file_list_selection.dart`) holding the two signals.
+Each row or tile subscribes to its own `cursorAt(index)` /
+`marked(path)`, so a cursor move rebuilds the two rows involved and a mark
+change the rows whose mark flipped; the scrollbar mark ticks subscribe
+separately. Scrolling the cursor into view is driven by an effect on the
+cursor instead of the list's build. In the debug-mode benchmark a cursor
+move went from 4.6 ms to 1.2 ms in the list and from 9.5 ms to 2.0 ms in
+the grid. Tests construct a view with `FileListSelection.fixed(...)`.
+
 ### Fewer frames when idle and under Reduce motion
 
 Each frame is cheap on a local GPU but expensive over xpra (software GL

@@ -25,6 +25,7 @@ import '../quick_look/generators/generator_registry.dart';
 import '../quick_look/generators/generator_runner.dart';
 import 'cursor_tooltip.dart';
 import 'file_icons.dart';
+import 'file_list_selection.dart';
 import 'path_ellipsis.dart';
 import 'pdf_thumbnail_cache.dart';
 import 'pointer_hover_store.dart';
@@ -89,8 +90,7 @@ class FileGrid extends StatefulWidget {
   final BackgroundContextMenuCallback? onBackgroundContextMenu;
   final FileContextMenuCallback? onContextMenu;
   final FileDropCallback? onDropFiles;
-  final Set<String> selectedPaths;
-  final int cursorIndex;
+  final FileListSelection? selection;
   final Set<String> cutPaths;
   final String? renamingPath;
   final int renameAttempt;
@@ -119,8 +119,7 @@ class FileGrid extends StatefulWidget {
     this.onBackgroundContextMenu,
     this.onContextMenu,
     this.onDropFiles,
-    this.selectedPaths = const {},
-    this.cursorIndex = -1,
+    this.selection,
     this.cutPaths = const {},
     this.renamingPath,
     this.renameAttempt = 0,
@@ -162,6 +161,35 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
     super.initState();
     initScrollLink();
     _scrollController.addListener(_reportCursorRow);
+    _watchCursor();
+  }
+
+  FileListSelection get _selection =>
+      widget.selection ?? FileListSelection.none;
+
+  void Function()? _cursorDisposer;
+
+  void _watchCursor() {
+    _cursorDisposer?.call();
+    var first = true;
+    _cursorDisposer = effect(() {
+      _selection.cursorIndex.value;
+      if (first) {
+        first = false;
+
+        return;
+      }
+      untracked(_onCursorMoved);
+    });
+  }
+
+  void _onCursorMoved() {
+    if (!mounted) return;
+    _revealSelectedTile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _reportCursorRow();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   String? _lastRevealedKey;
@@ -182,14 +210,17 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
     if (oldWidget.currentPath != widget.currentPath) {
       switchScrollMemory('grid|${oldWidget.currentPath}');
     }
-    if (oldWidget.cursorIndex != widget.cursorIndex ||
-        oldWidget.files != widget.files) {
+    if (!identical(oldWidget.selection, widget.selection)) {
+      _watchCursor();
+      _revealSelectedTile();
+    } else if (oldWidget.files != widget.files) {
       _revealSelectedTile();
     }
   }
 
   @override
   void dispose() {
+    _cursorDisposer?.call();
     disposeScrollLink();
     _scrollController.removeListener(_reportCursorRow);
     _scrollController.dispose();
@@ -255,7 +286,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
   double get _rowExtent => _tileHeight + _mainAxisGap;
 
   double? _cursorTileTop() {
-    final index = widget.cursorIndex;
+    final index = _selection.cursorIndex.peek();
     if (index < 0 || index >= widget.files.length || _lastColumns <= 0) {
       return null;
     }
@@ -279,7 +310,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
       if (index >= 0) return index;
     }
 
-    return widget.cursorIndex;
+    return _selection.cursorIndex.peek();
   }
 
   void _revealSelectedTile() {
@@ -453,7 +484,7 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                     rowAt: (localPosition) => _indexAt(localPosition, columns),
                     pathsInRect: (rect) => _pathsInRect(rect, columns),
                     onSelectionChanged: widget.onRectSelect,
-                    currentSelection: () => widget.selectedPaths,
+                    currentSelection: _selection.selectedPaths.peek,
                     onBackgroundTap: widget.onBackgroundTap,
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
@@ -490,10 +521,8 @@ class _FileGridState extends State<FileGrid> with ScrollLinkBinding {
                             nameBlock: _gridNameBlock(compact),
                             captionGap: _gridCaptionGap(compact),
                             captionBlock: _gridCaptionBlock(compact),
-                            selected: widget.selectedPaths.contains(entry.path),
-                            isCursor: index == widget.cursorIndex,
+                            selection: _selection,
                             cursorTooltips: widget.cursorTooltips,
-                            selectedPaths: widget.selectedPaths,
                             rowDecoration:
                                 widget.rowDecorations[entry.path] ??
                                 widget.rowDecorations[entry.realPath],
@@ -560,10 +589,8 @@ class _GridTile extends StatefulWidget {
   final double nameBlock;
   final double captionGap;
   final double captionBlock;
-  final bool selected;
-  final bool isCursor;
+  final FileListSelection selection;
   final bool cursorTooltips;
-  final Set<String> selectedPaths;
   final RowDecoration? rowDecoration;
   final bool isCut;
   final bool isFolderDragOver;
@@ -588,10 +615,8 @@ class _GridTile extends StatefulWidget {
     required this.nameBlock,
     required this.captionGap,
     required this.captionBlock,
-    required this.selected,
-    this.isCursor = false,
+    required this.selection,
     this.cursorTooltips = false,
-    required this.selectedPaths,
     this.rowDecoration,
     required this.isCut,
     required this.isFolderDragOver,
@@ -618,6 +643,10 @@ class _GridTileState extends State<_GridTile> {
   TextEditingController? _renameController;
   FocusNode? _renameFocusNode;
   bool _renameCommitted = false;
+  late ReadonlySignal<bool> _isCursor = widget.selection.cursorAt(widget.index);
+  late ReadonlySignal<bool> _isSelected = widget.selection.marked(
+    widget.entry.path,
+  );
 
   @override
   void initState() {
@@ -628,6 +657,13 @@ class _GridTileState extends State<_GridTile> {
   @override
   void didUpdateWidget(covariant _GridTile oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final selectionChanged = !identical(oldWidget.selection, widget.selection);
+    if (selectionChanged || oldWidget.index != widget.index) {
+      _isCursor = widget.selection.cursorAt(widget.index);
+    }
+    if (selectionChanged || oldWidget.entry.path != widget.entry.path) {
+      _isSelected = widget.selection.marked(widget.entry.path);
+    }
     if (widget.isRenaming && !oldWidget.isRenaming) {
       _initRenameFields();
     } else if (!widget.isRenaming && oldWidget.isRenaming) {
@@ -723,8 +759,8 @@ class _GridTileState extends State<_GridTile> {
   }
 
   List<String> _pathsToDrag() {
-    final selectedPaths = widget.selectedPaths.toList();
-    if (widget.selected && selectedPaths.isNotEmpty) return selectedPaths;
+    final selectedPaths = widget.selection.selectedPaths.peek().toList();
+    if (_isSelected.value && selectedPaths.isNotEmpty) return selectedPaths;
 
     return [widget.entry.path];
   }
@@ -805,7 +841,7 @@ class _GridTileState extends State<_GridTile> {
 
   Widget _build(BuildContext context) {
     final entry = widget.entry;
-    final selected = widget.selected;
+    final selected = _isSelected.value;
     final scale = widget.scale;
     final thumbSize = widget.thumbSize;
     final nameStyle = context.txt.row.copyWith(
@@ -820,7 +856,7 @@ class _GridTileState extends State<_GridTile> {
     final tint = widget.rowDecoration?.badge == null
         ? widget.rowDecoration?.tint
         : null;
-    final isCursor = widget.isCursor;
+    final isCursor = _isCursor.value;
     final bg = widget.isFolderDragOver
         ? AppColors.accent.withValues(alpha: 0.12)
         : selected
@@ -957,7 +993,7 @@ class _GridTileState extends State<_GridTile> {
                           child: _GridTileName(
                             name: entry.name,
                             showForCursor:
-                                widget.isCursor && widget.cursorTooltips,
+                                _isCursor.value && widget.cursorTooltips,
                             style: entry.isGhost
                                 ? nameStyle.copyWith(
                                     color: AppColors.fgSubtle,

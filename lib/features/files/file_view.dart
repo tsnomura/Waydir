@@ -26,6 +26,7 @@ import '../../utils/format.dart';
 import '../operations/drag_hint.dart';
 import 'cursor_tooltip.dart';
 import 'file_icons.dart';
+import 'file_list_selection.dart';
 import 'path_ellipsis.dart';
 import 'pointer_hover_store.dart';
 import 'row_decorations.dart';
@@ -278,8 +279,7 @@ class FileList extends StatefulWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final FileDropCallback? onDropFiles;
-  final Set<String> selectedPaths;
-  final int cursorIndex;
+  final FileListSelection? selection;
   final Set<String> cutPaths;
   final String? renamingPath;
   final int renameAttempt;
@@ -325,8 +325,7 @@ class FileList extends StatefulWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onDropFiles,
-    this.selectedPaths = const {},
-    this.cursorIndex = -1,
+    this.selection,
     this.cutPaths = const {},
     this.renamingPath,
     this.renameAttempt = 0,
@@ -354,8 +353,7 @@ class FileTree extends StatelessWidget {
   final FileContextMenuCallback? onContextMenu;
   final FileMenuActionCallback? onMenuAction;
   final FileDropCallback? onDropFiles;
-  final Set<String> selectedPaths;
-  final int cursorIndex;
+  final FileListSelection? selection;
   final Set<String> cutPaths;
   final String? renamingPath;
   final int renameAttempt;
@@ -399,8 +397,7 @@ class FileTree extends StatelessWidget {
     this.onContextMenu,
     this.onMenuAction,
     this.onDropFiles,
-    this.selectedPaths = const {},
-    this.cursorIndex = -1,
+    this.selection,
     this.cutPaths = const {},
     this.renamingPath,
     this.renameAttempt = 0,
@@ -429,8 +426,7 @@ class FileTree extends StatelessWidget {
       onContextMenu: onContextMenu,
       onMenuAction: onMenuAction,
       onDropFiles: onDropFiles,
-      selectedPaths: selectedPaths,
-      cursorIndex: cursorIndex,
+      selection: selection,
       cutPaths: cutPaths,
       renamingPath: renamingPath,
       renameAttempt: renameAttempt,
@@ -469,6 +465,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     super.initState();
     initScrollLink();
     _scrollController.addListener(_reportCursorRow);
+    _watchCursor();
   }
 
   @override
@@ -478,6 +475,35 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     if (oldWidget.currentPath != widget.currentPath) {
       switchScrollMemory('list|${oldWidget.currentPath}');
     }
+    if (!identical(oldWidget.selection, widget.selection)) _watchCursor();
+  }
+
+  FileListSelection get _selection =>
+      widget.selection ?? FileListSelection.none;
+
+  void Function()? _cursorDisposer;
+
+  void _watchCursor() {
+    _cursorDisposer?.call();
+    var first = true;
+    _cursorDisposer = effect(() {
+      _selection.cursorIndex.value;
+      if (first) {
+        first = false;
+
+        return;
+      }
+      untracked(_onCursorMoved);
+    });
+  }
+
+  void _onCursorMoved() {
+    if (!mounted) return;
+    _revealSelectedRow();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _reportCursorRow();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   late final _scrollController = ScrollController(
@@ -518,8 +544,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
     ], () => [for (final row in rows) row.entry]);
   }
 
-  List<double> _markFractions(List<FileEntry> files) {
-    final selected = widget.selectedPaths;
+  List<double> _markFractions(List<FileEntry> files, Set<String> selected) {
     if (selected.isEmpty || files.isEmpty) return const [];
 
     return _markFractionsMemo(
@@ -801,7 +826,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
   }
 
   double? _cursorRowTop() {
-    final index = widget.cursorIndex;
+    final index = _selection.cursorIndex.peek();
     if (index < 0 || index >= _displayFiles.length) return null;
 
     return _listTopPadding + index * _itemExt;
@@ -823,7 +848,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
       if (index >= 0) return index;
     }
 
-    return widget.cursorIndex;
+    return _selection.cursorIndex.peek();
   }
 
   void _revealSelectedRow() {
@@ -892,6 +917,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
 
   @override
   void dispose() {
+    _cursorDisposer?.call();
     disposeScrollLink();
     _scrollController.removeListener(_reportCursorRow);
     _scrollController.dispose();
@@ -941,7 +967,6 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
         final maxItemSize = _maxItemSize(displayFiles);
         final maxTreeDepth = _maxTreeDepth();
         final hasStatusBadge = _hasStatusBadge();
-        final marks = _markFractions(displayFiles);
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -1105,7 +1130,7 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                 rowAt: _rowAt,
                                 canStartSelectionAt: _canStartRubberBandAt,
                                 onSelectionChanged: widget.onRectSelect,
-                                currentSelection: () => widget.selectedPaths,
+                                currentSelection: _selection.selectedPaths.peek,
                                 onBackgroundTap: widget.onBackgroundTap,
                                 child: DropRegion(
                                   formats: [Formats.fileUri, formatLocalFile],
@@ -1228,22 +1253,12 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                                                 index: i,
                                                 nameWidth: nameWidth,
                                                 locationWidth: locationWidth,
-                                                selected: widget.selectedPaths
-                                                    .contains(
-                                                      displayFiles[i].path,
-                                                    ),
-                                                isCursor:
-                                                    i == widget.cursorIndex,
+                                                selection: _selection,
                                                 cursorTooltips:
                                                     widget.cursorTooltips,
-                                                selectedPaths:
-                                                    widget.selectedPaths,
                                                 isCut: widget.cutPaths.contains(
                                                   displayFiles[i].path,
                                                 ),
-                                                isDraggingSelected: widget
-                                                    .selectedPaths
-                                                    .isNotEmpty,
                                                 isFolderDragOver:
                                                     _hoveredFolderPath ==
                                                     displayFiles[i].path,
@@ -1321,9 +1336,14 @@ class _FileListState extends State<FileList> with ScrollLinkBinding {
                   right: 0,
                   bottom: 0,
                   width: _kScrollbarGutterWidth,
-                  child: _PinnedVerticalScrollbar(
-                    controller: _scrollController,
-                    marks: marks,
+                  child: SignalBuilder(
+                    builder: (_) => _PinnedVerticalScrollbar(
+                      controller: _scrollController,
+                      marks: _markFractions(
+                        displayFiles,
+                        _selection.selectedPaths.value,
+                      ),
+                    ),
                   ),
                 ),
                 if (displayFiles.isEmpty)
@@ -1851,12 +1871,9 @@ class _ColumnCheckbox extends StatelessWidget {
 class _ListRow extends StatefulWidget {
   final FileEntry entry;
   final int index;
-  final bool selected;
-  final bool isCursor;
+  final FileListSelection selection;
   final bool cursorTooltips;
-  final Set<String> selectedPaths;
   final bool isCut;
-  final bool isDraggingSelected;
   final bool isFolderDragOver;
   final bool isRenaming;
   final int renameAttempt;
@@ -1894,12 +1911,9 @@ class _ListRow extends StatefulWidget {
     this.folderSize,
     this.sizeFraction = 0,
     this.rowDecoration,
-    required this.selected,
-    this.isCursor = false,
+    required this.selection,
     this.cursorTooltips = false,
-    required this.selectedPaths,
     this.isCut = false,
-    this.isDraggingSelected = false,
     this.isFolderDragOver = false,
     this.isRenaming = false,
     this.renameAttempt = 0,
@@ -1941,6 +1955,10 @@ class _ListRowState extends State<_ListRow> {
   TextEditingController? _renameController;
   FocusNode? _renameFocusNode;
   bool _renameCommitted = false;
+  late ReadonlySignal<bool> _isCursor = widget.selection.cursorAt(widget.index);
+  late ReadonlySignal<bool> _isSelected = widget.selection.marked(
+    widget.entry.path,
+  );
 
   @override
   void initState() {
@@ -1951,6 +1969,13 @@ class _ListRowState extends State<_ListRow> {
   @override
   void didUpdateWidget(covariant _ListRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final selectionChanged = !identical(oldWidget.selection, widget.selection);
+    if (selectionChanged || oldWidget.index != widget.index) {
+      _isCursor = widget.selection.cursorAt(widget.index);
+    }
+    if (selectionChanged || oldWidget.entry.path != widget.entry.path) {
+      _isSelected = widget.selection.marked(widget.entry.path);
+    }
     if (widget.isRenaming && !oldWidget.isRenaming) {
       _initRenameFields();
     } else if (!widget.isRenaming && oldWidget.isRenaming) {
@@ -2033,8 +2058,8 @@ class _ListRowState extends State<_ListRow> {
       return AppColors.accent.withValues(alpha: 0.12);
     }
     if (_dragging) return AppColors.accent.withValues(alpha: 0.08);
-    if (widget.selected) return AppColors.bgSelectedMuted;
-    if (widget.isCursor) return AppColors.bgHoverStrong;
+    if (_isSelected.value) return AppColors.bgSelectedMuted;
+    if (_isCursor.value) return AppColors.bgHoverStrong;
     if (_hovered && !PointerHoverStore.instance.suppressed.value) {
       return AppColors.bgHover;
     }
@@ -2047,14 +2072,14 @@ class _ListRowState extends State<_ListRow> {
   }
 
   double get _leftBorderWidth {
-    if (widget.selected) return 2;
-    if (widget.isCursor) return 1;
+    if (_isSelected.value) return 2;
+    if (_isCursor.value) return 1;
 
     return 0;
   }
 
   double get _rightBorderWidth {
-    if (widget.isCursor) return 1;
+    if (_isCursor.value) return 1;
 
     return 0;
   }
@@ -2075,7 +2100,7 @@ class _ListRowState extends State<_ListRow> {
     if (widget.isFolderDragOver) {
       return Border.all(color: AppColors.accent.withValues(alpha: 0.4));
     }
-    if (widget.isCursor) {
+    if (_isCursor.value) {
       final outline = BorderSide(
         color: AppColors.accent.withValues(alpha: 0.7),
       );
@@ -2084,12 +2109,12 @@ class _ListRowState extends State<_ListRow> {
         top: outline,
         right: outline,
         bottom: outline,
-        left: widget.selected
+        left: _isSelected.value
             ? BorderSide(color: AppColors.accent, width: 2)
             : outline,
       );
     }
-    if (widget.selected) {
+    if (_isSelected.value) {
       return Border(left: BorderSide(color: AppColors.accent, width: 2));
     }
 
@@ -2263,7 +2288,9 @@ class _ListRowState extends State<_ListRow> {
   }
 
   Widget _buildDragImage(BuildContext context, Widget child) {
-    final dragCount = widget.selected ? widget.selectedPaths.length : 1;
+    final dragCount = _isSelected.value
+        ? widget.selection.selectedPaths.peek().length
+        : 1;
 
     final e = widget.entry;
 
@@ -2328,8 +2355,8 @@ class _ListRowState extends State<_ListRow> {
   }
 
   List<String> _pathsToDrag() {
-    final selectedPaths = widget.selectedPaths.toList();
-    if (widget.selected && selectedPaths.isNotEmpty) return selectedPaths;
+    final selectedPaths = widget.selection.selectedPaths.peek().toList();
+    if (_isSelected.value && selectedPaths.isNotEmpty) return selectedPaths;
 
     return [widget.entry.path];
   }
@@ -2478,7 +2505,7 @@ class _ListRowState extends State<_ListRow> {
                       padding: const EdgeInsets.only(left: 8),
                       child: _LocationText(
                         widget.location ?? '',
-                        showForCursor: widget.isCursor && widget.cursorTooltips,
+                        showForCursor: _isCursor.value && widget.cursorTooltips,
                       ),
                     ),
                   ),
@@ -2537,10 +2564,10 @@ class _ListRowState extends State<_ListRow> {
                                   decorationColor: AppColors.fgSubtle,
                                 )
                               : context.txt.body.copyWith(
-                                  color: widget.selected
+                                  color: _isSelected.value
                                       ? AppColors.fg
                                       : AppColors.fg.withValues(alpha: 0.9),
-                                  fontWeight: widget.selected
+                                  fontWeight: _isSelected.value
                                       ? FontWeight.w500
                                       : FontWeight.normal,
                                 ),
@@ -2558,7 +2585,7 @@ class _ListRowState extends State<_ListRow> {
                       padding: const EdgeInsets.only(left: 8),
                       child: _LocationText(
                         widget.location ?? '',
-                        showForCursor: widget.isCursor && widget.cursorTooltips,
+                        showForCursor: _isCursor.value && widget.cursorTooltips,
                       ),
                     ),
                   ),
