@@ -8,6 +8,7 @@ import '../../../core/models/file_entry.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../ui/theme/app_theme.dart';
 import '../../../ui/icons/waydir_icons.dart';
+import '../../../utils/cancel_token.dart';
 import '../code_editor.dart';
 import '../quick_look_common.dart';
 import 'generator_def.dart';
@@ -66,7 +67,7 @@ class _GeneratorPreviewBody extends StatefulWidget {
 }
 
 class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
-  bool _disposed = false;
+  var _cancel = CancelToken();
 
   @override
   void initState() {
@@ -75,8 +76,20 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
   }
 
   @override
+  void didUpdateWidget(covariant _GeneratorPreviewBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.realPath != widget.entry.realPath ||
+        oldWidget.entry.modifiedMs != widget.entry.modifiedMs ||
+        oldWidget.entry.size != widget.entry.size) {
+      _cancel.cancel();
+      _cancel = CancelToken();
+      _prefetchRemainingPages();
+    }
+  }
+
+  @override
   void dispose() {
-    _disposed = true;
+    _cancel.cancel();
     super.dispose();
   }
 
@@ -88,10 +101,16 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
   // on-demand for the currently displayed position.
   Future<void> _prefetchRemainingPages() async {
     if (widget.pageCount <= 1) return;
+    final cancel = _cancel;
+    final entry = widget.entry;
     for (var i = 0; i < widget.pageCount; i++) {
-      if (_disposed) return;
-      final path = await GeneratorRunner.preview(widget.entry, position: i);
-      if (path != null) await _warm(path);
+      if (cancel.isCancelled) return;
+      final path = await GeneratorRunner.preview(
+        entry,
+        position: i,
+        cancel: cancel,
+      );
+      if (path != null && !cancel.isCancelled) await _warm(path);
     }
   }
 
@@ -99,6 +118,7 @@ class _GeneratorPreviewBodyState extends State<_GeneratorPreviewBody> {
     final path = await GeneratorRunner.preview(
       widget.entry,
       position: position,
+      cancel: _cancel,
     );
     if (path != null) await _warm(path);
 

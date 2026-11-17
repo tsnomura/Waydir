@@ -11,6 +11,7 @@ import '../../../core/logging/app_logger.dart';
 import '../../../core/models/file_entry.dart';
 import '../../../core/platform/app_dirs.dart';
 import '../../../ui/theme/app_theme.dart';
+import '../../../utils/cancel_token.dart';
 import '../../../utils/concurrency_gate.dart';
 import 'generator_def.dart';
 import 'generator_registry.dart';
@@ -163,7 +164,7 @@ class GeneratorRunner {
   // currently shown can both ask for the same page at once; memoize
   // in-flight requests so they share one run instead of racing to generate
   // and write the same cache file.
-  static final _previewInFlight = <String, Future<String?>>{};
+  static final _previewInFlight = SharedJobs<String?>();
 
   // A page that genuinely failed (bad command/args, no output produced)
   // would otherwise be retried in full every time it's requested again —
@@ -178,11 +179,12 @@ class GeneratorRunner {
     FileEntry entry, {
     int position = 0,
     GeneratorUse use = GeneratorUse.quickLook,
+    CancelToken? cancel,
   }) {
     final def = GeneratorRegistry.instance.forExtension(entry.extension, use);
     if (def == null) return Future.value(null);
 
-    return _generate(entry, def, position, def.args, 'preview');
+    return _generate(entry, def, position, def.args, 'preview', cancel: cancel);
   }
 
   /// The image shown as this file's grid thumbnail. Identical to — and
@@ -190,16 +192,18 @@ class GeneratorRunner {
   /// sets `thumbnailArgs`, in which case that command runs instead. Always a
   /// single static image: the grid never pages, regardless of
   /// [GeneratorDef.pagingMode].
-  static Future<String?> thumbnail(FileEntry entry) {
+  static Future<String?> thumbnail(FileEntry entry, {CancelToken? cancel}) {
     final def = GeneratorRegistry.instance.forExtension(
       entry.extension,
       GeneratorUse.thumbnail,
     );
     if (def == null || def.textOutput) return Future.value(null);
     final custom = def.thumbnailArgs;
-    if (custom == null) return _generate(entry, def, 0, def.args, 'preview');
+    if (custom == null) {
+      return _generate(entry, def, 0, def.args, 'preview', cancel: cancel);
+    }
 
-    return _generate(entry, def, 0, custom, 'thumbnail');
+    return _generate(entry, def, 0, custom, 'thumbnail', cancel: cancel);
   }
 
   static Future<String?> _generate(
@@ -207,18 +211,18 @@ class GeneratorRunner {
     GeneratorDef def,
     int position,
     List<String> args,
-    String variant,
-  ) {
+    String variant, {
+    CancelToken? cancel,
+  }) {
     final key = _requestKey(entry, def, variant, position);
     if (_failedKeys.contains(key)) return Future.value(null);
 
-    return _previewInFlight.putIfAbsent(key, () async {
-      try {
-        return await _generatePreview(entry, def, position, args, variant, key);
-      } finally {
-        _previewInFlight.remove(key);
-      }
-    });
+    return _previewInFlight.run(
+      key,
+      cancel,
+      (abort) =>
+          _generatePreview(entry, def, position, args, variant, key, abort),
+    );
   }
 
   static Future<String?> _generatePreview(
@@ -228,6 +232,7 @@ class GeneratorRunner {
     List<String> args,
     String variant,
     String failureKey,
+    CancelToken abort,
   ) async {
     var page = position < 0 ? 0 : position;
     var seek = '00:00:00.000';
@@ -248,6 +253,7 @@ class GeneratorRunner {
     final key = _cacheKey(entry, def, args, variant, page);
     final cachePath = p.join(cacheDir, '$key.${def.outputExt}');
     if (await File(cachePath).exists()) return cachePath;
+    if (abort.isCancelled) return null;
 
     // Must keep the real output extension at the end (not appended after
     // it) — tools like ffmpeg infer the output format/muxer from the
@@ -276,7 +282,13 @@ class GeneratorRunner {
         substitutedArgs,
         def.timeout,
         stdoutPath: def.captureStdout ? tmpPath : null,
+        abort: abort,
       );
+      if (result.cancelled) {
+        await _tryDelete(tmpPath);
+
+        return null;
+      }
       if (result.timedOut) {
         log.warn(
           'quick-look',
@@ -507,13 +519,29 @@ class _ProcessResult {
   final bool timedOut;
   final String stdout;
   final String stderrTail;
+  final bool cancelled;
 
   const _ProcessResult(
     this.exitCode,
     this.timedOut,
     this.stdout,
-    this.stderrTail,
-  );
+    this.stderrTail, {
+    this.cancelled = false,
+  });
+}
+
+void _killTree(Process process) {
+  if (Platform.isWindows) {
+    unawaited(
+      Process.run('taskkill', [
+        '/PID',
+        '${process.pid}',
+        '/T',
+        '/F',
+      ]).then((_) {}, onError: (_) {}),
+    );
+  }
+  process.kill();
 }
 
 final _processGate = ConcurrencyGate(Platform.numberOfProcessors.clamp(2, 4));
@@ -528,10 +556,15 @@ Future<_ProcessResult> _run(
   List<String> args,
   Duration timeout, {
   String? stdoutPath,
+  CancelToken? abort,
 }) async {
   await _processGate.acquire();
   try {
+    if (abort != null && abort.isCancelled) {
+      return const _ProcessResult(-1, false, '', '', cancelled: true);
+    }
     final process = await Process.start(cmd, args);
+    abort?.onCancel(() => _killTree(process));
     final stdoutBuf = StringBuffer();
     final stderrTail = StringBuffer();
     final Future<void> stdoutDone;
@@ -557,7 +590,7 @@ Future<_ProcessResult> _run(
       timeout,
       onTimeout: () {
         timedOut = true;
-        process.kill();
+        _killTree(process);
 
         return -1;
       },
@@ -569,6 +602,7 @@ Future<_ProcessResult> _run(
       timedOut,
       stdoutBuf.toString(),
       stderrTail.toString(),
+      cancelled: abort != null && abort.isCancelled,
     );
   } finally {
     _processGate.release();

@@ -12,6 +12,7 @@ import '../../core/logging/app_logger.dart';
 import '../../core/models/file_entry.dart';
 import '../../core/platform/app_dirs.dart';
 import '../../core/platform/platform_paths.dart';
+import '../../utils/cancel_token.dart';
 import '../../utils/concurrency_gate.dart';
 import 'remote_thumbnail_cache.dart';
 
@@ -21,13 +22,17 @@ class PdfThumbnailCache {
   PdfThumbnailCache._();
 
   static final _gate = ConcurrencyGate(2);
-  static final _inFlight = <String, Future<String?>>{};
+  static final _inFlight = SharedJobs<String?>();
   static final _failedKeys = <String>{};
 
-  static Future<String?> thumbnail(FileEntry entry) =>
-      firstPage(entry, width: _thumbnailWidth);
+  static Future<String?> thumbnail(FileEntry entry, {CancelToken? cancel}) =>
+      firstPage(entry, width: _thumbnailWidth, cancel: cancel);
 
-  static Future<String?> firstPage(FileEntry entry, {required int width}) {
+  static Future<String?> firstPage(
+    FileEntry entry, {
+    required int width,
+    CancelToken? cancel,
+  }) {
     final key = sha256
         .convert(
           utf8.encode(
@@ -37,19 +42,20 @@ class PdfThumbnailCache {
         .toString();
     if (_failedKeys.contains(key)) return Future.value(null);
 
-    return _inFlight.putIfAbsent(key, () async {
-      try {
-        final path = await _build(entry, key, width);
-        if (path == null) _failedKeys.add(key);
+    return _inFlight.run(key, cancel, (abort) async {
+      final path = await _build(entry, key, width, abort);
+      if (path == null && !abort.isCancelled) _failedKeys.add(key);
 
-        return path;
-      } finally {
-        _inFlight.remove(key);
-      }
+      return path;
     });
   }
 
-  static Future<String?> _build(FileEntry entry, String key, int width) async {
+  static Future<String?> _build(
+    FileEntry entry,
+    String key,
+    int width,
+    CancelToken abort,
+  ) async {
     final dir = await AppDirs.generatorCache();
     final target = p.join(dir, 'pdf-$key.png');
     if (await File(target).exists()) return target;
@@ -62,6 +68,7 @@ class PdfThumbnailCache {
     final tmp = p.join(dir, 'tmp-pdf-$key.png');
     await _gate.acquire();
     try {
+      if (abort.isCancelled) return null;
       final page = await _renderInIsolate(source, width);
       if (page == null) return null;
       final png = await _encodePng(page);
