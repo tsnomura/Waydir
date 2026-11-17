@@ -50,7 +50,7 @@ class DriveStore {
   Future<void> _load() async {
     try {
       final updatedDrives = await _service.getDrives();
-      if (!listEquals(drives.value, updatedDrives)) {
+      if (!sameDrivesForDisplay(drives.value, updatedDrives)) {
         drives.value = updatedDrives;
       }
     } catch (e, st) {
@@ -83,3 +83,34 @@ class DriveStore {
 }
 
 final driveStore = DriveStore();
+
+const _spaceChangeFraction = 1000;
+
+@visibleForTesting
+bool sameDrivesForDisplay(List<Drive> shown, List<Drive> probed) {
+  if (shown.length != probed.length) return false;
+  for (var i = 0; i < shown.length; i++) {
+    final a = shown[i];
+    final b = probed[i];
+    if (a.id != b.id ||
+        a.label != b.label ||
+        a.mountPoint != b.mountPoint ||
+        a.isRemovable != b.isRemovable ||
+        a.isNetwork != b.isNetwork ||
+        a.remoteTarget != b.remoteTarget ||
+        a.fsType != b.fsType ||
+        !_sameSpaceForDisplay(a.space, b.space)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool _sameSpaceForDisplay(DriveSpace? a, DriveSpace? b) {
+  if (a == null || b == null) return a == b;
+  if (a.totalBytes != b.totalBytes) return false;
+
+  return (a.freeBytes - b.freeBytes).abs() * _spaceChangeFraction <
+      a.totalBytes;
+}
