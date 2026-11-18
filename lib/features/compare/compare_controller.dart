@@ -88,19 +88,15 @@ class CompareController {
           rightRoot == null) {
         return;
       }
-      final leftGhosts = _ghostsFor(
-        leftRoot,
-        leftStore.currentPath.value,
-        rightRes,
-      );
-      final rightGhosts = _ghostsFor(
-        rightRoot,
-        rightStore.currentPath.value,
-        leftRes,
-      );
+      final leftDir = leftStore.currentPath.value;
+      final rightDir = rightStore.currentPath.value;
+      final leftGhosts = _ghostsFor(leftRoot, leftDir, rightRes);
+      final rightGhosts = _ghostsFor(rightRoot, rightDir, leftRes);
       untracked(() {
-        leftStore.ghostFiles.value = leftGhosts;
-        rightStore.ghostFiles.value = rightGhosts;
+        leftStore.ghostFiles.value = leftGhosts.remove(leftDir) ?? const [];
+        leftStore.ghostTreeChildren.value = leftGhosts;
+        rightStore.ghostFiles.value = rightGhosts.remove(rightDir) ?? const [];
+        rightStore.ghostTreeChildren.value = rightGhosts;
       });
     });
     _setupFollow(leftLeads: true);
@@ -128,10 +124,13 @@ class CompareController {
       _skipFirst(leftLeads, () {
         final pair = ordered();
         if (pair == null) return null;
-        final name = pair.$1.cursorEntry.value?.name;
-        if (name == null || !_sameRelativeFolder(leftLeads, pair)) return null;
+        final path = pair.$1.cursorEntry.value?.path;
+        if (path == null || !_sameRelativeFolder(leftLeads, pair)) return null;
+        final rel = _relativeIn(leftLeads ? _leftRoot : _rightRoot, path);
+        final followerRoot = leftLeads ? _rightRoot : _leftRoot;
+        if (rel == null || rel.isEmpty || followerRoot == null) return null;
 
-        return () => pair.$2.moveCursorToName(name);
+        return () => pair.$2.moveCursorToPath(_pathIn(followerRoot, rel));
       }),
     );
     _followDisposers.add(
@@ -198,16 +197,11 @@ class CompareController {
     final leaderRoot = leftLeads ? _leftRoot : _rightRoot;
     final followerRoot = leftLeads ? _rightRoot : _leftRoot;
     if (followerRoot == null) return const [];
-    final leaderOnly = {
-      for (final r in (leftLeads ? leftResults : rightResults).value.values)
-        if (r.status == CompareStatus.unique) r.relativePath,
-    };
 
     return [
       for (final path in paths)
         if (_relativeIn(leaderRoot, path) case final rel?)
-          if (rel.isNotEmpty && !leaderOnly.contains(rel))
-            _pathIn(followerRoot, rel),
+          if (rel.isNotEmpty) _pathIn(followerRoot, rel),
     ];
   }
 
@@ -274,23 +268,27 @@ class CompareController {
         store.treeChildren.value.values.any((c) => c.any(match));
   }
 
-  List<FileEntry> _ghostsFor(
+  Map<String, List<FileEntry>> _ghostsFor(
     String root,
     String dir,
     Map<String, CompareEntryResult> other,
   ) {
-    if (other.isEmpty || !_withinScope(root, dir)) return const [];
+    if (other.isEmpty || !_withinScope(root, dir)) return {};
     final rel = compareRelativePath(root, dir);
-    final out = <FileEntry>[];
+    final out = <String, List<FileEntry>>{};
     for (final result in other.values) {
       if (result.status != CompareStatus.unique) continue;
-      final parent = p.posix.dirname(result.relativePath);
-      if ((parent == '.' ? '' : parent) != rel) continue;
+      final dirname = p.posix.dirname(result.relativePath);
+      final parent = dirname == '.' ? '' : dirname;
+      if (parent != rel && !(rel.isEmpty || parent.startsWith('$rel/'))) {
+        continue;
+      }
+      final parentPath = _pathIn(root, parent);
       final source = result.entry;
-      out.add(
+      (out[parentPath] ??= []).add(
         FileEntry.raw(
           name: source.name,
-          path: PlatformPaths.join(dir, source.name),
+          path: PlatformPaths.join(parentPath, source.name),
           type: source.type,
           size: source.size,
           modifiedMs: source.modifiedMs,
@@ -574,6 +572,8 @@ class CompareController {
     _rightDecorated?.decorations.clearLayer('compare');
     _leftDecorated?.ghostFiles.value = const [];
     _rightDecorated?.ghostFiles.value = const [];
+    _leftDecorated?.ghostTreeChildren.value = const {};
+    _rightDecorated?.ghostTreeChildren.value = const {};
     _rightDecorated?.sortLeader.value = null;
     _leftDecorated = null;
     _rightDecorated = null;

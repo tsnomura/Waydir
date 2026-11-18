@@ -44,8 +44,13 @@ class NavigationStore {
   final currentPath = signal('');
   final files = signal<List<FileEntry>>([]);
   final ghostFiles = signal<List<FileEntry>>(const []);
+  final ghostTreeChildren = signal<Map<String, List<FileEntry>>>(const {});
   late final ghostPaths = computed<Set<String>>(
-    () => {for (final g in ghostFiles.value) g.path},
+    () => {
+      for (final g in ghostFiles.value) g.path,
+      for (final children in ghostTreeChildren.value.values)
+        for (final g in children) g.path,
+    },
   );
   final showHidden = signal(false);
   final remoteThumbnails = signal(false);
@@ -323,6 +328,7 @@ class NavigationStore {
     final expanded = treeExpandedPaths.value;
     final loading = treeLoadingPaths.value;
     final children = treeChildren.value;
+    final ghostChildren = ghostTreeChildren.value;
     final rows = <FileTreeRow>[];
 
     void append(FileEntry entry, int depth) {
@@ -338,7 +344,9 @@ class NavigationStore {
         ),
       );
       if (!isExpanded) return;
-      final rawChildren = children[path] ?? const <FileEntry>[];
+      final ghosts = ghostChildren[path];
+      final loaded = children[path] ?? const <FileEntry>[];
+      final rawChildren = ghosts == null ? loaded : [...loaded, ...ghosts];
       final visibleChildren = showHidden.value
           ? rawChildren
           : rawChildren.where((f) => !f.isHidden).toList();
@@ -465,6 +473,7 @@ class NavigationStore {
       final missing = [
         for (final row in treeRows.value)
           if (row.expanded &&
+              !row.entry.isGhost &&
               !children.containsKey(row.entry.path) &&
               !loading.contains(row.entry.path))
             row.entry.path,
@@ -1680,7 +1689,7 @@ class NavigationStore {
   }
 
   void toggleTreeFolder(FileEntry entry) {
-    if (entry.type != FileItemType.folder || entry.isGhost) return;
+    if (entry.type != FileItemType.folder) return;
     final path = entry.path;
     final expanded = Set<String>.from(treeExpandedPaths.value);
     if (expanded.remove(path)) {
@@ -1690,7 +1699,7 @@ class NavigationStore {
     }
     expanded.add(path);
     treeExpandedPaths.value = expanded;
-    if (!treeChildren.value.containsKey(path)) {
+    if (!entry.isGhost && !treeChildren.value.containsKey(path)) {
       _loadTreeChildren(entry);
     }
   }
@@ -2464,13 +2473,13 @@ class NavigationStore {
     fileListFocusRequest.value++;
   }
 
-  void moveCursorToName(String name) {
+  void moveCursorToPath(String path) {
     final files = _vf;
     final current = cursorIndex.value;
-    if (current >= 0 && current < files.length && files[current].name == name) {
+    if (current >= 0 && current < files.length && files[current].path == path) {
       return;
     }
-    final idx = files.indexWhere((f) => f.name == name);
+    final idx = files.indexWhere((f) => f.path == path);
     if (idx >= 0) cursorIndex.value = idx;
   }
 
