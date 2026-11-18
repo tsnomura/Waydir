@@ -44,8 +44,13 @@ class NavigationStore {
   final currentPath = signal('');
   final files = signal<List<FileEntry>>([]);
   final ghostFiles = signal<List<FileEntry>>(const []);
+  final ghostTreeChildren = signal<Map<String, List<FileEntry>>>(const {});
   late final ghostPaths = computed<Set<String>>(
-    () => {for (final g in ghostFiles.value) g.path},
+    () => {
+      for (final g in ghostFiles.value) g.path,
+      for (final children in ghostTreeChildren.value.values)
+        for (final g in children) g.path,
+    },
   );
   final showHidden = signal(false);
   final remoteThumbnails = signal(false);
@@ -323,6 +328,7 @@ class NavigationStore {
     final expanded = treeExpandedPaths.value;
     final loading = treeLoadingPaths.value;
     final children = treeChildren.value;
+    final ghostChildren = ghostTreeChildren.value;
     final rows = <FileTreeRow>[];
 
     void append(FileEntry entry, int depth) {
@@ -338,7 +344,9 @@ class NavigationStore {
         ),
       );
       if (!isExpanded) return;
-      final rawChildren = children[path] ?? const <FileEntry>[];
+      final ghosts = ghostChildren[path];
+      final loaded = children[path] ?? const <FileEntry>[];
+      final rawChildren = ghosts == null ? loaded : [...loaded, ...ghosts];
       final visibleChildren = showHidden.value
           ? rawChildren
           : rawChildren.where((f) => !f.isHidden).toList();

@@ -232,6 +232,59 @@ void main() {
       expect(rightStore.ghostFiles.value, isEmpty);
     });
 
+    test(
+      'one-sided files inside an expanded folder appear as tree ghosts',
+      () async {
+        File(
+          p.join(
+            paneLeft.tabs.activeTab.value.store.currentPath.value,
+            'nested',
+            'only_left_deep.txt',
+          ),
+        ).writeAsStringSync('x');
+        await controller.start();
+
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final rightNested = p.join(rightStore.currentPath.value, 'nested');
+
+        expect(
+          rightStore.ghostTreeChildren.value[rightNested]?.map((g) => g.name),
+          ['only_left_deep.txt'],
+        );
+        expect(rightStore.ghostFiles.value.map((g) => g.name), [
+          'only_left.txt',
+        ]);
+        expect(leftStore.ghostTreeChildren.value, isEmpty);
+
+        rightStore.updateTreeExpansion(expand: [rightNested]);
+        rightStore.files.value = await FileSystemService.listDirectory(
+          rightStore.currentPath.value,
+        );
+        final rows = rightStore.treeRows.value;
+        final nestedIndex = rows.indexWhere((r) => r.entry.path == rightNested);
+        final ghostRow = rows.firstWhere(
+          (r) => r.entry.name == 'only_left_deep.txt',
+        );
+
+        expect(nestedIndex, greaterThanOrEqualTo(0));
+        expect(ghostRow.entry.isGhost, isTrue);
+        expect(ghostRow.depth, 1);
+        expect(ghostRow.entry.path, p.join(rightNested, 'only_left_deep.txt'));
+        expect(
+          rightStore.ghostPaths.value,
+          contains(p.join(rightNested, 'only_left_deep.txt')),
+        );
+
+        controller.stop();
+        expect(rightStore.ghostTreeChildren.value, isEmpty);
+        expect(
+          rightStore.treeRows.value.where((r) => r.entry.isGhost),
+          isEmpty,
+        );
+      },
+    );
+
     test('right pane follows the left sort, cursor and folder', () async {
       await controller.start();
 

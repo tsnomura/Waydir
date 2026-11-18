@@ -892,9 +892,14 @@ whichever folder each pane is showing.
   and they're excluded from copy/move-to-other-pane's cursor fallback,
   thumbnails, folder-size scans, the terminal path insert and the command
   palette's file list.
+- In tree view, recursive compare also shows ghosts inside expanded
+  folders: the controller groups one-sided results by parent folder into
+  `NavigationStore.ghostTreeChildren`, and `treeRows` merges them into
+  each expanded folder's children (sorted with them). Before, ghosts
+  appeared at the top level only.
 - Limits: a folder that exists on one side only shows just its own ghost
-  row — it can't be entered. In tree view ghosts appear at the top level
-  only.
+  row — it can't be entered, and in tree view it can't be expanded, so
+  its contents don't show as ghosts.
 - Fixed while testing: a directory-watcher refresh re-derived the cursor
   index from the raw listing, which has no ghosts, so on a busy folder
   (OneDrive under a `subst` drive here) the cursor jumped back by the
