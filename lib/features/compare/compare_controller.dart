@@ -124,10 +124,13 @@ class CompareController {
       _skipFirst(leftLeads, () {
         final pair = ordered();
         if (pair == null) return null;
-        final name = pair.$1.cursorEntry.value?.name;
-        if (name == null || !_sameRelativeFolder(leftLeads, pair)) return null;
+        final path = pair.$1.cursorEntry.value?.path;
+        if (path == null || !_sameRelativeFolder(leftLeads, pair)) return null;
+        final rel = _relativeIn(leftLeads ? _leftRoot : _rightRoot, path);
+        final followerRoot = leftLeads ? _rightRoot : _leftRoot;
+        if (rel == null || rel.isEmpty || followerRoot == null) return null;
 
-        return () => pair.$2.moveCursorToName(name);
+        return () => pair.$2.moveCursorToPath(_pathIn(followerRoot, rel));
       }),
     );
     _followDisposers.add(
@@ -194,16 +197,11 @@ class CompareController {
     final leaderRoot = leftLeads ? _leftRoot : _rightRoot;
     final followerRoot = leftLeads ? _rightRoot : _leftRoot;
     if (followerRoot == null) return const [];
-    final leaderOnly = {
-      for (final r in (leftLeads ? leftResults : rightResults).value.values)
-        if (r.status == CompareStatus.unique) r.relativePath,
-    };
 
     return [
       for (final path in paths)
         if (_relativeIn(leaderRoot, path) case final rel?)
-          if (rel.isNotEmpty && !leaderOnly.contains(rel))
-            _pathIn(followerRoot, rel),
+          if (rel.isNotEmpty) _pathIn(followerRoot, rel),
     ];
   }
 

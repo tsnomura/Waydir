@@ -473,6 +473,7 @@ class NavigationStore {
       final missing = [
         for (final row in treeRows.value)
           if (row.expanded &&
+              !row.entry.isGhost &&
               !children.containsKey(row.entry.path) &&
               !loading.contains(row.entry.path))
             row.entry.path,
@@ -1688,7 +1689,7 @@ class NavigationStore {
   }
 
   void toggleTreeFolder(FileEntry entry) {
-    if (entry.type != FileItemType.folder || entry.isGhost) return;
+    if (entry.type != FileItemType.folder) return;
     final path = entry.path;
     final expanded = Set<String>.from(treeExpandedPaths.value);
     if (expanded.remove(path)) {
@@ -1698,7 +1699,7 @@ class NavigationStore {
     }
     expanded.add(path);
     treeExpandedPaths.value = expanded;
-    if (!treeChildren.value.containsKey(path)) {
+    if (!entry.isGhost && !treeChildren.value.containsKey(path)) {
       _loadTreeChildren(entry);
     }
   }
@@ -2472,13 +2473,13 @@ class NavigationStore {
     fileListFocusRequest.value++;
   }
 
-  void moveCursorToName(String name) {
+  void moveCursorToPath(String path) {
     final files = _vf;
     final current = cursorIndex.value;
-    if (current >= 0 && current < files.length && files[current].name == name) {
+    if (current >= 0 && current < files.length && files[current].path == path) {
       return;
     }
-    final idx = files.indexWhere((f) => f.name == name);
+    final idx = files.indexWhere((f) => f.path == path);
     if (idx >= 0) cursorIndex.value = idx;
   }
 

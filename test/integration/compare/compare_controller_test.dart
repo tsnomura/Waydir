@@ -14,6 +14,7 @@ import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/compare/compare_controller.dart';
 import 'package:waydir/features/compare/compare_excludes_field.dart';
 import 'package:waydir/features/compare/compare_mode_bar.dart';
+import 'package:waydir/core/models/file_entry.dart';
 import 'package:waydir/core/models/file_operation.dart';
 import 'package:waydir/features/compare/compare_diff.dart';
 import 'package:waydir/features/compare/compare_sync_plan.dart';
@@ -361,22 +362,108 @@ void main() {
       leftStore.updateTreeExpansion(
         expand: [p.join(leftRoot, 'nested'), p.join(leftRoot, 'left_only_dir')],
       );
-      expect(rightStore.treeExpandedPaths.value, {p.join(rightRoot, 'nested')});
+      expect(rightStore.treeExpandedPaths.value, {
+        p.join(rightRoot, 'nested'),
+        p.join(rightRoot, 'left_only_dir'),
+      });
       expect(leftStore.treeExpandedPaths.value, {
         p.join(leftRoot, 'nested'),
         p.join(leftRoot, 'left_only_dir'),
       });
 
       rightStore.updateTreeExpansion(collapse: [p.join(rightRoot, 'nested')]);
-      expect(rightStore.treeExpandedPaths.value, isEmpty);
+      expect(rightStore.treeExpandedPaths.value, {
+        p.join(rightRoot, 'left_only_dir'),
+      });
       expect(leftStore.treeExpandedPaths.value, {
         p.join(leftRoot, 'left_only_dir'),
       });
 
       controller.stop();
       leftStore.updateTreeExpansion(expand: [p.join(leftRoot, 'nested')]);
-      expect(rightStore.treeExpandedPaths.value, isEmpty);
+      expect(rightStore.treeExpandedPaths.value, {
+        p.join(rightRoot, 'left_only_dir'),
+      });
     });
+
+    test(
+      'one-sided folders expand as ghosts and the cursor follows by path',
+      () async {
+        final settings = SettingsStore.instance;
+        final previousMode = settings.fileViewMode.value;
+        settings.fileViewMode.value = 'tree';
+        addTearDown(() => settings.fileViewMode.value = previousMode);
+        final leftOnly = Directory(p.join(tmpDir.path, 'left', 'left_only_dir'))
+          ..createSync();
+        File(p.join(leftOnly.path, 'deep.txt')).writeAsStringSync('x');
+        await controller.start();
+
+        final leftStore = paneLeft.tabs.activeTab.value.store;
+        final rightStore = paneRight.tabs.activeTab.value.store;
+        final leftRoot = leftStore.currentPath.value;
+        final rightRoot = rightStore.currentPath.value;
+        leftStore.files.value = await FileSystemService.listDirectory(leftRoot);
+        rightStore.files.value = await FileSystemService.listDirectory(
+          rightRoot,
+        );
+
+        Future<List<FileEntry>> list(String path) =>
+            FileSystemService.listDirectory(path);
+        leftStore.treeChildren.value = {
+          p.join(leftRoot, 'nested'): await list(p.join(leftRoot, 'nested')),
+          leftOnly.path: await list(leftOnly.path),
+        };
+        rightStore.treeChildren.value = {
+          p.join(rightRoot, 'nested'): await list(p.join(rightRoot, 'nested')),
+        };
+
+        final ghostDir = rightStore.treeRows.value.firstWhere(
+          (r) => r.entry.path == p.join(rightRoot, 'left_only_dir'),
+        );
+        expect(ghostDir.entry.isGhost, isTrue);
+
+        leftStore.updateTreeExpansion(
+          expand: [p.join(leftRoot, 'nested'), leftOnly.path],
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(rightStore.treeLoadingPaths.value, isEmpty);
+        expect(
+          rightStore.treeChildren.value.containsKey(
+            p.join(rightRoot, 'left_only_dir'),
+          ),
+          isFalse,
+        );
+        final ghostChild = p.join(rightRoot, 'left_only_dir', 'deep.txt');
+        final childRow = rightStore.treeRows.value.firstWhere(
+          (r) => r.entry.path == ghostChild,
+        );
+        expect(childRow.entry.isGhost, isTrue);
+        expect(childRow.depth, 1);
+
+        final leftRows = leftStore.treeRows.value;
+        leftStore.cursorIndex.value = leftRows.indexWhere(
+          (r) => r.entry.path == p.join(leftOnly.path, 'deep.txt'),
+        );
+        expect(rightStore.cursorEntry.value?.path, ghostChild);
+
+        leftStore.cursorIndex.value = leftRows.indexWhere(
+          (r) => r.entry.path == p.join(leftRoot, 'nested', 'deep.txt'),
+        );
+        expect(
+          rightStore.cursorEntry.value?.path,
+          p.join(rightRoot, 'nested', 'deep.txt'),
+        );
+
+        rightStore.cursorIndex.value = rightStore.treeRows.value.indexWhere(
+          (r) => r.entry.path == p.join(rightRoot, 'left_only_dir'),
+        );
+        rightStore.toggleTreeCursorFolder();
+        expect(
+          leftStore.treeExpandedPaths.value,
+          isNot(contains(leftOnly.path)),
+        );
+      },
+    );
 
     test('nested tree expansion follows in top-level compare', () async {
       controller.recursive.value = false;

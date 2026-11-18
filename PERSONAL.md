@@ -897,9 +897,10 @@ whichever folder each pane is showing.
   `NavigationStore.ghostTreeChildren`, and `treeRows` merges them into
   each expanded folder's children (sorted with them). Before, ghosts
   appeared at the top level only.
-- Limits: a folder that exists on one side only shows just its own ghost
-  row — it can't be entered, and in tree view it can't be expanded, so
-  its contents don't show as ghosts.
+- A folder that exists on one side only can be expanded in tree view as a
+  ghost: its contents show as ghost rows from the comparison results, and
+  nothing is read from disk for it (`toggleTreeFolder` and the tree load
+  effect skip ghosts). It still can't be entered in list/grid view.
 - Fixed while testing: a directory-watcher refresh re-derived the cursor
   index from the raw listing, which has no ghosts, so on a busy folder
   (OneDrive under a `subst` drive here) the cursor jumped back by the
@@ -918,16 +919,18 @@ While compare is active the panes move together:
   offset. Offsets the view applies because of the link aren't reported
   back, so the two can't fight.
 - Cursor (both ways): moving the cursor moves the other pane's cursor to the
-  row with the same name (ghosts included), without touching marks — only
-  while both panes show the same relative folder.
+  row with the same relative path (ghosts included), without touching
+  marks — only while both panes show the same relative folder. It used to
+  match by name, so in tree view a file inside a one-sided folder pulled
+  the other cursor onto an unrelated file with the same name elsewhere.
 - Folders (both ways): entering or leaving a subfolder takes the other pane
   to the same relative path, if it exists there.
 - Tree expansion (both ways): expanding or collapsing a folder in tree view
   does the same for the matching relative path on the other side, at any
   depth, in top-level and recursive compare alike. Only the paths added or
   removed since the last change are propagated, so the sides can't
-  ping-pong; folders that exist on the leading side only (ghosts on the
-  other) aren't propagated. On start, the right pane's expansion inside the
+  ping-pong; folders that exist on the leading side only are propagated
+  too and expand as ghosts on the other side. On start, the right pane's expansion inside the
   compare root is aligned to the left's (`ab19424`).
 - The link is set up as soon as compare starts, not when the first result
   is published, so cursor, scroll, folder and tree follow already work
