@@ -13,6 +13,7 @@ import '../../../core/platform/app_dirs.dart';
 import '../../../ui/theme/app_theme.dart';
 import '../../../utils/cancel_token.dart';
 import '../../../utils/concurrency_gate.dart';
+import 'generator_cache_location.dart';
 import 'generator_def.dart';
 import 'generator_registry.dart';
 
@@ -27,6 +28,12 @@ class GeneratorRunner {
 
   @visibleForTesting
   static Future<String> Function() cacheDirectory = AppDirs.generatorCache;
+
+  static Future<String> cacheDirectoryFor(FileEntry entry) async =>
+      GeneratorCacheLocation.forSource(
+        entry.realPath,
+        fallback: await cacheDirectory(),
+      );
 
   @visibleForTesting
   static bool Function() darkTheme = () =>
@@ -149,13 +156,19 @@ class GeneratorRunner {
     _failedKeys.clear();
     _failureMessages.clear();
     _probeCache.clear();
-    final dir = Directory(await cacheDirectory());
-    if (!await dir.exists()) return;
-    await for (final entity in dir.list()) {
-      if (entity is File) {
-        try {
-          await entity.delete();
-        } catch (_) {}
+    final dirs = [
+      await cacheDirectory(),
+      ...await GeneratorCacheLocation.existingDirectories(),
+    ];
+    for (final path in dirs) {
+      final dir = Directory(path);
+      if (!await dir.exists()) continue;
+      await for (final entity in dir.list()) {
+        if (entity is File) {
+          try {
+            await entity.delete();
+          } catch (_) {}
+        }
       }
     }
   }
@@ -249,7 +262,7 @@ class GeneratorRunner {
       seek = formatSeek(duration * page / def.pageCount);
     }
 
-    final cacheDir = await cacheDirectory();
+    final cacheDir = await cacheDirectoryFor(entry);
     final key = _cacheKey(entry, def, args, variant, page);
     final cachePath = p.join(cacheDir, '$key.${def.outputExt}');
     if (await File(cachePath).exists()) return cachePath;

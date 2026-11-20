@@ -220,6 +220,8 @@ Generators also render content embedded in Markdown files shown in Quick Look:
 
 Results are cached by a hash of the file's path, size and modified time, plus the generator's own id, command and page — so editing the source file invalidates the cache automatically, and changing the generator's command (e.g. upgrading a tool, tweaking flags) invalidates it too without needing to touch the file itself.
 
+The cache lives on the same device as the source file: a file on another local fixed or removable volume (another drive letter, a volume mounted into a folder, a Linux/macOS mount) gets its preview cached in a hidden `.waydir-cache/generator_cache` folder at that volume's root, so the generated images don't fill the system drive. `subst` drives are resolved to the volume they point at. Files on the same volume as Waydir's settings folder, on network drives/shares, and remote (`sftp://`, `smb://`) files use the cache in the app support folder (`generator_cache`), as does any volume where that folder can't be created. `%CACHE%` is the folder used for that file. PDF thumbnails follow the same rule; fenced-block sources and downloaded remote thumbnails stay in the app support folder.
+
 ## Failure Handling
 
 Every failure mode falls back to Waydir's default file icon — a broken or missing generator never blocks Quick Look:
