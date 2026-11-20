@@ -59,6 +59,25 @@ void main() {
     });
   });
 
+  group('TerminalLayout.slotFor', () {
+    test('pane terminals share slot 0 in single mode', () {
+      expect(TerminalLayout.slotFor(0, dual: false), 0);
+      expect(TerminalLayout.slotFor(1, dual: false), 0);
+      expect(TerminalLayout.slotFor(1, dual: true), 1);
+    });
+
+    test('side panel terminals stay in their own slot', () {
+      expect(
+        TerminalLayout.slotFor(TerminalLayout.sideSlot, dual: false),
+        TerminalLayout.sideSlot,
+      );
+      expect(
+        TerminalLayout.slotFor(TerminalLayout.sideSlot, dual: true),
+        TerminalLayout.sideSlot,
+      );
+    });
+  });
+
   group('TerminalLayout.mergeVisibilityForSingle', () {
     test('ors the two slots into the first', () {
       expect(TerminalLayout.mergeVisibilityForSingle([false, true]), [
@@ -66,6 +85,19 @@ void main() {
         true,
       ]);
       expect(TerminalLayout.mergeVisibilityForSingle([false, false]), [
+        false,
+        false,
+      ]);
+    });
+
+    test('keeps the side panel slot untouched', () {
+      expect(TerminalLayout.mergeVisibilityForSingle([false, true, true]), [
+        true,
+        true,
+        true,
+      ]);
+      expect(TerminalLayout.mergeVisibilityForSingle([true, false, false]), [
+        true,
         false,
         false,
       ]);

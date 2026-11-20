@@ -8,6 +8,14 @@ class TerminalRef {
 class TerminalLayout {
   TerminalLayout._();
 
+  static const sideSlot = 2;
+
+  static int slotFor(int originPane, {required bool dual}) {
+    if (originPane == sideSlot) return sideSlot;
+
+    return dual ? originPane : 0;
+  }
+
   /// Reassigns each slot's active terminal so it points to one of its own
   /// terminals when entering dual mode. Slots without any terminal are dropped.
   static Map<int, int> reassignForDual(
@@ -60,7 +68,7 @@ class TerminalLayout {
   /// Merges per-slot visibility into a single visible slot when exiting dual.
   static List<bool> mergeVisibilityForSingle(List<bool> visible) {
     if (visible.length > 1) {
-      return [visible.first || visible[1], visible[1]];
+      return [visible.first || visible[1], visible[1], ...visible.skip(2)];
     }
 
     return [visible.isEmpty ? false : visible.first, false];

@@ -53,8 +53,9 @@ mixin _WaydirCommandPaletteMixin
       _cmd('quick_look_marked', _openQuickLookMarked, enabled: selected > 0),
       _cmd(
         'quick_look_bottom',
-        () => unawaited(_toggleQuickLookPane(_terminalSlotForActivePane())),
+        () => unawaited(_toggleQuickLookPane(_quickLookSlot())),
       ),
+      _cmd('toggle_side_panel', _toggleSidePanel),
       _cmd('search', store.openSearch),
       _cmd('recursive_search', () => store.openSearch(recursive: true)),
       _cmd('new_folder', store.startCreate),

@@ -28,6 +28,8 @@ class SettingsStore {
   final sessionActivePaneIndex = signal<int>(0);
   final sidebarCollapsed = signal<bool>(false);
   final sidebarWidth = signal<double>(200.0);
+  final sidePanelVisible = signal<bool>(false);
+  final sidePanelWidth = signal<double>(420.0);
   final restoreSession = signal<bool>(true);
   final defaultStartingPath = signal<String>('');
   final confirmDelete = signal<bool>(true);
@@ -122,6 +124,8 @@ class SettingsStore {
     sessionActivePaneIndex.value = row.activePaneIndex;
     sidebarCollapsed.value = row.sidebarCollapsed;
     sidebarWidth.value = row.sidebarWidth;
+    sidePanelVisible.value = row.sidePanelVisible;
+    sidePanelWidth.value = row.sidePanelWidth;
     restoreSession.value = row.restoreSession;
     defaultStartingPath.value = row.defaultStartingPath;
     confirmDelete.value = row.confirmDelete;
@@ -243,6 +247,8 @@ class SettingsStore {
         sessionActivePaneIndex.value;
         sidebarCollapsed.value;
         sidebarWidth.value;
+        sidePanelVisible.value;
+        sidePanelWidth.value;
         restoreSession.value;
         defaultStartingPath.value;
         confirmDelete.value;
@@ -321,6 +327,8 @@ class SettingsStore {
           activePaneIndex: Value(sessionActivePaneIndex.value),
           sidebarCollapsed: Value(sidebarCollapsed.value),
           sidebarWidth: Value(sidebarWidth.value),
+          sidePanelVisible: Value(sidePanelVisible.value),
+          sidePanelWidth: Value(sidePanelWidth.value),
           restoreSession: Value(restoreSession.value),
           defaultStartingPath: Value(defaultStartingPath.value),
           confirmDelete: Value(confirmDelete.value),

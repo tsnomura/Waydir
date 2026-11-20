@@ -44,9 +44,23 @@ class ShellStore {
   final splitRatio = signal(0.5);
   final terminals = signal<List<TerminalTab>>([]);
   final activeTerminalId = signal<Map<int, int>>({});
-  final terminalVisible = signal<List<bool>>([false, false]);
-  final terminalHeight = signal<List<double>>([260, 260]);
-  final quickLookActive = signal<List<bool>>([false, false]);
+  static const sideSlot = TerminalLayout.sideSlot;
+
+  final terminalVisible = signal<List<bool>>([
+    false,
+    false,
+    SettingsStore.instance.sidePanelVisible.value,
+  ]);
+  final terminalHeight = signal<List<double>>([
+    260,
+    260,
+    SettingsStore.instance.sidePanelWidth.value,
+  ]);
+  final quickLookActive = signal<List<bool>>([
+    false,
+    false,
+    SettingsStore.instance.sidePanelVisible.value,
+  ]);
   final OperationStore operationStore;
   final NotificationStore notificationStore;
   late final CompareController compare;
@@ -128,7 +142,7 @@ class ShellStore {
   /// terminal is no longer around (e.g. its tab was already closed).
   void _openFromTerminalSignal(int terminalId, String path, String? cursor) {
     final terminal = terminals.value.where((t) => t.id == terminalId);
-    final slot = terminal.isEmpty
+    final slot = terminal.isEmpty || terminal.first.originPane == sideSlot
         ? activePaneIndex.value
         : (isDual.value ? terminal.first.originPane : 0);
     final list = panes.value;
@@ -385,7 +399,8 @@ class ShellStore {
     final visible = terminalVisible.value;
     final quickLook = quickLookActive.value;
     final active = TerminalLayout.mergeForSingle(activeTerminalId.value, [
-      for (final t in terminals.value) t.id,
+      for (final t in terminals.value)
+        if (t.originPane != sideSlot) t.id,
     ], activePaneIndex.value);
     batch(() {
       activePaneIndex.value = 0;
@@ -423,10 +438,11 @@ class ShellStore {
     splitRatio.value = ratio.clamp(0.2, 0.8);
   }
 
-  List<TerminalTab> terminalsForSlot(int slot) {
-    if (!isDual.value) return terminals.value;
+  int slotOf(TerminalTab tab) =>
+      TerminalLayout.slotFor(tab.originPane, dual: isDual.value);
 
-    return terminals.value.where((t) => t.originPane == slot).toList();
+  List<TerminalTab> terminalsForSlot(int slot) {
+    return terminals.value.where((t) => slotOf(t) == slot).toList();
   }
 
   TerminalTab? activeTerminalForSlot(int slot) {
@@ -449,8 +465,10 @@ class ShellStore {
     final launch = spec ?? TerminalLaunch.resolve(cwd);
     final signalDir = _cwdSignalDir;
     final paneDirRoot = _paneDirRoot;
-    final originPane = isDual.value ? slot : 0;
-    final env = <String, String>{'WAYDIR_ORIGIN_PANE': '$originPane'};
+    final originPane = slot == sideSlot ? sideSlot : (isDual.value ? slot : 0);
+    final env = <String, String>{
+      'WAYDIR_ORIGIN_PANE': originPane == sideSlot ? 'active' : '$originPane',
+    };
     if (signalDir != null) {
       env['WAYDIR_TERMINAL_ID'] = '$id';
       env['WAYDIR_CWD_DIR'] = signalDir;
@@ -497,7 +515,7 @@ class ShellStore {
       }
     }
     if (closing == null) return;
-    final slot = isDual.value ? closing.originPane : 0;
+    final slot = slotOf(closing);
     final nextTabs = terminals.value.where((t) => t.id != id).toList();
     final active = Map<int, int>.from(activeTerminalId.value);
     final visible = [...terminalVisible.value];
@@ -519,6 +537,9 @@ class ShellStore {
       activeTerminalId.value = active;
       terminalVisible.value = visible;
       quickLookActive.value = quickLook;
+      if (slot == sideSlot) {
+        SettingsStore.instance.sidePanelVisible.value = visible[slot];
+      }
     });
     closing.dispose();
   }
@@ -572,10 +593,7 @@ class ShellStore {
     var nextVisibleIndex = 0;
     final next = [
       for (final tab in terminals.value)
-        if (!isDual.value || tab.originPane == slot)
-          reordered[nextVisibleIndex++]
-        else
-          tab,
+        if (slotOf(tab) == slot) reordered[nextVisibleIndex++] else tab,
     ];
     terminals.value = next;
   }
@@ -584,12 +602,16 @@ class ShellStore {
     final next = [...terminalVisible.value];
     next[slot] = visible;
     terminalVisible.value = next;
+    if (slot == sideSlot) {
+      SettingsStore.instance.sidePanelVisible.value = visible;
+    }
   }
 
   void setTerminalHeight(int slot, double height) {
     final next = [...terminalHeight.value];
     next[slot] = height;
     terminalHeight.value = next;
+    if (slot == sideSlot) SettingsStore.instance.sidePanelWidth.value = height;
   }
 
   void setQuickLookActive(int slot, bool active) {

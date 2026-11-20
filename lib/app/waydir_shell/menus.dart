@@ -1572,11 +1572,19 @@ mixin _WaydirMenuMixin
           isToggle: true,
           toggleSignal: computed(() {
             if (!_shell.ready.value) return false;
-            final slot = _terminalSlotForActivePane();
+            final slot = _quickLookSlot();
 
             return _shell.quickLookActive.value[slot] &&
                 _shell.terminalVisible.value[slot];
           }),
+        ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.sidebarSimple,
+          label: t.menu.sidePanel,
+          action: 'toggle_side_panel',
+          shortcut: AppShortcuts.getById('toggle_side_panel').displayKeys,
+          isToggle: true,
+          toggleSignal: computed(() => _shell.ready.value && _sidePanelVisible),
         ),
         ContextMenuItem.divider,
         ContextMenuItem(
@@ -1607,7 +1615,9 @@ mixin _WaydirMenuMixin
           case 'toggle_remote_thumbnails':
             _active.toggleRemoteThumbnails();
           case 'quick_look_bottom':
-            unawaited(_toggleQuickLookPane(_terminalSlotForActivePane()));
+            unawaited(_toggleQuickLookPane(_quickLookSlot()));
+          case 'toggle_side_panel':
+            _toggleSidePanel();
           case 'send_directory_to_linked':
             _sendDirectoryToLinked();
           case 'open_linked_directory':
@@ -1896,8 +1906,14 @@ mixin _WaydirMenuMixin
             label: t.menu.quickLookPane,
             onSelected: () {
               if (_shell.ready.value) {
-                unawaited(_toggleQuickLookPane(_terminalSlotForActivePane()));
+                unawaited(_toggleQuickLookPane(_quickLookSlot()));
               }
+            },
+          ),
+          PlatformMenuItem(
+            label: t.menu.sidePanel,
+            onSelected: () {
+              if (_shell.ready.value) _toggleSidePanel();
             },
           ),
         ],

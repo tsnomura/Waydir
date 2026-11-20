@@ -491,6 +491,14 @@ class AppShortcuts {
       ctrl: true,
     ),
     ShortcutDef(
+      id: 'toggle_side_panel',
+      label: () => '',
+      group: ShortcutGroup.view,
+      key: LogicalKeyboardKey.keyB,
+      ctrl: true,
+      alt: true,
+    ),
+    ShortcutDef(
       id: 'focus_menu_bar',
       label: () => '',
       group: ShortcutGroup.general,
