@@ -29,6 +29,11 @@ class AppWindow {
     if (_alignment == Alignment.center) ffi.centerWindow();
   }
 
+  void growWidthInPlace(double delta) {
+    final s = ffi.getSize();
+    ffi.setSize((s.width + delta).round(), s.height);
+  }
+
   set title(String value) => ffi.setTitle(value);
 
   bool get isMaximized => ffi.isMaximized();

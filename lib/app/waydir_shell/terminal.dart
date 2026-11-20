@@ -85,12 +85,20 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
 
   void _toggleSidePanel() {
     const slot = ShellStore.sideSlot;
+    final resizeWindow = isWindowChromeSupported && !appWindow.isMaximized;
     if (_shell.terminalVisible.value[slot]) {
       final hadFocus = _isTerminalFocused();
+      final width = _sidePanelOuterWidth(MediaQuery.sizeOf(context).width);
       _shell.setTerminalVisible(slot, false);
+      if (resizeWindow) appWindow.growWidthInPlace(-width);
       if (hadFocus) _restoreFocus();
 
       return;
+    }
+    final windowWidth = MediaQuery.sizeOf(context).width;
+    if (resizeWindow) {
+      final grown = windowWidth + _shell.terminalHeight.value[slot];
+      appWindow.growWidthInPlace(_sidePanelOuterWidth(grown));
     }
     batch(() {
       if (_shell.activeTerminalForSlot(slot) == null) {
@@ -99,6 +107,13 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
       _shell.setTerminalVisible(slot, true);
     });
   }
+
+  double _sidePanelOuterWidth(double windowWidth) =>
+      sidePanelWidthFor(
+        _shell.terminalHeight.value[ShellStore.sideSlot],
+        windowWidth,
+      ) +
+      TerminalPanel.resizeHandleWidth;
 
   bool get _sidePanelVisible =>
       _shell.terminalVisible.value[ShellStore.sideSlot];

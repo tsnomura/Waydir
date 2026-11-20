@@ -390,11 +390,6 @@ class _WaydirShellState extends State<WaydirShell>
             (active == null && !quickLook)) {
           return const SizedBox.shrink();
         }
-        final maxWidth = (MediaQuery.sizeOf(context).width * 0.6).clamp(
-          240.0,
-          double.infinity,
-        );
-
         return TerminalPanel(
           slot: slot,
           side: true,
@@ -402,7 +397,10 @@ class _WaydirShellState extends State<WaydirShell>
           active: active,
           quickLook: quickLook,
           quickLookStore: store,
-          height: _shell.terminalHeight.value[slot].clamp(240.0, maxWidth),
+          height: sidePanelWidthFor(
+            _shell.terminalHeight.value[slot],
+            MediaQuery.sizeOf(context).width,
+          ),
           isSingleMode: false,
           onToggleTerminal: _toggleTerminalSlot,
           onActivate: _activateTerminal,

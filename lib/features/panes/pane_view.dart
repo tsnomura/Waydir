@@ -418,7 +418,12 @@ class _TabContent extends StatelessWidget {
   }
 }
 
+double sidePanelWidthFor(double stored, double windowWidth) =>
+    stored.clamp(240.0, (windowWidth * 0.6).clamp(240.0, double.infinity));
+
 class TerminalPanel extends StatefulWidget {
+  static const resizeHandleWidth = 5.0;
+
   final int slot;
   final List<TerminalTab> tabs;
   final TerminalTab? active;
@@ -1165,7 +1170,10 @@ class _TerminalResizeHandleState extends State<_TerminalResizeHandle> {
           behavior: HitTestBehavior.opaque,
           onHorizontalDragUpdate: (details) => widget.onDrag(details.delta.dx),
           onHorizontalDragEnd: (_) => widget.onDragEnd(),
-          child: Container(width: 5, color: color),
+          child: Container(
+            width: TerminalPanel.resizeHandleWidth,
+            color: color,
+          ),
         ),
       );
     }

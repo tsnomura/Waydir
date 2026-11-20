@@ -2,6 +2,8 @@
 
 #include <windows.h>
 
+#include <cmath>
+
 #include "window.h"
 
 extern "C" {
@@ -71,8 +73,8 @@ void waydir_window_set_size(int width, int height) {
   if (!hwnd) return;
   UINT dpi = GetDpiForWindow(hwnd);
   double scale = dpi / 96.0;
-  int w = static_cast<int>(width * scale);
-  int h = static_cast<int>(height * scale);
+  int w = static_cast<int>(std::lround(width * scale));
+  int h = static_cast<int>(std::lround(height * scale));
   SetWindowPos(hwnd, nullptr, 0, 0, w, h, SWP_NOMOVE | SWP_NOZORDER);
 }
 
@@ -83,8 +85,8 @@ void waydir_window_get_size(int* width, int* height) {
   GetWindowRect(hwnd, &rc);
   UINT dpi = GetDpiForWindow(hwnd);
   double scale = dpi / 96.0;
-  *width = static_cast<int>((rc.right - rc.left) / scale);
-  *height = static_cast<int>((rc.bottom - rc.top) / scale);
+  *width = static_cast<int>(std::lround((rc.right - rc.left) / scale));
+  *height = static_cast<int>(std::lround((rc.bottom - rc.top) / scale));
 }
 
 void waydir_window_center() {
