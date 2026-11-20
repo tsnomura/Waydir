@@ -3158,3 +3158,32 @@ info pane draw correctly; in-app video playback was not checked.
 
 Tests: `test/unit/files/file_list_responsiveness_test.dart`,
 `test/unit/ui/motion_test.dart`.
+
+## Generator cache on the source file's device
+
+Generator output (Quick Look pages, grid thumbnails, Markdown embeds) and
+PDF thumbnails are cached on the same device as the source file, instead
+of always in `%APPDATA%\dev.waydir\Waydir\generator_cache` on the system
+drive: a file on another local fixed or removable volume gets a hidden
+`<volume root>\.waydir-cache\generator_cache` (dot-prefixed on Linux and
+macOS; `FILE_ATTRIBUTE_HIDDEN` on Windows).
+
+- `GeneratorCacheLocation.forSource` picks the folder. On Windows it
+  resolves `subst` drives (`QueryDosDevice`) to the volume they point at,
+  so a subst drive over a synced folder never gets a cache folder inside
+  it. It keeps only `DRIVE_FIXED`/`DRIVE_REMOVABLE` drives and takes the
+  volume root from `GetVolumePathName`, so a volume mounted into a folder
+  counts as its own device. Linux uses the deepest `/proc/self/mounts`
+  entry, skipping network and pseudo file systems; macOS uses `mount`
+  output and only `local` volumes.
+- Files on the settings folder's volume, network drives, UNC paths and
+  remote URIs keep the default cache. So does any volume where the folder
+  can't be created or written (checked once per volume, with a warning in
+  the log).
+- Clearing the generator cache (after editing generators in Preferences)
+  also empties every `.waydir-cache/generator_cache` it finds on the
+  current drives.
+- Fenced-block sources and downloaded remote thumbnails stay in the
+  default cache.
+- Existing cache files in the old location aren't moved; previews for
+  files on other drives are regenerated once.

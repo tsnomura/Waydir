@@ -13,6 +13,7 @@ import '../../core/models/file_entry.dart';
 import '../../core/platform/app_dirs.dart';
 import '../../core/platform/platform_paths.dart';
 import '../../utils/cancel_token.dart';
+import '../quick_look/generators/generator_cache_location.dart';
 import '../../utils/concurrency_gate.dart';
 import 'remote_thumbnail_cache.dart';
 
@@ -56,7 +57,12 @@ class PdfThumbnailCache {
     int width,
     CancelToken abort,
   ) async {
-    final dir = await AppDirs.generatorCache();
+    final dir = PlatformPaths.isRemoteUri(entry.realPath)
+        ? await AppDirs.generatorCache()
+        : await GeneratorCacheLocation.forSource(
+            entry.realPath,
+            fallback: await AppDirs.generatorCache(),
+          );
     final target = p.join(dir, 'pdf-$key.png');
     if (await File(target).exists()) return target;
 
