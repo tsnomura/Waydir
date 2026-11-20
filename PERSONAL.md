@@ -1169,6 +1169,15 @@ stats path segments whose name looks like an archive, so a folder named
 
 Relevant commits: `ad8bdfc`, `281f8c1`.
 
+## Drive space as numbers in the sidebar
+
+Each drive under Devices shows `used / total` (e.g. `350.6 GB / 952.8 GB`)
+in a muted caption line between its name and the usage bar, so the numbers
+are visible without hovering for the tooltip. The row is 48 px tall instead
+of 40 to fit it. `formatBytes` now switches to TB from 1024 GB, so large
+disks read `5.4 TB / 7.3 TB` rather than `5537.5 GB / 7452.0 GB` (this
+applies everywhere sizes are shown).
+
 ## Embedded terminal reliability fixes
 
 - Fixed: a terminal tab stayed open even after its shell process had

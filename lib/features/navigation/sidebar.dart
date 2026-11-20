@@ -56,7 +56,7 @@ const double _gutter = 8;
 const double _expandedRightGutter = 4;
 const double _rowPadH = 10;
 const double _rowHeight = 30;
-const double _rowHeightWithSpace = 40;
+const double _rowHeightWithSpace = 48;
 const double _railRowHeight = 34;
 const double _iconSize = 16;
 const double _iconGap = 10;
@@ -2315,10 +2315,23 @@ class _ItemRowState extends State<_ItemRow> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               content,
-              const SizedBox(height: 5),
+              const SizedBox(height: 2),
               Padding(
                 padding: const EdgeInsets.only(left: _iconSize + _iconGap),
-                child: _DriveSpaceBar(space: widget.space!),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${formatBytes(widget.space!.usedBytes)} / '
+                      '${formatBytes(widget.space!.totalBytes)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.txt.caption,
+                    ),
+                    const SizedBox(height: 3),
+                    _DriveSpaceBar(space: widget.space!),
+                  ],
+                ),
               ),
             ],
           );
