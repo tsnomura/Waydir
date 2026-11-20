@@ -1923,6 +1923,38 @@ in the same area (header stays lit, terminal tabs remain clickable).
 
 Relevant commits: `d0c1157`, `6b6f41b` (View menu item).
 
+## Side panel: a bottom pane on the right
+
+A second panel like the bottom pane — terminal tabs plus the Quick Look tab
+— docked to the right of the panes, outside them, so it's there in single
+and dual mode alike.
+
+- `Ctrl`+`Alt`+`B` toggles it (rebindable, View menu **Side Panel**, command
+  palette "Toggle side panel"). The terminal's own key handler also matches
+  it, so it works while a terminal has focus. Opening it with no terminal
+  in it shows the Quick Look tab.
+- Its Quick Look follows the cursor of whichever pane is active, so moving
+  in either pane updates it. `Ctrl`+`Space` toggles the side panel's Quick
+  Look while the side panel is open, otherwise the bottom pane's as before.
+- Its terminals start in the active pane's folder and get
+  `WAYDIR_ORIGIN_PANE=active`, so `wcd` follows the active pane; `wd`
+  opens in the active pane too.
+- Implemented as a third terminal slot (`ShellStore.sideSlot` = 2):
+  side terminals have `originPane` 2 and keep their own slot in single
+  mode (`TerminalLayout.slotFor`), and going single/dual leaves slot 2
+  alone. The bottom pane's `_TerminalPanel` became the public
+  `TerminalPanel` with `side: true` for a width-resizable layout (drag
+  the left edge; width is capped at 60% of the window).
+- Width and visibility persist (`app_settings.side_panel_width` /
+  `side_panel_visible`, schema v50). Terminal sessions don't survive a
+  restart, so a panel restored as visible shows Quick Look.
+- Quick Look's info section moves below the preview when the area is
+  taller than wide and under 900 px wide (`stacksInfoBelow`), which is the
+  usual side-panel shape. This also applies to the floating and bottom
+  Quick Look in that shape.
+- Inserting paths (`Ctrl`+`Enter`) goes to the bottom terminal if it's
+  showing a terminal, otherwise to the side panel's.
+
 ## Standalone Quick Look window (`--quick-look`)
 
 `waydir --quick-look <file>` (or `--quick-look=<file>`) starts Waydir as a

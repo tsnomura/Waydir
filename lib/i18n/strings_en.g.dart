@@ -178,6 +178,9 @@ class Translations$menu$en {
 	/// en: 'Quick Look Pane'
 	String get quickLookPane => 'Quick Look Pane';
 
+	/// en: 'Side Panel'
+	String get sidePanel => 'Side Panel';
+
 	/// en: 'Open Linked Machine's Directory'
 	String get openLinkedDirectory => 'Open Linked Machine\'s Directory';
 
@@ -973,8 +976,8 @@ class Translations$keybindings$en {
 	/// en: 'Open Quick Look (marked)'
 	String get quickLookMarked => 'Open Quick Look (marked)';
 
-	/// en: 'Toggle Quick Look (bottom pane)'
-	String get quickLookBottomPane => 'Toggle Quick Look (bottom pane)';
+	/// en: 'Toggle Quick Look (side panel if open, else bottom pane)'
+	String get quickLookBottomPane => 'Toggle Quick Look (side panel if open, else bottom pane)';
 
 	/// en: 'Close Quick Look'
 	String get quickLookClose => 'Close Quick Look';
@@ -1086,6 +1089,9 @@ class Translations$keybindings$en {
 
 	/// en: 'Toggle sidebar'
 	String get toggleSidebar => 'Toggle sidebar';
+
+	/// en: 'Toggle side panel (Quick Look / terminal on the right)'
+	String get toggleSidePanel => 'Toggle side panel (Quick Look / terminal on the right)';
 
 	/// en: 'Toggle list/tree/grid view'
 	String get toggleView => 'Toggle list/tree/grid view';
@@ -4688,6 +4694,7 @@ extension on Translations {
 			'menu.showHidden' => 'Show Hidden Files',
 			'menu.remoteThumbnails' => 'Remote Thumbnails (This Tab)',
 			'menu.quickLookPane' => 'Quick Look Pane',
+			'menu.sidePanel' => 'Side Panel',
 			'menu.openLinkedDirectory' => 'Open Linked Machine\'s Directory',
 			'menu.sendDirectoryToLinked' => 'Send This Directory to Linked Machine',
 			'menu.selectAll' => 'Select All',
@@ -5175,9 +5182,9 @@ extension on Translations {
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
 			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
-			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
 			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
 			'help.groups.navigating.title' => 'Navigating',
 			'help.groups.navigating.moving.title' => 'Moving Around',
@@ -5285,7 +5292,7 @@ extension on Translations {
 			'keybindings.focusPath' => 'Focus path bar',
 			'keybindings.quickLook' => 'Open Quick Look (cursor)',
 			'keybindings.quickLookMarked' => 'Open Quick Look (marked)',
-			'keybindings.quickLookBottomPane' => 'Toggle Quick Look (bottom pane)',
+			'keybindings.quickLookBottomPane' => 'Toggle Quick Look (side panel if open, else bottom pane)',
 			'keybindings.quickLookClose' => 'Close Quick Look',
 			'keybindings.quickLookPrevFile' => 'Previous file',
 			'keybindings.quickLookNextFile' => 'Next file',
@@ -5323,6 +5330,7 @@ extension on Translations {
 			'keybindings.fileListZoomOut' => 'Zoom out file list',
 			'keybindings.fileListZoomReset' => 'Reset file list zoom',
 			'keybindings.toggleSidebar' => 'Toggle sidebar',
+			'keybindings.toggleSidePanel' => 'Toggle side panel (Quick Look / terminal on the right)',
 			'keybindings.toggleView' => 'Toggle list/tree/grid view',
 			'keybindings.viewModeList' => 'Switch to list view',
 			'keybindings.viewModeTree' => 'Switch to tree view',
@@ -5688,10 +5696,10 @@ extension on Translations {
 			'dialog.confirmCopySingle' => ({required Object name, required Object dest}) => 'Copy "${name}" to ${dest}?',
 			'dialog.confirmCopyMultiple' => ({required Object count, required Object dest}) => 'Copy ${count} items to ${dest}?',
 			'dialog.confirmMoveTitle' => 'Move items?',
-			'dialog.confirmMoveSingle' => ({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?',
-			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
 			_ => null,
 		} ?? switch (path) {
+			'dialog.confirmMoveSingle' => ({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?',
+			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
 			'password.authenticationRequired' => 'Authentication Required',
 			'password.dismiss' => 'Dismiss',
 			'password.mountPrompt' => 'Enter your password to mount this drive.',

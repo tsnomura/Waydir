@@ -400,19 +400,38 @@ Widget splitPreview(
           child: preview,
         );
   if (!showInfo) return scrollablePreview;
+  final info = PrimaryScrollController.none(child: InfoPanel(entry: entry));
 
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(child: scrollablePreview),
-      Container(width: 1, color: AppColors.bgDivider),
-      SizedBox(
-        width: panelWidth,
-        child: PrimaryScrollController.none(child: InfoPanel(entry: entry)),
-      ),
-    ],
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      if (stacksInfoBelow(constraints.biggest)) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: scrollablePreview),
+            Container(height: 1, color: AppColors.bgDivider),
+            SizedBox(height: constraints.maxHeight * 0.35, child: info),
+          ],
+        );
+      }
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: scrollablePreview),
+          Container(width: 1, color: AppColors.bgDivider),
+          SizedBox(width: panelWidth, child: info),
+        ],
+      );
+    },
   );
 }
+
+bool stacksInfoBelow(Size size) =>
+    size.width.isFinite &&
+    size.height.isFinite &&
+    size.width < panelWidth * 3 &&
+    size.height > size.width;
 
 class QuickLookBody extends StatelessWidget {
   final FileEntry? entry;

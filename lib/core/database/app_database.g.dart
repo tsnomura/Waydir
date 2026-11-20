@@ -197,6 +197,33 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(200.0),
   );
+  static const VerificationMeta _sidePanelVisibleMeta = const VerificationMeta(
+    'sidePanelVisible',
+  );
+  @override
+  late final GeneratedColumn<bool> sidePanelVisible = GeneratedColumn<bool>(
+    'side_panel_visible',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("side_panel_visible" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _sidePanelWidthMeta = const VerificationMeta(
+    'sidePanelWidth',
+  );
+  @override
+  late final GeneratedColumn<double> sidePanelWidth = GeneratedColumn<double>(
+    'side_panel_width',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(420.0),
+  );
   static const VerificationMeta _restoreSessionMeta = const VerificationMeta(
     'restoreSession',
   );
@@ -884,6 +911,8 @@ class $AppSettingsTable extends AppSettings
     activePaneIndex,
     sidebarCollapsed,
     sidebarWidth,
+    sidePanelVisible,
+    sidePanelWidth,
     restoreSession,
     defaultStartingPath,
     confirmDelete,
@@ -1060,6 +1089,24 @@ class $AppSettingsTable extends AppSettings
         sidebarWidth.isAcceptableOrUnknown(
           data['sidebar_width']!,
           _sidebarWidthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('side_panel_visible')) {
+      context.handle(
+        _sidePanelVisibleMeta,
+        sidePanelVisible.isAcceptableOrUnknown(
+          data['side_panel_visible']!,
+          _sidePanelVisibleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('side_panel_width')) {
+      context.handle(
+        _sidePanelWidthMeta,
+        sidePanelWidth.isAcceptableOrUnknown(
+          data['side_panel_width']!,
+          _sidePanelWidthMeta,
         ),
       );
     }
@@ -1561,6 +1608,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.double,
         data['${effectivePrefix}sidebar_width'],
       )!,
+      sidePanelVisible: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}side_panel_visible'],
+      )!,
+      sidePanelWidth: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}side_panel_width'],
+      )!,
       restoreSession: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}restore_session'],
@@ -1782,6 +1837,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final int activePaneIndex;
   final bool sidebarCollapsed;
   final double sidebarWidth;
+  final bool sidePanelVisible;
+  final double sidePanelWidth;
   final bool restoreSession;
   final String defaultStartingPath;
   final bool confirmDelete;
@@ -1847,6 +1904,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.activePaneIndex,
     required this.sidebarCollapsed,
     required this.sidebarWidth,
+    required this.sidePanelVisible,
+    required this.sidePanelWidth,
     required this.restoreSession,
     required this.defaultStartingPath,
     required this.confirmDelete,
@@ -1915,6 +1974,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['active_pane_index'] = Variable<int>(activePaneIndex);
     map['sidebar_collapsed'] = Variable<bool>(sidebarCollapsed);
     map['sidebar_width'] = Variable<double>(sidebarWidth);
+    map['side_panel_visible'] = Variable<bool>(sidePanelVisible);
+    map['side_panel_width'] = Variable<double>(sidePanelWidth);
     map['restore_session'] = Variable<bool>(restoreSession);
     map['default_starting_path'] = Variable<String>(defaultStartingPath);
     map['confirm_delete'] = Variable<bool>(confirmDelete);
@@ -1990,6 +2051,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       activePaneIndex: Value(activePaneIndex),
       sidebarCollapsed: Value(sidebarCollapsed),
       sidebarWidth: Value(sidebarWidth),
+      sidePanelVisible: Value(sidePanelVisible),
+      sidePanelWidth: Value(sidePanelWidth),
       restoreSession: Value(restoreSession),
       defaultStartingPath: Value(defaultStartingPath),
       confirmDelete: Value(confirmDelete),
@@ -2073,6 +2136,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       activePaneIndex: serializer.fromJson<int>(json['activePaneIndex']),
       sidebarCollapsed: serializer.fromJson<bool>(json['sidebarCollapsed']),
       sidebarWidth: serializer.fromJson<double>(json['sidebarWidth']),
+      sidePanelVisible: serializer.fromJson<bool>(json['sidePanelVisible']),
+      sidePanelWidth: serializer.fromJson<double>(json['sidePanelWidth']),
       restoreSession: serializer.fromJson<bool>(json['restoreSession']),
       defaultStartingPath: serializer.fromJson<String>(
         json['defaultStartingPath'],
@@ -2169,6 +2234,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'activePaneIndex': serializer.toJson<int>(activePaneIndex),
       'sidebarCollapsed': serializer.toJson<bool>(sidebarCollapsed),
       'sidebarWidth': serializer.toJson<double>(sidebarWidth),
+      'sidePanelVisible': serializer.toJson<bool>(sidePanelVisible),
+      'sidePanelWidth': serializer.toJson<double>(sidePanelWidth),
       'restoreSession': serializer.toJson<bool>(restoreSession),
       'defaultStartingPath': serializer.toJson<String>(defaultStartingPath),
       'confirmDelete': serializer.toJson<bool>(confirmDelete),
@@ -2249,6 +2316,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     int? activePaneIndex,
     bool? sidebarCollapsed,
     double? sidebarWidth,
+    bool? sidePanelVisible,
+    double? sidePanelWidth,
     bool? restoreSession,
     String? defaultStartingPath,
     bool? confirmDelete,
@@ -2314,6 +2383,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     activePaneIndex: activePaneIndex ?? this.activePaneIndex,
     sidebarCollapsed: sidebarCollapsed ?? this.sidebarCollapsed,
     sidebarWidth: sidebarWidth ?? this.sidebarWidth,
+    sidePanelVisible: sidePanelVisible ?? this.sidePanelVisible,
+    sidePanelWidth: sidePanelWidth ?? this.sidePanelWidth,
     restoreSession: restoreSession ?? this.restoreSession,
     defaultStartingPath: defaultStartingPath ?? this.defaultStartingPath,
     confirmDelete: confirmDelete ?? this.confirmDelete,
@@ -2410,6 +2481,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       sidebarWidth: data.sidebarWidth.present
           ? data.sidebarWidth.value
           : this.sidebarWidth,
+      sidePanelVisible: data.sidePanelVisible.present
+          ? data.sidePanelVisible.value
+          : this.sidePanelVisible,
+      sidePanelWidth: data.sidePanelWidth.present
+          ? data.sidePanelWidth.value
+          : this.sidePanelWidth,
       restoreSession: data.restoreSession.present
           ? data.restoreSession.value
           : this.restoreSession,
@@ -2576,6 +2653,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('activePaneIndex: $activePaneIndex, ')
           ..write('sidebarCollapsed: $sidebarCollapsed, ')
           ..write('sidebarWidth: $sidebarWidth, ')
+          ..write('sidePanelVisible: $sidePanelVisible, ')
+          ..write('sidePanelWidth: $sidePanelWidth, ')
           ..write('restoreSession: $restoreSession, ')
           ..write('defaultStartingPath: $defaultStartingPath, ')
           ..write('confirmDelete: $confirmDelete, ')
@@ -2648,6 +2727,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     activePaneIndex,
     sidebarCollapsed,
     sidebarWidth,
+    sidePanelVisible,
+    sidePanelWidth,
     restoreSession,
     defaultStartingPath,
     confirmDelete,
@@ -2717,6 +2798,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.activePaneIndex == this.activePaneIndex &&
           other.sidebarCollapsed == this.sidebarCollapsed &&
           other.sidebarWidth == this.sidebarWidth &&
+          other.sidePanelVisible == this.sidePanelVisible &&
+          other.sidePanelWidth == this.sidePanelWidth &&
           other.restoreSession == this.restoreSession &&
           other.defaultStartingPath == this.defaultStartingPath &&
           other.confirmDelete == this.confirmDelete &&
@@ -2785,6 +2868,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<int> activePaneIndex;
   final Value<bool> sidebarCollapsed;
   final Value<double> sidebarWidth;
+  final Value<bool> sidePanelVisible;
+  final Value<double> sidePanelWidth;
   final Value<bool> restoreSession;
   final Value<String> defaultStartingPath;
   final Value<bool> confirmDelete;
@@ -2850,6 +2935,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.activePaneIndex = const Value.absent(),
     this.sidebarCollapsed = const Value.absent(),
     this.sidebarWidth = const Value.absent(),
+    this.sidePanelVisible = const Value.absent(),
+    this.sidePanelWidth = const Value.absent(),
     this.restoreSession = const Value.absent(),
     this.defaultStartingPath = const Value.absent(),
     this.confirmDelete = const Value.absent(),
@@ -2916,6 +3003,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.activePaneIndex = const Value.absent(),
     this.sidebarCollapsed = const Value.absent(),
     this.sidebarWidth = const Value.absent(),
+    this.sidePanelVisible = const Value.absent(),
+    this.sidePanelWidth = const Value.absent(),
     this.restoreSession = const Value.absent(),
     this.defaultStartingPath = const Value.absent(),
     this.confirmDelete = const Value.absent(),
@@ -2982,6 +3071,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<int>? activePaneIndex,
     Expression<bool>? sidebarCollapsed,
     Expression<double>? sidebarWidth,
+    Expression<bool>? sidePanelVisible,
+    Expression<double>? sidePanelWidth,
     Expression<bool>? restoreSession,
     Expression<String>? defaultStartingPath,
     Expression<bool>? confirmDelete,
@@ -3053,6 +3144,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (activePaneIndex != null) 'active_pane_index': activePaneIndex,
       if (sidebarCollapsed != null) 'sidebar_collapsed': sidebarCollapsed,
       if (sidebarWidth != null) 'sidebar_width': sidebarWidth,
+      if (sidePanelVisible != null) 'side_panel_visible': sidePanelVisible,
+      if (sidePanelWidth != null) 'side_panel_width': sidePanelWidth,
       if (restoreSession != null) 'restore_session': restoreSession,
       if (defaultStartingPath != null)
         'default_starting_path': defaultStartingPath,
@@ -3137,6 +3230,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<int>? activePaneIndex,
     Value<bool>? sidebarCollapsed,
     Value<double>? sidebarWidth,
+    Value<bool>? sidePanelVisible,
+    Value<double>? sidePanelWidth,
     Value<bool>? restoreSession,
     Value<String>? defaultStartingPath,
     Value<bool>? confirmDelete,
@@ -3206,6 +3301,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       activePaneIndex: activePaneIndex ?? this.activePaneIndex,
       sidebarCollapsed: sidebarCollapsed ?? this.sidebarCollapsed,
       sidebarWidth: sidebarWidth ?? this.sidebarWidth,
+      sidePanelVisible: sidePanelVisible ?? this.sidePanelVisible,
+      sidePanelWidth: sidePanelWidth ?? this.sidePanelWidth,
       restoreSession: restoreSession ?? this.restoreSession,
       defaultStartingPath: defaultStartingPath ?? this.defaultStartingPath,
       confirmDelete: confirmDelete ?? this.confirmDelete,
@@ -3319,6 +3416,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     }
     if (sidebarWidth.present) {
       map['sidebar_width'] = Variable<double>(sidebarWidth.value);
+    }
+    if (sidePanelVisible.present) {
+      map['side_panel_visible'] = Variable<bool>(sidePanelVisible.value);
+    }
+    if (sidePanelWidth.present) {
+      map['side_panel_width'] = Variable<double>(sidePanelWidth.value);
     }
     if (restoreSession.present) {
       map['restore_session'] = Variable<bool>(restoreSession.value);
@@ -3510,6 +3613,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('activePaneIndex: $activePaneIndex, ')
           ..write('sidebarCollapsed: $sidebarCollapsed, ')
           ..write('sidebarWidth: $sidebarWidth, ')
+          ..write('sidePanelVisible: $sidePanelVisible, ')
+          ..write('sidePanelWidth: $sidePanelWidth, ')
           ..write('restoreSession: $restoreSession, ')
           ..write('defaultStartingPath: $defaultStartingPath, ')
           ..write('confirmDelete: $confirmDelete, ')
@@ -7781,6 +7886,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> activePaneIndex,
       Value<bool> sidebarCollapsed,
       Value<double> sidebarWidth,
+      Value<bool> sidePanelVisible,
+      Value<double> sidePanelWidth,
       Value<bool> restoreSession,
       Value<String> defaultStartingPath,
       Value<bool> confirmDelete,
@@ -7848,6 +7955,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> activePaneIndex,
       Value<bool> sidebarCollapsed,
       Value<double> sidebarWidth,
+      Value<bool> sidePanelVisible,
+      Value<double> sidePanelWidth,
       Value<bool> restoreSession,
       Value<String> defaultStartingPath,
       Value<bool> confirmDelete,
@@ -7980,6 +8089,16 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<double> get sidebarWidth => $composableBuilder(
     column: $table.sidebarWidth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get sidePanelVisible => $composableBuilder(
+    column: $table.sidePanelVisible,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sidePanelWidth => $composableBuilder(
+    column: $table.sidePanelWidth,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8313,6 +8432,16 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get sidePanelVisible => $composableBuilder(
+    column: $table.sidePanelVisible,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sidePanelWidth => $composableBuilder(
+    column: $table.sidePanelWidth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get restoreSession => $composableBuilder(
     column: $table.restoreSession,
     builder: (column) => ColumnOrderings(column),
@@ -8635,6 +8764,16 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get sidePanelVisible => $composableBuilder(
+    column: $table.sidePanelVisible,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get sidePanelWidth => $composableBuilder(
+    column: $table.sidePanelWidth,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get restoreSession => $composableBuilder(
     column: $table.restoreSession,
     builder: (column) => column,
@@ -8925,6 +9064,8 @@ class $$AppSettingsTableTableManager
                 Value<int> activePaneIndex = const Value.absent(),
                 Value<bool> sidebarCollapsed = const Value.absent(),
                 Value<double> sidebarWidth = const Value.absent(),
+                Value<bool> sidePanelVisible = const Value.absent(),
+                Value<double> sidePanelWidth = const Value.absent(),
                 Value<bool> restoreSession = const Value.absent(),
                 Value<String> defaultStartingPath = const Value.absent(),
                 Value<bool> confirmDelete = const Value.absent(),
@@ -8990,6 +9131,8 @@ class $$AppSettingsTableTableManager
                 activePaneIndex: activePaneIndex,
                 sidebarCollapsed: sidebarCollapsed,
                 sidebarWidth: sidebarWidth,
+                sidePanelVisible: sidePanelVisible,
+                sidePanelWidth: sidePanelWidth,
                 restoreSession: restoreSession,
                 defaultStartingPath: defaultStartingPath,
                 confirmDelete: confirmDelete,
@@ -9057,6 +9200,8 @@ class $$AppSettingsTableTableManager
                 Value<int> activePaneIndex = const Value.absent(),
                 Value<bool> sidebarCollapsed = const Value.absent(),
                 Value<double> sidebarWidth = const Value.absent(),
+                Value<bool> sidePanelVisible = const Value.absent(),
+                Value<double> sidePanelWidth = const Value.absent(),
                 Value<bool> restoreSession = const Value.absent(),
                 Value<String> defaultStartingPath = const Value.absent(),
                 Value<bool> confirmDelete = const Value.absent(),
@@ -9122,6 +9267,8 @@ class $$AppSettingsTableTableManager
                 activePaneIndex: activePaneIndex,
                 sidebarCollapsed: sidebarCollapsed,
                 sidebarWidth: sidebarWidth,
+                sidePanelVisible: sidePanelVisible,
+                sidePanelWidth: sidePanelWidth,
                 restoreSession: restoreSession,
                 defaultStartingPath: defaultStartingPath,
                 confirmDelete: confirmDelete,

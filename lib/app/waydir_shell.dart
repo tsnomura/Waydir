@@ -311,6 +311,7 @@ class _WaydirShellState extends State<WaydirShell>
       onToggleQuickLook: _toggleQuickLookPane,
       onCloseQuickLook: _closeQuickLookPane,
       onRegisterQuickLookGuard: _registerQuickLookGuard,
+      onToggleSidePanel: _toggleSidePanel,
     );
   }
 
@@ -372,6 +373,52 @@ class _WaydirShellState extends State<WaydirShell>
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildSidePanel() {
+    return SignalBuilder(
+      builder: (context) {
+        const slot = ShellStore.sideSlot;
+        final store = _shell.activeStore.value;
+        final active = _shell.activeTerminalForSlot(slot);
+        final quickLook = _shell.quickLookActive.value[slot];
+        if (store == null ||
+            !_shell.terminalVisible.value[slot] ||
+            (active == null && !quickLook)) {
+          return const SizedBox.shrink();
+        }
+        final maxWidth = (MediaQuery.sizeOf(context).width * 0.6).clamp(
+          240.0,
+          double.infinity,
+        );
+
+        return TerminalPanel(
+          slot: slot,
+          side: true,
+          tabs: _shell.terminalsForSlot(slot),
+          active: active,
+          quickLook: quickLook,
+          quickLookStore: store,
+          height: _shell.terminalHeight.value[slot].clamp(240.0, maxWidth),
+          isSingleMode: false,
+          onToggleTerminal: _toggleTerminalSlot,
+          onActivate: _activateTerminal,
+          onSelectTab: _selectTerminalTab,
+          onCloseTab: _closeTerminalTab,
+          onNewTab: _newTerminalTab,
+          onNewTabMenu: _newTerminalTabMenu,
+          onCycleTab: _cycleTerminalTab,
+          onReorderTab: _shell.reorderTerminalTab,
+          onHeightChanged: _setTerminalHeight,
+          onReturnFocusToFiles: _focusFiles,
+          onSelectQuickLook: _selectQuickLookTab,
+          onToggleQuickLook: _toggleQuickLookPane,
+          onCloseQuickLook: _closeQuickLookPane,
+          onRegisterQuickLookGuard: _registerQuickLookGuard,
+          onToggleSidePanel: _toggleSidePanel,
         );
       },
     );
@@ -451,6 +498,7 @@ class _WaydirShellState extends State<WaydirShell>
                                         ),
                                   ),
                                   Expanded(child: _buildPaneArea()),
+                                  _buildSidePanel(),
                                 ],
                               ),
                             ),

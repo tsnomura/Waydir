@@ -68,23 +68,62 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   void _toggleTerminalSlot(int slot) {
+    if (slot == ShellStore.sideSlot) {
+      _toggleSidePanel();
+
+      return;
+    }
     if (_shell.terminalVisible.value[slot]) {
       _shell.setTerminalVisible(slot, false);
       _restoreFocus();
 
       return;
     }
-    if (_shell.isDual.value) _shell.setActivePane(slot);
+    _activatePaneForSlot(slot);
     _focusTerminal();
+  }
+
+  void _toggleSidePanel() {
+    const slot = ShellStore.sideSlot;
+    if (_shell.terminalVisible.value[slot]) {
+      final hadFocus = _isTerminalFocused();
+      _shell.setTerminalVisible(slot, false);
+      if (hadFocus) _restoreFocus();
+
+      return;
+    }
+    batch(() {
+      if (_shell.activeTerminalForSlot(slot) == null) {
+        _shell.setQuickLookActive(slot, true);
+      }
+      _shell.setTerminalVisible(slot, true);
+    });
+  }
+
+  bool get _sidePanelVisible =>
+      _shell.terminalVisible.value[ShellStore.sideSlot];
+
+  int _quickLookSlot() =>
+      _sidePanelVisible ? ShellStore.sideSlot : _terminalSlotForActivePane();
+
+  void _activatePaneForSlot(int slot) {
+    if (slot != ShellStore.sideSlot && _shell.isDual.value) {
+      _shell.setActivePane(slot);
+    }
   }
 
   int _terminalSlotForActivePane() {
     return _shell.isDual.value ? _shell.activePaneIndex.value : 0;
   }
 
+  NavigationStore _storeForSlot(int slot) {
+    if (slot == ShellStore.sideSlot) return _active;
+
+    return _shell.panes.value[slot].tabs.activeTab.value.store;
+  }
+
   TerminalTab? _openTerminalTab(int slot) {
-    final pane = _shell.panes.value[slot];
-    final cwd = pane.tabs.activeTab.value.store.currentPath.value;
+    final cwd = _storeForSlot(slot).currentPath.value;
     final tab = _shell.openTerminal(slot, cwd, spec: _autoWslSpec(cwd));
     if (tab == null) {
       showToast(context: context, message: t.toast.terminalUnavailable);
@@ -104,8 +143,7 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   void _newTerminalTabMenu(int slot, Offset position) {
-    final cwd =
-        _shell.panes.value[slot].tabs.activeTab.value.store.currentPath.value;
+    final cwd = _storeForSlot(slot).currentPath.value;
     final items = <ContextMenuItem>[
       ContextMenuItem(
         icon: WaydirIconsRegular.magicWand,
@@ -152,7 +190,7 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
 
   void _openTerminalWithSpec(int slot, String cwd, TerminalLaunchSpec spec) {
     _terminalInteractionAt = DateTime.now();
-    if (_shell.isDual.value) _shell.setActivePane(slot);
+    _activatePaneForSlot(slot);
     final tab = _shell.openTerminal(slot, cwd, spec: spec);
     if (tab == null) {
       showToast(context: context, message: t.toast.terminalUnavailable);
@@ -194,7 +232,7 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   void _activateTerminal(int slot, int id) {
-    if (_shell.isDual.value) _shell.setActivePane(slot);
+    _activatePaneForSlot(slot);
     _terminalInteractionAt = DateTime.now();
     _shell.setActiveTerminal(slot, id);
     final tab = _shell.activeTerminalForSlot(slot);
@@ -205,13 +243,13 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
 
   void _selectQuickLookTab(int slot) {
     _terminalInteractionAt = DateTime.now();
-    if (_shell.isDual.value) _shell.setActivePane(slot);
+    _activatePaneForSlot(slot);
     _shell.activateQuickLook(slot);
   }
 
   Future<void> _toggleQuickLookPane(int slot) async {
     _terminalInteractionAt = DateTime.now();
-    if (_shell.isDual.value) _shell.setActivePane(slot);
+    _activatePaneForSlot(slot);
     if (_shell.quickLookActive.value[slot]) {
       await _closeQuickLookPane(slot);
 
@@ -249,7 +287,14 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
   }
 
   Future<void> _insertPathsIntoTerminal({required bool absolute}) async {
-    final slot = _terminalSlotForActivePane();
+    bool usable(int s) =>
+        _shell.terminalVisible.value[s] &&
+        !_shell.quickLookActive.value[s] &&
+        _shell.activeTerminalForSlot(s) != null;
+    var slot = _terminalSlotForActivePane();
+    if (!usable(slot) && usable(ShellStore.sideSlot)) {
+      slot = ShellStore.sideSlot;
+    }
     if (_shell.terminalVisible.value[slot] &&
         _shell.quickLookActive.value[slot]) {
       final cursor = _active.cursorEntry.value;

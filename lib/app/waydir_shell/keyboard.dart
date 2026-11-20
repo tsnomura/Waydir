@@ -366,7 +366,13 @@ mixin _WaydirKeyboardMixin
     }
 
     if (AppShortcuts.matches('quick_look_bottom', key)) {
-      unawaited(_toggleQuickLookPane(_terminalSlotForActivePane()));
+      unawaited(_toggleQuickLookPane(_quickLookSlot()));
+
+      return KeyEventResult.handled;
+    }
+
+    if (AppShortcuts.matches('toggle_side_panel', key)) {
+      _toggleSidePanel();
 
       return KeyEventResult.handled;
     }

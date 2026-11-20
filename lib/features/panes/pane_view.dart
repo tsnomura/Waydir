@@ -70,6 +70,7 @@ class PaneView extends StatelessWidget {
   final void Function(int slot)? onToggleQuickLook;
   final void Function(int slot)? onCloseQuickLook;
   final void Function(int slot, QuickLookCloseGuard?)? onRegisterQuickLookGuard;
+  final VoidCallback? onToggleSidePanel;
 
   const PaneView({
     super.key,
@@ -105,6 +106,7 @@ class PaneView extends StatelessWidget {
     this.onToggleQuickLook,
     this.onCloseQuickLook,
     this.onRegisterQuickLookGuard,
+    this.onToggleSidePanel,
   });
 
   @override
@@ -204,7 +206,7 @@ class PaneView extends StatelessWidget {
               if (terminalVisible &&
                   (activeTerminal != null || quickLookActive))
                 SignalBuilder(
-                  builder: (_) => _TerminalPanel(
+                  builder: (_) => TerminalPanel(
                     slot: terminalSlot,
                     tabs: terminalTabs,
                     active: activeTerminal,
@@ -226,6 +228,7 @@ class PaneView extends StatelessWidget {
                     onToggleQuickLook: onToggleQuickLook,
                     onCloseQuickLook: onCloseQuickLook,
                     onRegisterQuickLookGuard: onRegisterQuickLookGuard,
+                    onToggleSidePanel: onToggleSidePanel,
                   ),
                 ),
             ],
@@ -415,7 +418,7 @@ class _TabContent extends StatelessWidget {
   }
 }
 
-class _TerminalPanel extends StatefulWidget {
+class TerminalPanel extends StatefulWidget {
   final int slot;
   final List<TerminalTab> tabs;
   final TerminalTab? active;
@@ -437,8 +440,11 @@ class _TerminalPanel extends StatefulWidget {
   final void Function(int slot)? onToggleQuickLook;
   final void Function(int slot)? onCloseQuickLook;
   final void Function(int slot, QuickLookCloseGuard?)? onRegisterQuickLookGuard;
+  final VoidCallback? onToggleSidePanel;
+  final bool side;
 
-  const _TerminalPanel({
+  const TerminalPanel({
+    super.key,
     required this.slot,
     required this.tabs,
     required this.active,
@@ -446,6 +452,8 @@ class _TerminalPanel extends StatefulWidget {
     required this.quickLookStore,
     required this.height,
     required this.isSingleMode,
+    this.side = false,
+    this.onToggleSidePanel,
     this.onToggleTerminal,
     this.onActivate,
     this.onSelectTab,
@@ -463,10 +471,10 @@ class _TerminalPanel extends StatefulWidget {
   });
 
   @override
-  State<_TerminalPanel> createState() => _TerminalPanelState();
+  State<TerminalPanel> createState() => _TerminalPanelState();
 }
 
-class _TerminalPanelState extends State<_TerminalPanel> {
+class _TerminalPanelState extends State<TerminalPanel> {
   bool _focused = false;
   double? _dragHeight;
   final TerminalController _terminalController = TerminalController();
@@ -475,7 +483,10 @@ class _TerminalPanelState extends State<_TerminalPanel> {
 
   void _onResizeDrag(double dy) {
     final base = _dragHeight ?? widget.height;
-    setState(() => _dragHeight = (base - dy).clamp(80.0, 900.0));
+    final next = widget.side
+        ? (base - dy).clamp(240.0, 1600.0)
+        : (base - dy).clamp(80.0, 900.0);
+    setState(() => _dragHeight = next);
   }
 
   void _onResizeEnd() {
@@ -492,7 +503,7 @@ class _TerminalPanelState extends State<_TerminalPanel> {
   }
 
   @override
-  void didUpdateWidget(covariant _TerminalPanel oldWidget) {
+  void didUpdateWidget(covariant TerminalPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_dragHeight != null && widget.height == _dragHeight) {
       _dragHeight = null;
@@ -569,6 +580,12 @@ class _TerminalPanelState extends State<_TerminalPanel> {
       return KeyEventResult.handled;
     }
 
+    if (event is KeyDownEvent &&
+        AppShortcuts.matches('toggle_side_panel', event.logicalKey)) {
+      widget.onToggleSidePanel?.call();
+
+      return KeyEventResult.handled;
+    }
     if (event is KeyDownEvent &&
         AppShortcuts.isControl &&
         !HardwareKeyboard.instance.isShiftPressed &&
@@ -704,71 +721,92 @@ class _TerminalPanelState extends State<_TerminalPanel> {
   Widget build(BuildContext context) {
     final active = widget.active;
     final quickLook = widget.quickLook;
+    final header = _TerminalHeader(
+      focused: _focused,
+      slot: widget.slot,
+      tabs: widget.tabs,
+      active: active,
+      quickLookActive: quickLook,
+      isSingleMode: widget.isSingleMode,
+      onSelectTab: widget.onSelectTab,
+      onCloseTab: widget.onCloseTab,
+      onNewTab: widget.onNewTab,
+      onNewTabMenu: widget.onNewTabMenu,
+      onSelectQuickLook: quickLook
+          ? null
+          : () => widget.onSelectQuickLook?.call(widget.slot),
+      onClose: widget.onToggleTerminal,
+      onReorderTab: widget.onReorderTab,
+    );
+    final body = quickLook
+        ? QuickLookPanel(
+            key: ValueKey('quick-look:${widget.slot}'),
+            store: widget.quickLookStore,
+            onClose: () => widget.onCloseQuickLook?.call(widget.slot),
+            onRegisterCloseGuard: (guard) =>
+                widget.onRegisterQuickLookGuard?.call(widget.slot, guard),
+          )
+        : Listener(
+            onPointerDown: (_) =>
+                widget.onActivate?.call(widget.slot, active!.id),
+            child: SignalBuilder(
+              builder: (context) {
+                final settings = SettingsStore.instance;
+                final useSystem = settings.terminalUseSystemFont.value;
+                final family = settings.terminalFontFamily.value.trim();
+
+                return TerminalView(
+                  active!.session.terminal,
+                  controller: _terminalController,
+                  shortcuts: const {},
+                  focusNode: active.focusNode,
+                  theme: _appTerminalTheme(),
+                  textStyle: TerminalStyle(
+                    fontSize: settings.terminalFontSize.value.toDouble(),
+                    height: settings.terminalLineHeight.value,
+                    fontFamily: (useSystem || family.isEmpty)
+                        ? 'monospace'
+                        : family,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  onKeyEvent: _onKeyEvent,
+                  hardwareKeyboardOnly: Platform.isWindows,
+                );
+              },
+            ),
+          );
+
+    if (widget.side) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _TerminalResizeHandle(
+            axis: Axis.horizontal,
+            onDrag: _onResizeDrag,
+            onDragEnd: _onResizeEnd,
+          ),
+          SizedBox(
+            width: _effectiveHeight,
+            child: Column(
+              children: [
+                header,
+                Expanded(child: body),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _TerminalResizeHandle(onDrag: _onResizeDrag, onDragEnd: _onResizeEnd),
-        _TerminalHeader(
-          focused: _focused,
-          slot: widget.slot,
-          tabs: widget.tabs,
-          active: active,
-          quickLookActive: quickLook,
-          isSingleMode: widget.isSingleMode,
-          onSelectTab: widget.onSelectTab,
-          onCloseTab: widget.onCloseTab,
-          onNewTab: widget.onNewTab,
-          onNewTabMenu: widget.onNewTabMenu,
-          onSelectQuickLook: quickLook
-              ? null
-              : () => widget.onSelectQuickLook?.call(widget.slot),
-          onClose: widget.onToggleTerminal,
-          onReorderTab: widget.onReorderTab,
-        ),
-        SizedBox(
-          height: _effectiveHeight,
-          child: quickLook
-              ? QuickLookPanel(
-                  key: ValueKey('quick-look:${widget.slot}'),
-                  store: widget.quickLookStore,
-                  onClose: () => widget.onCloseQuickLook?.call(widget.slot),
-                  onRegisterCloseGuard: (guard) =>
-                      widget.onRegisterQuickLookGuard?.call(widget.slot, guard),
-                )
-              : Listener(
-                  onPointerDown: (_) =>
-                      widget.onActivate?.call(widget.slot, active!.id),
-                  child: SignalBuilder(
-                    builder: (context) {
-                      final settings = SettingsStore.instance;
-                      final useSystem = settings.terminalUseSystemFont.value;
-                      final family = settings.terminalFontFamily.value.trim();
-
-                      return TerminalView(
-                        active!.session.terminal,
-                        controller: _terminalController,
-                        shortcuts: const {},
-                        focusNode: active.focusNode,
-                        theme: _appTerminalTheme(),
-                        textStyle: TerminalStyle(
-                          fontSize: settings.terminalFontSize.value.toDouble(),
-                          height: settings.terminalLineHeight.value,
-                          fontFamily: (useSystem || family.isEmpty)
-                              ? 'monospace'
-                              : family,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        onKeyEvent: _onKeyEvent,
-                        hardwareKeyboardOnly: Platform.isWindows,
-                      );
-                    },
-                  ),
-                ),
-        ),
+        header,
+        SizedBox(height: _effectiveHeight, child: body),
       ],
     );
   }
@@ -1100,8 +1138,13 @@ class _TerminalIconButtonState extends State<_TerminalIconButton> {
 class _TerminalResizeHandle extends StatefulWidget {
   final ValueChanged<double> onDrag;
   final VoidCallback onDragEnd;
+  final Axis axis;
 
-  const _TerminalResizeHandle({required this.onDrag, required this.onDragEnd});
+  const _TerminalResizeHandle({
+    required this.onDrag,
+    required this.onDragEnd,
+    this.axis = Axis.vertical,
+  });
 
   @override
   State<_TerminalResizeHandle> createState() => _TerminalResizeHandleState();
@@ -1112,6 +1155,21 @@ class _TerminalResizeHandleState extends State<_TerminalResizeHandle> {
 
   @override
   Widget build(BuildContext context) {
+    final color = _hovered ? AppColors.accent : AppColors.bgDivider;
+    if (widget.axis == Axis.horizontal) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragUpdate: (details) => widget.onDrag(details.delta.dx),
+          onHorizontalDragEnd: (_) => widget.onDragEnd(),
+          child: Container(width: 5, color: color),
+        ),
+      );
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.resizeRow,
       onEnter: (_) => setState(() => _hovered = true),
@@ -1120,10 +1178,7 @@ class _TerminalResizeHandleState extends State<_TerminalResizeHandle> {
         behavior: HitTestBehavior.opaque,
         onVerticalDragUpdate: (details) => widget.onDrag(details.delta.dy),
         onVerticalDragEnd: (_) => widget.onDragEnd(),
-        child: Container(
-          height: 5,
-          color: _hovered ? AppColors.accent : AppColors.bgDivider,
-        ),
+        child: Container(height: 5, color: color),
       ),
     );
   }

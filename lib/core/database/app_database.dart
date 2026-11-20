@@ -27,6 +27,9 @@ class AppSettings extends Table {
   BoolColumn get sidebarCollapsed =>
       boolean().withDefault(const Constant(false))();
   RealColumn get sidebarWidth => real().withDefault(const Constant(200.0))();
+  BoolColumn get sidePanelVisible =>
+      boolean().withDefault(const Constant(false))();
+  RealColumn get sidePanelWidth => real().withDefault(const Constant(420.0))();
   BoolColumn get restoreSession =>
       boolean().withDefault(const Constant(true))();
   TextColumn get defaultStartingPath =>
@@ -270,7 +273,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 49;
+  int get schemaVersion => 50;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -485,6 +488,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 49) {
         await addSettingColumn(appSettings.compareExcludePatterns);
+      }
+      if (from < 50) {
+        await addSettingColumn(appSettings.sidePanelVisible);
+        await addSettingColumn(appSettings.sidePanelWidth);
       }
     },
   );
