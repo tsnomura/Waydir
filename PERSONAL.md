@@ -1933,10 +1933,13 @@ and dual mode alike.
   palette "Toggle side panel"). The terminal's own key handler also matches
   it, so it works while a terminal has focus. Opening it with no terminal
   in it shows the Quick Look tab.
-- Toggling it grows or shrinks the window to the right by the panel's
-  width, so the panes keep their width and the window's left edge stays
-  put (`AppWindow.growWidthInPlace`, which skips the re-centring that
-  `size =` does). A maximized window can't grow, so there the panes give
+- Whenever the panel appears or disappears, the window grows or shrinks
+  to the right by the panel's width, so the panes keep their width and the
+  window's left edge stays put (`AppWindow.growWidthInPlace`, which skips
+  the re-centring that `size =` does). An effect on the panel's shown
+  state drives it, so `Ctrl`+`Alt`+`B`, the header's close button,
+  closing its last terminal (tab ×, `Ctrl`+`Shift`+`W`, the shell
+  exiting) and closing its Quick Look with no terminal all resize. A maximized window can't grow, so there the panes give
   up the room instead. The window isn't kept on screen: opening near the
   right edge of the monitor pushes part of it off-screen. The Windows
   runner's `waydir_window_get_size`/`set_size` now round instead of

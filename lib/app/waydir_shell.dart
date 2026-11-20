@@ -230,6 +230,7 @@ class _WaydirShellState extends State<WaydirShell>
       }),
     );
     _installPluginEventEffects();
+    _installSidePanelWindowResize();
     _maybePromptFullDiskAccess();
     CommandPaletteLauncher.instance.open = _openCommandPalette;
   }

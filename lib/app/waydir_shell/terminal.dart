@@ -85,20 +85,12 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
 
   void _toggleSidePanel() {
     const slot = ShellStore.sideSlot;
-    final resizeWindow = isWindowChromeSupported && !appWindow.isMaximized;
     if (_shell.terminalVisible.value[slot]) {
       final hadFocus = _isTerminalFocused();
-      final width = _sidePanelOuterWidth(MediaQuery.sizeOf(context).width);
       _shell.setTerminalVisible(slot, false);
-      if (resizeWindow) appWindow.growWidthInPlace(-width);
       if (hadFocus) _restoreFocus();
 
       return;
-    }
-    final windowWidth = MediaQuery.sizeOf(context).width;
-    if (resizeWindow) {
-      final grown = windowWidth + _shell.terminalHeight.value[slot];
-      appWindow.growWidthInPlace(_sidePanelOuterWidth(grown));
     }
     batch(() {
       if (_shell.activeTerminalForSlot(slot) == null) {
@@ -106,6 +98,40 @@ mixin _WaydirTerminalMixin on State<WaydirShell>, _WaydirStateBase {
       }
       _shell.setTerminalVisible(slot, true);
     });
+  }
+
+  void _installSidePanelWindowResize() {
+    var shown = _sidePanelShown();
+    _effectDisposers.add(
+      effect(() {
+        final now = _sidePanelShown();
+        final before = shown;
+        shown = now;
+        if (now == before) return;
+        untracked(() => _resizeWindowForSidePanel(opening: now));
+      }),
+    );
+  }
+
+  bool _sidePanelShown() {
+    const slot = ShellStore.sideSlot;
+
+    return _shell.terminalVisible.value[slot] &&
+        (_shell.quickLookActive.value[slot] ||
+            _shell.activeTerminalForSlot(slot) != null);
+  }
+
+  void _resizeWindowForSidePanel({required bool opening}) {
+    if (!mounted || !isWindowChromeSupported || appWindow.isMaximized) return;
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final windowWidth = view.physicalSize.width / view.devicePixelRatio;
+    if (opening) {
+      final grown =
+          windowWidth + _shell.terminalHeight.value[ShellStore.sideSlot];
+      appWindow.growWidthInPlace(_sidePanelOuterWidth(grown));
+    } else {
+      appWindow.growWidthInPlace(-_sidePanelOuterWidth(windowWidth));
+    }
   }
 
   double _sidePanelOuterWidth(double windowWidth) =>
