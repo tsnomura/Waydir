@@ -17,13 +17,7 @@ void main() {
   late NavigationStore store;
 
   setUpAll(() async {
-    final dbFile = File(
-      p.join(
-        Directory.systemTemp.createTempSync('waydir_settings_').path,
-        'settings.sqlite',
-      ),
-    );
-    await SettingsStore.instance.load(executor: NativeDatabase(dbFile));
+    await SettingsStore.instance.load(executor: NativeDatabase.memory());
   });
 
   Future<void> settle() async {
