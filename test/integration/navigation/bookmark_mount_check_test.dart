@@ -13,13 +13,7 @@ import 'package:waydir/features/navigation/bookmark_store.dart';
 
 void main() {
   setUpAll(() async {
-    final dbFile = File(
-      p.join(
-        Directory.systemTemp.createTempSync('waydir_settings_').path,
-        'settings.sqlite',
-      ),
-    );
-    await SettingsStore.instance.load(executor: NativeDatabase(dbFile));
+    await SettingsStore.instance.load(executor: NativeDatabase.memory());
     await FsWorkerPool.instance.ensureStarted();
   });
 

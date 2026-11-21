@@ -5,7 +5,6 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:waydir/core/platform/platform_paths.dart';
 import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/navigation/navigation_store.dart';
@@ -18,13 +17,7 @@ void main() {
   late NavigationStore store;
 
   setUpAll(() async {
-    final dbFile = File(
-      p.join(
-        Directory.systemTemp.createTempSync('waydir_settings_').path,
-        'settings.sqlite',
-      ),
-    );
-    await SettingsStore.instance.load(executor: NativeDatabase(dbFile));
+    await SettingsStore.instance.load(executor: NativeDatabase.memory());
   });
 
   Future<void> settle() async {
