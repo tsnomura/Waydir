@@ -3187,3 +3187,28 @@ macOS; `FILE_ATTRIBUTE_HIDDEN` on Windows).
   default cache.
 - Existing cache files in the old location aren't moved; previews for
   files on other drives are regenerated once.
+
+### Linux and macOS: a folder the user owns, mode 700
+
+A volume root on Linux or macOS is often shared: a data disk mounted at
+`/mnt/data` owned by root with mode 777, one folder per user below it.
+A cache at its root would hold every user's previews in one folder that
+everyone can read, so on Linux and macOS the cache goes into the topmost
+folder between the volume root and the source file's folder that the
+current user owns and can write:
+
+| source file | root owner | cache |
+|---|---|---|
+| `/mnt/data/alice/work/a.pdf` | root, 777 | `/mnt/data/alice/.waydir-cache` |
+| `/mnt/usb/b.pdf` | the user | `/mnt/usb/.waydir-cache` |
+| `/mnt/data/bob/c.pdf` | root, 777 (`bob/` not the user's) | default cache |
+
+- `.waydir-cache` is created with mode 700, an existing one is tightened
+  to 700, and one owned by someone else is not used (default cache).
+- Ownership comes from `statx` on Linux and `stat -f %u` on macOS;
+  writability from `access(W_OK | X_OK)`. Windows keeps the volume root.
+- Every folder it creates is recorded in `generator_cache_locations.txt`
+  in the settings folder, so clearing the cache finds folders below a
+  volume root as well.
+- Clearing the cache no longer fails on mounts whose root can't be read
+  (`/sys/fs/pstore` and similar pseudo file systems).

@@ -156,9 +156,10 @@ class GeneratorRunner {
     _failedKeys.clear();
     _failureMessages.clear();
     _probeCache.clear();
+    final fallback = await cacheDirectory();
     final dirs = [
-      await cacheDirectory(),
-      ...await GeneratorCacheLocation.existingDirectories(),
+      fallback,
+      ...await GeneratorCacheLocation.existingDirectories(fallback: fallback),
     ];
     for (final path in dirs) {
       final dir = Directory(path);
