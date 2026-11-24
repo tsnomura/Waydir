@@ -3212,3 +3212,24 @@ current user owns and can write:
   volume root as well.
 - Clearing the cache no longer fails on mounts whose root can't be read
   (`/sys/fs/pstore` and similar pseudo file systems).
+
+## `wd` reuses a tab that already shows the folder
+
+`wd <path>` used to open a new tab every time. If a tab already shows that
+folder, it now brings that tab to the front (and activates its pane), and
+for `wd <file>` puts the cursor on the file. The cursor reveal scrolls the
+row into view the same way keyboard moves do.
+
+- `ShellStore.tabShowing` looks in the terminal's own pane first (the
+  active pane for the side panel and external shells), then the other
+  pane, and within each pane the active tab before the rest. Folder paths
+  compare with `p.equals`, so case and separators don't matter.
+- `NavigationStore.placeCursorOn` moves the cursor without marking. It
+  closes an active search first. If the file isn't in the listing yet (just
+  created, or the listing is still loading), it reloads and lands on it
+  once the listing arrives. Unlike `focusPath`, it doesn't pull keyboard
+  focus to the file list, so a `wd` typed in the built-in terminal keeps
+  the terminal focused.
+- The pending-select step after a load now matches paths case-insensitively
+  on Windows, as `focusPath` already did.
+- No match opens a new tab, as before.

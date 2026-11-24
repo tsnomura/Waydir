@@ -147,7 +147,46 @@ class ShellStore {
         : (isDual.value ? terminal.first.originPane : 0);
     final list = panes.value;
     if (slot < 0 || slot >= list.length) return;
-    list[slot].tabs.addTab(path, cursor: cursor);
+    final shown = tabShowing(path, preferPane: slot);
+    if (shown == null) {
+      list[slot].tabs.addTab(path, cursor: cursor);
+
+      return;
+    }
+    final (paneIndex, tabIndex) = shown;
+    final tabs = list[paneIndex].tabs;
+    batch(() {
+      setActivePane(paneIndex);
+      tabs.selectTab(tabIndex);
+    });
+    if (cursor != null) tabs.tabs.value[tabIndex].store.placeCursorOn(cursor);
+  }
+
+  (int, int)? tabShowing(String dir, {required int preferPane}) {
+    final list = panes.value;
+    final order = [
+      if (preferPane >= 0 && preferPane < list.length) preferPane,
+      for (var i = 0; i < list.length; i++)
+        if (i != preferPane) i,
+    ];
+    for (final paneIndex in order) {
+      final tabs = list[paneIndex].tabs;
+      final all = tabs.tabs.value;
+      final active = tabs.activeIndex.value;
+      final tabOrder = [
+        if (active >= 0 && active < all.length) active,
+        for (var i = 0; i < all.length; i++)
+          if (i != active) i,
+      ];
+      for (final tabIndex in tabOrder) {
+        final current = all[tabIndex].store.currentPath.value;
+        if (current == dir || p.equals(current, dir)) {
+          return (paneIndex, tabIndex);
+        }
+      }
+    }
+
+    return null;
   }
 
   void openInNewTab(String path) => activePane.value?.tabs.addTab(path);
