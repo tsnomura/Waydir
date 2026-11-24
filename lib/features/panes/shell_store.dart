@@ -16,6 +16,7 @@ import '../../core/platform/trash_location.dart';
 import '../../core/platform/unix_env_vars.dart';
 import '../../core/platform/windows_env_vars.dart';
 import '../../core/settings/settings_store.dart';
+import '../../core/terminal/msys_mounts.dart';
 import '../../core/terminal/pty_session.dart';
 import '../../core/terminal/terminal_launch.dart';
 import '../../core/terminal/terminal_paths.dart';
@@ -107,7 +108,10 @@ class ShellStore {
       _cwdSignalDir = cwdSignalDir;
       _paneDirRoot = paneDirRoot;
       Directory(paneDirRoot).createSync(recursive: true);
-      TerminalCwdSignal.start(_openFromTerminalSignal);
+      TerminalCwdSignal.start(
+        _openFromTerminalSignal,
+        mountsFor: _mountsForTerminal,
+      );
       RemoteOpenRequestWatcher.start(openInNewTab);
       _setupPaneDirEffect();
       final envVars = {
@@ -147,7 +151,59 @@ class ShellStore {
         : (isDual.value ? terminal.first.originPane : 0);
     final list = panes.value;
     if (slot < 0 || slot >= list.length) return;
-    list[slot].tabs.addTab(path, cursor: cursor);
+    final shown = tabShowing(path, preferPane: slot);
+    if (shown == null) {
+      list[slot].tabs.addTab(path, cursor: cursor);
+
+      return;
+    }
+    final (paneIndex, tabIndex) = shown;
+    final tabs = list[paneIndex].tabs;
+    batch(() {
+      setActivePane(paneIndex);
+      tabs.selectTab(tabIndex);
+    });
+    if (cursor != null) tabs.tabs.value[tabIndex].store.placeCursorOn(cursor);
+  }
+
+  MsysMounts? _mountsForTerminal(int terminalId) {
+    for (final tab in terminals.value) {
+      if (tab.id != terminalId) continue;
+      if (tab.pathStyle == TerminalPathStyle.wsl) return null;
+      final own = tab.shellProgram.isEmpty
+          ? null
+          : MsysMounts.forShell(tab.shellProgram);
+      if (own != null) return own;
+    }
+
+    return MsysMounts.forShell('bash');
+  }
+
+  (int, int)? tabShowing(String dir, {required int preferPane}) {
+    final list = panes.value;
+    final order = [
+      if (preferPane >= 0 && preferPane < list.length) preferPane,
+      for (var i = 0; i < list.length; i++)
+        if (i != preferPane) i,
+    ];
+    for (final paneIndex in order) {
+      final tabs = list[paneIndex].tabs;
+      final all = tabs.tabs.value;
+      final active = tabs.activeIndex.value;
+      final tabOrder = [
+        if (active >= 0 && active < all.length) active,
+        for (var i = 0; i < all.length; i++)
+          if (i != active) i,
+      ];
+      for (final tabIndex in tabOrder) {
+        final current = all[tabIndex].store.currentPath.value;
+        if (current == dir || p.equals(current, dir)) {
+          return (paneIndex, tabIndex);
+        }
+      }
+    }
+
+    return null;
   }
 
   void openInNewTab(String path) => activePane.value?.tabs.addTab(path);
@@ -495,6 +551,7 @@ class ShellStore {
       focusNode: FocusNode(debugLabel: 'terminal-tab-$id'),
       cwd: cwd,
       pathStyle: TerminalPaths.styleFor(launch.shell),
+      shellProgram: launch.shell,
       label: _terminalLabel(cwd),
     );
     batch(() {

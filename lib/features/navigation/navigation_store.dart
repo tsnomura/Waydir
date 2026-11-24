@@ -948,9 +948,10 @@ class NavigationStore {
     final marks = _pendingSelectMarks;
     _pendingSelectMarks = true;
     final list = _vf;
-    final idx = list.indexWhere((f) => f.path == target);
+    final key = _norm(target);
+    final idx = list.indexWhere((f) => _norm(f.path) == key);
     batch(() {
-      if (marks) selectedPaths.value = {target};
+      if (marks) selectedPaths.value = {idx >= 0 ? list[idx].path : target};
       if (idx >= 0) {
         cursorIndex.value = idx;
         anchorIndex.value = idx;
@@ -2471,6 +2472,27 @@ class NavigationStore {
       navigateTo(parent);
     }
     fileListFocusRequest.value++;
+  }
+
+  void placeCursorOn(String path) {
+    if (searchActive.value) closeSearch();
+    if (!isLoading.value) {
+      final key = _norm(path);
+      final idx = _vf.indexWhere(
+        (f) => _norm(f.path) == key || _norm(f.realPath) == key,
+      );
+      if (idx >= 0) {
+        batch(() {
+          cursorIndex.value = idx;
+          anchorIndex.value = idx;
+        });
+
+        return;
+      }
+    }
+    _pendingInitialSelect = path;
+    _pendingSelectMarks = false;
+    if (!isLoading.value) unawaited(refresh());
   }
 
   void moveCursorToPath(String path) {

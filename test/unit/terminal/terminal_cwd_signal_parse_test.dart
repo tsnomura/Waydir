@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:waydir/core/terminal/msys_mounts.dart';
 import 'package:waydir/core/terminal/terminal_paths.dart';
 import 'package:waydir/features/panes/terminal_cwd_signal.dart';
 
@@ -73,6 +74,43 @@ void main() {
       expect(parse(''), isNull);
       expect(parse('/tmp\nx'), isNull);
       expect(parse('/c/Users/me\n/tmp'), isNull);
+    });
+  });
+
+  group('with the shell install mounts', () {
+    const git = r'C:\Tools\git';
+    const temp = r'C:\Users\me\AppData\Local\Temp';
+    final msys = MsysMounts(
+      root: git,
+      mounts: MsysMounts.parseFstab(
+        'none / cygdrive binary,posix=0,noacl,user 0 0\n'
+        'none /tmp usertemp binary,posix=0,noacl 0 0\n'
+        'D:/work /work ntfs binary 0 0\n',
+        temp: temp,
+      ),
+    );
+    String? parse(String content) =>
+        TerminalCwdSignal.parse(content, windows: true, msys: msys);
+
+    test('/tmp follows the usertemp mount', () {
+      expect(parse('/c/Users/me\n/tmp'), temp);
+      expect(parse('/c/Users/me\n/tmp/hoge'), '$temp\\hoge');
+      expect(parse('/tmp/hoge\n.'), '$temp\\hoge');
+      expect(parse('/tmp/hoge\n../x.txt'), '$temp\\x.txt');
+    });
+
+    test('other POSIX paths land under the install root', () {
+      expect(parse('/c/Users/me\n/usr/bin'), '$git\\usr\\bin');
+      expect(parse('/c/Users/me\n/etc/fstab'), '$git\\etc\\fstab');
+    });
+
+    test('an explicit fstab mount wins over the root', () {
+      expect(parse('/c/Users/me\n/work/a'), r'D:\work\a');
+      expect(parse('/c/Users/me\n/workshop'), '$git\\workshop');
+    });
+
+    test('drive paths are unaffected', () {
+      expect(parse('/c/Users/me\n/d/data'), r'D:\data');
     });
   });
 

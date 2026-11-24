@@ -50,8 +50,16 @@ argument (default `.`) on the second. Waydir resolves the argument against
 and converts `/c/...`, `/cygdrive/c/...` and `/mnt/c/...` to `C:\...`
 itself (`TerminalPaths.toNative` / `resolve`). Git Bash therefore needs no
 `cygpath`, which matters because spawning any process from Git Bash takes
-0.4–3 s on some machines. A POSIX path with no Windows equivalent (MSYS's
-own `/tmp`, `/usr`) can't be resolved and is dropped. The older one-line
+0.4–3 s on some machines. Other POSIX paths (`/tmp`, `/tmp/hoge`, `/usr`,
+`/etc/...`) are mapped through the shell installation's mount table
+(`MsysMounts`): the install root comes from the terminal's shell program
+(`…\usr\bin\bash.exe` or `…\bin\bash.exe` → `…`), or from `bash` on
+`PATH` for external shells and for a POSIX shell started inside a
+PowerShell terminal. Its `etc/fstab` is read once: a `usertemp` mount
+(Git for Windows' and MSYS2's default for `/tmp`) maps to `%TEMP%`,
+explicit `X:/dir /point` mounts are honoured, and anything else lands
+under the install root. This applies to `$PWD` as well, so `wd` run from
+inside `/tmp/hoge` works too. WSL terminals are left alone. The older one-line
 form (a single absolute path, e.g. from `cygpath -wa` or `realpath`) still
 works.
 
@@ -2953,12 +2961,14 @@ Relevant commits: `cce699f`, `95348f1` (release builds).
 ## Tab strip follows a newly opened tab
 
 With many tabs the strip scrolls, and a tab opened from `wd` (or `+`) could
-land outside the visible part. When the active tab is one the strip hasn't
-seen before, it now scrolls just far enough to show it (220 ms
-`easeOutCubic`, or an instant jump under Reduce motion). Switching to an
-existing tab, resizing and scrolling by hand leave the position alone; an
-earlier attempt that kept the active tab in view on every layout fought
-manual scrolling. `_TabStripState._revealIfOpened` / `_revealTab` in
+land outside the visible part. Whenever the active tab changes — a new tab, or switching to an
+existing one (`wd` bringing an open folder's tab to the front,
+`Ctrl`+`Tab`, `Ctrl`+digit) — the strip scrolls just far enough to show it
+(220 ms `easeOutCubic`, or an instant jump under Reduce motion). Resizing
+and scrolling by hand leave the position alone; an earlier attempt that
+kept the active tab in view on every layout fought manual scrolling, so the
+reveal fires only on an active-tab change. Originally only newly opened
+tabs were revealed. `_TabStripState._revealIfActivated` / `_revealTab` in
 `lib/features/tabs/tab_strip.dart`; test in
 `test/integration/tabs/tab_strip_reveal_test.dart`.
 
@@ -3212,3 +3222,24 @@ current user owns and can write:
   volume root as well.
 - Clearing the cache no longer fails on mounts whose root can't be read
   (`/sys/fs/pstore` and similar pseudo file systems).
+
+## `wd` reuses a tab that already shows the folder
+
+`wd <path>` used to open a new tab every time. If a tab already shows that
+folder, it now brings that tab to the front (and activates its pane), and
+for `wd <file>` puts the cursor on the file. The cursor reveal scrolls the
+row into view the same way keyboard moves do.
+
+- `ShellStore.tabShowing` looks in the terminal's own pane first (the
+  active pane for the side panel and external shells), then the other
+  pane, and within each pane the active tab before the rest. Folder paths
+  compare with `p.equals`, so case and separators don't matter.
+- `NavigationStore.placeCursorOn` moves the cursor without marking. It
+  closes an active search first. If the file isn't in the listing yet (just
+  created, or the listing is still loading), it reloads and lands on it
+  once the listing arrives. Unlike `focusPath`, it doesn't pull keyboard
+  focus to the file list, so a `wd` typed in the built-in terminal keeps
+  the terminal focused.
+- The pending-select step after a load now matches paths case-insensitively
+  on Windows, as `focusPath` already did.
+- No match opens a new tab, as before.

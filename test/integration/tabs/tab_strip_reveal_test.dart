@@ -93,15 +93,25 @@ void main() {
     await cleanUp(tester);
   });
 
-  testWidgets('switching tabs or scrolling by hand is left alone', (
+  testWidgets('switching to a hidden existing tab scrolls it into view', (
     tester,
   ) async {
     await pumpStrip(tester);
+    expect(scrollOffset(tester), 0);
 
-    tabs.activeIndex.value = tabs.tabs.value.length - 1;
+    tabs.selectTab(tabs.tabs.value.length - 1);
+    await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    expect(scrollOffset(tester), 0);
+
+    expect(activeRect(tester).right, lessThanOrEqualTo(400));
+    expect(activeRect(tester).left, greaterThanOrEqualTo(0));
+
+    await cleanUp(tester);
+  });
+
+  testWidgets('scrolling by hand is left alone', (tester) async {
+    await pumpStrip(tester);
 
     final scrollable = tester.state<ScrollableState>(
       find.byType(Scrollable).first,
