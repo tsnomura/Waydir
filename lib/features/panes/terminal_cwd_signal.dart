@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../../core/logging/app_logger.dart';
 import '../../core/platform/app_dirs.dart';
 import '../../core/platform/user_tmp_dir.dart';
+import '../../core/terminal/msys_mounts.dart';
 import '../../core/terminal/terminal_paths.dart';
 
 /// A file-per-terminal bridge from any shell into the pane that owns it —
@@ -48,6 +49,7 @@ class TerminalCwdSignal {
   static final Map<String, Timer> _debounce = {};
   static Timer? _presence;
   static Timer? _restartTimer;
+  static MsysMounts? Function(int terminalId)? _mountsFor;
 
   static Future<String>? _directory;
   static String? _tmpRoot;
@@ -72,8 +74,10 @@ class TerminalCwdSignal {
   /// with the terminal id and the directory to open; when the reported path
   /// is a file, the directory is its parent and `cursor` is the file.
   static Future<void> start(
-    void Function(int terminalId, String dir, String? cursor) onSignal,
-  ) async {
+    void Function(int terminalId, String dir, String? cursor) onSignal, {
+    MsysMounts? Function(int terminalId)? mountsFor,
+  }) async {
+    if (mountsFor != null) _mountsFor = mountsFor;
     await stop();
     final dirPath = await directory();
     final dir = Directory(dirPath);
@@ -154,7 +158,10 @@ class TerminalCwdSignal {
     } catch (_) {
       // Best-effort cleanup; a leftover file just gets overwritten next time.
     }
-    final path = parse(content);
+    final path = parse(
+      content,
+      msys: Platform.isWindows ? _mountsFor?.call(id) : null,
+    );
     if (path == null) return;
     if (Directory(path).existsSync()) {
       onSignal(id, path, null);
@@ -163,7 +170,7 @@ class TerminalCwdSignal {
     }
   }
 
-  static String? parse(String content, {bool? windows}) {
+  static String? parse(String content, {bool? windows, MsysMounts? msys}) {
     final lines = content
         .split('\n')
         .map((line) => line.trim())
@@ -176,6 +183,7 @@ class TerminalCwdSignal {
       cwd,
       arg.isEmpty ? '.' : arg,
       windows: windows,
+      msys: msys,
     );
   }
 

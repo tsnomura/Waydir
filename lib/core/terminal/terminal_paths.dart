@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'msys_mounts.dart';
+
 /// How a terminal's shell expects local paths to be spelled.
 enum TerminalPathStyle { native, msys, cygwin, wsl }
 
@@ -61,7 +63,7 @@ class TerminalPaths {
     r'^/(?:cygdrive/|mnt/)?([A-Za-z])(?:/(.*))?$',
   );
 
-  static String? toNative(String path, {bool? windows}) {
+  static String? toNative(String path, {bool? windows, MsysMounts? msys}) {
     if (!(windows ?? Platform.isWindows)) {
       return p.posix.isAbsolute(path) ? p.posix.normalize(path) : null;
     }
@@ -74,6 +76,8 @@ class TerminalPaths {
       native = path.replaceAll('/', r'\');
     } else if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) {
       native = path;
+    } else if (msys != null && path.startsWith('/')) {
+      native = msys.toWindows(p.posix.normalize(path));
     } else {
       return null;
     }
@@ -81,15 +85,20 @@ class TerminalPaths {
     return p.windows.normalize(native);
   }
 
-  static String? resolve(String cwd, String path, {bool? windows}) {
+  static String? resolve(
+    String cwd,
+    String path, {
+    bool? windows,
+    MsysMounts? msys,
+  }) {
     final isWindows = windows ?? Platform.isWindows;
     final rooted =
         path.startsWith('/') ||
         (isWindows &&
             (path.startsWith(r'\') ||
                 RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)));
-    if (rooted) return toNative(path, windows: isWindows);
-    final base = toNative(cwd, windows: isWindows);
+    if (rooted) return toNative(path, windows: isWindows, msys: msys);
+    final base = toNative(cwd, windows: isWindows, msys: msys);
     if (base == null) return null;
     final context = isWindows ? p.windows : p.posix;
 

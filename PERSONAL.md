@@ -50,8 +50,16 @@ argument (default `.`) on the second. Waydir resolves the argument against
 and converts `/c/...`, `/cygdrive/c/...` and `/mnt/c/...` to `C:\...`
 itself (`TerminalPaths.toNative` / `resolve`). Git Bash therefore needs no
 `cygpath`, which matters because spawning any process from Git Bash takes
-0.4–3 s on some machines. A POSIX path with no Windows equivalent (MSYS's
-own `/tmp`, `/usr`) can't be resolved and is dropped. The older one-line
+0.4–3 s on some machines. Other POSIX paths (`/tmp`, `/tmp/hoge`, `/usr`,
+`/etc/...`) are mapped through the shell installation's mount table
+(`MsysMounts`): the install root comes from the terminal's shell program
+(`…\usr\bin\bash.exe` or `…\bin\bash.exe` → `…`), or from `bash` on
+`PATH` for external shells and for a POSIX shell started inside a
+PowerShell terminal. Its `etc/fstab` is read once: a `usertemp` mount
+(Git for Windows' and MSYS2's default for `/tmp`) maps to `%TEMP%`,
+explicit `X:/dir /point` mounts are honoured, and anything else lands
+under the install root. This applies to `$PWD` as well, so `wd` run from
+inside `/tmp/hoge` works too. WSL terminals are left alone. The older one-line
 form (a single absolute path, e.g. from `cygpath -wa` or `realpath`) still
 works.
 

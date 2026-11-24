@@ -10,6 +10,7 @@ class TerminalTab {
   final FocusNode focusNode;
   final String cwd;
   final TerminalPathStyle pathStyle;
+  final String shellProgram;
   String label;
 
   TerminalTab({
@@ -19,6 +20,7 @@ class TerminalTab {
     required this.focusNode,
     required this.cwd,
     this.pathStyle = TerminalPathStyle.native,
+    this.shellProgram = '',
     required this.label,
   });
 
