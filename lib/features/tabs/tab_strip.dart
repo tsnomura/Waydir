@@ -31,7 +31,7 @@ class TabStrip extends StatefulWidget {
 class _TabStripState extends State<TabStrip> {
   final _scrollController = ScrollController();
   final _slotKeys = <String, GlobalKey>{};
-  Set<String>? _knownIds;
+  String? _lastActiveId;
 
   void _revealTab(String id) {
     final render = _slotKeys[id]?.currentContext?.findRenderObject();
@@ -61,10 +61,10 @@ class _TabStripState extends State<TabStrip> {
     }
   }
 
-  void _revealIfOpened(Set<String> ids, String activeId) {
-    final known = _knownIds;
-    _knownIds = ids;
-    if (known == null || known.contains(activeId)) return;
+  void _revealIfActivated(String activeId) {
+    final previous = _lastActiveId;
+    _lastActiveId = activeId;
+    if (previous == null || previous == activeId) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _revealTab(activeId);
     });
@@ -117,7 +117,7 @@ class _TabStripState extends State<TabStrip> {
         final activeId = widget.tabsStore.activeTab.value.id;
         final ids = {for (final t in tabs) t.id};
         _slotKeys.removeWhere((id, _) => !ids.contains(id));
-        _revealIfOpened(ids, activeId);
+        _revealIfActivated(activeId);
 
         // Falls back to here whenever a drop lands outside every _TabSlot's
         // own target — empty trailing space past the last tab, or the

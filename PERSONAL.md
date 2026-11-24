@@ -2953,12 +2953,14 @@ Relevant commits: `cce699f`, `95348f1` (release builds).
 ## Tab strip follows a newly opened tab
 
 With many tabs the strip scrolls, and a tab opened from `wd` (or `+`) could
-land outside the visible part. When the active tab is one the strip hasn't
-seen before, it now scrolls just far enough to show it (220 ms
-`easeOutCubic`, or an instant jump under Reduce motion). Switching to an
-existing tab, resizing and scrolling by hand leave the position alone; an
-earlier attempt that kept the active tab in view on every layout fought
-manual scrolling. `_TabStripState._revealIfOpened` / `_revealTab` in
+land outside the visible part. Whenever the active tab changes — a new tab, or switching to an
+existing one (`wd` bringing an open folder's tab to the front,
+`Ctrl`+`Tab`, `Ctrl`+digit) — the strip scrolls just far enough to show it
+(220 ms `easeOutCubic`, or an instant jump under Reduce motion). Resizing
+and scrolling by hand leave the position alone; an earlier attempt that
+kept the active tab in view on every layout fought manual scrolling, so the
+reveal fires only on an active-tab change. Originally only newly opened
+tabs were revealed. `_TabStripState._revealIfActivated` / `_revealTab` in
 `lib/features/tabs/tab_strip.dart`; test in
 `test/integration/tabs/tab_strip_reveal_test.dart`.
 
