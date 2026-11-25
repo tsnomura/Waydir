@@ -28,6 +28,21 @@ class _RecordingPlayer implements QuickLookPlayer {
   }
 }
 
+class _SlowReleasePlayer implements QuickLookPlayer {
+  _SlowReleasePlayer(this.handle);
+
+  final RandomAccessFile handle;
+
+  @override
+  Future<void> play(String path, double startSeconds) async {}
+
+  @override
+  Future<void> stop() async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await handle.close();
+  }
+}
+
 FileEntry _entry(String path) => FileEntry(
   name: p.basename(path),
   path: path,
@@ -80,6 +95,33 @@ void main() {
       expect(done.errors, isEmpty);
       expect(player.stopCount, greaterThan(baseline));
       expect(File(p.join(dest.path, 'song.mp3')).existsSync(), isTrue);
+      expect(File(src).existsSync(), isFalse);
+    });
+
+    test('move waits until the player has closed the file', () async {
+      final src = p.join(tmpDir.path, 'clip.mp4');
+      File(src).writeAsStringSync('payload');
+      final dest = Directory(p.join(tmpDir.path, 'out'))..createSync();
+      final handle = await File(src).open();
+      final slow = QuickLookPlaybackController(
+        player: _SlowReleasePlayer(handle),
+      );
+      PlaybackRegistry.instance.register(slow);
+      addTearDown(() {
+        PlaybackRegistry.instance.unregister(slow);
+        slow.dispose();
+      });
+      slow.sync(_entry(src), page, blocked: false);
+
+      store.enqueueMove([src], dest.path);
+      final done = await waitForTask(
+        store,
+        (t) => t.type == TaskType.move && isTerminalTask(t),
+      );
+
+      expect(done.status, TaskStatus.completed);
+      expect(done.errors, isEmpty);
+      expect(File(p.join(dest.path, 'clip.mp4')).existsSync(), isTrue);
       expect(File(src).existsSync(), isFalse);
     });
 

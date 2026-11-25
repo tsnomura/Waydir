@@ -1783,6 +1783,17 @@ auto-plays through an external command while browsing, muted videos excepted.
   targets only (a copy source keeps playing), delete/trash sources, and the
   real data path (plus original path on restore) of trash-bin tasks.
   Compared normalized and case-insensitively on Windows (`ea60613`).
+- Fixed: once videos played in-app, moving a video shown in Quick Look
+  (any surface, including the bottom and side panes) failed with "in use by
+  another process". `InAppVideoPlayer.stop()` disposes its controller about
+  a second later (so the texture unmounts first), so the handle outlived
+  `stopShown()` and the worker's rename hit it. `stopShown()` and
+  `PlaybackRegistry.stopForPaths` now return a future that completes when
+  the file is really closed (`InAppVideoPlayer.released()`: in-flight loads
+  plus pending delayed disposes), and `OperationStore._processQueue` waits
+  for it, up to 5 s, before starting the task. The wait happens while the
+  task is still queued, so cancelling it then works as usual. Moving a
+  previewed video therefore starts about a second later.
 
 ## Quick Look in-app video playback
 

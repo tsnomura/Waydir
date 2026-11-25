@@ -725,10 +725,24 @@ class OperationStore {
     _processQueue();
   }
 
+  static const _playbackReleaseTimeout = Duration(seconds: 5);
+
+  final _playbackReleases = <Object, Future<void>>{};
+
   void _stopQuickLookPlaybackFor(FileTask task) {
     final paths = _playbackPathsAffectedBy(task);
     if (paths.isEmpty) return;
-    PlaybackRegistry.instance.stopForPaths(paths);
+    _playbackReleases[task.id] = PlaybackRegistry.instance.stopForPaths(paths);
+  }
+
+  Future<void> _awaitPlaybackRelease(FileTask task) async {
+    final release = _playbackReleases.remove(task.id);
+    if (release == null) return;
+    try {
+      await release.timeout(_playbackReleaseTimeout);
+    } catch (e) {
+      log.warn('operation', 'Quick Look did not release its file in time: $e');
+    }
   }
 
   /// Paths a task is about to move, delete or replace — the files Quick Look
@@ -811,7 +825,8 @@ class OperationStore {
     _processing = true;
     final task = _queue.removeAt(0);
 
-    await _executeTask(task);
+    await _awaitPlaybackRelease(task);
+    if (task.status != TaskStatus.cancelled) await _executeTask(task);
 
     _currentWorker = null;
     _currentTaskId = null;
