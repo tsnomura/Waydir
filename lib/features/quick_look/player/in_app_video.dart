@@ -96,26 +96,33 @@ class InAppVideoPlayer implements QuickLookPlayer {
     _release();
   }
 
+  Future<void> released() async {
+    await _tail;
+    await Future.wait(_disposals.toList());
+  }
+
+  final _disposals = <Future<void>>{};
+
   void _release() {
     final controller = _controller;
     _controller = null;
     _path = null;
     current.value = null;
     if (controller == null) return;
-    unawaited(
-      Future<void>.delayed(const Duration(seconds: 1), () async {
-        try {
-          await controller.dispose();
-        } catch (error, stack) {
-          log.warn(
-            'quick-look',
-            'in-app video dispose failed',
-            error: error,
-            stack: stack,
-          );
-        }
-      }),
-    );
+    late final Future<void> disposal;
+    disposal = Future<void>.delayed(const Duration(seconds: 1), () async {
+      try {
+        await controller.dispose();
+      } catch (error, stack) {
+        log.warn(
+          'quick-look',
+          'in-app video dispose failed',
+          error: error,
+          stack: stack,
+        );
+      }
+    }).whenComplete(() => _disposals.remove(disposal));
+    _disposals.add(disposal);
   }
 
   Future<void> dispose() async {

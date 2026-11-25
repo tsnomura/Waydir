@@ -94,7 +94,7 @@ class QuickLookPlaybackController {
     _generation++;
     _entryTimer?.cancel();
     _pageTimer?.cancel();
-    _stopEverything();
+    unawaited(_stopEverything());
     _startPaused = false;
     _pendingEntry = entry;
     if (entry == null) return;
@@ -156,13 +156,15 @@ class QuickLookPlaybackController {
   /// Stops playback and releases the file — used when a file operation is
   /// about to move or delete it. Never restarts for the same file; [sync]
   /// only restarts it when the shown file changes.
-  void stopShown() {
+  Future<void> stopShown() {
     final entry = _pendingEntry;
-    if (entry == null) return;
+    if (entry == null) return Future.value();
     _entryTimer?.cancel();
     _pageTimer?.cancel();
     _generation++;
-    _stopEverything();
+    final stopping = _stopEverything();
+
+    return Future.wait([stopping, _video.released()]);
   }
 
   void dispose() {
@@ -314,7 +316,7 @@ class QuickLookPlaybackController {
     );
   }
 
-  void _stopEverything() {
+  Future<void> _stopEverything() {
     _stopClock();
     final target = _activePlayer;
     _duration = null;
@@ -322,6 +324,7 @@ class QuickLookPlaybackController {
     _inAppVideo = false;
     _resumeAt = 0;
     state.value = PlaybackState.idle;
-    unawaited(target.stop());
+
+    return target.stop();
   }
 }

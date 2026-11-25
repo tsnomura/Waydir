@@ -23,14 +23,17 @@ class PlaybackRegistry {
   }
 
   /// Stops playback on every controller whose shown file is one of [paths].
-  void stopForPaths(Iterable<String> paths) {
-    if (paths.isEmpty) return;
+  Future<void> stopForPaths(Iterable<String> paths) {
+    if (paths.isEmpty) return Future.value();
     final wanted = paths.map(_comparePath).toSet();
+    final stopping = <Future<void>>[];
     for (final controller in _controllers) {
       final shown = controller.shownPath;
       if (shown == null || !wanted.contains(_comparePath(shown))) continue;
-      controller.stopShown();
+      stopping.add(controller.stopShown());
     }
+
+    return Future.wait(stopping);
   }
 
   static String _comparePath(String path) {
