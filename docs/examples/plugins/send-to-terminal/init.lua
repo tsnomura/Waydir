@@ -72,7 +72,11 @@ end
 local BUILDERS = {}
 
 function BUILDERS.robocopy(t, h)
-  local flags = t.flags or "/MT:8 /Z"
+  local flags = t.flags or "/MT:8 /Z /DCOPY:T"
+  local function q(path)
+    if path:match("\\$") then path = path .. "." end
+    return h.q(path)
+  end
   local commands = {}
   local files = {}
   local order = {}
@@ -80,8 +84,8 @@ function BUILDERS.robocopy(t, h)
     if item.is_dir then
       commands[#commands + 1] = with_flags({
         "robocopy",
-        h.q(item.path),
-        h.q(join(h.dest, item.name)),
+        q(item.path),
+        q(join(h.dest, item.name)),
         "/E",
       }, flags)
     else
@@ -95,12 +99,12 @@ function BUILDERS.robocopy(t, h)
   for _, parent in ipairs(order) do
     commands[#commands + 1] = with_flags({
       "robocopy",
-      h.q(parent),
-      h.q(h.dest),
+      q(parent),
+      q(h.dest),
       table.concat(files[parent], " "),
     }, flags)
   end
-  return table.concat(commands, " && ")
+  return table.concat(commands, " & if not errorlevel 8 ")
 end
 
 function BUILDERS.scp(t, h)

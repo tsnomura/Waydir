@@ -173,8 +173,9 @@ void main() {
       expect(fx['shell'], 'cmd.exe');
       expect(
         fx['input'],
-        r'robocopy "X:\project" "N:\backup" "a.txt" "b c.txt" /MT:8 /Z && '
-        r'robocopy "X:\other" "N:\backup" "d.txt" /MT:8 /Z',
+        r'robocopy "X:\project" "N:\backup" "a.txt" "b c.txt" /MT:8 /Z /DCOPY:T'
+        r' & if not errorlevel 8 '
+        r'robocopy "X:\other" "N:\backup" "d.txt" /MT:8 /Z /DCOPY:T',
       );
     });
 
@@ -191,10 +192,24 @@ void main() {
       );
       expect(
         fx['input'],
-        'robocopy "${folder.path}" "N:\\eo 06" /E /MT:8 /Z && '
-        'robocopy "${tmp.path}" "N:\\" "notes.txt" /MT:8 /Z',
+        'robocopy "${folder.path}" "N:\\eo 06" /E /MT:8 /Z /DCOPY:T'
+        ' & if not errorlevel 8 '
+        'robocopy "${tmp.path}" "N:\\." "notes.txt" /MT:8 /Z /DCOPY:T',
       );
     }, skip: !Platform.isWindows);
+
+    test('copies a drive-root file without escaping the quote', () async {
+      final fx = await terminal(
+        'robocopy',
+        [r'X:\a.txt'],
+        dir: r'X:\',
+        other: r'N:\backup',
+      );
+      expect(
+        fx['input'],
+        r'robocopy "X:\." "N:\backup" "a.txt" /MT:8 /Z /DCOPY:T',
+      );
+    });
 
     test('refuses to run on POSIX paths', () async {
       final fx = await invoke(
