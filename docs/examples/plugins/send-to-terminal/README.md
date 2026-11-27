@@ -26,7 +26,7 @@ files only, so your own files stay.
 | `title` | Menu label. Required. |
 | `command` | Command line with placeholders. Required unless `builder` is set. |
 | `builder` | Use a built-in builder instead of `command`: `robocopy` or `scp`. |
-| `flags` | Options passed to a builder. Defaults: robocopy `/MT:8 /Z` (folders also get `/E`), scp `-r -C`. |
+| `flags` | Options passed to a builder. Defaults: robocopy `/MT:8 /Z /DCOPY:T` (folders also get `/E`), scp `-r -C`. |
 | `each` | `true` fills `command` once per target and joins the results with `join`. |
 | `join` | Separator for `each`. Defaults to ` && `. |
 | `os` | `windows` or `unix`: the entry refuses to run on the other kind and shows a toast. |
@@ -50,7 +50,12 @@ files only, so your own files stay.
 
 - `robocopy` copies each folder into a same-named folder under `{dest}`
   and groups loose files by their folder (robocopy takes one source folder
-  per call), chained with `&&`.
+  per call). The calls are chained with `& if not errorlevel 8`, not `&&`:
+  robocopy exits 1–7 when it copied or skipped files, which `&&` treats as
+  a failure. `/DCOPY:T` copies only folder timestamps, because the default
+  `/DCOPY:DA` copies a OneDrive folder's reparse-point attribute, which an
+  SMB share rejects with error 87 when the folder is created. A drive root
+  is passed as `X:\.`, since robocopy reads `"X:\"` as an escaped quote.
 - `scp` turns `sftp://user@host:port/path` into `user@host:/path` and adds
   `-P port` for a port other than 22. Use it with `"cwd": "~"`, since a
   terminal opened in an sftp folder is a shell on that host.
