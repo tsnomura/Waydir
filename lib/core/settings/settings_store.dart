@@ -76,6 +76,7 @@ class SettingsStore {
   final quickLookVimMode = signal<bool>(false);
   final quickLookWrapLines = signal<bool>(true);
   final quickLookShowStatistics = signal<bool>(true);
+  final quickLookMuteAudio = signal<bool>(false);
   final shortcutBindings = signal<Map<String, KeyChord>>({});
   final windowWidth = signal<double>(1100.0);
   final windowHeight = signal<double>(700.0);
@@ -170,6 +171,7 @@ class SettingsStore {
     quickLookVimMode.value = row.quickLookVimMode;
     quickLookWrapLines.value = row.quickLookWrapLines;
     quickLookShowStatistics.value = row.quickLookShowStatistics;
+    quickLookMuteAudio.value = row.quickLookMuteAudio;
     windowWidth.value = row.windowWidth;
     windowHeight.value = row.windowHeight;
     windowMaximized.value = row.windowMaximized;
@@ -293,6 +295,7 @@ class SettingsStore {
         quickLookVimMode.value;
         quickLookWrapLines.value;
         quickLookShowStatistics.value;
+        quickLookMuteAudio.value;
         windowWidth.value;
         windowHeight.value;
         windowMaximized.value;
@@ -375,6 +378,7 @@ class SettingsStore {
           quickLookVimMode: Value(quickLookVimMode.value),
           quickLookWrapLines: Value(quickLookWrapLines.value),
           quickLookShowStatistics: Value(quickLookShowStatistics.value),
+          quickLookMuteAudio: Value(quickLookMuteAudio.value),
           windowWidth: Value(windowWidth.value),
           windowHeight: Value(windowHeight.value),
           windowMaximized: Value(windowMaximized.value),

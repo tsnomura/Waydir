@@ -159,6 +159,29 @@ void main() {
     await video.dispose();
     page.dispose();
   });
+  test('muting silences an in-app video without pausing it', () async {
+    final video = _FakeVideo(100);
+    final controller = QuickLookPlaybackController(video: video);
+    final page = GeneratorPageController()
+      ..pageCount = InAppVideoPlayer.pageCount;
+    controller.setMuted(true);
+    controller.setMuted(true);
+    expect(video.calls.where((c) => c == 'muted:true'), hasLength(1));
+
+    controller.sync(_clip, page, blocked: false);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    expect(video.calls.last, 'play:/tmp/clip.mp4:0.0');
+    expect(controller.state.value, PlaybackState.playing);
+
+    controller.setMuted(false);
+    expect(video.calls.last, 'muted:false');
+    expect(controller.state.value, PlaybackState.playing);
+
+    controller.dispose();
+    await video.dispose();
+    page.dispose();
+  });
+
   test('a configured generator keeps winning over the in-app preview', () {
     GeneratorRegistry.instance.registerForTesting(
       GeneratorDef(
@@ -216,5 +239,10 @@ class _FakeVideo extends InAppVideoPlayer {
   @override
   Future<void> stop() async {
     calls.add('stop');
+  }
+
+  @override
+  Future<void> setMuted(bool muted) async {
+    calls.add('muted:$muted');
   }
 }

@@ -409,6 +409,16 @@ class WaydirIconsRegular {
     fontFamily: 'PhosphorRegular',
     matchTextDirection: true,
   );
+  static const IconData speakerHigh = IconData(
+    0xe44a,
+    fontFamily: 'PhosphorRegular',
+    matchTextDirection: true,
+  );
+  static const IconData speakerSlash = IconData(
+    0xe45a,
+    fontFamily: 'PhosphorRegular',
+    matchTextDirection: true,
+  );
   static const IconData stop = IconData(
     0xe46c,
     fontFamily: 'PhosphorRegular',

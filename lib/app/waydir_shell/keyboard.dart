@@ -377,6 +377,12 @@ mixin _WaydirKeyboardMixin
       return KeyEventResult.handled;
     }
 
+    if (AppShortcuts.matches('toggle_mute', key)) {
+      _toggleMute();
+
+      return KeyEventResult.handled;
+    }
+
     if (AppShortcuts.matches('quick_look_marked', key)) {
       _openQuickLookMarked();
 

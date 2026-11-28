@@ -1586,6 +1586,14 @@ mixin _WaydirMenuMixin
           isToggle: true,
           toggleSignal: computed(() => _shell.ready.value && _sidePanelVisible),
         ),
+        ContextMenuItem(
+          icon: WaydirIconsRegular.speakerSlash,
+          label: t.menu.muteAudio,
+          action: 'toggle_mute',
+          shortcut: AppShortcuts.getById('toggle_mute').displayKeys,
+          isToggle: true,
+          toggleSignal: SettingsStore.instance.quickLookMuteAudio,
+        ),
         ContextMenuItem.divider,
         ContextMenuItem(
           icon: WaydirIconsRegular.arrowUp,
@@ -1618,6 +1626,8 @@ mixin _WaydirMenuMixin
             unawaited(_toggleQuickLookPane(_quickLookSlot()));
           case 'toggle_side_panel':
             _toggleSidePanel();
+          case 'toggle_mute':
+            _toggleMute();
           case 'send_directory_to_linked':
             _sendDirectoryToLinked();
           case 'open_linked_directory':
@@ -1916,6 +1926,7 @@ mixin _WaydirMenuMixin
               if (_shell.ready.value) _toggleSidePanel();
             },
           ),
+          PlatformMenuItem(label: t.menu.muteAudio, onSelected: _toggleMute),
         ],
       ),
       PlatformMenu(

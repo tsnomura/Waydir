@@ -72,6 +72,8 @@ class StatusBar extends StatelessWidget {
           const _StatusViewModeToggle(),
           const SizedBox(width: 10),
           const _StatusZoomControl(),
+          const SizedBox(width: 10),
+          const _StatusMuteToggle(),
           const SizedBox(width: 8),
           _StatusVersion(),
           const SizedBox(width: 8),
@@ -129,6 +131,30 @@ class _StatusViewModeToggle extends StatelessWidget {
               onTap: () => settings.fileViewMode.value = 'grid',
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _StatusMuteToggle extends StatelessWidget {
+  const _StatusMuteToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = SettingsStore.instance.quickLookMuteAudio;
+
+    return SignalBuilder(
+      builder: (context) {
+        final on = muted.value;
+
+        return _StatusViewModeButton(
+          icon: on
+              ? WaydirIconsRegular.speakerSlash
+              : WaydirIconsRegular.speakerHigh,
+          tooltip: on ? t.statusBar.unmuteAudio : t.statusBar.muteAudio,
+          active: on,
+          onTap: () => muted.value = !on,
         );
       },
     );

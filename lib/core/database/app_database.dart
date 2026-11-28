@@ -105,6 +105,8 @@ class AppSettings extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get quickLookShowStatistics =>
       boolean().withDefault(const Constant(true))();
+  BoolColumn get quickLookMuteAudio =>
+      boolean().withDefault(const Constant(false))();
   BoolColumn get dragMovesByDefault =>
       boolean().withDefault(const Constant(false))();
   RealColumn get windowWidth => real().withDefault(const Constant(1100.0))();
@@ -273,7 +275,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 50;
+  int get schemaVersion => 51;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -492,6 +494,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 50) {
         await addSettingColumn(appSettings.sidePanelVisible);
         await addSettingColumn(appSettings.sidePanelWidth);
+      }
+      if (from < 51) {
+        await addSettingColumn(appSettings.quickLookMuteAudio);
       }
     },
   );

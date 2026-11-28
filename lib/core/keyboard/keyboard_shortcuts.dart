@@ -499,6 +499,14 @@ class AppShortcuts {
       alt: true,
     ),
     ShortcutDef(
+      id: 'toggle_mute',
+      label: () => '',
+      group: ShortcutGroup.view,
+      key: LogicalKeyboardKey.keyM,
+      ctrl: true,
+      alt: true,
+    ),
+    ShortcutDef(
       id: 'focus_menu_bar',
       label: () => '',
       group: ShortcutGroup.general,

@@ -70,6 +70,24 @@ class QuickLookPlaybackController {
 
   double _resumeAt = 0;
   bool _startPaused = false;
+  bool _muted = false;
+
+  /// Silences playback without pausing it: an in-app video keeps playing at
+  /// zero volume, and the external player (which can't change volume once
+  /// running) is stopped while the clock and page auto-advance keep going,
+  /// then restarted from the current point on unmute.
+  void setMuted(bool muted) {
+    if (muted == _muted) return;
+    _muted = muted;
+    unawaited(_video.setMuted(muted));
+    if (_inAppVideo || state.value != PlaybackState.playing) return;
+    final entry = _pendingEntry;
+    if (muted) {
+      unawaited(_player.stop());
+    } else if (entry != null) {
+      unawaited(_player.play(entry.realPath, _elapsed));
+    }
+  }
 
   /// Call once per rebuild with the entry currently shown (null when there's
   /// none, or it's a folder/multi-selection) and whether a compare-mode diff
@@ -254,6 +272,7 @@ class QuickLookPlaybackController {
     if (_duration == null || entry == null) return;
     _beginClock(seconds);
     state.value = PlaybackState.playing;
+    if (_muted && !_inAppVideo) return;
     unawaited(_activePlayer.play(entry.realPath, seconds));
   }
 
