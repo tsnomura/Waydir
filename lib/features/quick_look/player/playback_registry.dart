@@ -1,21 +1,32 @@
 import 'package:path/path.dart' as p;
+import 'package:signals/signals.dart';
 
 import '../../../core/platform/platform_paths.dart';
+import '../../../core/settings/settings_store.dart';
 import 'quick_look_playback_controller.dart';
 
 /// Tracks the live [QuickLookPlaybackController]s (Quick Look dialog, panel
 /// and pop-out window each own one) so code outside the Quick Look widgets —
-/// currently file operations — can stop playback and release the open file
-/// before a task moves, deletes or replaces it.
+/// file operations, the global mute setting — can reach every one of them.
 class PlaybackRegistry {
   PlaybackRegistry._();
 
   static final PlaybackRegistry instance = PlaybackRegistry._();
 
   final Set<QuickLookPlaybackController> _controllers = {};
+  void Function()? _muteSub;
 
   void register(QuickLookPlaybackController controller) {
     _controllers.add(controller);
+    _muteSub ??= effect(() {
+      final muted = SettingsStore.instance.quickLookMuteAudio.value;
+      untracked(() {
+        for (final c in _controllers) {
+          c.setMuted(muted);
+        }
+      });
+    });
+    controller.setMuted(SettingsStore.instance.quickLookMuteAudio.peek());
   }
 
   void unregister(QuickLookPlaybackController controller) {

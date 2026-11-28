@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:waydir/core/models/file_entry.dart';
 import 'package:waydir/core/platform/platform_paths.dart';
+import 'package:waydir/core/settings/settings_store.dart';
 import 'package:waydir/features/quick_look/generators/generator_page_controller.dart';
+import 'package:waydir/features/quick_look/player/in_app_video.dart';
 import 'package:waydir/features/quick_look/player/playback_registry.dart';
 import 'package:waydir/features/quick_look/player/quick_look_playback_controller.dart';
 import 'package:waydir/features/quick_look/player/quick_look_player.dart';
@@ -129,4 +131,33 @@ void main() {
       other.dispose();
     });
   });
+
+  group('PlaybackRegistry mute', () {
+    tearDown(() => SettingsStore.instance.quickLookMuteAudio.value = false);
+
+    test('applies the mute setting on register and on change', () {
+      SettingsStore.instance.quickLookMuteAudio.value = true;
+      final video = _MuteRecordingVideo();
+      final other = QuickLookPlaybackController(video: video);
+      PlaybackRegistry.instance.register(other);
+      expect(video.muted, [true]);
+
+      SettingsStore.instance.quickLookMuteAudio.value = false;
+      expect(video.muted, [true, false]);
+
+      PlaybackRegistry.instance.unregister(other);
+      SettingsStore.instance.quickLookMuteAudio.value = true;
+      expect(video.muted, [true, false]);
+      other.dispose();
+    });
+  });
+}
+
+class _MuteRecordingVideo extends InAppVideoPlayer {
+  final muted = <bool>[];
+
+  @override
+  Future<void> setMuted(bool muted) async {
+    this.muted.add(muted);
+  }
 }

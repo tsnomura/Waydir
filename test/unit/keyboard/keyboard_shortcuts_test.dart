@@ -323,6 +323,22 @@ void main() {
     });
   });
 
+  group('toggle_mute', () {
+    test('is registered in the view group bound to ctrl+alt+m', () {
+      final def = AppShortcuts.getById('toggle_mute');
+
+      expect(def.group, ShortcutGroup.view);
+      expect(def.defaultBinding.key, LogicalKeyboardKey.keyM);
+      expect(def.defaultBinding.ctrl, isTrue);
+      expect(def.defaultBinding.shift, isFalse);
+      expect(def.defaultBinding.alt, isTrue);
+      expect(
+        AppShortcuts.conflictFor(def.defaultBinding, 'toggle_mute'),
+        isNull,
+      );
+    });
+  });
+
   group('compare_recursive', () {
     test('is registered in the panes group bound to shift+f8', () {
       final def = AppShortcuts.getById('compare_recursive');

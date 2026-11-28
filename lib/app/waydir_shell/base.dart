@@ -243,6 +243,11 @@ mixin _WaydirStateBase on State<WaydirShell> {
     _setShowHiddenGlobal(!SettingsStore.instance.showHiddenDefault.value);
   }
 
+  void _toggleMute() {
+    final muted = SettingsStore.instance.quickLookMuteAudio;
+    muted.value = !muted.value;
+  }
+
   Future<void> _openLinkedDirectory() async {
     final current = _active.currentPath.value;
     final sftpPath = PlatformPaths.isSftpUri(current)

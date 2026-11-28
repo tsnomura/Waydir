@@ -34,6 +34,7 @@
     "remoteThumbnails": "Remote Thumbnails (This Tab)",
     "quickLookPane": "Quick Look Pane",
     "sidePanel": "Side Panel",
+    "muteAudio": "Mute Quick Look Audio",
     "openLinkedDirectory": "Open Linked Machine's Directory",
     "sendDirectoryToLinked": "Send This Directory to Linked Machine",
     "selectAll": "Select All",
@@ -811,6 +812,7 @@
     "fileListZoomReset": "Reset file list zoom",
     "toggleSidebar": "Toggle sidebar",
     "toggleSidePanel": "Toggle side panel (Quick Look / terminal on the right)",
+    "toggleMute": "Mute/unmute Quick Look audio",
     "toggleView": "Toggle list/tree/grid view",
     "viewModeList": "Switch to list view",
     "viewModeTree": "Switch to tree view",
@@ -1223,7 +1225,9 @@
     "selected(other)": "$count selected",
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
-    "zoomReset": "Reset zoom"
+    "zoomReset": "Reset zoom",
+    "muteAudio": "Mute Quick Look audio",
+    "unmuteAudio": "Unmute Quick Look audio"
   },
   "dialog": {
     "create": "Create",

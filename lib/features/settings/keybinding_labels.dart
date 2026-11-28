@@ -102,6 +102,7 @@ String shortcutLabel(ShortcutDef s) => switch (s.id) {
   'file_list_zoom_reset' => t.keybindings.fileListZoomReset,
   'toggle_sidebar' => t.keybindings.toggleSidebar,
   'toggle_side_panel' => t.keybindings.toggleSidePanel,
+  'toggle_mute' => t.keybindings.toggleMute,
   'toggle_view' => t.keybindings.toggleView,
   'view_mode_list' => t.keybindings.viewModeList,
   'view_mode_tree' => t.keybindings.viewModeTree,

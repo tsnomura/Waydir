@@ -817,6 +817,20 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(true),
       );
+  static const VerificationMeta _quickLookMuteAudioMeta =
+      const VerificationMeta('quickLookMuteAudio');
+  @override
+  late final GeneratedColumn<bool> quickLookMuteAudio = GeneratedColumn<bool>(
+    'quick_look_mute_audio',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("quick_look_mute_audio" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _dragMovesByDefaultMeta =
       const VerificationMeta('dragMovesByDefault');
   @override
@@ -956,6 +970,7 @@ class $AppSettingsTable extends AppSettings
     quickLookVimMode,
     quickLookWrapLines,
     quickLookShowStatistics,
+    quickLookMuteAudio,
     dragMovesByDefault,
     windowWidth,
     windowHeight,
@@ -1485,6 +1500,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('quick_look_mute_audio')) {
+      context.handle(
+        _quickLookMuteAudioMeta,
+        quickLookMuteAudio.isAcceptableOrUnknown(
+          data['quick_look_mute_audio']!,
+          _quickLookMuteAudioMeta,
+        ),
+      );
+    }
     if (data.containsKey('drag_moves_by_default')) {
       context.handle(
         _dragMovesByDefaultMeta,
@@ -1788,6 +1812,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}quick_look_show_statistics'],
       )!,
+      quickLookMuteAudio: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}quick_look_mute_audio'],
+      )!,
       dragMovesByDefault: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}drag_moves_by_default'],
@@ -1882,6 +1910,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final bool quickLookVimMode;
   final bool quickLookWrapLines;
   final bool quickLookShowStatistics;
+  final bool quickLookMuteAudio;
   final bool dragMovesByDefault;
   final double windowWidth;
   final double windowHeight;
@@ -1949,6 +1978,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.quickLookVimMode,
     required this.quickLookWrapLines,
     required this.quickLookShowStatistics,
+    required this.quickLookMuteAudio,
     required this.dragMovesByDefault,
     required this.windowWidth,
     required this.windowHeight,
@@ -2025,6 +2055,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['quick_look_vim_mode'] = Variable<bool>(quickLookVimMode);
     map['quick_look_wrap_lines'] = Variable<bool>(quickLookWrapLines);
     map['quick_look_show_statistics'] = Variable<bool>(quickLookShowStatistics);
+    map['quick_look_mute_audio'] = Variable<bool>(quickLookMuteAudio);
     map['drag_moves_by_default'] = Variable<bool>(dragMovesByDefault);
     map['window_width'] = Variable<double>(windowWidth);
     map['window_height'] = Variable<double>(windowHeight);
@@ -2096,6 +2127,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       quickLookVimMode: Value(quickLookVimMode),
       quickLookWrapLines: Value(quickLookWrapLines),
       quickLookShowStatistics: Value(quickLookShowStatistics),
+      quickLookMuteAudio: Value(quickLookMuteAudio),
       dragMovesByDefault: Value(dragMovesByDefault),
       windowWidth: Value(windowWidth),
       windowHeight: Value(windowHeight),
@@ -2205,6 +2237,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       quickLookShowStatistics: serializer.fromJson<bool>(
         json['quickLookShowStatistics'],
       ),
+      quickLookMuteAudio: serializer.fromJson<bool>(json['quickLookMuteAudio']),
       dragMovesByDefault: serializer.fromJson<bool>(json['dragMovesByDefault']),
       windowWidth: serializer.fromJson<double>(json['windowWidth']),
       windowHeight: serializer.fromJson<double>(json['windowHeight']),
@@ -2289,6 +2322,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'quickLookShowStatistics': serializer.toJson<bool>(
         quickLookShowStatistics,
       ),
+      'quickLookMuteAudio': serializer.toJson<bool>(quickLookMuteAudio),
       'dragMovesByDefault': serializer.toJson<bool>(dragMovesByDefault),
       'windowWidth': serializer.toJson<double>(windowWidth),
       'windowHeight': serializer.toJson<double>(windowHeight),
@@ -2361,6 +2395,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? quickLookVimMode,
     bool? quickLookWrapLines,
     bool? quickLookShowStatistics,
+    bool? quickLookMuteAudio,
     bool? dragMovesByDefault,
     double? windowWidth,
     double? windowHeight,
@@ -2434,6 +2469,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     quickLookWrapLines: quickLookWrapLines ?? this.quickLookWrapLines,
     quickLookShowStatistics:
         quickLookShowStatistics ?? this.quickLookShowStatistics,
+    quickLookMuteAudio: quickLookMuteAudio ?? this.quickLookMuteAudio,
     dragMovesByDefault: dragMovesByDefault ?? this.dragMovesByDefault,
     windowWidth: windowWidth ?? this.windowWidth,
     windowHeight: windowHeight ?? this.windowHeight,
@@ -2614,6 +2650,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       quickLookShowStatistics: data.quickLookShowStatistics.present
           ? data.quickLookShowStatistics.value
           : this.quickLookShowStatistics,
+      quickLookMuteAudio: data.quickLookMuteAudio.present
+          ? data.quickLookMuteAudio.value
+          : this.quickLookMuteAudio,
       dragMovesByDefault: data.dragMovesByDefault.present
           ? data.dragMovesByDefault.value
           : this.dragMovesByDefault,
@@ -2700,6 +2739,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('quickLookVimMode: $quickLookVimMode, ')
           ..write('quickLookWrapLines: $quickLookWrapLines, ')
           ..write('quickLookShowStatistics: $quickLookShowStatistics, ')
+          ..write('quickLookMuteAudio: $quickLookMuteAudio, ')
           ..write('dragMovesByDefault: $dragMovesByDefault, ')
           ..write('windowWidth: $windowWidth, ')
           ..write('windowHeight: $windowHeight, ')
@@ -2772,6 +2812,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     quickLookVimMode,
     quickLookWrapLines,
     quickLookShowStatistics,
+    quickLookMuteAudio,
     dragMovesByDefault,
     windowWidth,
     windowHeight,
@@ -2844,6 +2885,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.quickLookVimMode == this.quickLookVimMode &&
           other.quickLookWrapLines == this.quickLookWrapLines &&
           other.quickLookShowStatistics == this.quickLookShowStatistics &&
+          other.quickLookMuteAudio == this.quickLookMuteAudio &&
           other.dragMovesByDefault == this.dragMovesByDefault &&
           other.windowWidth == this.windowWidth &&
           other.windowHeight == this.windowHeight &&
@@ -2913,6 +2955,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> quickLookVimMode;
   final Value<bool> quickLookWrapLines;
   final Value<bool> quickLookShowStatistics;
+  final Value<bool> quickLookMuteAudio;
   final Value<bool> dragMovesByDefault;
   final Value<double> windowWidth;
   final Value<double> windowHeight;
@@ -2980,6 +3023,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.quickLookVimMode = const Value.absent(),
     this.quickLookWrapLines = const Value.absent(),
     this.quickLookShowStatistics = const Value.absent(),
+    this.quickLookMuteAudio = const Value.absent(),
     this.dragMovesByDefault = const Value.absent(),
     this.windowWidth = const Value.absent(),
     this.windowHeight = const Value.absent(),
@@ -3048,6 +3092,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.quickLookVimMode = const Value.absent(),
     this.quickLookWrapLines = const Value.absent(),
     this.quickLookShowStatistics = const Value.absent(),
+    this.quickLookMuteAudio = const Value.absent(),
     this.dragMovesByDefault = const Value.absent(),
     this.windowWidth = const Value.absent(),
     this.windowHeight = const Value.absent(),
@@ -3116,6 +3161,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? quickLookVimMode,
     Expression<bool>? quickLookWrapLines,
     Expression<bool>? quickLookShowStatistics,
+    Expression<bool>? quickLookMuteAudio,
     Expression<bool>? dragMovesByDefault,
     Expression<double>? windowWidth,
     Expression<double>? windowHeight,
@@ -3203,6 +3249,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'quick_look_wrap_lines': quickLookWrapLines,
       if (quickLookShowStatistics != null)
         'quick_look_show_statistics': quickLookShowStatistics,
+      if (quickLookMuteAudio != null)
+        'quick_look_mute_audio': quickLookMuteAudio,
       if (dragMovesByDefault != null)
         'drag_moves_by_default': dragMovesByDefault,
       if (windowWidth != null) 'window_width': windowWidth,
@@ -3275,6 +3323,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? quickLookVimMode,
     Value<bool>? quickLookWrapLines,
     Value<bool>? quickLookShowStatistics,
+    Value<bool>? quickLookMuteAudio,
     Value<bool>? dragMovesByDefault,
     Value<double>? windowWidth,
     Value<double>? windowHeight,
@@ -3353,6 +3402,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       quickLookWrapLines: quickLookWrapLines ?? this.quickLookWrapLines,
       quickLookShowStatistics:
           quickLookShowStatistics ?? this.quickLookShowStatistics,
+      quickLookMuteAudio: quickLookMuteAudio ?? this.quickLookMuteAudio,
       dragMovesByDefault: dragMovesByDefault ?? this.dragMovesByDefault,
       windowWidth: windowWidth ?? this.windowWidth,
       windowHeight: windowHeight ?? this.windowHeight,
@@ -3572,6 +3622,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         quickLookShowStatistics.value,
       );
     }
+    if (quickLookMuteAudio.present) {
+      map['quick_look_mute_audio'] = Variable<bool>(quickLookMuteAudio.value);
+    }
     if (dragMovesByDefault.present) {
       map['drag_moves_by_default'] = Variable<bool>(dragMovesByDefault.value);
     }
@@ -3660,6 +3713,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('quickLookVimMode: $quickLookVimMode, ')
           ..write('quickLookWrapLines: $quickLookWrapLines, ')
           ..write('quickLookShowStatistics: $quickLookShowStatistics, ')
+          ..write('quickLookMuteAudio: $quickLookMuteAudio, ')
           ..write('dragMovesByDefault: $dragMovesByDefault, ')
           ..write('windowWidth: $windowWidth, ')
           ..write('windowHeight: $windowHeight, ')
@@ -7931,6 +7985,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> quickLookVimMode,
       Value<bool> quickLookWrapLines,
       Value<bool> quickLookShowStatistics,
+      Value<bool> quickLookMuteAudio,
       Value<bool> dragMovesByDefault,
       Value<double> windowWidth,
       Value<double> windowHeight,
@@ -8000,6 +8055,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> quickLookVimMode,
       Value<bool> quickLookWrapLines,
       Value<bool> quickLookShowStatistics,
+      Value<bool> quickLookMuteAudio,
       Value<bool> dragMovesByDefault,
       Value<double> windowWidth,
       Value<double> windowHeight,
@@ -8314,6 +8370,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get quickLookShowStatistics => $composableBuilder(
     column: $table.quickLookShowStatistics,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get quickLookMuteAudio => $composableBuilder(
+    column: $table.quickLookMuteAudio,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8657,6 +8718,11 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get quickLookMuteAudio => $composableBuilder(
+    column: $table.quickLookMuteAudio,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get dragMovesByDefault => $composableBuilder(
     column: $table.dragMovesByDefault,
     builder: (column) => ColumnOrderings(column),
@@ -8987,6 +9053,11 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get quickLookMuteAudio => $composableBuilder(
+    column: $table.quickLookMuteAudio,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get dragMovesByDefault => $composableBuilder(
     column: $table.dragMovesByDefault,
     builder: (column) => column,
@@ -9109,6 +9180,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> quickLookVimMode = const Value.absent(),
                 Value<bool> quickLookWrapLines = const Value.absent(),
                 Value<bool> quickLookShowStatistics = const Value.absent(),
+                Value<bool> quickLookMuteAudio = const Value.absent(),
                 Value<bool> dragMovesByDefault = const Value.absent(),
                 Value<double> windowWidth = const Value.absent(),
                 Value<double> windowHeight = const Value.absent(),
@@ -9176,6 +9248,7 @@ class $$AppSettingsTableTableManager
                 quickLookVimMode: quickLookVimMode,
                 quickLookWrapLines: quickLookWrapLines,
                 quickLookShowStatistics: quickLookShowStatistics,
+                quickLookMuteAudio: quickLookMuteAudio,
                 dragMovesByDefault: dragMovesByDefault,
                 windowWidth: windowWidth,
                 windowHeight: windowHeight,
@@ -9245,6 +9318,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> quickLookVimMode = const Value.absent(),
                 Value<bool> quickLookWrapLines = const Value.absent(),
                 Value<bool> quickLookShowStatistics = const Value.absent(),
+                Value<bool> quickLookMuteAudio = const Value.absent(),
                 Value<bool> dragMovesByDefault = const Value.absent(),
                 Value<double> windowWidth = const Value.absent(),
                 Value<double> windowHeight = const Value.absent(),
@@ -9312,6 +9386,7 @@ class $$AppSettingsTableTableManager
                 quickLookVimMode: quickLookVimMode,
                 quickLookWrapLines: quickLookWrapLines,
                 quickLookShowStatistics: quickLookShowStatistics,
+                quickLookMuteAudio: quickLookMuteAudio,
                 dragMovesByDefault: dragMovesByDefault,
                 windowWidth: windowWidth,
                 windowHeight: windowHeight,

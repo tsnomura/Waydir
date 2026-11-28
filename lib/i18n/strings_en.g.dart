@@ -181,6 +181,9 @@ class Translations$menu$en {
 	/// en: 'Side Panel'
 	String get sidePanel => 'Side Panel';
 
+	/// en: 'Mute Quick Look Audio'
+	String get muteAudio => 'Mute Quick Look Audio';
+
 	/// en: 'Open Linked Machine's Directory'
 	String get openLinkedDirectory => 'Open Linked Machine\'s Directory';
 
@@ -1092,6 +1095,9 @@ class Translations$keybindings$en {
 
 	/// en: 'Toggle side panel (Quick Look / terminal on the right)'
 	String get toggleSidePanel => 'Toggle side panel (Quick Look / terminal on the right)';
+
+	/// en: 'Mute/unmute Quick Look audio'
+	String get toggleMute => 'Mute/unmute Quick Look audio';
 
 	/// en: 'Toggle list/tree/grid view'
 	String get toggleView => 'Toggle list/tree/grid view';
@@ -2104,6 +2110,12 @@ class Translations$statusBar$en {
 
 	/// en: 'Reset zoom'
 	String get zoomReset => 'Reset zoom';
+
+	/// en: 'Mute Quick Look audio'
+	String get muteAudio => 'Mute Quick Look audio';
+
+	/// en: 'Unmute Quick Look audio'
+	String get unmuteAudio => 'Unmute Quick Look audio';
 }
 
 // Path: dialog
@@ -4695,6 +4707,7 @@ extension on Translations {
 			'menu.remoteThumbnails' => 'Remote Thumbnails (This Tab)',
 			'menu.quickLookPane' => 'Quick Look Pane',
 			'menu.sidePanel' => 'Side Panel',
+			'menu.muteAudio' => 'Mute Quick Look Audio',
 			'menu.openLinkedDirectory' => 'Open Linked Machine\'s Directory',
 			'menu.sendDirectoryToLinked' => 'Send This Directory to Linked Machine',
 			'menu.selectAll' => 'Select All',
@@ -5181,9 +5194,9 @@ extension on Translations {
 			'help.groups.gettingStarted.welcome.title' => 'Welcome to Waydir',
 			'help.groups.gettingStarted.welcome.body' => 'Waydir is a fast, keyboard-driven file manager. This guide walks through everything from basic navigation to remote servers, the terminal and customization.\n\n- Use the tree on the left to jump between topics.\n- Most actions have a keyboard shortcut, shown inline as `Ctrl+C`.\n- Every shortcut can be rebound in **Preferences -> Keyboard**.\n\nPick a topic to get started, or read straight through from the top.',
 			'help.groups.gettingStarted.interface.title' => 'The Interface',
-			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			_ => null,
 		} ?? switch (path) {
+			'help.groups.gettingStarted.interface.body' => 'The window is built from a few simple parts.\n\n- **Sidebar** - bookmarks, drives and remote locations. Toggle it with `Ctrl+B`.\n- **Tab strip** - one tab per open folder.\n- **Breadcrumb bar** - the current path; click any segment to jump there.\n- **File list** - the main view, in list, tree or grid mode.\n- **Status bar** - item counts, selection size and operation progress.',
 			'help.groups.gettingStarted.keyboardBasics.title' => 'Keyboard-First Basics',
 			'help.groups.gettingStarted.keyboardBasics.body' => 'Waydir is designed to be driven from the keyboard.\n\n- `↑` / `↓` move the cursor; `Enter` opens; `Backspace` goes up.\n- Start typing to jump to a matching file (type-ahead).\n- `Ctrl+F` searches, `Space` previews, `F2` renames.\n- Almost nothing requires the mouse - and every binding is customizable.',
 			'help.groups.navigating.title' => 'Navigating',
@@ -5331,6 +5344,7 @@ extension on Translations {
 			'keybindings.fileListZoomReset' => 'Reset file list zoom',
 			'keybindings.toggleSidebar' => 'Toggle sidebar',
 			'keybindings.toggleSidePanel' => 'Toggle side panel (Quick Look / terminal on the right)',
+			'keybindings.toggleMute' => 'Mute/unmute Quick Look audio',
 			'keybindings.toggleView' => 'Toggle list/tree/grid view',
 			'keybindings.viewModeList' => 'Switch to list view',
 			'keybindings.viewModeTree' => 'Switch to tree view',
@@ -5676,6 +5690,8 @@ extension on Translations {
 			'statusBar.zoomOut' => 'Zoom out',
 			'statusBar.zoomIn' => 'Zoom in',
 			'statusBar.zoomReset' => 'Reset zoom',
+			'statusBar.muteAudio' => 'Mute Quick Look audio',
+			'statusBar.unmuteAudio' => 'Unmute Quick Look audio',
 			'dialog.create' => 'Create',
 			'dialog.cancel' => 'Cancel',
 			'dialog.folderNameHint' => 'Folder name',
@@ -5692,12 +5708,12 @@ extension on Translations {
 			'dialog.andMore' => ({required Object count}) => '…and ${count} more',
 			'dialog.copy' => 'Copy',
 			'dialog.move' => 'Move',
+			_ => null,
+		} ?? switch (path) {
 			'dialog.confirmCopyTitle' => 'Copy items?',
 			'dialog.confirmCopySingle' => ({required Object name, required Object dest}) => 'Copy "${name}" to ${dest}?',
 			'dialog.confirmCopyMultiple' => ({required Object count, required Object dest}) => 'Copy ${count} items to ${dest}?',
 			'dialog.confirmMoveTitle' => 'Move items?',
-			_ => null,
-		} ?? switch (path) {
 			'dialog.confirmMoveSingle' => ({required Object name, required Object dest}) => 'Move "${name}" to ${dest}?',
 			'dialog.confirmMoveMultiple' => ({required Object count, required Object dest}) => 'Move ${count} items to ${dest}?',
 			'password.authenticationRequired' => 'Authentication Required',

@@ -30,6 +30,7 @@ class InAppVideoPlayer implements QuickLookPlayer {
   String? _path;
   VideoPlayerController? _controller;
   bool _disposed = false;
+  bool _muted = false;
   int _epoch = 0;
   Future<void> _tail = Future.value();
 
@@ -79,6 +80,13 @@ class InAppVideoPlayer implements QuickLookPlayer {
     final controller = _path == path ? _controller : await _load(path);
     if (controller == null || epoch != _epoch) return;
     await controller.seekTo(_at(startSeconds));
+  }
+
+  /// Silences (or restores) the loaded video and every later load, without
+  /// touching playback position or state.
+  Future<void> setMuted(bool muted) async {
+    _muted = muted;
+    await _controller?.setVolume(muted ? 0 : 1);
   }
 
   static Duration _at(double seconds) =>
@@ -146,6 +154,7 @@ class InAppVideoPlayer implements QuickLookPlayer {
     try {
       final controller = VideoPlayerController.file(File(path));
       await controller.initialize();
+      if (_muted) await controller.setVolume(0);
       if (_disposed || epoch != _epoch) {
         await controller.dispose();
 

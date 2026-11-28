@@ -56,6 +56,7 @@ mixin _WaydirCommandPaletteMixin
         () => unawaited(_toggleQuickLookPane(_quickLookSlot())),
       ),
       _cmd('toggle_side_panel', _toggleSidePanel),
+      _cmd('toggle_mute', _toggleMute),
       _cmd('search', store.openSearch),
       _cmd('recursive_search', () => store.openSearch(recursive: true)),
       _cmd('new_folder', store.startCreate),
